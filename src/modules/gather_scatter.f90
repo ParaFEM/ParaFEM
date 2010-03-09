@@ -1,6 +1,6 @@
 MODULE GATHER_SCATTER
 
-  !/****h* modules/gather_scatter
+  !/****h* /gather_scatter
   !*  NAME
   !*    MODULE: gather_scatter
   !*  SYNOPSIS

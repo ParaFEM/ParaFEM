@@ -1,6 +1,6 @@
 MODULE INPUT
 
-  !/****h* modules/input
+  !/****h* /input
   !*  NAME
   !*    MODULE: input
   !*  SYNOPSIS
@@ -35,7 +35,7 @@ MODULE INPUT
 
   SUBROUTINE READ_G_COORD_PP(job_name,g_num_pp,nn,npes,numpe,g_coord_pp)
 
-  !/****f* input_output/read_g_coord_pp
+  !/****f* input/read_g_coord_pp
   !*  NAME
   !*    SUBROUTINE: read_g_coord_pp
   !*  SYNOPSIS
@@ -197,7 +197,7 @@ MODULE INPUT
     
   SUBROUTINE READ_G_NUM_PP(job_name,iel_start,nels,nn,numpe,g_num_pp)
 
-  !/****f* input_output/read_g_num_pp
+  !/****f* input/read_g_num_pp
   !*  NAME
   !*    SUBROUTINE: read_g_num_pp
   !*  SYNOPSIS
@@ -320,7 +320,7 @@ MODULE INPUT
 
   SUBROUTINE READ_LOADS(JOB_NAME,NUMPE,NODE,VALUE)
 
-  !/****f* input_output/read_loads
+  !/****f* input/read_loads
   !*  NAME
   !*    SUBROUTINE: read_loads
   !*  SYNOPSIS
@@ -387,7 +387,7 @@ MODULE INPUT
 
   SUBROUTINE READ_REST(JOB_NAME,NUMPE,REST)
 
-  !/****f* input_output/read_rest
+  !/****f* input/read_rest
   !*  NAME
   !*    SUBROUTINE: read_rest
   !*  SYNOPSIS
@@ -456,7 +456,7 @@ MODULE INPUT
   SUBROUTINE READ_P121(job_name,numpe,e,element,limit,loaded_nodes,mesh,nels, &
                        nip,nn,nod,nr,tol,v)
 
-  !/****f* input_output/read_p121
+  !/****f* input/read_p121
   !*  NAME
   !*    SUBROUTINE: read_p121
   !*  SYNOPSIS

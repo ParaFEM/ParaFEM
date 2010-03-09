@@ -1,6 +1,6 @@
 MODULE OUTPUT
 
-  !/****h* modules/output
+  !/****h* /output
   !*  NAME
   !*    MODULE: output
   !*  SYNOPSIS
@@ -33,7 +33,7 @@ MODULE OUTPUT
 
   SUBROUTINE WRITE_P121(iters,job_name,neq,nn,npes,nr,numpe,timest,tload)
 
-  !/****f* input_output/write_p121
+  !/****f* output/write_p121
   !*  NAME
   !*    SUBROUTINE: write_p121
   !*  SYNOPSIS
@@ -165,7 +165,7 @@ MODULE OUTPUT
   SUBROUTINE WRITE_NODAL_VARIABLE(text,filnum,iload,nodes_pp,npes,numpe, &
                                   numvar,stress)
 
-  !/****f* input_output/write_nodal_variable
+  !/****f* output/write_nodal_variable
   !*  NAME
   !*    SUBROUTINE: write_nodal_variable
   !*  SYNOPSIS

@@ -1,15 +1,6 @@
 MODULE MP_INTERFACE
 
-  !------------------------------------------------------------------------
-  ! Contains the routines to initialise and finialise the parallel computation
-  !
-  !      Author   - *** ***
-  !      
-  !      History
-  !      28/02/2008 - Created
-  !-------------------------------------------------------------------------
-
-  !/****h* modules/mp_interface
+  !/****h* /mp_interface
   !*  NAME
   !*    MODULE: mp_interface
   !*  SYNOPSIS
@@ -49,7 +40,7 @@ MODULE MP_INTERFACE
 
   SUBROUTINE FIND_PE_PROCS(num,numprocs)
 
-  !/****f* start_finish/find_pe_procs
+  !/****f* mp_interface/find_pe_procs
   !*  NAME
   !*    SUBROUTINE: find_pe_procs
   !*  SYNOPSIS
@@ -113,9 +104,6 @@ MODULE MP_INTERFACE
 
   END SUBROUTINE SHUTDOWN
 
-!---------------------------------------------------------------------------
-!---------------------------------------------------------------------------
-!---------------------------------------------------------------------------
 !---------------------------------------------------------------------------
 !---------------------------------------------------------------------------
 !---------------------------------------------------------------------------

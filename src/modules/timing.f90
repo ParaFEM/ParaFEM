@@ -1,6 +1,6 @@
 MODULE timing
 
-  !/****h* modules/timing
+  !/****h* /timing
   !*  NAME
   !*    MODULE: timing
   !*  SYNOPSIS

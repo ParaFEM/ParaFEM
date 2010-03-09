@@ -1,6 +1,6 @@
 MODULE MATHS
 
-  !/****h* modules/maths
+  !/****h* /maths
   !*  NAME
   !*    MODULE: maths
   !*  SYNOPSIS
