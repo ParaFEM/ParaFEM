@@ -1,6 +1,6 @@
 MODULE PARTITION
 
-  !/****h* modules/partition
+  !/****h* /partition
   !*  NAME
   !*    MODULE: partition
   !*  SYNOPSIS

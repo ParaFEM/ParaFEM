@@ -1,6 +1,6 @@
 MODULE precision
 
-  !/****h* modules/precision
+  !/****h* /precision
   !*  NAME
   !*    MODULE: precision
   !*  SYNOPSIS

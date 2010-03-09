@@ -1,6 +1,6 @@
 MODULE ELEMENTS
 
-  !/****h* modules/elements
+  !/****h* /elements
   !*  NAME
   !*    MODULE: elements
   !*  SYNOPSIS
@@ -1429,7 +1429,7 @@ MODULE ELEMENTS
 
   SUBROUTINE DEEMAT(e,v,dee)
 
-    !/****f* small_deformations/deemat
+    !/****f* elements/deemat
     !*  NAME
     !*    SUBROUTINE: deemat
     !*  SYNOPSIS

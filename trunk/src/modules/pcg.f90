@@ -1,6 +1,6 @@
 MODULE PCG
 
-  !/****h* modules/pcg
+  !/****h* /pcg
   !*  NAME
   !*    MODULE: pcg
   !*  SYNOPSIS
@@ -37,7 +37,7 @@ MODULE PCG
 
   SUBROUTINE checon_par(loads,tol,converged,oldlds)
 
-  !/****f* parafem_mpi/pcg/checon_par
+  !/****f* pcg/checon_par
   !*  NAME
   !*    SUBROUTINE: checon_par
   !*  SYNOPSIS

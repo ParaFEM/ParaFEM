@@ -1,6 +1,6 @@
 MODULE LOADING
 
-  !/****h* modules/loading
+  !/****h* /loading
   !*  NAME
   !*    MODULE: loading
   !*  SYNOPSIS

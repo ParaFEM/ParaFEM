@@ -1,6 +1,6 @@
 MODULE global_variables
 
-  !/****h* modules/global_variables
+  !/****h* /global_variables
   !*  NAME
   !*    MODULE: global_variables
   !*  SYNOPSIS
