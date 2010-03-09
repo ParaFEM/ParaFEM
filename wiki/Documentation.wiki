@@ -1,0 +1,7 @@
+#summary Where to find documentation.
+
+== ParaFEM API ==
+A program called AUTODOC is used to automatically generate a detailed API from headers placed in the source code. Currently a pre-generated API can be found in ~/parafem/docs. For simplicity, the revision number in the document "ParaFEM API 14.0" matches the svn version of the source code from which the documentation was created. Simply open in a web browser.
+
+== The Book ==
+Where possible, the variable names match those used in Smith I.M. and Griffiths D.V. "Programming the Finite Element Method", 4th Edition, Wiley, 2004. This means that those serious about using ParaFEM can purchase a very useful introductory text.
