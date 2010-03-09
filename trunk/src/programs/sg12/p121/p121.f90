@@ -72,6 +72,7 @@ PROGRAM p121
   rest      = 0
 
   CALL read_g_num_pp(job_name,iel_start,nels,nn,numpe,g_num_pp)
+  IF(meshgen == 2) CALL abaqus2sg(element,g_num_pp)
   CALL read_g_coord_pp(job_name,g_num_pp,nn,npes,numpe,g_coord_pp)
   CALL read_rest(job_name,numpe,rest)
     
