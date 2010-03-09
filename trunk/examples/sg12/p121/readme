@@ -1,0 +1,9 @@
+p121.tar.gz contains an example input deck to use with program p121 in ParaFEM.
+
+To unzip, type:
+
+$gunzip p121.tar.gz
+
+To extract the files from the archive, type:
+
+$tar xvf p121.tar
