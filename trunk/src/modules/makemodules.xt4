@@ -1,0 +1,27 @@
+FC = ftn
+
+modules_shared = ../include
+
+#  Flags
+FFLAGS= -I$(modules_shared) -fastsse -O3
+
+objs = precision.o global_variables.o mp_interface.o input.o output.o         \
+       maths.o gather_scatter.o pcg.o partition.o steering.o elements.o       \
+       loading.o timing.o                                              
+
+.SUFFIXES: .f90 .o
+
+lib: $(objs)
+	ar -r libParaFEM.a $(objs)
+
+.f90.o:
+	$(FC) -c $(FFLAGS) $*.f90
+
+
+clean:
+	rm *.o *.mod
+
+install:
+	rm *.o
+	mv *.mod ../../include
+	mv *.a ../../lib
