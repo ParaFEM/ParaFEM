@@ -8,6 +8,6 @@
 
 == Building a ParaFEM Program == 
  * If you wish to use an existing program, change to the appropriate directory and build it. For example:
-  * Change directory to ~/parafem/src/programs/sg12/p121
-  * Type: make -f makeprograms
-  * Example input decks can be found in the ~/parafem/examples/p121 directory
+ * Change directory to ~/parafem/src/programs/sg12/p121
+ * Type: make -f makeprograms
+ * Example input decks can be found in the ~/parafem/examples/p121 directory
