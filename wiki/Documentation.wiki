@@ -5,3 +5,10 @@ A program called AUTODOC is used to automatically generate a detailed API from h
 
 == The Book ==
 Where possible, the variable names match those used in Smith I.M. and Griffiths D.V. "Programming the Finite Element Method", 4th Edition, Wiley, 2004. This means that those serious about using ParaFEM can purchase a very useful introductory text.
+
+== FAQ ==
+
+''Q: What method of domain decomposition is used?''
+A: The current version of ParaFEM does not use domain decomposition techniques. It uses standard element-by-element iterative solvers (pcg, bicgstab, lanczos) which operate in essentially the same way in serial and parallel. The subdivision of elements and equations across processors (the partitioning strategy) is very naive. For a problem with 20 elements on two processors, elements 1-10 are sent to processor 1 and elements 11-20 to processor 2. No account is taken regarding how these elements are connected. See documentation for subroutines CALC_NELS_PP and CALC_NEQ_PP. That's the partitioner!
+
+For most models, there is little benefit in using a graph-based partitioning strategy. If you wanted to test this (or if you have a pathological case), you could preprocess the model using a tool such as METIS, renumbering the mesh so that domain 1 contains elements 1-10 and domain 2 contains elements 11-20. We've done this at Manchester, which is why we know it does not provide much benefit. Please contact the project owner if you require help. It would be useful to provide a ParaFEM tool that can be downloaded to do this.  
