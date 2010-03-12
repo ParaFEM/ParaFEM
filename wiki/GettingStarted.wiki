@@ -1,7 +1,12 @@
 #summary How to download and install ParaFEM.
 
+== Getting the code ==
+ * Checkout the latest version of source code or download a more robust release (when available). 
+ * ParaFEM uses the _subversion_ version control system (svn). Follow the instructions under the [http://code.google.com/p/parafem/source/checkout Source] tab. 
+ * You may also need to see how to use svn on your local supercomputer or cluster. 
+ * On HECToR (UK National HPC Facility), svn needs to be loaded. To do this type _$module load svn_ at the command prompt.
+
 == Building the ParaFEM Library ==
- * Checkout the latest version of source code or download a more robust release (when available).
  * In ~/parafem/src/modules create a makefile for your system or use an existing one.
  * Type: make -f makemodules.xt4 (for a Cray XT4 system)
  * Type: make -f makemodules.xt4 install (moves the .mod files to ~/parafem/include and the .a file to ~/parafem/lib)
