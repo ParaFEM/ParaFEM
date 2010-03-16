@@ -1,10 +1,16 @@
 #summary How to download and install ParaFEM.
 
-== Getting the code ==
- * Checkout the latest version of source code or download a more robust release (when available). 
+== Checkout the latest version of source code ==
  * ParaFEM uses the _subversion_ version control system (svn). Follow the instructions under the [http://code.google.com/p/parafem/source/checkout Source] tab. 
  * You may also need to see how to use svn on your local supercomputer or cluster. 
  * On HECToR (UK National HPC Facility), svn needs to be loaded. To do this type _$module load svn_ at the command prompt.
+
+== Download a Linux release version ==
+ * Under the download tab, click to download the latest source code archive (ParaFEM_r25.tar.gz).
+ * Select a directory in which to install ParaFEM.
+ * Unzip the archive by typing _$gunzip ParaFEM_r25.tar.gz_ 
+ * Untar the archive by typing _$tar xvf ParaFEM_r25.tar
+ * You should now see all the source code expanded in your chosen directory.
 
 == Building the ParaFEM Library ==
  * In ~/parafem/src/modules create a makefile for your system or use an existing one.
