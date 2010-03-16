@@ -6,7 +6,7 @@
  * On HECToR (UK National HPC Facility), svn needs to be loaded. To do this type _$module load svn_ at the command prompt.
 
 == Download a Linux release version ==
- * Under the [http://code.google.com/p/parafem/download Download] tab, click to download the latest source code archive (ParaFEM_r25.tar.gz).
+ * Under the [http://code.google.com/p/parafem/downloads/list Download] tab, click to download the latest source code archive (ParaFEM_r25.tar.gz).
  * Select a directory in which to install ParaFEM.
  * Unzip the archive by typing _$gunzip ParaFEM_r25.tar.gz_ 
  * Untar the archive by typing _$tar xvf ParaFEM_r25.tar_
