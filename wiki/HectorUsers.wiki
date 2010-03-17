@@ -1,0 +1,15 @@
+#summary Special information for HECToR users.
+
+= Introduction =
+
+[http://www.hector.ac.uk HECToR] is the UK's National HPC Service. This page contains some pointers for ParaFEM users who wish to run the code on HECToR.
+
+
+= Submitting Jobs to the Batch Queue =
+
+ * Locate the batch script called _run.xt4_ in _~/parafem/etc/batchscripts_. Modify the items in brackets.
+ * Copy the executable program (eg _p121_), the input files (_p121.dat, p121.bnd, p121.d_ and _p121.lds_) and the batchscript (_run.xt4_) to the _/work/projectID/projectID/userID_ directory.
+ * Change directory to _/work/projectID/projectID/userID_
+ * To submit the job, type _$qsub run.xt4_
+ * To check the status of the job in the queue, type _$qstat_
+ * For further information about the batch queues and batch scripts, consult the user documentation on the HECToR webpages. 
