@@ -68,8 +68,8 @@ PROGRAM p129
   IF (argc /= 1) CALL job_name_error(numpe,program_name)
   CALL GETARG(1, job_name)
 
-  CALL read_p129(job_name,numpe,element,mesh,nels,nn,nr,nip,nod,loaded_nodes, &
-                 rho,e,v,alpha1,beta1,nstep,npri,theta,omega,tol,limit)
+  CALL read_p129(job_name,numpe,alpha1,beta1,e,element,limit,loaded_nodes,    &
+                 mesh,nels,nip,nn,nod,npri,nr,nstep,omega,rho,theta,tol,v
    
   CALL calc_nels_pp(nels)
 
