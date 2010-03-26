@@ -1,0 +1,9 @@
+p129.tar.gz contains an example input deck to use with program p129 in ParaFEM.
+
+To unzip, type:
+
+$gunzip p129.tar.gz
+
+To extract the files from the archive, type:
+
+$tar xvf p129.tar
