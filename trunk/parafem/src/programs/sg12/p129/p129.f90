@@ -391,10 +391,10 @@ PROGRAM p129
    
    utemp_pp  = zero
    CALL gather(x1_pp(1:),utemp_pp)
-   CALL scatter_allnodes(npes,nn,nels_pp,g_num_pp,nod,ndim,nodes_pp,          &
-                         node_start,node_end,utemp_pp,disp_pp,1)
-   CALL write_allnodes(24,label,disp_pp,nodes_pp,ndim,npes,numpe,j)
-                         
+   CALL scatter_nodes(npes,nn,nels_pp,g_num_pp,nod,ndim,nodes_pp,              &
+                      node_start,node_end,utemp_pp,disp_pp,1)
+   CALL write_nodal_variable(label,24,1,nodes_pp,npes,numpe,ndim,disp_pp)      
+   
    timest(11)  = timest(11) + (elap_time() - timest(7))
    ans(1,j)    = real_time
    ans(2,j)    = cos(omega*real_time)
@@ -409,7 +409,7 @@ PROGRAM p129
 ! 15. Output performance data and end program
 !------------------------------------------------------------------------------ 
 
- CALL WRITE_P129(job_name,numpe,npes,nn,nr,neq,tload,timest,ans,ttliters)
+ CALL WRITE_P129(ans,job_name,neq,nn,npes,nr,numpe,timest,tload,ttliters)
  
  CLOSE(24)
 
