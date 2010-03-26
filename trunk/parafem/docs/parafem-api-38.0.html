@@ -5,14 +5,14 @@
 <head>
 <meta http-equiv="Content-Style-Type" content="text/css" />
 <meta http-equiv="Content-type" content="text/html; charset=ISO-8859-1" />
-<link rel="stylesheet" href="./parafem-api-14.0.css" type="text/css" />
-<title>./parafem-api-14.0</title>
+<link rel="stylesheet" href="./parafem-api-38.0.css" type="text/css" />
+<title>./parafem-api-38.0</title>
 <!-- Source: ./../src/modules/ -->
 <!-- Generated with ROBODoc Version 4.99.32 (Apr 24 2007) -->
 </head>
 <body>
 <div id="logo">
-<a name="robo_top_of_doc">ParaFEM API (Version 14.0)</a>
+<a name="robo_top_of_doc">ParaFEM API (Version 38.0)</a>
 </div> <!-- logo -->
 <h3>TABLE OF CONTENTS</h3>
 <ul>
@@ -47,52 +47,54 @@
 <li>4.2. <a href="#robo32">input/read_g_num_pp</a></li>
 <li>4.3. <a href="#robo33">input/read_loads</a></li>
 <li>4.4. <a href="#robo34">input/read_p121</a></li>
-<li>4.5. <a href="#robo35">input/read_rest</a></li>
+<li>4.5. <a href="#robo35">input/read_p129</a></li>
+<li>4.6. <a href="#robo36">input/read_rest</a></li>
 </ul>
 <li>5. <a href="#robo4">/loading</a></li>
 <ul>
-<li>5.1. <a href="#robo36">loading/load</a></li>
+<li>5.1. <a href="#robo37">loading/load</a></li>
 </ul>
 <li>6. <a href="#robo5">/maths</a></li>
 <ul>
-<li>6.1. <a href="#robo37">maths/determinant</a></li>
-<li>6.2. <a href="#robo38">maths/dot_product_p</a></li>
-<li>6.3. <a href="#robo39">maths/invert</a></li>
-<li>6.4. <a href="#robo40">maths/max_integer_p</a></li>
-<li>6.5. <a href="#robo41">maths/max_real_r</a></li>
-<li>6.6. <a href="#robo42">maths/maxabsval_p</a></li>
-<li>6.7. <a href="#robo43">maths/maxval_p</a></li>
-<li>6.8. <a href="#robo44">maths/norm_p</a></li>
-<li>6.9. <a href="#robo45">maths/sum_p</a></li>
+<li>6.1. <a href="#robo38">maths/determinant</a></li>
+<li>6.2. <a href="#robo39">maths/dot_product_p</a></li>
+<li>6.3. <a href="#robo40">maths/invert</a></li>
+<li>6.4. <a href="#robo41">maths/max_integer_p</a></li>
+<li>6.5. <a href="#robo42">maths/max_real_r</a></li>
+<li>6.6. <a href="#robo43">maths/maxabsval_p</a></li>
+<li>6.7. <a href="#robo44">maths/maxval_p</a></li>
+<li>6.8. <a href="#robo45">maths/norm_p</a></li>
+<li>6.9. <a href="#robo46">maths/sum_p</a></li>
 </ul>
 <li>7. <a href="#robo6">/mp_interface</a></li>
 <ul>
-<li>7.1. <a href="#robo46">mp_interface/find_pe_procs</a></li>
+<li>7.1. <a href="#robo47">mp_interface/find_pe_procs</a></li>
 </ul>
 <li>8. <a href="#robo7">/output</a></li>
 <ul>
-<li>8.1. <a href="#robo47">output/job_name_error</a></li>
-<li>8.2. <a href="#robo48">output/write_nodal_variable</a></li>
-<li>8.3. <a href="#robo49">output/write_p121</a></li>
+<li>8.1. <a href="#robo48">output/job_name_error</a></li>
+<li>8.2. <a href="#robo49">output/write_nodal_variable</a></li>
+<li>8.3. <a href="#robo50">output/write_p121</a></li>
+<li>8.4. <a href="#robo51">output/write_p129</a></li>
 </ul>
 <li>9. <a href="#robo8">/partition</a></li>
 <ul>
-<li>9.1. <a href="#robo50">partition/calc_nodes_pp</a></li>
+<li>9.1. <a href="#robo52">partition/calc_nodes_pp</a></li>
 </ul>
 <li>10. <a href="#robo9">/pcg</a></li>
 <ul>
-<li>10.1. <a href="#robo51">pcg/checon_par</a></li>
+<li>10.1. <a href="#robo53">pcg/checon_par</a></li>
 </ul>
 <li>11. <a href="#robo10">/precision</a></li>
 <li>12. <a href="#robo11">/steering</a></li>
 <ul>
-<li>12.1. <a href="#robo52">steering/abaqus2sg</a></li>
-<li>12.2. <a href="#robo53">steering/find_g</a></li>
-<li>12.3. <a href="#robo54">steering/rearrange</a></li>
+<li>12.1. <a href="#robo54">steering/abaqus2sg</a></li>
+<li>12.2. <a href="#robo55">steering/find_g</a></li>
+<li>12.3. <a href="#robo56">steering/rearrange</a></li>
 </ul>
 <li>13. <a href="#robo12">/timing</a></li>
 <ul>
-<li>13.1. <a href="#robo55">timing/elap_time</a></li>
+<li>13.1. <a href="#robo57">timing/elap_time</a></li>
 </ul>
 </ul>
 <a name="robo0">
@@ -807,6 +809,7 @@
     READ_NUM               Reads the element nodal <a href="#robo11">steering</a> array
     READ_REST              Reads the restraints
     READ_P121              Reads the control data for program p121
+    READ_P129              Reads the control data for program p129
 </pre>
 <p class="item_name">AUTHOR</p>
 <pre>    L. Margetts
@@ -908,7 +911,7 @@
     The following arguments have the INTENT(OUT) attribute:
 
     node(loaded_nodes)       : Integer
-                             : Nodes that have an applied <a href="#robo36">load</a> 
+                             : Nodes that have an applied <a href="#robo37">load</a> 
 
     value(ndim,loaded_nodes) : Real
                              : Force applied on each node
@@ -994,8 +997,73 @@
 <pre>    (c) University of Manchester 2010
 </pre>
 <a name="robo35">
+<a name="input2fread5fp129">
+<h2>4.5.  input/read_p129 [ Functions ]  </h2>
+<p>[ <a href="#robo_top_of_doc">Top</a> ] [ <a href="#robo3">input</a> ] [ Functions ]</p>
+<p class="item_name">NAME</p>
+<pre>    SUBROUTINE: <strong>read_p129</strong>
+</pre>
+<p class="item_name">SYNOPSIS</p>
+<pre>    Usage:      CALL <strong>read_p129</strong>(job_name,numpe,alpha1,beta1,e,element,     &amp;
+                               limit,loaded_nodes,mesh,nels,nip,nn,nod,   &amp;
+                               npri,nr,nstep,omega,rho,theta,tol,v)
+</pre>
+<p class="item_name">FUNCTION</p>
+<pre>    Master processor reads the general data for the problem and broadcasts 
+    it to the slave processors.
+</pre>
+<p class="item_name">INPUTS</p>
+<pre>    The following scalar character argument has the INTENT(IN) attribute:
+
+    job_name               : File name that contains the data to be read
+
+    The following scalar integer argument has the INTENT(IN) attribute:
+
+    numpe                  : Processor ID of calling processor
+
+    The following scalar real arguments have the INTENT(INOUT) attribute:
+
+    alpha1                 : Rayleigh damping parameter
+    beta1                  : Rayleigh damping parameter
+    e                      : Young's modulus
+    omega                  : Intermediate value
+    rho                    : Density
+    theta                  : Parameter in "theta" integrator
+    tol                    : Convergence tolerance for PCG
+    v                      : Poisson's ratio
+
+    The following scalar integer arguments have an INTENT(INOUT) attribute:
+
+    limit                  : Maximum number of PCG iterations allowed
+    loaded_nodes           : Number of nodes with applied forces
+    mesh                   : Mesh numbering scheme
+                           : 1 = Smith and Griffiths numbering scheme
+                           : 2 = Abaqus numbering scheme
+    nels                   : Total number of <a href="#robo0">elements</a>
+    nip                    : Number of integration points
+    nn                     : Number of nodes in the mesh
+    nod                    : Number of nodes per element
+    npri                   : Print interval
+    nr                     : Number of restrained nodes
+    nstep                  : Number of time steps in analysis
+
+    The following scalar character argument has an INTENT(INOUT) attribute:
+
+    element                : Element type
+                           : Values: 'hexahedron' or 'tetrahedron'
+</pre>
+<p class="item_name">AUTHOR</p>
+<pre>    Lee Margetts
+</pre>
+<p class="item_name">CREATION DATE</p>
+<pre>    25.02.2010
+</pre>
+<p class="item_name">COPYRIGHT</p>
+<pre>    (c) University of Manchester 2010
+</pre>
+<a name="robo36">
 <a name="input2fread5frest">
-<h2>4.5.  input/read_rest [ Functions ]  </h2>
+<h2>4.6.  input/read_rest [ Functions ]  </h2>
 <p>[ <a href="#robo_top_of_doc">Top</a> ] [ <a href="#robo3">input</a> ] [ Functions ]</p>
 <p class="item_name">NAME</p>
 <pre>    SUBROUTINE: <strong>read_rest</strong>
@@ -1056,7 +1124,7 @@
 <p class="item_name">COPYRIGHT</p>
 <pre>    2004-2010 University of Manchester
 </pre>
-<a name="robo36">
+<a name="robo37">
 <a name="loading2fload">
 <h2>5.1.  loading/load [ Functions ]  </h2>
 <p>[ <a href="#robo_top_of_doc">Top</a> ] [ <a href="#robo4">loading</a> ] [ Functions ]</p>
@@ -1124,7 +1192,7 @@
 <p class="item_name">COPYRIGHT</p>
 <pre>    2004-2010 University of Manchester
 </pre>
-<a name="robo37">
+<a name="robo38">
 <a name="maths2fdeterminant">
 <h2>6.1.  maths/determinant [ Functions ]  </h2>
 <p>[ <a href="#robo_top_of_doc">Top</a> ] [ <a href="#robo5">maths</a> ] [ Functions ]</p>
@@ -1151,7 +1219,7 @@
 <p class="item_name">COPYRIGHT</p>
 <pre>    (c) University of Manchester 2004-2010
 </pre>
-<a name="robo38">
+<a name="robo39">
 <a name="maths2fdot5fproduct5fp">
 <h2>6.2.  maths/dot_product_p [ Functions ]  </h2>
 <p>[ <a href="#robo_top_of_doc">Top</a> ] [ <a href="#robo5">maths</a> ] [ Functions ]</p>
@@ -1187,7 +1255,7 @@
 <p class="item_name">COPYRIGHT</p>
 <pre>    (c) University of Manchester 2002-2010
 </pre>
-<a name="robo39">
+<a name="robo40">
 <a name="maths2finvert">
 <h2>6.3.  maths/invert [ Functions ]  </h2>
 <p>[ <a href="#robo_top_of_doc">Top</a> ] [ <a href="#robo5">maths</a> ] [ Functions ]</p>
@@ -1207,7 +1275,7 @@
 <p class="item_name">COPYRIGHT</p>
 <pre>    (c) University of Manchester 2004-2010
 </pre>
-<a name="robo40">
+<a name="robo41">
 <a name="maths2fmax5finteger5fp">
 <h2>6.4.  maths/max_integer_p [ Functions ]  </h2>
 <p>[ <a href="#robo_top_of_doc">Top</a> ] [ <a href="#robo5">maths</a> ] [ Functions ]</p>
@@ -1238,7 +1306,7 @@
 <p class="item_name">COPYRIGHT</p>
 <pre>    (c) University of Manchester 2002-2010
 </pre>
-<a name="robo41">
+<a name="robo42">
 <a name="maths2fmax5freal5fr">
 <h2>6.5.  maths/max_real_r [ Functions ]  </h2>
 <p>[ <a href="#robo_top_of_doc">Top</a> ] [ <a href="#robo5">maths</a> ] [ Functions ]</p>
@@ -1269,7 +1337,7 @@
 <p class="item_name">COPYRIGHT</p>
 <pre>    (c) University of Manchester 2002-2010
 </pre>
-<a name="robo42">
+<a name="robo43">
 <a name="maths2fmaxabsval5fp">
 <h2>6.6.  maths/maxabsval_p [ Functions ]  </h2>
 <p>[ <a href="#robo_top_of_doc">Top</a> ] [ <a href="#robo5">maths</a> ] [ Functions ]</p>
@@ -1303,7 +1371,7 @@
 <p class="item_name">COPYRIGHT</p>
 <pre>    (c) University of Manchester 2008-2010
 </pre>
-<a name="robo43">
+<a name="robo44">
 <a name="maths2fmaxval5fp">
 <h2>6.7.  maths/maxval_p [ Functions ]  </h2>
 <p>[ <a href="#robo_top_of_doc">Top</a> ] [ <a href="#robo5">maths</a> ] [ Functions ]</p>
@@ -1336,7 +1404,7 @@
 <p class="item_name">COPYRIGHT</p>
 <pre>    (c) University of Manchester 2002-2010
 </pre>
-<a name="robo44">
+<a name="robo45">
 <a name="maths2fnorm5fp">
 <h2>6.8.  maths/norm_p [ Functions ]  </h2>
 <p>[ <a href="#robo_top_of_doc">Top</a> ] [ <a href="#robo5">maths</a> ] [ Functions ]</p>
@@ -1367,7 +1435,7 @@
 <p class="item_name">COPYRIGHT</p>
 <pre>    (c) University of Manchester 2002-2010
 </pre>
-<a name="robo45">
+<a name="robo46">
 <a name="maths2fsum5fp">
 <h2>6.9.  maths/sum_p [ Functions ]  </h2>
 <p>[ <a href="#robo_top_of_doc">Top</a> ] [ <a href="#robo5">maths</a> ] [ Functions ]</p>
@@ -1427,7 +1495,7 @@
 <p class="item_name">COPYRIGHT</p>
 <pre>    2004-2010 University of Manchester
 </pre>
-<a name="robo46">
+<a name="robo47">
 <a name="mp5finterface2ffind5fpe5fprocs">
 <h2>7.1.  mp_interface/find_pe_procs [ Functions ]  </h2>
 <p>[ <a href="#robo_top_of_doc">Top</a> ] [ <a href="#robo6">mp_interface</a> ] [ Functions ]</p>
@@ -1473,6 +1541,7 @@
     
     Subroutine             Purpose
     WRITE_P121             Writes out basic program data and <a href="#robo12">timing</a> info
+    WRITE_P129             Writes out basic program data and <a href="#robo12">timing</a> info
     WRITE_NODAL_VARIABLE   Writes out results computed at the nodes
     JOB_NAME_ERROR         Writes error message if job_name is missing
 </pre>
@@ -1482,7 +1551,7 @@
 <p class="item_name">COPYRIGHT</p>
 <pre>    2004-2010 University of Manchester
 </pre>
-<a name="robo47">
+<a name="robo48">
 <a name="output2fjob5fname5ferror">
 <h2>8.1.  output/job_name_error [ Functions ]  </h2>
 <p>[ <a href="#robo_top_of_doc">Top</a> ] [ <a href="#robo7">output</a> ] [ Functions ]</p>
@@ -1501,7 +1570,7 @@
 <p class="item_name">COPYRIGHT</p>
 <pre>    (c) University of Manchester 2007-2010
 </pre>
-<a name="robo48">
+<a name="robo49">
 <a name="output2fwrite5fnodal5fvariable">
 <h2>8.2.  output/write_nodal_variable [ Functions ]  </h2>
 <p>[ <a href="#robo_top_of_doc">Top</a> ] [ <a href="#robo7">output</a> ] [ Functions ]</p>
@@ -1558,7 +1627,7 @@
 <p class="item_name">COPYRIGHT</p>
 <pre>    (c) University of Manchester 2007-2010
 </pre>
-<a name="robo49">
+<a name="robo50">
 <a name="output2fwrite5fp121">
 <h2>8.3.  output/write_p121 [ Functions ]  </h2>
 <p>[ <a href="#robo_top_of_doc">Top</a> ] [ <a href="#robo7">output</a> ] [ Functions ]</p>
@@ -1601,7 +1670,7 @@
                            : Holds <a href="#robo12">timing</a> information
 
     tload                  : Real
-                           : Total applied <a href="#robo36">load</a>
+                           : Total applied <a href="#robo37">load</a>
 </pre>
 <p class="item_name">AUTHOR</p>
 <pre>    Lee Margetts
@@ -1610,6 +1679,55 @@
 </pre>
 <p class="item_name">CREATION DATE</p>
 <pre>    02.03.2010
+</pre>
+<p class="item_name">COPYRIGHT</p>
+<pre>    (c) University of Manchester 2010
+</pre>
+<a name="robo51">
+<a name="output2fwrite5fp129">
+<h2>8.4.  output/write_p129 [ Functions ]  </h2>
+<p>[ <a href="#robo_top_of_doc">Top</a> ] [ <a href="#robo7">output</a> ] [ Functions ]</p>
+<p class="item_name">NAME</p>
+<pre>    SUBROUTINE: <strong>write_p129</strong>
+</pre>
+<p class="item_name">SYNOPSIS</p>
+<pre>    Usage:      CALL <strong>write_p129</strong>(ans,job_name,neq,nn,npes,nr,numpe,        &amp;
+                                timest,tload,ttliters))
+</pre>
+<p class="item_name">FUNCTION</p>
+<pre>    Master processor writes out brief details about the problem and 
+    some performance data
+</pre>
+<p class="item_name">INPUTS</p>
+<pre>    The following scalar character argument has the INTENT(IN) attribute:
+
+    job_name               : Job name used to name <a href="#robo7">output</a> file
+
+    The following scalar integer arguments have the INTENT(IN) attribute:
+
+    neq                    : Number of equations
+    nn                     : Number of nodes in the mesh
+    npes                   : Number of processors used in the simulations
+    nr                     : Number of restrained nodes
+    numpe                  : Processor ID number
+
+    The following scalar real argument has the INTENT(IN) attribute:
+
+    tload                  : Total applied <a href="#robo37">load</a>
+
+    The following real array arguments have the INTENT(IN) attribute:
+
+    ans(:)                 : Holds a single displacement value at the 
+                           : equation number "it" for each time step
+    timest(:)              : Holds <a href="#robo12">timing</a> information
+    ttliters(:)            : Records the number of iterations required by
+                           : PCG for each time step
+</pre>
+<p class="item_name">AUTHOR</p>
+<pre>    Lee Margetts
+</pre>
+<p class="item_name">CREATION DATE</p>
+<pre>    26.02.2010
 </pre>
 <p class="item_name">COPYRIGHT</p>
 <pre>    (c) University of Manchester 2010
@@ -1639,7 +1757,7 @@
 <p class="item_name">COPYRIGHT</p>
 <pre>    2004-2010 University of Manchester
 </pre>
-<a name="robo50">
+<a name="robo52">
 <a name="partition2fcalc5fnodes5fpp">
 <h2>9.1.  partition/calc_nodes_pp [ Functions ]  </h2>
 <p>[ <a href="#robo_top_of_doc">Top</a> ] [ <a href="#robo8">partition</a> ] [ Functions ]</p>
@@ -1709,7 +1827,7 @@
 <p class="item_name">COPYRIGHT</p>
 <pre>    2004-2010 University of Manchester
 </pre>
-<a name="robo51">
+<a name="robo53">
 <a name="pcg2fchecon5fpar">
 <h2>10.1.  pcg/checon_par [ Functions ]  </h2>
 <p>[ <a href="#robo_top_of_doc">Top</a> ] [ <a href="#robo9">pcg</a> ] [ Functions ]</p>
@@ -1801,7 +1919,7 @@
 <p class="item_name">COPYRIGHT</p>
 <pre>    2004-2010 University of Manchester
 </pre>
-<a name="robo52">
+<a name="robo54">
 <a name="steering2fabaqus2sg">
 <h2>12.1.  steering/abaqus2sg [ Functions ]  </h2>
 <p>[ <a href="#robo_top_of_doc">Top</a> ] [ <a href="#robo11">steering</a> ] [ Functions ]</p>
@@ -1828,7 +1946,7 @@
 <p class="item_name">COPYRIGHT</p>
 <pre>    (c) University of Manchester 2009-2010
 </pre>
-<a name="robo53">
+<a name="robo55">
 <a name="steering2ffind5fg">
 <h2>12.2.  steering/find_g [ Functions ]  </h2>
 <p>[ <a href="#robo_top_of_doc">Top</a> ] [ <a href="#robo11">steering</a> ] [ Functions ]</p>
@@ -1856,7 +1974,7 @@
 <p class="item_name">COPYRIGHT</p>
 <pre>    (c) University of Manchester 2004-2010
 </pre>
-<a name="robo54">
+<a name="robo56">
 <a name="steering2frearrange">
 <h2>12.3.  steering/rearrange [ Functions ]  </h2>
 <p>[ <a href="#robo_top_of_doc">Top</a> ] [ <a href="#robo11">steering</a> ] [ Functions ]</p>
@@ -1911,7 +2029,7 @@
 <p class="item_name">COPYRIGHT</p>
 <pre>    2004-2010 University of Manchester
 </pre>
-<a name="robo55">
+<a name="robo57">
 <a name="timing2felap5ftime">
 <h2>13.1.  timing/elap_time [ Functions ]  </h2>
 <p>[ <a href="#robo_top_of_doc">Top</a> ] [ <a href="#robo12">timing</a> ] [ Functions ]</p>
@@ -1932,7 +2050,7 @@
 <pre>    2004-2010 University of Manchester
 </pre>
 <div id="footer">
-<p>Generated from ./../src/modules/ with <a href="http://www.xs4all.nl/~rfsber/Robo/robodoc.html">ROBODoc</a> V4.99.32 on Tue Mar 09 2010 23:04:07
+<p>Generated from ./../src/modules/ with <a href="http://www.xs4all.nl/~rfsber/Robo/robodoc.html">ROBODoc</a> V4.99.32 on Fri Mar 26 2010 17:30:42
 </p>
 </div> <!-- footer -->
 </body>
