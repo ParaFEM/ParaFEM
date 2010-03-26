@@ -616,7 +616,7 @@ MODULE INPUT
 
   SUBROUTINE READ_P129(job_name,numpe,alpha1,beta1,e,element,                 &
                        limit,loaded_nodes,mesh,nels,nip,nn,nod,               &
-                       npri,nr,nstep,omega,rho,theta,tol,v
+                       npri,nr,nstep,omega,rho,theta,tol,v)
 
   !/****f* input/read_p129
   !*  NAME
