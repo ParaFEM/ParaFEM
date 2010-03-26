@@ -161,6 +161,132 @@ MODULE OUTPUT
 !------------------------------------------------------------------------------
 !------------------------------------------------------------------------------
 !------------------------------------------------------------------------------
+
+  SUBROUTINE WRITE_P129(ans,job_name,neq,nn,npes,nr,numpe,timest,tload,       &
+                        ttliters)
+
+  !/****f* output/write_p129
+  !*  NAME
+  !*    SUBROUTINE: write_p129
+  !*  SYNOPSIS
+  !*    Usage:      CALL write_p129(ans,job_name,neq,nn,npes,nr,numpe,        &
+  !*                                timest,tload,ttliters))
+  !*  FUNCTION
+  !*    Master processor writes out brief details about the problem and 
+  !*    some performance data
+  !*  INPUTS
+  !*    The following scalar character argument has the INTENT(IN) attribute:
+  !*
+  !*    job_name               : Job name used to name output file
+  !*
+  !*    The following scalar integer arguments have the INTENT(IN) attribute:
+  !*
+  !*    neq                    : Number of equations
+  !*    nn                     : Number of nodes in the mesh
+  !*    npes                   : Number of processors used in the simulations
+  !*    nr                     : Number of restrained nodes
+  !*    numpe                  : Processor ID number
+  !*
+  !*    The following scalar real argument has the INTENT(IN) attribute:
+  !*
+  !*    tload                  : Total applied load
+  !*
+  !*    The following real array arguments have the INTENT(IN) attribute:
+  !*
+  !*    ans(:)                 : Holds a single displacement value at the 
+  !*                           : equation number "it" for each time step
+  !*    timest(:)              : Holds timing information
+  !*    ttliters(:)            : Records the number of iterations required by
+  !*                           : PCG for each time step
+  !*
+  !*  AUTHOR
+  !*    Lee Margetts
+  !*  CREATION DATE
+  !*    26.02.2010
+  !*  COPYRIGHT
+  !*    (c) University of Manchester 2010
+  !******
+  !*  Place remarks that should not be included in the documentation here.
+  !*
+  !*/  
+  
+  IMPLICIT NONE
+
+  CHARACTER(LEN=50), INTENT(IN)  :: job_name
+  INTEGER, INTENT(IN)            :: numpe,npes,nn,nr,neq,ttliters(:)
+  REAL(iwp), INTENT(IN)          :: ans(:,:),timest(:),tload
+
+!------------------------------------------------------------------------------
+! 1. Local variables
+!------------------------------------------------------------------------------
+  
+  CHARACTER(LEN=50)              :: fname
+  INTEGER                        :: i          ! loop counter
+ 
+  IF(numpe==1) THEN
+
+    fname       = job_name(1:INDEX(job_name, " ")-1) // ".res"
+    OPEN(11,FILE=fname,STATUS='REPLACE',ACTION='WRITE')     
+
+!------------------------------------------------------------------------------
+! 3. Write basic details about the problem
+!------------------------------------------------------------------------------
+
+    WRITE(11,'(A,I12)')    "Number of processors used:                  ",npes 
+    WRITE(11,'(A,I12)')    "Number of nodes in the mesh:                ",nn
+    WRITE(11,'(A,I12)')    "Number of nodes that were restrained:       ",nr
+    WRITE(11,'(A,I12)')    "Number of equations solved:                 ",neq
+    WRITE(11,'(A,E12.4)')  "Total load applied:                         ",tload
+
+!------------------------------------------------------------------------------
+! 4. Write output at the equation specified by the user, for each time step, 
+!    and report the number of iterations required
+!------------------------------------------------------------------------------
+
+    WRITE(11,'(/A)')"        Time t  cos(omega*t)  Displacement    Iterations"
+    DO i = 1,UBOUND(ans,2)
+      WRITE(11,'(3E14.4,I14)') ans(1,i), ans(2,i), ans(3,i), ttliters(i)
+    END DO
+
+!------------------------------------------------------------------------------
+! 5. Output timing data
+!------------------------------------------------------------------------------
+
+    WRITE(11,'(/3A)')   "Program section execution times                   ",  &
+                        "Seconds  ", "%Total    "
+    WRITE(11,'(A,F12.6,F8.2)') "Setup                                        ",&
+                           timest(2)-timest(1),                                &
+                          ((timest(2)-timest(1))/(timest(10)-timest(1)))*100  
+    WRITE(11,'(A,F12.6,F8.2)') "Compute steering array                       ",&
+                           timest(3)-timest(2),                                &
+                          ((timest(3)-timest(2))/(timest(10)-timest(1)))*100  
+    WRITE(11,'(A,F12.6,F8.2)') "Compute interprocessor communication tables  ",&
+                           timest(4)-timest(3),                                &
+                          ((timest(4)-timest(3))/(timest(10)-timest(1)))*100  
+    WRITE(11,'(A,F12.6,F8.2)') "Allocate neq_pp arrays                       ",&
+                           timest(5)-timest(4),                                &
+                          ((timest(5)-timest(4))/(timest(10)-timest(1)))*100  
+    WRITE(11,'(A,F12.6,F8.2)') "Element stiffness integration                ",&
+                           timest(6)-timest(5),                                &
+                          ((timest(6)-timest(5))/(timest(10)-timest(1)))*100  
+    WRITE(11,'(A,F12.6,F8.2)') "Solve the equations                          ",&
+                           timest(8),                                          &
+                          ((timest(8))/(timest(10)-timest(1)))*100  
+    WRITE(11,'(A,F12.6,F8.2)') "Output the results                           ",&
+                          timest(9),                                           &
+                         ((timest(9))/(timest(10)-timest(1)))*100  
+    WRITE(11,'(A,F12.6,A)')  "Total execution time                         ",  &
+                          timest(10)-timest(1),"  100.00"
+    CLOSE(11)
+    
+  END IF
+  
+  RETURN
+  END SUBROUTINE WRITE_P129
+  
+!------------------------------------------------------------------------------
+!------------------------------------------------------------------------------
+!------------------------------------------------------------------------------
  
   SUBROUTINE WRITE_NODAL_VARIABLE(text,filnum,iload,nodes_pp,npes,numpe, &
                                   numvar,stress)
