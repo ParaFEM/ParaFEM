@@ -24,7 +24,7 @@ PROGRAM p129
  INTEGER               :: ndof,nels,npes_pp
  INTEGER               :: node_end,node_start,nodes_pp,loaded_nodes
  INTEGER               :: argc,iargc ! command line arguments 
- INTEGER               :: mesh       ! mesh type 1 = S&G ; 2 = Abaqus
+ INTEGER               :: meshgen    ! mesh type 1 = S&G ; 2 = Abaqus
  REAL(iwp)             :: e,v,det,rho,alpha1,beta1,omega,theta,period
  REAL(iwp)             :: pi,dtim,volume,c1,c2,c3,c4,real_time,tol,big,up
  REAL(iwp)             :: alpha,beta,tload     
@@ -43,16 +43,16 @@ PROGRAM p129
 
  REAL(iwp),ALLOCATABLE :: loads_pp(:),points(:,:),dee(:,:),fun(:),jac(:,:)
  REAL(iwp),ALLOCATABLE :: der(:,:),deriv(:,:),weights(:),bee(:,:),km(:,:)
- REAL(iwp),ALLOCATABLE :: p_g_co_pp(:,:,:),x1_pp(:),d1x1_pp(:),d2x1_pp(:)
+ REAL(iwp),ALLOCATABLE :: g_coord_pp(:,:,:),x1_pp(:),d1x1_pp(:),d2x1_pp(:)
  REAL(iwp),ALLOCATABLE :: emm(:,:),ecm(:,:),x0_pp(:),d1x0_pp(:),d2x0_pp(:)
  REAL(iwp),ALLOCATABLE :: store_km_pp(:,:,:),vu_pp(:),store_mm_pp(:,:,:)
  REAL(iwp),ALLOCATABLE :: u_pp(:),p_pp(:),d_pp(:),x_pp(:),xnew_pp(:)
  REAL(iwp),ALLOCATABLE :: pmul_pp(:,:),utemp_pp(:,:),diag_precon_pp(:)
  REAL(iwp),ALLOCATABLE :: diag_precon_tmp(:,:),temp_pp(:,:,:),disp_pp(:)
- REAL(iwp),ALLOCATABLE :: loadNodeValue(:,:),fext_pp(:),ans(:,:)
-
+ REAL(iwp),ALLOCATABLE :: loadNodeValue(:,:),fext_pp(:),ans(:,:),val(:,:)
+ REAL(iwp),ALLOCATABLE :: timest(:)
  INTEGER,ALLOCATABLE   :: rest(:,:),g(:),g_num_pp(:,:),g_g_pp(:,:)
- INTEGER,ALLOCATABLE   :: loadNodeNum(:),ttliters(:)       
+ INTEGER,ALLOCATABLE   :: loadNodeNum(:),ttliters(:),node(:)       
  
 !------------------------------------------------------------------------------
 ! 3. Read job_name from the command line. 
@@ -69,7 +69,7 @@ PROGRAM p129
   CALL GETARG(1, job_name)
 
   CALL read_p129(job_name,numpe,alpha1,beta1,e,element,limit,loaded_nodes,    &
-                 mesh,nels,nip,nn,nod,npri,nr,nstep,omega,rho,theta,tol,v
+                 meshgen,nels,nip,nn,nod,npri,nr,nstep,omega,rho,theta,tol,v)
    
   CALL calc_nels_pp(nels)
 
@@ -180,7 +180,7 @@ PROGRAM p129
 
    gauss_points_1: DO i=1,nip     
      CALL shape_der(der,points,i)
-     jac   = MATMUL(der,p_g_co_pp(:,:,iel))
+     jac   = MATMUL(der,g_coord_pp(:,:,iel))
      det   = determinant(jac)
      CALL invert(jac)
      deriv = matmul(jac,der)
@@ -233,7 +233,7 @@ PROGRAM p129
 
  diag_precon_tmp = zero
 
- DO elements_4
+ elements_4: DO iel=1,nels_pp
    DO k=1,ntot
      diag_precon_tmp(k,iel) = diag_precon_tmp(k,iel)    +                     &
                               store_mm_pp(k,k,iel) * c3 +                     &
@@ -311,9 +311,9 @@ PROGRAM p129
    u_pp      = zero
    vu_pp     = zero
    
-   elements_3: DO iel=1,nels_pp    ! gather for rhs multiply
+   elements_5: DO iel=1,nels_pp    ! gather for rhs multiply
      temp_pp(:,:,iel)=store_km_pp(:,:,iel)*c2+store_mm_pp(:,:,iel)*c3
-   END DO elements_3
+   END DO elements_5
    
    CALL gather(x0_pp,pmul_pp)
    
@@ -359,9 +359,9 @@ PROGRAM p129
      
      CALL gather(p_pp,pmul_pp)
      
-     elements_4: DO iel=1,nels_pp
+     elements_6: DO iel=1,nels_pp
        utemp_pp(:,iel)=MATMUL(temp_pp(:,:,iel),pmul_pp(:,iel))
-     END DO elements_4
+     END DO elements_6
      
      CALL scatter(u_pp,utemp_pp)
      
@@ -374,7 +374,7 @@ PROGRAM p129
      p_pp     = d_pp+p_pp*beta
      u_pp     = xnew_pp
      
-     CALL checon_par(xnew_pp,x_pp,tol,converged)
+     CALL checon_par(xnew_pp,tol,converged,x_pp)
      IF(converged.OR.iters==limit)EXIT
    
    END DO iterations
@@ -387,13 +387,12 @@ PROGRAM p129
    d2x0_pp   = d2x1_pp
    timest(10)= timest(10) + (elap_time() - timest(9))
    timest(9) = elap_time()
-
    
    utemp_pp  = zero
    CALL gather(x1_pp(1:),utemp_pp)
    CALL scatter_nodes(npes,nn,nels_pp,g_num_pp,nod,ndim,nodes_pp,              &
                       node_start,node_end,utemp_pp,disp_pp,1)
-   CALL write_nodal_variable(label,24,1,nodes_pp,npes,numpe,ndim,disp_pp)      
+   CALL write_nodal_variable(label,24,j,nodes_pp,npes,numpe,ndim,disp_pp)      
    
    timest(11)  = timest(11) + (elap_time() - timest(7))
    ans(1,j)    = real_time
