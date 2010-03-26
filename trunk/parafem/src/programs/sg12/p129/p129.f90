@@ -394,7 +394,7 @@ PROGRAM p129
                       node_start,node_end,utemp_pp,disp_pp,1)
    CALL write_nodal_variable(label,24,j,nodes_pp,npes,numpe,ndim,disp_pp)      
    
-   timest(11)  = timest(11) + (elap_time() - timest(7))
+   timest(11)  = timest(11) + (elap_time() - timest(9))
    ans(1,j)    = real_time
    ans(2,j)    = cos(omega*real_time)
    ans(3,j)    = x1_pp(neq_pp)

@@ -11,6 +11,7 @@ MODULE OUTPUT
   !*    
   !*    Subroutine             Purpose
   !*    WRITE_P121             Writes out basic program data and timing info
+  !*    WRITE_P129             Writes out basic program data and timing info
   !*    WRITE_NODAL_VARIABLE   Writes out results computed at the nodes
   !*    JOB_NAME_ERROR         Writes error message if job_name is missing
   !*  AUTHOR
@@ -256,27 +257,33 @@ MODULE OUTPUT
                         "Seconds  ", "%Total    "
     WRITE(11,'(A,F12.6,F8.2)') "Setup                                        ",&
                            timest(2)-timest(1),                                &
-                          ((timest(2)-timest(1))/(timest(10)-timest(1)))*100  
+                          ((timest(2)-timest(1))/(timest(12)-timest(1)))*100  
     WRITE(11,'(A,F12.6,F8.2)') "Compute steering array                       ",&
                            timest(3)-timest(2),                                &
-                          ((timest(3)-timest(2))/(timest(10)-timest(1)))*100  
+                          ((timest(3)-timest(2))/(timest(12)-timest(1)))*100  
     WRITE(11,'(A,F12.6,F8.2)') "Compute interprocessor communication tables  ",&
                            timest(4)-timest(3),                                &
-                          ((timest(4)-timest(3))/(timest(10)-timest(1)))*100  
+                          ((timest(4)-timest(3))/(timest(12)-timest(1)))*100  
     WRITE(11,'(A,F12.6,F8.2)') "Allocate neq_pp arrays                       ",&
                            timest(5)-timest(4),                                &
-                          ((timest(5)-timest(4))/(timest(10)-timest(1)))*100  
+                          ((timest(5)-timest(4))/(timest(12)-timest(1)))*100  
     WRITE(11,'(A,F12.6,F8.2)') "Element stiffness integration                ",&
                            timest(6)-timest(5),                                &
-                          ((timest(6)-timest(5))/(timest(10)-timest(1)))*100  
+                          ((timest(6)-timest(5))/(timest(12)-timest(1)))*100  
+    WRITE(11,'(A,F12.6,F8.2)') "Build the diagonal preconditioner            ",&
+                           timest(7)-timest(6),                                &
+                          ((timest(7)-timest(6))/(timest(12)-timest(1)))*100  
+    WRITE(11,'(A,F12.6,F8.2)') "Read the applied forces                      ",&
+                           timest(8)-timest(7),                                &
+                          ((timest(8)-timest(7))/(timest(12)-timest(1)))*100  
     WRITE(11,'(A,F12.6,F8.2)') "Solve the equations                          ",&
-                           timest(8),                                          &
-                          ((timest(8))/(timest(10)-timest(1)))*100  
+                           timest(10),                                         &
+                          ((timest(10))/(timest(12)-timest(1)))*100  
     WRITE(11,'(A,F12.6,F8.2)') "Output the results                           ",&
-                          timest(9),                                           &
-                         ((timest(9))/(timest(10)-timest(1)))*100  
+                          timest(11),                                          &
+                         ((timest(11))/(timest(12)-timest(1)))*100  
     WRITE(11,'(A,F12.6,A)')  "Total execution time                         ",  &
-                          timest(10)-timest(1),"  100.00"
+                          timest(12)-timest(1),"  100.00"
     CLOSE(11)
     
   END IF
