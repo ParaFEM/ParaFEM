@@ -118,7 +118,7 @@ MODULE OUTPUT
 ! 3. Output timing data
 !------------------------------------------------------------------------------
 
-    WRITE(11,'(/3A)')   "Program section execution times                   ", &
+    WRITE(11,'(/3A)')   "Program section execution times                  ",  &
                         "Seconds  ", "%Total    "
     WRITE(11,'(A,F12.6,F8.2)') "Setup                                       ",&
                            timest(2)-timest(1),                               &
@@ -150,7 +150,7 @@ MODULE OUTPUT
     WRITE(11,'(A,F12.6,F8.2)') "Output results                              ",&
                            timest(11)-timest(10),                             &
                           ((timest(11)-timest(10))/(timest(11)-timest(1)))*100  
-    WRITE(11,'(A,F12.6,A)')  "Total execution time                         ", &
+    WRITE(11,'(A,F12.6,A)')  "Total execution time                        ",  &
                           timest(11)-timest(1),"  100.00"
     CLOSE(11)
     
