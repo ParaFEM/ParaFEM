@@ -776,6 +776,172 @@ MODULE INPUT
 
   RETURN
   END SUBROUTINE READ_P129
+
+!------------------------------------------------------------------------------
+!------------------------------------------------------------------------------
+!------------------------------------------------------------------------------
+
+  SUBROUTINE READ_P1210(job_name,numpe,dtim,e,element,loaded_nodes,meshgen,   &
+                        nels,nip,nn,nod,npri,nr,nstep,pload,rho,sbary,v)
+
+  !/****f* input/read_p1210
+  !*  NAME
+  !*    SUBROUTINE: read_p1210
+  !*  SYNOPSIS
+  !*    Usage:      CALL read_p1210(job_name,numpe,dtim,e,element,            &
+  !*                                loaded_nodes,meshgen,nels,nip,nn,nod,npri,&
+  !*                                nr,nstep,pload,rho,sbary,v)
+  !*  FUNCTION
+  !*    Master processor reads the general data for the problem and broadcasts 
+  !*    it to the slave processors.
+  !*  INPUTS
+  !*    The following scalar character argument has the INTENT(IN) attribute:
+  !*
+  !*    job_name               : File name that contains the data to be read
+  !*
+  !*    The following scalar integer argument has the INTENT(IN) attribute:
+  !*
+  !*    numpe                  : Processor ID of calling processor
+  !*
+  !*    The following scalar real arguments have the INTENT(INOUT) attribute:
+  !*
+  !*    alpha1                 : Rayleigh damping parameter
+  !*    beta1                  : Rayleigh damping parameter
+  !*    e                      : Young's modulus
+  !*    omega                  : Intermediate value
+  !*    rho                    : Density
+  !*    theta                  : Parameter in "theta" integrator
+  !*    tol                    : Convergence tolerance for PCG
+  !*    v                      : Poisson's ratio
+  !*
+  !*    The following scalar integer arguments have an INTENT(INOUT) attribute:
+  !*
+  !*    limit                  : Maximum number of PCG iterations allowed
+  !*    loaded_nodes           : Number of nodes with applied forces
+  !*    mesh                   : Mesh numbering scheme
+  !*                           : 1 = Smith and Griffiths numbering scheme
+  !*                           : 2 = Abaqus numbering scheme
+  !*    nels                   : Total number of elements
+  !*    nip                    : Number of integration points
+  !*    nn                     : Number of nodes in the mesh
+  !*    nod                    : Number of nodes per element
+  !*    npri                   : Print interval
+  !*    nr                     : Number of restrained nodes
+  !*    nstep                  : Number of time steps in analysis
+  !*
+  !*    The following scalar character argument has an INTENT(INOUT) attribute:
+  !*
+  !*    element                : Element type
+  !*                           : Values: 'hexahedron' or 'tetrahedron'
+  !*  
+  !*  AUTHOR
+  !*    Lee Margetts
+  !*  CREATION DATE
+  !*    26.03.2010
+  !*  COPYRIGHT
+  !*    (c) University of Manchester 2010
+  !******
+  !*  Place remarks that should not be included in the documentation here.
+  !*  Need to add some error traps
+  !*/
+
+  IMPLICIT NONE
+
+  CHARACTER(LEN=50), INTENT(IN)    :: job_name
+  CHARACTER(LEN=15), INTENT(INOUT) :: element
+  CHARACTER(LEN=50)                :: fname
+  INTEGER, INTENT(IN)              :: numpe
+  INTEGER, INTENT(INOUT)           :: nels,nn,nr,nod,nip,loaded_nodes
+  INTEGER, INTENT(INOUT)           :: nstep,npri,limit,mesh 
+  REAL(iwp), INTENT(INOUT)         :: rho,e,v,alpha1,beta1,theta,omega,tol
+
+!------------------------------------------------------------------------------
+! 1. Local variables
+!------------------------------------------------------------------------------
+
+  INTEGER                          :: bufsize,ier,integer_store(10)
+  REAL(iwp)                        :: real_store(8)
+
+!------------------------------------------------------------------------------
+! 2. Master processor reads the data and copies it into temporary arrays
+!------------------------------------------------------------------------------
+
+  IF (numpe==1) THEN
+    fname = job_name(1:INDEX(job_name, " ") -1) // ".dat"
+    OPEN(10,FILE=fname,STATUS='OLD',ACTION='READ')
+    READ(10,*) element,mesh,nels,nn,nr,nip,nod,loaded_nodes,rho,e,v,          &
+               alpha1,beta1,nstep,npri,theta,omega,tol,limit
+    CLOSE(10)
+   
+    integer_store      = 0
+
+    integer_store(1)   = mesh
+    integer_store(2)   = nels
+    integer_store(3)   = nn
+    integer_store(4)   = nr 
+    integer_store(5)   = nip
+    integer_store(6)   = nod
+    integer_store(7)   = loaded_nodes
+    integer_store(8)   = nstep
+    integer_store(9)   = npri
+    integer_store(10)  = limit
+
+    real_store         = 0.0_iwp
+
+    real_store(1)      = rho  
+    real_store(2)      = e  
+    real_store(3)      = v  
+    real_store(4)      = alpha1  
+    real_store(5)      = beta1  
+    real_store(6)      = theta  
+    real_store(7)      = omega  
+    real_store(8)      = tol  
+
+  END IF
+
+!------------------------------------------------------------------------------
+! 3. Master processor broadcasts the temporary arrays to the slave processors
+!------------------------------------------------------------------------------
+
+  bufsize = 10
+  CALL MPI_BCAST(integer_store,bufsize,MPI_INTEGER,0,MPI_COMM_WORLD,ier)
+
+  bufsize = 8
+  CALL MPI_BCAST(real_store,bufsize,MPI_REAL8,0,MPI_COMM_WORLD,ier)
+
+  bufsize = 15
+  CALL MPI_BCAST(element,bufsize,MPI_CHARACTER,0,MPI_COMM_WORLD,ier)
+
+!------------------------------------------------------------------------------
+! 4. Slave processors extract the variables from the temporary arrays
+!------------------------------------------------------------------------------
+
+  IF (numpe/=1) THEN
+
+    mesh         = integer_store(1)
+    nels         = integer_store(2)
+    nn           = integer_store(3)
+    nr           = integer_store(4)
+    nip          = integer_store(5)
+    nod          = integer_store(6)
+    loaded_nodes = integer_store(7)
+    nstep        = integer_store(8)
+    npri         = integer_store(9)
+    limit        = integer_store(10)
+
+    rho          = real_store(1)
+    e            = real_store(2)
+    v            = real_store(3)
+    alpha1       = real_store(4)
+    beta1        = real_store(5)
+    theta        = real_store(6)
+    omega        = real_store(7)
+    tol          = real_store(8)
+
+  END IF
+
+  RETURN
+  END SUBROUTINE READ_P1210
   
 !------------------------------------------------------------------------------
 !------------------------------------------------------------------------------

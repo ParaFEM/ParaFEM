@@ -290,6 +290,129 @@ MODULE OUTPUT
   
   RETURN
   END SUBROUTINE WRITE_P129
+
+!------------------------------------------------------------------------------
+!------------------------------------------------------------------------------
+!------------------------------------------------------------------------------
+
+  SUBROUTINE WRITE_P1210(job_name,meshgen,neq,nn,npes,nr,numpe,timest,tload)
+
+  !/****f* output/write_p1210
+  !*  NAME
+  !*    SUBROUTINE: write_p1210
+  !*  SYNOPSIS
+  !*    Usage:      CALL write_p1210(job_name,meshgen,neq,nn,npes,nr,numpe,    &
+  !*                                 timest,tload)
+  !*  FUNCTION
+  !*    Master processor writes out brief details about the problem and 
+  !*    some performance data
+  !*  INPUTS
+  !*    The following scalar character argument has the INTENT(IN) attribute:
+  !*
+  !*    job_name               : Job name used to name output file
+  !*
+  !*    The following scalar integer arguments have the INTENT(IN) attribute:
+  !*
+  !*    meshgen                : Mesh numbering scheme
+  !*                           : 1 = Smith and Griffiths numbering scheme
+  !*                           : 2 = Abaqus numbering scheme
+  !*    neq                    : Number of equations
+  !*    nn                     : Number of nodes in the mesh
+  !*    npes                   : Number of processors used in the simulations
+  !*    nr                     : Number of restrained nodes
+  !*    numpe                  : Processor ID number
+  !*
+  !*    The following scalar real argument has the INTENT(IN) attribute:
+  !*
+  !*    tload                  : Total applied load
+  !*
+  !*    The following real array argument has the INTENT(IN) attribute:
+  !*
+  !*    timest(:)              : Holds timing information
+  !*
+  !*  AUTHOR
+  !*    Lee Margetts
+  !*  CREATION DATE
+  !*    26.02.2010
+  !*  COPYRIGHT
+  !*    (c) University of Manchester 2010
+  !******
+  !*  Place remarks that should not be included in the documentation here.
+  !*
+  !*/  
+  
+  IMPLICIT NONE
+
+  CHARACTER(LEN=50), INTENT(IN)  :: job_name
+  INTEGER, INTENT(IN)            :: numpe,npes,nn,nr,neq,meshgen
+  REAL(iwp), INTENT(IN)          :: timest(:),tload
+
+!------------------------------------------------------------------------------
+! 1. Local variables
+!------------------------------------------------------------------------------
+  
+  CHARACTER(LEN=50)              :: fname
+  INTEGER                        :: i          ! loop counter
+ 
+  IF(numpe==1) THEN
+
+    fname       = job_name(1:INDEX(job_name, " ")-1) // ".res"
+    OPEN(11,FILE=fname,STATUS='REPLACE',ACTION='WRITE')     
+
+!------------------------------------------------------------------------------
+! 3. Write basic details about the problem
+!------------------------------------------------------------------------------
+
+    WRITE(11,'(A,I12)')    "Number of processors used:                  ",npes 
+    WRITE(11,'(A,I12)')    "Number of nodes in the mesh:                ",nn
+    WRITE(11,'(A,I12)')    "Number of nodes that were restrained:       ",nr
+    WRITE(11,'(A,I12)')    "Number of equations solved:                 ",neq
+    WRITE(11,'(A,E12.4)')  "Total load applied:                         ",tload
+
+!------------------------------------------------------------------------------
+! 4. Output timing data
+!------------------------------------------------------------------------------
+
+    IF(meshgen == 1) THEN
+      WRITE(11,'(/A)') "The mesh used the Smith and Griffiths numbering scheme"
+      WRITE(11,'(A)') "Note: the ParaFEM-Viewer expects the Abaqus format"
+    ELSE
+      WRITE(11,'(/A)') "The mesh used the Abaqus numbering scheme"
+    END IF
+    WRITE(11,'(/3A)')   "Program section execution times                   ",  &
+                        "Seconds  ", "%Total    "
+    WRITE(11,'(A,F12.6,F8.2)') "Setup                                        ",&
+                           timest(2)-timest(1),                                &
+                          ((timest(2)-timest(1))/(timest(11)-timest(1)))*100  
+    WRITE(11,'(A,F12.6,F8.2)') "Compute steering array                       ",&
+                           timest(3)-timest(2),                                &
+                          ((timest(3)-timest(2))/(timest(11)-timest(1)))*100  
+    WRITE(11,'(A,F12.6,F8.2)') "Compute interprocessor communication tables  ",&
+                           timest(4)-timest(3),                                &
+                          ((timest(4)-timest(3))/(timest(11)-timest(1)))*100  
+    WRITE(11,'(A,F12.6,F8.2)') "Allocate neq_pp arrays                       ",&
+                           timest(5)-timest(4),                                &
+                          ((timest(5)-timest(4))/(timest(11)-timest(1)))*100  
+    WRITE(11,'(A,F12.6,F8.2)') "Calculate diagonal mass matrix               ",&
+                           timest(6)-timest(5),                                &
+                          ((timest(6)-timest(5))/(timest(11)-timest(1)))*100  
+    WRITE(11,'(A,F12.6,F8.2)') "Read applied forces + assign to equations    ",&
+                           timest(7)-timest(6),                                &
+                          ((timest(7)-timest(6))/(timest(11)-timest(1)))*100  
+    WRITE(11,'(A,F12.6,F8.2)') "Element stress-strain relationship           ",&
+                          timest(9),                                           &
+                         ((timest(9))/(timest(11)-timest(1)))*100  
+    WRITE(11,'(A,F12.6,F8.2)') "Output the results                           ",&
+                          timest(10),                                           &
+                         ((timest(10))/(timest(11)-timest(1)))*100  
+    WRITE(11,'(A,F12.6,A)')    "Total execution time                         ",&
+                          timest(11)-timest(1),"  100.00"
+    CLOSE(11)
+
+  END IF 
+  
+  RETURN
+  END SUBROUTINE WRITE_P1210
   
 !------------------------------------------------------------------------------
 !------------------------------------------------------------------------------
