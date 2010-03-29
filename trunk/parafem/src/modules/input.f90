@@ -808,8 +808,8 @@ MODULE INPUT
   !*    dtim                   : Timestep
   !*    e                      : Young's modulus
   !*    pload                  : Load multiple
+  !*    sbary                  : Shear yield stress
   !*    rho                    : Density
-  !*    tol                    : Convergence tolerance for PCG
   !*    v                      : Poisson's ratio
   !*
   !*    The following scalar integer arguments have an INTENT(INOUT) attribute:
@@ -849,15 +849,15 @@ MODULE INPUT
   CHARACTER(LEN=50)                :: fname
   INTEGER, INTENT(IN)              :: numpe
   INTEGER, INTENT(INOUT)           :: nels,nip,nn,nod,npri,nr,nstep
-  INTEGER, INTENT(INOUT)           :: loaded_nodes,limit,meshgen 
-  REAL(iwp), INTENT(INOUT)         :: rho,e,v,sbary,tol,dtim
+  INTEGER, INTENT(INOUT)           :: loaded_nodes,meshgen 
+  REAL(iwp), INTENT(INOUT)         :: rho,e,v,sbary,dtim,pload
 
 !------------------------------------------------------------------------------
 ! 1. Local variables
 !------------------------------------------------------------------------------
 
-  INTEGER                          :: bufsize,ier,integer_store(10)
-  REAL(iwp)                        :: real_store(8)
+  INTEGER                          :: bufsize,ier,integer_store(9)
+  REAL(iwp)                        :: real_store(6)
 
 !------------------------------------------------------------------------------
 ! 2. Master processor reads the data and copies it into temporary arrays
@@ -866,8 +866,8 @@ MODULE INPUT
   IF (numpe==1) THEN
     fname = job_name(1:INDEX(job_name, " ") -1) // ".dat"
     OPEN(10,FILE=fname,STATUS='OLD',ACTION='READ')
-    READ(10,*) element,mesh,nels,nn,nr,nip,nod,loaded_nodes,rho,e,v,          &
-               alpha1,beta1,nstep,npri,theta,omega,tol,limit
+    READ(10,*) element,meshgen,nels,nip,nn,nr,nod,loaded_nodes,rho,e,v,       &
+               sbary,pload,dtim,nstep,npri
     CLOSE(10)
    
     integer_store      = 0
@@ -888,7 +888,7 @@ MODULE INPUT
     real_store(2)      = e  
     real_store(3)      = pload
     real_store(4)      = rho  
-    real_store(5)      = tol  
+    real_store(5)      = sbary
     real_store(6)      = v  
 
   END IF
@@ -926,7 +926,7 @@ MODULE INPUT
     e             = real_store(2)
     pload         = real_store(3)
     rho           = real_store(4)
-    tol           = real_store(5)
+    sbary         = real_store(5)
     v             = real_store(6)
     
   END IF
