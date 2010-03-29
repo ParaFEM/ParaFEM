@@ -24,7 +24,7 @@ PROGRAM p1210
   ! neq,ntot are now global variables - not declared 
 
   INTEGER,PARAMETER     :: nodof=3,ndim=3,nst=6
-  INTEGER               :: nn,nr,nip,loaded_nodes,nres
+  INTEGER               :: nn,nr,nip,loaded_nodes,nres,nod
   INTEGER               :: i,j,k,jj,iel,nstep,npri,num_no
   INTEGER               :: no_index_start,is,it,nlen,ndof,nels,npes_pp
   INTEGER               :: node_end,node_start,nodes_pp
@@ -43,10 +43,10 @@ PROGRAM p1210
 
   REAL(iwp),ALLOCATABLE :: points(:,:),bdylds_pp(:),x1_pp(:),d1x1_pp(:)
   REAL(iwp),ALLOCATABLE :: stressv(:),pl(:,:),emm(:),d2x1_pp(:)
-  REAL(iwp),ALLOCATABLE :: tensor_pp(:,:,:),etensor_pp(:,:,:),val(:),dee(:,:)
+  REAL(iwp),ALLOCATABLE :: tensor_pp(:,:,:),etensor_pp(:,:,:),val(:,:),dee(:,:)
   REAL(iwp),ALLOCATABLE :: mm_pp(:),jac(:,:),weights(:),der(:,:),deriv(:,:)
   REAL(iwp),ALLOCATABLE :: bee(:,:),eld(:),eps(:),sigma(:),bload(:),eload(:)
-  REAL(iwp),ALLOCATABLE :: mm_tmp(:,:),p_g_co_pp(:,:,:),pmul_pp(:,:)
+  REAL(iwp),ALLOCATABLE :: mm_tmp(:,:),g_coord_pp(:,:,:),pmul_pp(:,:)
   REAL(iwp),ALLOCATABLE :: utemp_pp(:,:),disp_pp(:),fext_pp(:),timest(:)
   INTEGER,ALLOCATABLE   :: rest(:,:),no(:),no_local(:),g_num_pp(:,:)
   INTEGER,ALLOCATABLE   :: g_g_pp(:,:),no_local_temp(:),node(:)
@@ -153,7 +153,7 @@ PROGRAM p1210
  
  CALL sample(element,points,weights)
  
- elements_1: DO iel=1,nels_pp
+ elements_3: DO iel=1,nels_pp
    
    volume = zero
    
@@ -173,7 +173,7 @@ PROGRAM p1210
    emm(39:57:6)  = emm(4)*.125_iwp
    mm_tmp(:,iel) = mm_tmp(:,iel)+emm 
 
- END DO elements_1
+ END DO elements_3
 
  CALL scatter(mm_pp,mm_tmp)
  DEALLOCATE(mm_tmp)
@@ -242,7 +242,7 @@ PROGRAM p1210
    
     CALL gather(x1_pp,pmul_pp)
 
-    elements_2: DO iel=1,nels_pp          
+    elements_4: DO iel=1,nels_pp          
 
       bload = zero
       eld   = pmul_pp(:,iel)
@@ -251,7 +251,7 @@ PROGRAM p1210
         dee     = zero
         CALL deemat(e,v,dee)
         CALL shape_der(der,points,i)
-        jac     = MATMUL(der,p_g_co_pp(:,:,iel))
+        jac     = MATMUL(der,g_coord_pp(:,:,iel))
         det     = determinant(jac)
         CALL invert(jac)
         deriv   = MATMUL(jac,der)
@@ -293,7 +293,7 @@ PROGRAM p1210
 
       utemp_pp(:,iel) = utemp_pp(:,iel)-bload    
 
-    END DO elements_2
+    END DO elements_4
 
     CALL scatter(bdylds_pp,utemp_pp)
 
@@ -331,7 +331,7 @@ PROGRAM p1210
 ! 16. Output debugging information and performance data
 !------------------------------------------------------------------------------
 
-  CALL WRITE_P1210(job_name,neq,nn,npes,nr,numpe,timest,tload)
+  CALL WRITE_P1210(job_name,meshgen,neq,nn,npes,nr,numpe,timest,tload)
   
   IF(numpe==1) CLOSE(12)      
 
