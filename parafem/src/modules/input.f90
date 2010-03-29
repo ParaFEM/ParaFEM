@@ -805,20 +805,17 @@ MODULE INPUT
   !*
   !*    The following scalar real arguments have the INTENT(INOUT) attribute:
   !*
-  !*    alpha1                 : Rayleigh damping parameter
-  !*    beta1                  : Rayleigh damping parameter
+  !*    dtim                   : Timestep
   !*    e                      : Young's modulus
-  !*    omega                  : Intermediate value
+  !*    pload                  : Load multiple
   !*    rho                    : Density
-  !*    theta                  : Parameter in "theta" integrator
   !*    tol                    : Convergence tolerance for PCG
   !*    v                      : Poisson's ratio
   !*
   !*    The following scalar integer arguments have an INTENT(INOUT) attribute:
   !*
-  !*    limit                  : Maximum number of PCG iterations allowed
   !*    loaded_nodes           : Number of nodes with applied forces
-  !*    mesh                   : Mesh numbering scheme
+  !*    meshgen                : Mesh numbering scheme
   !*                           : 1 = Smith and Griffiths numbering scheme
   !*                           : 2 = Abaqus numbering scheme
   !*    nels                   : Total number of elements
@@ -851,9 +848,9 @@ MODULE INPUT
   CHARACTER(LEN=15), INTENT(INOUT) :: element
   CHARACTER(LEN=50)                :: fname
   INTEGER, INTENT(IN)              :: numpe
-  INTEGER, INTENT(INOUT)           :: nels,nn,nr,nod,nip,loaded_nodes
-  INTEGER, INTENT(INOUT)           :: nstep,npri,limit,mesh 
-  REAL(iwp), INTENT(INOUT)         :: rho,e,v,alpha1,beta1,theta,omega,tol
+  INTEGER, INTENT(INOUT)           :: nels,nip,nn,nod,npri,nr,nstep
+  INTEGER, INTENT(INOUT)           :: loaded_nodes,limit,meshgen 
+  REAL(iwp), INTENT(INOUT)         :: rho,e,v,sbary,tol,dtim
 
 !------------------------------------------------------------------------------
 ! 1. Local variables
@@ -875,27 +872,24 @@ MODULE INPUT
    
     integer_store      = 0
 
-    integer_store(1)   = mesh
-    integer_store(2)   = nels
-    integer_store(3)   = nn
-    integer_store(4)   = nr 
-    integer_store(5)   = nip
+    integer_store(1)   = loaded_nodes
+    integer_store(2)   = meshgen
+    integer_store(3)   = nels
+    integer_store(4)   = nip
+    integer_store(5)   = nn
     integer_store(6)   = nod
-    integer_store(7)   = loaded_nodes
-    integer_store(8)   = nstep
-    integer_store(9)   = npri
-    integer_store(10)  = limit
+    integer_store(7)   = npri
+    integer_store(8)   = nr 
+    integer_store(9)   = nstep
 
     real_store         = 0.0_iwp
 
-    real_store(1)      = rho  
+    real_store(1)      = dtim
     real_store(2)      = e  
-    real_store(3)      = v  
-    real_store(4)      = alpha1  
-    real_store(5)      = beta1  
-    real_store(6)      = theta  
-    real_store(7)      = omega  
-    real_store(8)      = tol  
+    real_store(3)      = pload
+    real_store(4)      = rho  
+    real_store(5)      = tol  
+    real_store(6)      = v  
 
   END IF
 
@@ -903,10 +897,10 @@ MODULE INPUT
 ! 3. Master processor broadcasts the temporary arrays to the slave processors
 !------------------------------------------------------------------------------
 
-  bufsize = 10
+  bufsize = 9
   CALL MPI_BCAST(integer_store,bufsize,MPI_INTEGER,0,MPI_COMM_WORLD,ier)
 
-  bufsize = 8
+  bufsize = 6
   CALL MPI_BCAST(real_store,bufsize,MPI_REAL8,0,MPI_COMM_WORLD,ier)
 
   bufsize = 15
@@ -917,27 +911,24 @@ MODULE INPUT
 !------------------------------------------------------------------------------
 
   IF (numpe/=1) THEN
+    
+    loaded_nodes  = integer_store(1)
+    meshgen       = integer_store(2)
+    nels          = integer_store(3)
+    nip           = integer_store(4)
+    nn            = integer_store(5)
+    nod           = integer_store(6)
+    npri          = integer_store(7)
+    nr            = integer_store(8)
+    nstep         = integer_store(9)
 
-    mesh         = integer_store(1)
-    nels         = integer_store(2)
-    nn           = integer_store(3)
-    nr           = integer_store(4)
-    nip          = integer_store(5)
-    nod          = integer_store(6)
-    loaded_nodes = integer_store(7)
-    nstep        = integer_store(8)
-    npri         = integer_store(9)
-    limit        = integer_store(10)
-
-    rho          = real_store(1)
-    e            = real_store(2)
-    v            = real_store(3)
-    alpha1       = real_store(4)
-    beta1        = real_store(5)
-    theta        = real_store(6)
-    omega        = real_store(7)
-    tol          = real_store(8)
-
+    dtim          = real_store(1)
+    e             = real_store(2)
+    pload         = real_store(3)
+    rho           = real_store(4)
+    tol           = real_store(5)
+    v             = real_store(6)
+    
   END IF
 
   RETURN
