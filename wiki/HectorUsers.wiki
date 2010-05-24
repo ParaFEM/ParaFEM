@@ -8,7 +8,7 @@
 = Submitting Jobs to the Batch Queue =
 
  * Locate the batch script called _run.xt4_ in _~/parafem/etc/batchscripts_. Modify the items in brackets.
- * <arguments> refers to the job_name. If the job_name is _p121_ then replace <arguments> with _p121_. Program _p121_ will then expect to find the input files _p121.dat, p121.bnd, p121.d_ and _p121.lds_. The job_name could be anything. 
+ * {{{<arguments>}}} refers to the job_name. If the job_name is _p121_ then replace {{{<arguments>}}} with _p121_. Program _p121_ will then expect to find the input files _p121.dat, p121.bnd, p121.d_ and _p121.lds_. Note that the job_name is user defined. 
  * Copy the executable program (eg _p121_), the input files (_p121.dat, p121.bnd, p121.d_ and _p121.lds_) and the batchscript (_run.xt4_) to the _/work/projectID/projectID/userID_ directory.
  * Change directory to _/work/projectID/projectID/userID_
  * To submit the job, type _$qsub run.xt4_
