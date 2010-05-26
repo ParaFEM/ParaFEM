@@ -80,10 +80,10 @@ PROGRAM d2off
 ! 1. Declare variables used in the main program
 !------------------------------------------------------------------------------
 
-  INTEGER               :: ndim  = 3
-  INTEGER               :: nod   = 4
-  INTEGER               :: nn    = 57525 
-  INTEGER               :: nels  = 239437
+  INTEGER,PARAMETER     :: ndim  = 3
+  INTEGER               :: nod
+  INTEGER               :: nn 
+  INTEGER               :: nels
   INTEGER               :: nr 
   INTEGER               :: nodof
   INTEGER               :: i,j,k,id,iel
@@ -91,8 +91,11 @@ PROGRAM d2off
   INTEGER,PARAMETER     :: three = 3 
   INTEGER               :: nedges 
   INTEGER               :: argc,iargc
-  REAL(iwp),PARAMETER   :: zero = 0.0
+  INTEGER               :: meshgen
+  REAL(iwp),PARAMETER   :: zero = 0.0_iwp
   CHARACTER(LEN=50)     :: job_name
+  CHARACTER(LEN=50)     :: fname
+  CHARACTER(LEN=15)     :: element
 
 !------------------------------------------------------------------------------
 ! 2. Declare dynamic arrays
@@ -112,10 +115,25 @@ PROGRAM d2off
   timest(1) = elap_time()
 
   argc = iargc()
-  IF(argc /= 1) THEN
 
+  IF(argc /= 1) THEN
+    WRITE(*,*)
+    WRITE(*,'(A)') " Usage: d2off <job_name> "
+    WRITE(*,*)
+    WRITE(*,'(A)') "        d2off expects argument <job_name> and 2 input files"
+    WRITE(*,'(A)') "        <job_name>.dat and <job_name>.d"
+    WRITE(*,*)
+    WRITE(*,'(A)') "********************* PROGRAM ABORTED *********************"
+    WRITE(*,*)
+    STOP 
   END IF
+
   CALL GETARG(1, job_name)
+
+  fname = job_name(1:INDEX(job_name, " ") -1) // ".dat"
+  OPEN(10,FILE=fname,STATUS='OLD',ACTION='READ')
+  READ(10,*) element,meshgen,nels,nn,k,k,nod
+  CLOSE(10)
 
   ALLOCATE(g_num(nod,nels))
   ALLOCATE(g_coord(ndim,nn))
@@ -132,25 +150,27 @@ PROGRAM d2off
   g_num   = 0
   g_coord = zero
 
-  OPEN(10,FILE='test.d',STATUS='OLD',ACTION='READ')
+  fname = job_name(1:INDEX(job_name, " ") -1) // ".d"
+  OPEN(11,FILE=fname,STATUS='OLD',ACTION='READ')
 
-  READ(10,*)
-  READ(10,*)
+  READ(11,*)
+  READ(11,*)
 
   DO i = 1,nn
-    READ(10,*) id, g_coord(:,i)    
+    READ(11,*) id, g_coord(:,i)    
   END DO
 
-  READ(10,*)
+  READ(11,*)
   DO iel = 1,nels 
-    READ(10,*) id, k, k, k, g_num(:,iel)
+    READ(11,*) id, k, k, k, g_num(:,iel)
   END DO
 
 !------------------------------------------------------------------------------
 ! 5. Write ".off" geometry file
 !------------------------------------------------------------------------------
 
-  OPEN(20,FILE='test.off',STATUS='REPLACE',ACTION='WRITE') 
+  fname = job_name(1:INDEX(job_name, " ") -1) // ".off"
+  OPEN(20,FILE=fname,STATUS='REPLACE',ACTION='WRITE') 
   
   nedges = 0
  
