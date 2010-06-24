@@ -144,4 +144,88 @@ MODULE LOADING
 !------------------------------------------------------------------------------
 !------------------------------------------------------------------------------
 
+  SUBROUTINE loading_p121(no,val,nle,nxe,nze)
+
+  !/****f* loading/loading_p121
+  !*  NAME
+  !*    SUBROUTINE loading_p121
+  !*  FUNCTION
+  !*    Returns loaded freedoms NO and values VAL from number of elements in
+  !*    x and z and number of loaded elements along a side of a square
+  !*  INPUTS
+  !*    CALL loading_p121(no,val, nle,nxe,nze)
+  !*    
+  !*    NO         : Integer. 
+  !*    VAL        : Real. 
+  !*    NLE        : Integer. 
+  !*    NXE        : Integer.
+  !*    NZE        : Integer.
+  !*  AUTHOR
+  !*    Smith and Griffiths, 4th Edition
+  !****
+  !*/ 
+
+  IMPLICIT NONE
+  
+  INTEGER,INTENT(IN)    :: nxe,nze,nle
+  INTEGER,INTENT(OUT)   :: no(:)
+  REAL(iwp),INTENT(OUT) :: val(:)  
+  INTEGER               :: f1,f2,f3,count,i,j
+  
+  f1 = 6*nxe*nze
+  f2 = (3*nxe+1)*nze
+  f3 = (9*nxe+2)*nze
+
+  count = 1
+  
+  DO  i = 1,4*nle+1,2   ! front face
+    no(count) = i
+    IF(i==1.OR.i==4*nle+1) THEN
+     val(count) = -1.
+    ELSE IF (mod(i+1,4)==0) THEN
+     val(count) = 4.
+    ELSE
+     val(count) = -2.
+    END IF
+    count = count + 1
+  END DO
+ 
+  DO j = 0 , nle - 1    ! other face pairs
+ 
+    DO i = 1 , 3*nle + 1 , 3
+      no(count) = i + f1 + j*(f2 + f3) + 1
+      IF(i==1.OR.i==3*nle+1) THEN
+        val(count) = 4.
+      ELSE
+        val(count) = 8.
+      END IF
+      count = count + 1
+    END DO
+ 
+    DO i = 1 , 6*nle+1 , 3
+      no(count) = i + f1 +(j+1) * f2 + j * f3  + 1
+      IF(j/=nle-1) THEN
+        IF(i==1.OR.i==6*nle+1) THEN
+          val(count) = -2.
+        ELSE IF (mod(i,2)==0) THEN
+          val(count) = 8.
+        ELSE
+          val(count) = -4.
+        END IF
+      ELSE
+        IF(i==1.OR.i==6*nle+1) THEN
+          val(count) = -1.
+        ELSE IF (mod(i,2)==0) THEN
+          val(count) = 4.
+        ELSE
+          val(count) = -2.
+        END IF
+      END IF
+      count = count + 1
+    END DO
+ 
+  END DO
+ 
+  END SUBROUTINE loading_p121
+
 END MODULE LOADING
