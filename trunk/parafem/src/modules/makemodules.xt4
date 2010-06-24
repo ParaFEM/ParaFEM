@@ -5,7 +5,7 @@ FFLAGS= -fastsse -O3
 
 objs = precision.o global_variables.o mp_interface.o input.o output.o         \
        maths.o gather_scatter.o pcg.o partition.o steering.o elements.o       \
-       loading.o timing.o plasticity.o                                            
+       loading.o timing.o plasticity.o geometry.o                                           
 
 .SUFFIXES: .f90 .o
 
