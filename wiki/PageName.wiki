@@ -1,4 +1,4 @@
-#Creating the simple test problems in Smith and Griffiths Chapter 12
+#Creating the simple test problems in Smith and Griffiths Chapter 12#
 
 = Creating the simple test problems in Smith and Griffiths Chapter 12 =
 
