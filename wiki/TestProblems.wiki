@@ -1,6 +1,6 @@
 #summary Creating the simple test problems in Smith and Griffiths Chapter 12
 
-= Creating the simple test problems in Smith and Griffiths Chapter 12 =
+= Creating simple test problems =
 
 The example programs in the {{{parafem/src/programs/sg12}}} directory are based on those included in the [http://eu.wiley.com/WileyCDA/WileyTitle/productCd-0470849703.html Smith and Griffiths] textbook. One difference is that the programs in ParaFEM load in externally generated meshes, whereas those in the book create meshes internally, using parameters provided by a simple control file.
 
