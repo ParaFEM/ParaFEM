@@ -14,6 +14,7 @@ PROGRAM sg12mg
 
   USE precision
   USE geometry
+  USE loading
   
   IMPLICIT NONE
 
@@ -76,7 +77,10 @@ PROGRAM sg12mg
   IF (argc /= 1) THEN
     PRINT*
     PRINT*, "Usage:  sg12mg <job_name>"
-    PRINT*, "        program expects <job_name>.dat"
+    PRINT*
+    PRINT*, "        program expects <job_name>.dat and outputs any or all of"
+    PRINT*, "        <job_name>a.dat <job_name>a.d" 
+    PRINT*, "        <job_name>a.bnd <job_name>a.lds"
     PRINT*
     STOP
   END IF
@@ -149,7 +153,7 @@ PROGRAM sg12mg
     g_coord(:,g_num(:,iel)) = TRANSPOSE(coord)
   END DO
 
-  fname = job_name(1:INDEX(job_name, " ")-1) // ".d" 
+  fname = job_name(1:INDEX(job_name, " ")-1) // "a.d" 
   OPEN(11,FILE=fname,STATUS='REPLACE',ACTION='WRITE')
   
   WRITE(11,'(A)') "*THREE_DIMENSIONAL"
@@ -176,7 +180,7 @@ PROGRAM sg12mg
 ! 7.4 Boundary conditions
 !------------------------------------------------------------------------------
 
-  fname = job_name(1:INDEX(job_name, " ")-1) // ".bnd" 
+  fname = job_name(1:INDEX(job_name, " ")-1) // "a.bnd" 
   OPEN(12,FILE=fname,STATUS='REPLACE',ACTION='WRITE')
 
   CALL cube_bc20(rest,nxe,nye,nze)
@@ -191,17 +195,31 @@ PROGRAM sg12mg
 ! 7.5 Loading conditions
 !------------------------------------------------------------------------------
 
-  fname = job_name(1:INDEX(job_name, " ")-1) // ".lds" 
+  fname = job_name(1:INDEX(job_name, " ")-1) // "a.lds" 
   OPEN(13,FILE=fname,STATUS='REPLACE',ACTION='WRITE')
 
-  CALL loading(nxe,nze,nle,no,val)
+  CALL loading_p121(no,val,nle,nxe,nze)
   val = -val * aa * bb / 12._iwp
  
-  DO i = 1, nle
+  DO i = 1, loaded_freedoms
     WRITE(13,'(I6,2A,3E12.4)') no(i), "  0.0000E+00  ", "0.0000E+00", val(i) 
   END DO
 
   CLOSE(13)
+
+!------------------------------------------------------------------------------
+! 7.6 New control data
+!------------------------------------------------------------------------------
+
+  fname = job_name(1:INDEX(job_name, " ")-1) // "a.dat" 
+  OPEN(14,FILE=fname,STATUS='REPLACE',ACTION='WRITE')
+
+  WRITE(14,'(A)') "hexahedron"
+  WRITE(14,'(A)') "2"              ! Abaqus node numbering scheme
+  WRITE(14,'(6I9)') nels, nn, nr, nip, nod, loaded_freedoms
+  WRITE(14,'(3E12.4,I8)') e, v, tol, limit
+
+  CLOSE(14)
 
 !------------------------------------------------------------------------------
 ! 8. Program p122
