@@ -228,4 +228,91 @@ MODULE LOADING
  
   END SUBROUTINE loading_p121
 
+!------------------------------------------------------------------------------
+!------------------------------------------------------------------------------
+!------------------------------------------------------------------------------
+
+  SUBROUTINE load_p121(node,val,nle,nxe,nze)
+
+  !/****f* loading/load_p121
+  !*  NAME
+  !*    SUBROUTINE load_p121
+  !*  FUNCTION
+  !*    Returns loaded nodes NODE and values VAL from number of elements in
+  !*    x and z and number of loaded elements along a side of a square
+  !*  INPUTS
+  !*    CALL load_p121(node,val, nle,nxe,nze)
+  !*    
+  !*    NODE       : Integer. 
+  !*    VAL        : Real. 
+  !*    NLE        : Integer. 
+  !*    NXE        : Integer.
+  !*    NZE        : Integer.
+  !*  AUTHOR
+  !*    Smith and Griffiths, 4th Edition
+  !****
+  !*/ 
+
+  IMPLICIT NONE
+  
+  INTEGER,INTENT(IN)    :: nxe,nze,nle
+  INTEGER,INTENT(OUT)   :: node(:)
+  REAL(iwp),INTENT(OUT) :: val(:)  
+  INTEGER               :: f1,f2,f3,count,i,j
+  
+  f1 = ((2*nxe+1)*(nze+1)+(nxe+1)*nze))
+  f2 = (nxe+1)*(nze+1)
+
+  count = 1
+  
+  DO  i = 1,2*nle+1   ! front face
+    node(count) = i
+    IF(i==1.OR.i==2*nle+1) THEN
+     val(count) = -1.
+    ELSE IF (mod(i+1,2)==0) THEN
+     val(count) = 4.
+    ELSE
+     val(count) = -2.
+    END IF
+    count = count + 1
+  END DO
+ 
+  DO j = 0 , nle - 1    ! other face pairs
+ 
+    DO i = 1 , nle + 1
+      node(count) = i + f1 + j*(f1 + f2) + 1
+      IF(i==1.OR.i==nle+1) THEN
+        val(count) = 4.
+      ELSE
+        val(count) = 8.
+      END IF
+      count = count + 1
+    END DO
+ 
+    DO i = 1 , 2*nle+1
+      node(count) = i + f1 +(j+1) * f1 + j * f2  + 1
+      IF(j/=nle-1) THEN
+        IF(i==1.OR.i==nle+1) THEN
+          val(count) = -2.
+        ELSE IF (mod(i,2)==0) THEN
+          val(count) = 8.
+        ELSE
+          val(count) = -4.
+        END IF
+      ELSE
+        IF(i==1.OR.i==nle+1) THEN
+          val(count) = -1.
+        ELSE IF (mod(i,2)==0) THEN
+          val(count) = 4.
+        ELSE
+          val(count) = -2.
+        END IF
+      END IF
+      count = count + 1
+    END DO
+ 
+  END DO
+ 
+  END SUBROUTINE load_p121
+  
 END MODULE LOADING
