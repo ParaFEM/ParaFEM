@@ -198,7 +198,7 @@ PROGRAM sg12mg
   fname = job_name(1:INDEX(job_name, " ")-1) // "a.lds" 
   OPEN(13,FILE=fname,STATUS='REPLACE',ACTION='WRITE')
 
-  CALL loading_p121(no,val,nle,nxe,nze)
+  CALL load_p121(no,val,nle,nxe,nze)
   val = -val * aa * bb / 12._iwp
  
   DO i = 1, loaded_freedoms

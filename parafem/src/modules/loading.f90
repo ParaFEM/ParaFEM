@@ -260,7 +260,7 @@ MODULE LOADING
   REAL(iwp),INTENT(OUT) :: val(:)  
   INTEGER               :: f1,f2,f3,count,i,j
   
-  f1 = ((2*nxe+1)*(nze+1)+(nxe+1)*nze))
+  f1 = ((2*nxe+1)*(nze+1)+(nxe+1)*nze)
   f2 = (nxe+1)*(nze+1)
 
   count = 1
@@ -269,7 +269,7 @@ MODULE LOADING
     node(count) = i
     IF(i==1.OR.i==2*nle+1) THEN
      val(count) = -1.
-    ELSE IF (mod(i+1,2)==0) THEN
+    ELSE IF (mod(i,2)==0) THEN
      val(count) = 4.
     ELSE
      val(count) = -2.
@@ -280,7 +280,7 @@ MODULE LOADING
   DO j = 0 , nle - 1    ! other face pairs
  
     DO i = 1 , nle + 1
-      node(count) = i + f1 + j*(f1 + f2) + 1
+      node(count) = i + f1 + j*(f1 + f2)
       IF(i==1.OR.i==nle+1) THEN
         val(count) = 4.
       ELSE
@@ -290,17 +290,17 @@ MODULE LOADING
     END DO
  
     DO i = 1 , 2*nle+1
-      node(count) = i + f1 +(j+1) * f1 + j * f2  + 1
+      node(count) = i + f1 +(j+1) * f2 + j * f1
       IF(j/=nle-1) THEN
-        IF(i==1.OR.i==nle+1) THEN
-          val(count) = -2.
+        IF(i==1.OR.i==2*nle+1) THEN
+          val(count) = -1.
         ELSE IF (mod(i,2)==0) THEN
           val(count) = 8.
         ELSE
           val(count) = -4.
         END IF
       ELSE
-        IF(i==1.OR.i==nle+1) THEN
+        IF(i==1.OR.i==2*nle+1) THEN
           val(count) = -1.
         ELSE IF (mod(i,2)==0) THEN
           val(count) = 4.
