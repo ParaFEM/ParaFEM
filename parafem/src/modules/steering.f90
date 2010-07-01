@@ -113,48 +113,59 @@ MODULE STEERING
     !*  COPYRIGHT
     !*    (c) University of Manchester 2004-2010
     !******
-    !*  Place remarks that should not be included in the documentation here.
+    !*  Was find_g3 in: 
+    !*  Smith and Griffiths "Programming the Finite Element Method", Edition 4
     !*
     !*/
 
-    IMPLICIT NONE
+    INTEGER, INTENT(IN)  :: rest(:,:),num(:)
+    INTEGER, INTENT(OUT) :: g(:)
+    INTEGER              :: i,j,k,l,nod,nodof,s1,s2,s3,only,first,last,half
+    LOGICAL              :: found
     
-    INTEGER,INTENT(IN)  :: num(:),rest(:,:)
-    INTEGER,INTENT(OUT) :: g(:)
-    
-!------------------------------------------------------------------------------
-! 1. Local variables
-!------------------------------------------------------------------------------
+    nod   = ubound(num,1) 
+    nodof = ubound(rest,2) - 1
 
-    INTEGER             :: inc,i,j,k,l,count,nr,nod,nodof
+    DO i=1,nod 
 
-    nr    = ubound(rest,1)
-    nod   = ubound(num,1)
-    nodof = ubound(rest,2)-1
-
-    g     = 1
-    inc   = 0
-    
-    DO i=1,nod
-      count = 0
       l     = num(i)
-      DO j=1,nr
-        IF(l>rest(j,1)) THEN
-          DO k=2,nodof+1
-            IF(rest(j,k)==0) count = count+1
-          END DO
+      first = 1 
+      last  = ubound(rest,1)
+
+      DO
+        IF(first==last) EXIT ! silly array or converged
+        half = (first + last)/2
+        IF(l<=rest(half,1)) THEN
+          last = half  ! discard second half
+        ELSE
+          first = half + 1  ! discard first half
         END IF
       END DO
-      DO k=2,nodof+1
-        inc = inc+1
-        DO j=1,nr
-          IF(l==rest(j,1).and.rest(j,k)==0) THEN
-            g(inc) = 0
-            count  = count+1
-          END IF
+
+      only  = first
+      found = (l==rest(only,1))
+
+      IF(found) THEN
+        DO j = 1 , nodof
+          g(nodof*i-nodof+j) = rest(only,j+1)  
         END DO
-        IF(g(inc)/=0) g(inc) = l*nodof-count-(nodof+1-k)
-      END DO
+      ELSE
+        k = 1
+        DO
+          s1 = only - k
+          IF(sum(rest(s1,2:))/=0) EXIT
+          k = k + 1
+        END DO
+
+        s2 = maxval(rest(s1,2:))    
+        s3 = l - rest(s1,1)
+  
+        DO j=1,nodof
+          g(nodof*i-nodof+j) = s2+nodof*s3 - k*nodof + j
+        END DO
+ 
+      END IF
+
     END DO
     
   END SUBROUTINE find_g
