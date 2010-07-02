@@ -32,7 +32,7 @@ PROGRAM mat2numpe
 !------------------------------------------------------------------------------
 
   INTEGER,PARAMETER     :: ndim  = 3
-  INTEGER               :: nod
+  INTEGER               :: nod   = 4
   INTEGER               :: nn 
   INTEGER               :: nels
   INTEGER               :: nr 
@@ -53,6 +53,7 @@ PROGRAM mat2numpe
 !------------------------------------------------------------------------------
 
   INTEGER,ALLOCATABLE   :: g_num_d(:,:)
+  INTEGER,ALLOCATABLE   :: nels_pp_store(:)
   REAL(iwp),ALLOCATABLE :: g_coord(:,:)
   REAL(iwp),ALLOCATABLE :: timest(:)
 
@@ -74,8 +75,6 @@ PROGRAM mat2numpe
     WRITE(*,'(A)') "        mat2numpe expects argument <job_name> and 2 input"
     WRITE(*,'(A)') "        files <job_name>.dat and <job_name>.d"
     WRITE(*,*)
-    WRITE(*,'(A)') "********************* PROGRAM ABORTED *********************"
-    WRITE(*,*)
     STOP 
   END IF
 
@@ -88,9 +87,11 @@ PROGRAM mat2numpe
 
   ALLOCATE(g_num_d(nod+5,nels))
   ALLOCATE(g_coord(ndim,nn))
+  ALLOCATE(nels_pp_store(npes))
 
-  g_num_d = 0
-  g_coord = zero
+  g_num_d       = 0
+  g_coord       = zero
+  nels_pp_store = 0
 
 !------------------------------------------------------------------------------
 ! 4. Read ".d" geometry file
@@ -112,19 +113,42 @@ PROGRAM mat2numpe
   END DO
 
 !------------------------------------------------------------------------------
+! 4. Compute nels_pp and iel_start for each processor and store in array
+!------------------------------------------------------------------------------
+
+  numpe = 0
+
+  DO i = 1, npes 
+    numpe = numpe + 1
+    CALL calc_nels_pp(nels)
+    nels_pp_store(i) = nels_pp
+  END DO
+
+!------------------------------------------------------------------------------
 ! 5. Write <job_name-npes.d> file
 !------------------------------------------------------------------------------
 
   fname = job_name(1:INDEX(job_name, " ") -1) // "-npes.d"
   OPEN(20,FILE=fname,STATUS='REPLACE',ACTION='WRITE') 
   
+  WRITE(20,'(A)') "*THREE_DIMENSIONAL"
   WRITE(20,'(A)') "*NODES"
 
   DO i = 1, nn
     WRITE(20,'(3E20.12)') g_coord(:,i)
   END DO
- 
-  CALL calc_nels_pp(nels)
+
+  WRITE(20,'(A)') "*ELEMENTS"
+
+  iel = 0
+
+  DO i = 1, npes
+    nels_pp = nels_pp_store(i)
+    DO j = 1, nels_pp 
+      iel = iel + 1
+      WRITE(20,'(9I8)') g_num_d(1:8,iel), i
+    END DO
+  END DO
 
  
 END PROGRAM mat2numpe
