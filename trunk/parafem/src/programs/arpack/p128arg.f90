@@ -1,4 +1,4 @@
-PROGRAM p128ar-g      
+PROGRAM p128arg      
 !------------------------------------------------------------------------------
 !      program 10.4 eigenvalues and eigenvectors of a cuboidal elastic
 !      solid in 3d using  uniform 8-node hexahedral elements ; Arnoldi "dp" 
@@ -8,7 +8,7 @@ PROGRAM p128ar-g
   USE precision     ; USE global_variables ; USE mp_interface
   USE input         ; USE output           ; USE loading
   USE maths         ; USE gather_scatter   ; USE partition     
-  USE elements      ; USE steering         ; USE pcg            ; USE timing 
+  USE elements      ; USE steering         ; USE pcg          !  ; USE timing 
   
   IMPLICIT NONE
 
@@ -20,7 +20,9 @@ PROGRAM p128ar-g
    
 ! INTEGER               :: nn,nr,nip,nodof=3,nod=8,nst=6,i,j,k
   INTEGER               :: nn,nr,nip,nodof=3,nod=4,nst=6,i,j,k
-  INTEGER               :: iel,ndim=3,iters,model,nconv,ncv,nev,maxitr                                             
+  INTEGER               :: iel,ndim=3,iters,model,nconv,ncv,nev,maxitr 
+  INTEGER               :: argc,iargc ! command line arguments
+  INTEGER               :: nels,ndof,npes_pp,meshgen
   INTEGER               :: ido,ierr,info,iparam(11),ipntr(11),ishfts,lworkl  
   REAL(iwp)             :: rho,e,nu,det,sigma,tol
   REAL(iwp),PARAMETER   :: zero = 0.0_iwp , one = 1.0_iwp  
@@ -30,7 +32,7 @@ PROGRAM p128ar-g
   CHARACTER(LEN=50)     :: fname
   CHARACTER(LEN=50)     :: job_name
   CHARACTER(LEN=50)     :: label
-  CHARACTER(LEN=6)      :: step
+  CHARACTER(LEN=6)      :: step = 'step' ! hack
   CHARACTER             :: bmat*1, which*2 
   LOGICAL               :: rvec
 
@@ -42,7 +44,7 @@ PROGRAM p128ar-g
                            fun(:),jac(:,:),der(:,:),deriv(:,:),weights(:),    & 
                            bee(:,:),km(:,:),emm(:,:),ecm(:,:),utemp(:),       &
                            diag(:),pmul(:),d(:,:),v(:,:),workl(:),workd(:),   &
-                           p_g_co_pp(:,:,:),diag1(:),udiag(:)   
+                           g_coord_pp(:,:,:),diag1(:),udiag(:)   
  INTEGER, ALLOCATABLE   :: rest(:,:), g(:), num(:) , g_num_pp(:,:) ,          &
                            g_g_pp(:,:)
  LOGICAL, ALLOCATABLE   :: select(:)   
@@ -74,10 +76,8 @@ PROGRAM p128ar-g
 !    data to all slave processors
 !------------------------------------------------------------------------------
 
- CALL read_p128ar(job_name,numpe,nels,nip,nn,nr,rho,e,nu,nev,ncv,bmat,which,  &
-                  tol,maxitr)
- ndof = nod*nodof
- ntot = ndof
+ CALL read_p128ar(job_name,numpe,bmat,e,element,maxitr,meshgen,ncv,nels,nev,  &
+                  nip,nn,nr,rho,tol,nu,which)
  
 !------------------------------------------------------------------------------
 ! 6. The master processor imports the mesh, material properties and restraints. 
@@ -85,32 +85,22 @@ PROGRAM p128ar-g
 !------------------------------------------------------------------------------
 
   CALL calc_nels_pp(nels)
-! fname = fname_base(1:INDEX(fname_base, " ")-1) // ".psize"
-! CALL readall_nels_pp_fname(fname)
 
+  ndof = nod*nodof
+  ntot = ndof
+  
   ALLOCATE(g_num_pp(nod, nels_pp)) 
-  ALLOCATE(p_g_co_pp(nod,ndim,nels_pp)) 
-! ALLOCATE(prop(nprops,np_types))
-! ALLOCATE(etype_pp(nels_pp))
+  ALLOCATE(g_coord_pp(nod,ndim,nels_pp)) 
   ALLOCATE(rest(nr,nodof+1)) 
 
-  g_num_pp  = 0
-  p_g_co_pp = zero
-! prop      = zero
-! etype_pp  = 0
-  rest      = 0
-  fname     = job_name(1:INDEX(job_name, " ")-1) // ".d"
+  g_num_pp   = 0
+  g_coord_pp = 0
+  rest       = 0
 
-  CALL read_elements(fname,iel_start,nels,nn,numpe,g_num_pp)
-  CALL read_p_g_co_pp(fname,g_num_pp,nn,npes,numpe,p_g_co_pp)
-! CALL readall_materialID_pp(etype_pp,fname,nn,ndim,nels,nod,iel_start,       &
-!                            numpe,npes)
-
-! fname     = job_name(1:INDEX(job_name, " ")-1) // ".mat"
-! CALL readall_materialValue(prop,fname,numpe,npes)
-
-  fname     = job_name(1:INDEX(job_name, " ")-1) // ".bnd"
-  CALL readall_restraints_fname(fname, rest, numpe, npes)
+  CALL read_g_num_pp(job_name,iel_start,nels,nn,numpe,g_num_pp)
+  IF(meshgen == 2) CALL abaqus2sg(element,g_num_pp)
+  CALL read_g_coord_pp(job_name,g_num_pp,nn,npes,numpe,g_coord_pp)
+  CALL read_rest(job_name,numpe,rest)
   
 !------------------------------------------------------------------------------
 ! 7. Initiallize values of parameters required by ARPACK
@@ -129,12 +119,12 @@ PROGRAM p128ar-g
 ! 8. Allocate dynamic arrays used in main program
 !------------------------------------------------------------------------------
 
- ALLOCATE (rest(nr,nodof+1),points(nip,ndim),pmul(ntot),                      &
+ ALLOCATE (points(nip,ndim),pmul(ntot),                                       &
            coord(nod,ndim),fun(nod),jac(ndim,ndim), weights(nip),             &
-           g_num_pp(nod,nels_pp),der(ndim,nod),deriv(ndim,nod),dee(nst,nst),  &
+           der(ndim,nod),deriv(ndim,nod),dee(nst,nst),                        &
            num(nod),km(ntot,ntot),g(ntot),g_g_pp(ntot,nels_pp),               &
            ecm(ntot,ntot),utemp(ntot),d(ncv,2),workl(lworkl),select(ncv),     &
-           p_g_co_pp(nod,ndim,nels_pp),bee(nst,ntot),emm(ntot,ntot))    
+           bee(nst,ntot),emm(ntot,ntot))    
 
 !  timest(2) = elap_time()
 
@@ -142,7 +132,7 @@ PROGRAM p128ar-g
 ! 9. Create node freedom array, find element steering and neq
 !------------------------------------------------------------------------------
 
-! CALL rearrange(rest) ! does REST need to be in ascending node order?
+  CALL rearrange(rest)
 
   g_g_pp = 0
 
@@ -168,7 +158,7 @@ PROGRAM p128ar-g
   CALL calc_npes_pp(npes,npes_pp)
   CALL make_ggl(npes_pp,npes,g_g_pp)
  
-  timest(4) = elap_time()
+! timest(4) = elap_time()
   
   
 !------------------------------------------------------------------------------
@@ -197,7 +187,7 @@ PROGRAM p128ar-g
                 integrating_pts_1:  DO i=1,nip
                   CALL shape_fun(fun,points,i)
                   CALL shape_der(der,points,i)
-                  jac   = MATMUL(der,p_g_co_pp(:,:,iel)
+                  jac   = MATMUL(der,g_coord_pp(:,:,iel))
                   det   = determinant(jac) 
                   CALL invert(jac) 
                   deriv = MATMUL(jac,der)
@@ -287,7 +277,7 @@ PROGRAM p128ar-g
    DO i=1,nev
    
      IF(numpe==1) THEN
-       CALL getFileNumber(step,i)
+!      CALL getFileNumber(step,i)
        fname     = job_name(1:INDEX(job_name, " ")-1)//"_eigv_"//              &
                    step(1:INDEX(step, " ")-1)// ".dis" 
        OPEN(24, file=fname, status='replace', action='write')
@@ -305,5 +295,7 @@ PROGRAM p128ar-g
    END DO
 
 ! IF(numpe==npes) WRITE(11,*) "This analysis took  :", elap_time( ) - timest(1)
- CALL shutdown() 
-END PROGRAM p128ar-g 
+  CALL shutdown() 
+
+END PROGRAM p128arg
+ 

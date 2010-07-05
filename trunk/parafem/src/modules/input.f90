@@ -15,6 +15,7 @@ MODULE INPUT
   !*    READ_NUM               Reads the element nodal steering array
   !*    READ_REST              Reads the restraints
   !*    READ_P121              Reads the control data for program p121
+  !*    READ_P128AR            Reads the control data for program p121ar
   !*    READ_P129              Reads the control data for program p129
   !*  AUTHOR
   !*    L. Margetts
@@ -614,15 +615,16 @@ MODULE INPUT
 !------------------------------------------------------------------------------
 !------------------------------------------------------------------------------
 
-  SUBROUTINE READ_P128ar(job_name,numpe,nels,nip,nn,nr,rho,e,nu,nev,ncv,bmat, &
-                         which,tol,maxitr)
+  SUBROUTINE READ_P128ar(job_name,numpe,bmat,e,element,maxitr,mesh,ncv,nels,  &
+                         nev,nip,nn,nr,rho,tol,v,which)
 
   !/****f* input/read_p128ar
   !*  NAME
   !*    SUBROUTINE: read_p128ar
   !*  SYNOPSIS
-  !*    Usage:      CALL read_p128ar(job_name,numpe,nels,nip,nn,nr,rho,e,nu,  &
-  !*                                 nev,ncv,bmat,which,tol,maxitr)
+  !*    Usage:      CALL read_p128ar(job_name,numpe,bmat,e,element,maxitr,    &
+  !*                                 mesh,ncv,nels,nev,nip,nn,nr,rho,tol,     &
+  !*                                 v,which) 
   !*  FUNCTION
   !*    Master processor reads the general data for the problem and broadcasts 
   !*    it to the slave processors.
@@ -699,7 +701,7 @@ MODULE INPUT
   IF (numpe==1) THEN
     fname = job_name(1:INDEX(job_name, " ") -1) // ".dat"
     OPEN(10,FILE=fname,STATUS='OLD',ACTION='READ')
-    READ(10,*) element,mesh,nels,nip,nn,nr,rho,e,nu,nev,ncv,bmat,which,tol,    &
+    READ(10,*) element,mesh,nels,nip,nn,nr,rho,e,v,nev,ncv,bmat,which,tol,    &
                maxitr
     CLOSE(10)
    
