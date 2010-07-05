@@ -614,6 +614,163 @@ MODULE INPUT
 !------------------------------------------------------------------------------
 !------------------------------------------------------------------------------
 
+  SUBROUTINE READ_P128ar(job_name,numpe,nels,nip,nn,nr,rho,e,nu,nev,ncv,bmat, &
+                         which,tol,maxitr)
+
+  !/****f* input/read_p128ar
+  !*  NAME
+  !*    SUBROUTINE: read_p128ar
+  !*  SYNOPSIS
+  !*    Usage:      CALL read_p128ar(job_name,numpe,nels,nip,nn,nr,rho,e,nu,  &
+  !*                                 nev,ncv,bmat,which,tol,maxitr)
+  !*  FUNCTION
+  !*    Master processor reads the general data for the problem and broadcasts 
+  !*    it to the slave processors.
+  !*  INPUTS
+  !*    The following scalar character argument has the INTENT(IN) attribute:
+  !*
+  !*    job_name               : File name that contains the data to be read
+  !*
+  !*    The following scalar integer argument has the INTENT(IN) attribute:
+  !*
+  !*    numpe                  : Processor ID of calling processor
+  !*
+  !*    The following scalar real arguments have the INTENT(INOUT) attribute:
+  !*
+  !*    e                      : Young's modulus
+  !*    rho                    : Density
+  !*    tol                    : Convergence tolerance
+  !*    v                      : Poisson's ratio
+  !*
+  !*    The following scalar integer arguments have an INTENT(INOUT) attribute:
+  !*
+  !*    maxitr                 : Maximum number iterations allowed
+  !*    mesh                   : Mesh numbering scheme
+  !*                           : 1 = Smith and Griffiths numbering scheme
+  !*                           : 2 = Abaqus numbering scheme
+  !*    ncv                    : Arpack parameter
+  !*    nels                   : Total number of elements
+  !*    nev                    : Number of eigenvalues
+  !*    nip                    : Number of integration points
+  !*    nn                     : Number of nodes in the mesh
+  !*    nr                     : Number of restrained nodes
+  !*
+  !*    The following scalar character argument has an INTENT(INOUT) attribute:
+  !*
+  !*    bmat                   : Arpack parameter
+  !*    element                : Element type
+  !*                           : Values: 'hexahedron' or 'tetrahedron'
+  !*    which                  : Arpack parameter
+  !*  
+  !*  AUTHOR
+  !*    Lee Margetts
+  !*  CREATION DATE
+  !*    05.07.2010
+  !*  COPYRIGHT
+  !*    (c) University of Manchester 2010
+  !******
+  !*  Place remarks that should not be included in the documentation here.
+  !*  Need to add some error traps
+  !*/
+
+  IMPLICIT NONE
+
+  CHARACTER(LEN=50), INTENT(IN)    :: job_name
+  CHARACTER(LEN=15), INTENT(INOUT) :: element
+  CHARACTER(LEN=1), INTENT(INOUT)  :: bmat
+  CHARACTER(LEN=2), INTENT(INOUT)  :: which
+  CHARACTER(LEN=50)                :: fname
+  INTEGER, INTENT(IN)              :: numpe
+  INTEGER, INTENT(INOUT)           :: nels,nn,nr,nip,nev,ncv
+  INTEGER, INTENT(INOUT)           :: maxitr,mesh 
+  REAL(iwp), INTENT(INOUT)         :: rho,e,v,tol
+
+!------------------------------------------------------------------------------
+! 1. Local variables
+!------------------------------------------------------------------------------
+
+  INTEGER                          :: bufsize,ier,integer_store(8)
+  REAL(iwp)                        :: real_store(4)
+
+!------------------------------------------------------------------------------
+! 2. Master processor reads the data and copies it into temporary arrays
+!------------------------------------------------------------------------------
+
+  IF (numpe==1) THEN
+    fname = job_name(1:INDEX(job_name, " ") -1) // ".dat"
+    OPEN(10,FILE=fname,STATUS='OLD',ACTION='READ')
+    READ(10,*) element,mesh,nels,nip,nn,nr,rho,e,nu,nev,ncv,bmat,which,tol,    &
+               maxitr
+    CLOSE(10)
+   
+    integer_store      = 0
+
+    integer_store(1)   = mesh
+    integer_store(2)   = nels
+    integer_store(3)   = nn
+    integer_store(4)   = nr 
+    integer_store(5)   = nip
+    integer_store(6)   = nev
+    integer_store(7)   = ncv
+    integer_store(8)   = maxitr
+
+    real_store         = 0.0_iwp
+
+    real_store(1)      = rho  
+    real_store(2)      = e  
+    real_store(3)      = v  
+    real_store(4)      = tol  
+
+  END IF
+
+!------------------------------------------------------------------------------
+! 3. Master processor broadcasts the temporary arrays to the slave processors
+!------------------------------------------------------------------------------
+
+  bufsize = 10
+  CALL MPI_BCAST(integer_store,bufsize,MPI_INTEGER,0,MPI_COMM_WORLD,ier)
+
+  bufsize = 8
+  CALL MPI_BCAST(real_store,bufsize,MPI_REAL8,0,MPI_COMM_WORLD,ier)
+
+  bufsize = 15
+  CALL MPI_BCAST(element,bufsize,MPI_CHARACTER,0,MPI_COMM_WORLD,ier)
+
+  bufsize = 1
+  CALL MPI_BCAST(bmat,bufsize,MPI_CHARACTER,0,MPI_COMM_WORLD,ier)
+
+  bufsize = 2
+  CALL MPI_BCAST(which,bufsize,MPI_CHARACTER,0,MPI_COMM_WORLD,ier)
+
+!------------------------------------------------------------------------------
+! 4. Slave processors extract the variables from the temporary arrays
+!------------------------------------------------------------------------------
+
+  IF (numpe/=1) THEN
+
+    mesh         = integer_store(1)
+    nels         = integer_store(2)
+    nn           = integer_store(3)
+    nr           = integer_store(4)
+    nip          = integer_store(5)
+    nev          = integer_store(6)
+    ncv          = integer_store(7)
+    maxitr       = integer_store(8)
+
+    rho          = real_store(1)
+    e            = real_store(2)
+    v            = real_store(3)
+    tol          = real_store(4)
+
+  END IF
+
+  RETURN
+  END SUBROUTINE READ_P128ar
+
+!------------------------------------------------------------------------------
+!------------------------------------------------------------------------------
+!------------------------------------------------------------------------------
+
   SUBROUTINE READ_P129(job_name,numpe,alpha1,beta1,e,element,                 &
                        limit,loaded_nodes,mesh,nels,nip,nn,nod,               &
                        npri,nr,nstep,omega,rho,theta,tol,v)
