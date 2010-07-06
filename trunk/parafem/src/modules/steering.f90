@@ -91,13 +91,13 @@ MODULE STEERING
 !---------------------------------------------------------------------------
 !---------------------------------------------------------------------------
 
-  SUBROUTINE find_g(num,g,rest)
+  SUBROUTINE find_g3(num,g,rest)
 
-    !/****f* steering/find_g
+    !/****f* steering/find_g3
     !*  NAME
-    !*    SUBROUTINE: find_g
+    !*    SUBROUTINE: find_g3
     !*  SYNOPSIS
-    !*    Usage:      CALL find_g(num,g,rest)
+    !*    Usage:      CALL find_g3(num,g,rest)
     !*  FUNCTION
     !*    Finds g from node numbers and restraints "rest"
     !*  INPUTS
@@ -113,7 +113,7 @@ MODULE STEERING
     !*  COPYRIGHT
     !*    (c) University of Manchester 2004-2010
     !******
-    !*  Was find_g3 in: 
+    !*  Seems to have a bug 
     !*  Smith and Griffiths "Programming the Finite Element Method", Edition 4
     !*
     !*/
