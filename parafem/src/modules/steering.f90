@@ -261,7 +261,26 @@ MODULE STEERING
         PRINT*, "Wrong number of nodes for a hexahedron"
         
       END SELECT
+    
+    CASE('tetrahedron')
       
+      SELECT CASE (nod)
+      
+      CASE(4)
+
+      DO iel = 1,nels
+        temp          = g_num(:,iel)
+        g_num(1,iel)  = temp(1)
+        g_num(2,iel)  = temp(3)
+        g_num(3,iel)  = temp(4)
+        g_num(4,iel)  = temp(2)
+      END DO
+
+      CASE default
+        
+        PRINT*, "Wrong number of nodes for a tetrahedron"
+
+      END SELECT
     CASE default
     
       PRINT*, "Wrong type of element in subroutine ABAQUS2SG"
