@@ -133,13 +133,11 @@ PROGRAM p128arg
 !------------------------------------------------------------------------------
 
   CALL rearrange(rest)
-  PRINT *, "rest =", rest
 
   g_g_pp = 0
 
   elements_0a: DO iel = 1, nels_pp
     CALL find_g(g_num_pp(:,iel),g_g_pp(:,iel),rest)
-    PRINT *, "iel = ", iel, " g_g_pp= ", g_g_pp(:,iel)
   END DO elements_0a
 
   neq = 0
@@ -191,7 +189,6 @@ PROGRAM p128arg
       CALL shape_der(der,points,i)
       jac   = MATMUL(der,g_coord_pp(:,:,iel))
       det   = determinant(jac) 
-      PRINT*, "iel", iel," det = ",det
       CALL invert(jac) 
       deriv = MATMUL(jac,der)
       CALL beemat(deriv,bee)
@@ -221,31 +218,11 @@ PROGRAM p128arg
   iters = 0
   diag  = one / sqrt(diag) ! diag holds l**(-1/2) 
 
-  PRINT *, "diag1 =      ", diag1 
-  PRINT *, "diag=        ", diag 
-  PRINT *, "ido =        ", ido
-  PRINT *, "bmat =       ", bmat
-  PRINT *, "neq  =       ", neq
-  PRINT *, "which  =     ", which
-  PRINT *, "nev  =       ", nev
-  PRINT *, "tol  =       ", tol
-  PRINT *, "resid  =     ", resid
-  PRINT *, "ncv  =       ", ncv
-  PRINT *, "v  =         ", v
-  PRINT *, "neq  =       ", neq
-  PRINT *, "iparam  =    ", iparam
-  PRINT *, "ipntr  =     ", ipntr
-  PRINT *, "workd  =     ", workd
-  PRINT *, "workl  =     ", workl
-  PRINT *, "lworkl  =    ", lworkl
-  PRINT *, "info  =      ", info
-
   DO
     iters = iters + 1
     CALL dsaupd(ido,bmat,neq,which,nev,tol,resid,                 &
                 ncv,v,neq,iparam,ipntr,workd,workl,lworkl,info) 
     IF( ido /=-1 .AND. ido /= 1) THEN
-      PRINT *, "ido = ", ido
       EXIT
     END IF
     diag1 = zero
@@ -280,7 +257,6 @@ PROGRAM p128arg
   IF(numpe==1) WRITE(11,'(A,I8,A)') "It took ",iters,"  iterations"
 ! Either we have convergence or there is an error
   IF(info < 0) THEN
-    PRINT *, "info = ", info
     IF(numpe==1) WRITE(11,*) "Fatal error in dsaupd "
   ELSE
    rvec = .TRUE.
