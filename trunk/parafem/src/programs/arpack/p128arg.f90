@@ -40,7 +40,7 @@ PROGRAM p128arg
 ! 2. Declare dynamic arrays
 !------------------------------------------------------------------------------
 
-  REAL(iwp),ALLOCATABLE :: points(:,:),dee(:,:),coord(:,:),vdiag(:),resid(:), &  
+  REAL(iwp),ALLOCATABLE :: points(:,:),dee(:,:),coord(:,:),vdiag(:),resid(:), & 
                            fun(:),jac(:,:),der(:,:),deriv(:,:),weights(:),    & 
                            bee(:,:),km(:,:),emm(:,:),ecm(:,:),utemp(:),       &
                            diag(:),pmul(:),d(:,:),v(:,:),workl(:),workd(:),   &
@@ -189,6 +189,7 @@ PROGRAM p128arg
                   CALL shape_der(der,points,i)
                   jac   = MATMUL(der,g_coord_pp(:,:,iel))
                   det   = determinant(jac) 
+                  IF(det<0.0) PRINT*, "det =", det
                   CALL invert(jac) 
                   deriv = MATMUL(jac,der)
                   CALL beemat(deriv,bee)
@@ -213,6 +214,8 @@ PROGRAM p128arg
  
   iters = 0
   diag  = one / sqrt(diag) ! diag holds l**(-1/2) 
+
+  PRINT *, "DIAG =", diag
  
   DO
     iters = iters + 1
