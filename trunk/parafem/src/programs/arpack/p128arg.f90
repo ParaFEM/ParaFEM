@@ -42,9 +42,9 @@ PROGRAM p128arg
 
   REAL(iwp),ALLOCATABLE :: points(:,:),dee(:,:),coord(:,:),vdiag(:),resid(:), & 
                            fun(:),jac(:,:),der(:,:),deriv(:,:),weights(:),    & 
-                           bee(:,:),km(:,:),emm(:,:),ecm(:,:),utemp(:),       &
+                           bee(:,:),store_km_pp(:,:,:),emm(:,:),ecm(:,:),     &
                            diag(:),pmul(:),d(:,:),v(:,:),workl(:),workd(:),   &
-                           g_coord_pp(:,:,:),diag1(:),udiag(:)   
+                           g_coord_pp(:,:,:),diag1(:),udiag(:),utemp(:)   
  INTEGER, ALLOCATABLE   :: rest(:,:), g(:), num(:) , g_num_pp(:,:) ,          &
                            g_g_pp(:,:)
  LOGICAL, ALLOCATABLE   :: select(:)   
@@ -122,9 +122,9 @@ PROGRAM p128arg
  ALLOCATE (points(nip,ndim),pmul(ntot),                                       &
            coord(nod,ndim),fun(nod),jac(ndim,ndim), weights(nip),             &
            der(ndim,nod),deriv(ndim,nod),dee(nst,nst),                        &
-           num(nod),km(ntot,ntot),g(ntot),g_g_pp(ntot,nels_pp),               &
+           num(nod),store_km_pp(ntot,ntot,nels_pp),g_g_pp(ntot,nels_pp),      &
            ecm(ntot,ntot),utemp(ntot),d(ncv,2),workl(lworkl),select(ncv),     &
-           bee(nst,ntot),emm(ntot,ntot))    
+           bee(nst,ntot),emm(ntot,ntot),g(ntot))    
 
 !  timest(2) = elap_time()
 
@@ -133,11 +133,13 @@ PROGRAM p128arg
 !------------------------------------------------------------------------------
 
   CALL rearrange(rest)
+  PRINT *, "rest =", rest
 
   g_g_pp = 0
 
   elements_0a: DO iel = 1, nels_pp
     CALL find_g(g_num_pp(:,iel),g_g_pp(:,iel),rest)
+    PRINT *, "iel = ", iel, " g_g_pp= ", g_g_pp(:,iel)
   END DO elements_0a
 
   neq = 0
@@ -177,31 +179,35 @@ PROGRAM p128arg
 !------------------------------------------------------------------------------
 
   CALL sample( element,points,weights) 
-  
-  elements_2: DO iel=1,nels_pp     ! allows for different km,emm  
+  CALL deemat(e,nu,dee)
+  store_km_pp = zero
                 
-                km  = zero
-                emm = zero
-                CALL deemat(e,nu,dee)
+  elements_2: DO iel=1,nels_pp
+
+    emm = zero
                 
-                integrating_pts_1:  DO i=1,nip
-                  CALL shape_fun(fun,points,i)
-                  CALL shape_der(der,points,i)
-                  jac   = MATMUL(der,g_coord_pp(:,:,iel))
-                  det   = determinant(jac) 
-                  IF(det<0.0) PRINT*, "det =", det
-                  CALL invert(jac) 
-                  deriv = MATMUL(jac,der)
-                  CALL beemat(deriv,bee)
-                  km    = km+MATMUL(MATMUL(TRANSPOSE(bee),dee),bee)*det*weights(i)
-                  CALL ecmat(ecm,fun,ntot,nodof)
-                  emm   = emm+ecm*det*weights(i)*rho
-                END DO integrating_pts_1
+    integrating_pts_1:  DO i=1,nip
+      CALL shape_fun(fun,points,i)
+      CALL shape_der(der,points,i)
+      jac   = MATMUL(der,g_coord_pp(:,:,iel))
+      det   = determinant(jac) 
+      PRINT*, "iel", iel," det = ",det
+      CALL invert(jac) 
+      deriv = MATMUL(jac,der)
+      CALL beemat(deriv,bee)
+      store_km_pp(:,:,iel) = store_km_pp(:,:,iel)                   +         & 
+                             MATMUL(MATMUL(TRANSPOSE(bee),dee),bee) *         &
+                             det*weights(i)
+      CALL ecmat(ecm,fun,ntot,nodof)
+      emm   = emm+ecm*det*weights(i)*rho
+    END DO integrating_pts_1
                 
-                DO k=1,ntot
-                   IF(g_g_pp(k,iel)/=0) diag1(g(k))=diag1(g(k))+SUM(emm(k,:))
-                END DO
-                
+    DO k=1,ntot
+      IF(g_g_pp(k,iel)/=0) THEN
+        diag1(g_g_pp(k,iel))=diag1(g_g_pp(k,iel))+SUM(emm(k,:))
+      END IF        
+    END DO
+
   END DO elements_2
   
   CALL MPI_ALLREDUCE(diag1,diag,neq,MPI_REAL8,MPI_SUM,MPI_COMM_WORLD,ier)   
@@ -215,13 +221,33 @@ PROGRAM p128arg
   iters = 0
   diag  = one / sqrt(diag) ! diag holds l**(-1/2) 
 
-  PRINT *, "DIAG =", diag
- 
+  PRINT *, "diag1 =      ", diag1 
+  PRINT *, "diag=        ", diag 
+  PRINT *, "ido =        ", ido
+  PRINT *, "bmat =       ", bmat
+  PRINT *, "neq  =       ", neq
+  PRINT *, "which  =     ", which
+  PRINT *, "nev  =       ", nev
+  PRINT *, "tol  =       ", tol
+  PRINT *, "resid  =     ", resid
+  PRINT *, "ncv  =       ", ncv
+  PRINT *, "v  =         ", v
+  PRINT *, "neq  =       ", neq
+  PRINT *, "iparam  =    ", iparam
+  PRINT *, "ipntr  =     ", ipntr
+  PRINT *, "workd  =     ", workd
+  PRINT *, "workl  =     ", workl
+  PRINT *, "lworkl  =    ", lworkl
+  PRINT *, "info  =      ", info
+
   DO
     iters = iters + 1
     CALL dsaupd(ido,bmat,neq,which,nev,tol,resid,                 &
                 ncv,v,neq,iparam,ipntr,workd,workl,lworkl,info) 
-    IF( ido /=-1 .AND. ido /= 1) EXIT
+    IF( ido /=-1 .AND. ido /= 1) THEN
+      PRINT *, "ido = ", ido
+      EXIT
+    END IF
     diag1 = zero
     vdiag = workd(ipntr(1):ipntr(1) + neq - 1) * diag
     
@@ -230,7 +256,7 @@ PROGRAM p128arg
                      IF(g_g_pp(i,iel)==0) pmul(i)=zero
                      IF(g_g_pp(i,iel)/=0) pmul(i)=vdiag(g_g_pp(i,iel))
                    END DO
-                   utemp = MATMUL(km,pmul)   
+                   utemp = MATMUL(store_km_pp(:,:,iel),pmul)   
 !                  CALL dgemv('n',ntot,ntot,one,km,ntot,pmul,1,zero,utemp,1) 
                    DO i=1,ntot
                      IF(g_g_pp(i,iel)/=0) THEN
@@ -246,22 +272,28 @@ PROGRAM p128arg
 
   END DO
 
-  IF(numpe==npes) WRITE(11,'(A,I8,A)') "It took ",iters,"  iterations"
+  IF(numpe==1) THEN
+    fname     = job_name(1:INDEX(job_name, " ")-1)//".res"
+    OPEN(11, file=fname, status='replace', action='write')
+  END IF
+
+  IF(numpe==1) WRITE(11,'(A,I8,A)') "It took ",iters,"  iterations"
 ! Either we have convergence or there is an error
   IF(info < 0) THEN
-    IF(numpe==npes) WRITE(11,*) "Fatal error in dsaupd "
+    PRINT *, "info = ", info
+    IF(numpe==1) WRITE(11,*) "Fatal error in dsaupd "
   ELSE
    rvec = .TRUE.
    CALL dseupd(rvec, 'All',select, d , v , neq, sigma,                         &
                bmat, neq, which, nev, tol, resid,                              &
                ncv, v, neq,iparam,ipntr,workd, workl, lworkl, ierr)
    IF(ierr/=0) THEN
-    IF(numpe==npes) THEN
+    IF(numpe==1) THEN
      WRITE(11,*) "Fatal error in dseupd "
      WRITE(11,*) "Should compute residuals "
     END IF
    END IF
-   IF(numpe==npes) THEN
+   IF(numpe==1) THEN
      WRITE(11,'(A)') "The eigenvalues are  :"
      WRITE(11,'(5E12.4)') d(1:nev,1)
      WRITE(11,'(A)') "The eigenvectors are  :"
@@ -277,28 +309,27 @@ PROGRAM p128arg
 ! 14. Write out the eigenvectors
 !------------------------------------------------------------------------------
    
-   DO i=1,nev
+  IF(numpe==1) THEN
+!    CALL getFileNumber(step,i)
+     fname     = job_name(1:INDEX(job_name, " ")-1)//"_eigv_"//              &
+                 step(1:INDEX(step, " ")-1)// ".dis" 
+     OPEN(24, file=fname, status='replace', action='write')
    
-     IF(numpe==1) THEN
-!      CALL getFileNumber(step,i)
-       fname     = job_name(1:INDEX(job_name, " ")-1)//"_eigv_"//              &
-                   step(1:INDEX(step, " ")-1)// ".dis" 
-       OPEN(24, file=fname, status='replace', action='write')
-     END IF
-   
-     udiag(:)    = v(1:neq,i) 
-     udiag       = udiag * diag  
+     DO i=1,nev
+       udiag(:)    = v(1:neq,i) 
+       udiag       = udiag * diag  
 
-     WRITE(24,'(A)')   "*DISPLACEMENT"
-     WRITE(24,'(I10)')  step
-     WRITE(24,*)       "Output not supported"
+       WRITE(24,'(A)')   "*DISPLACEMENT"
+       WRITE(24,'(A)')  step
+       WRITE(24,*)       "Output not supported"
+     END DO
 
-     IF(numpe==1) CLOSE(24)
+   END IF
 
-   END DO
+   IF(numpe==1) CLOSE(24)
 
 ! IF(numpe==npes) WRITE(11,*) "This analysis took  :", elap_time( ) - timest(1)
-  CALL shutdown() 
+   
+   CALL shutdown()
 
-END PROGRAM p128arg
- 
+ END PROGRAM p128arg
