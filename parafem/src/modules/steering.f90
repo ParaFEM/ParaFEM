@@ -168,7 +168,38 @@ MODULE STEERING
 
     END DO
     
-  END SUBROUTINE find_g
+  END SUBROUTINE find_g3
+
+!------------------------------------------------------------------------------
+!------------------------------------------------------------------------------
+!------------------------------------------------------------------------------
+ 
+  subroutine find_g(num,g,rest)
+  ! Finds g from node numbers and restraints "rest"
+  ! Only for uncoupled problems
+  implicit none
+  integer,intent(in)::num(:),rest(:,:); integer,intent(out)::g(:)
+  integer::inc,i,j,k,l,count,nr,nod,nodof
+  nr=ubound(rest,1); nod=ubound(num,1);nodof=ubound(rest,2)-1
+  g=1;inc=0
+  do i=1,nod
+   count=0;l=num(i)
+   do j=1,nr
+      if(l>rest(j,1)) then
+         do k=2,nodof+1; if(rest(j,k)==0)count=count+1;end do
+      end if
+   end do
+   do k=2,nodof+1
+    inc=inc+1
+    do j=1,nr
+     if(l==rest(j,1).and.rest(j,k)==0) then
+       g(inc)=0; count=count+1
+     end if
+    end do
+    if(g(inc)/=0) g(inc) = l*nodof-count-(nodof+1-k)
+   end do
+  end do
+  end subroutine find_g
  
 !------------------------------------------------------------------------------
 !------------------------------------------------------------------------------
