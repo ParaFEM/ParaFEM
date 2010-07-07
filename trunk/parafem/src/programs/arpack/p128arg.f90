@@ -18,8 +18,8 @@ PROGRAM p128arg
 
   ! neq,ntot are global variables - not declared
    
-! INTEGER               :: nn,nr,nip,nodof=3,nod=8,nst=6,i,j,k
-  INTEGER               :: nn,nr,nip,nodof=3,nod=4,nst=6,i,j,k
+! INTEGER               :: nn,nr,nip,nodof=3,nod=8,nst=6,i,j,k,l
+  INTEGER               :: nn,nr,nip,nodof=3,nod=4,nst=6,i,j,k,l
   INTEGER               :: iel,ndim=3,iters,model,nconv,ncv,nev,maxitr 
   INTEGER               :: argc,iargc ! command line arguments
   INTEGER               :: nels,ndof,npes_pp,meshgen
@@ -44,7 +44,8 @@ PROGRAM p128arg
                            fun(:),jac(:,:),der(:,:),deriv(:,:),weights(:),    & 
                            bee(:,:),store_km_pp(:,:,:),emm(:,:),ecm(:,:),     &
                            diag(:),pmul(:),d(:,:),v(:,:),workl(:),workd(:),   &
-                           g_coord_pp(:,:,:),diag1(:),udiag(:),utemp(:)   
+                           g_coord_pp(:,:,:),diag1(:),udiag(:),utemp(:),      &
+                           eigv(:,:)   
  INTEGER, ALLOCATABLE   :: rest(:,:), g(:), num(:) , g_num_pp(:,:) ,          &
                            g_g_pp(:,:)
  LOGICAL, ALLOCATABLE   :: select(:)   
@@ -242,7 +243,7 @@ PROGRAM p128arg
                    END DO
     END DO elements_3
 
-    CALL MPI_ALLREDUCE(diag1,udiag,neq,MPI_REAL8,MPI_SUM,MPI_COMM_WORLD,ier)
+     CALL MPI_ALLREDUCE(diag1,udiag,neq,MPI_REAL8,MPI_SUM,MPI_COMM_WORLD,ier)
 
     udiag                             = udiag * diag 
     workd(ipntr(2):ipntr(2) + neq -1) = udiag
@@ -290,17 +291,39 @@ PROGRAM p128arg
      fname     = job_name(1:INDEX(job_name, " ")-1)//"_eigv_"//              &
                  step(1:INDEX(step, " ")-1)// ".dis" 
      OPEN(24, file=fname, status='replace', action='write')
-   
-     DO i=1,nev
-       udiag(:)    = v(1:neq,i) 
-       udiag       = udiag * diag  
+  END IF
 
-       WRITE(24,'(A)')   "*DISPLACEMENT"
-       WRITE(24,'(A)')  step
-       WRITE(24,*)       "Output not supported"
+  ALLOCATE(eigv(ndim,nn))
+   
+  DO i=1,nev
+
+    eigv        = zero
+    udiag(:)    = v(1:neq,i) 
+    udiag       = udiag * diag  
+
+    DO iel = 1,nels_pp
+      DO j = 1,nod
+        DO k = 1,ndim
+           l = ((j-1)*k) + k
+           IF(g_g_pp(l,iel) /=0) THEN
+             eigv(k,g_num_pp(j,iel)) = udiag(g_g_pp(l,iel))
+           END IF
+         END DO
+       END DO
      END DO
 
-   END IF
+     IF(numpe == 1) THEN
+ 
+       WRITE(24,'(A)')   "*DISPLACEMENT"
+       WRITE(24,*)    i
+       
+       DO j = 1,nn
+         WRITE(24,'(I12,3E12.4)') j,  eigv(:,j)
+       END DO
+
+     END IF
+
+   END DO
 
    IF(numpe==1) CLOSE(24)
 
