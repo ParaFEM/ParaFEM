@@ -1,3 +1,5 @@
+*** Note: Program still under development ***
+
 Program p128ar.f90 requires ARPACK.
 
 This distribution includes a copy of ARPACK. The original copy was called:
@@ -24,3 +26,4 @@ ParaFEM. Then type:
 The library will be placed in the /parafem/lib directory.
 
 AUTHOR: lee.margetts@manchester.ac.uk
+
