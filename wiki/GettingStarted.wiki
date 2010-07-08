@@ -14,8 +14,8 @@
 
 == Building the ParaFEM Library ==
  * In ~/parafem/src/modules create a makefile for your system or use an existing one.
- * Type: make -f makemodules.xt4 (for a Cray XT4 system)
- * Type: make -f makemodules.xt4 install (moves the .mod files to ~/parafem/include and the .a file to ~/parafem/lib)
+ * Type: make -f makemodules.xt (for a Cray XT4 or XT6 system)
+ * Type: make -f makemodules.xt install (moves the .mod files to ~/parafem/include and the .a file to ~/parafem/lib)
 
 == Building a ParaFEM Program == 
  * If you wish to use an existing program, change to the appropriate directory and build it. For example:
