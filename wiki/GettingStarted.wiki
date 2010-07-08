@@ -1,5 +1,6 @@
-#summary How to download and install ParaFEM.
+#summary How to download and install ParaFEM and ParaFEM-Viewer.
 
+= ParaFEM =
 == Checkout the latest version of source code ==
  * ParaFEM uses the _subversion_ version control system (svn). Follow the instructions under the [http://code.google.com/p/parafem/source/checkout Source] tab. 
  * You may also need to see how to use svn on your local supercomputer or cluster. 
@@ -22,3 +23,35 @@
  * Change directory to ~/parafem/src/programs/sg12/p121
  * Type: make -f makeprograms
  * Example input decks can be found in the ~/parafem/examples/p121 directory
+
+= ParaFEM-Viewer = 
+== Checkout the latest version of source code ==
+The ParaFEM-Viewer source code will be made available shortly.
+== Installing the ParaFEM-Viewer Runtime ==
+=== Windows ===
+  * Create a new folder in C:\Program Files called ParaFEM-Viewer
+  * Unpack the archive using your favourite zip tool into the folder named ParaFEM-Viewer
+  * Launch ParaFEM-Viewer by either:
+    * Double clicking on the fear.bat file in the ParaFEM-Viewer folder or
+    * By creating a shortcut on your desktop and double clicking on the shortcut
+If the application fails to start:
+  * *Please note ParaFEM-Viewer requires an AVS license*
+    * A runtime only license will suffice for the runtime executable
+    * The AVS/Express software and an accompanying Visualization or Developers license will be required for compiling and executing the source code.
+  * You may need to install the appropriate Microsoft Visual Studio Redistributable package
+    * [http://www.microsoft.com/downloads/details.aspx?familyid=200B2FD9-AE1A-4A14-984D-389C36F85647 Microsoft Visual C++ 2005 SP1 Redistributable Package (x86)]
+    * [http://www.microsoft.com/downloads/details.aspx?familyid=eb4ebe2d-33c0-4a47-9dd4-b9a6d7bd44da Microsoft Visual C++ 2005 SP1 Redistributable Package (x86_64)]
+
+=== Linux/UNIX ===
+  * Choose where you want to install ParaFEM-Viewer and create a directory called ParaFEM-Viewer
+    * mkdir ParaFEM-Viewer 
+  * Unpack the archive
+    * cd ParaFEM-Viewer
+    * tar zxvf fearxp-linux_64-0.1.tgz 
+  * Launch ParaFEM-Viewer
+    * ./fearxp
+
+If the application fails to start:
+  * *Please note ParaFEM-Viewer requires an AVS license*
+    * A runtime only license will suffice for the runtime executable
+    * The AVS/Express software and an accompanying Visualization or Developers license will be required for compiling and executing the source code.
