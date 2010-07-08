@@ -1,0 +1,30 @@
+module    = ../../../include
+lib       = ../../../lib
+
+FC=ftn
+
+#  Flags
+FFLAGS= -c -I$(module) -V -fast
+
+LDFLAGS= -L$(lib) -lParaFEM -lblas -larpack_XT4
+
+.SUFFIXES: .o .f90
+
+all: p128arg
+default: all
+
+
+p128arg: p128arg.o
+	$(FC) p128arg.o -o p128arg $(LDFLAGS)
+
+p128arg.o: p128arg.f90
+	$(FC) p128arg.f90 $(FFLAGS)
+
+clean:
+	rm -f *.o
+
+execlean:
+	rm -f p128arg
+
+relink: p128arg
+
