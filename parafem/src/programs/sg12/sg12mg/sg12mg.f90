@@ -78,7 +78,7 @@ PROGRAM sg12mg
     PRINT*
     PRINT*, "Usage:  sg12mg <job_name>"
     PRINT*
-    PRINT*, "        program expects <job_name>.dat and outputs any or all of"
+    PRINT*, "        program expects <job_name>.mg and outputs any or all of"
     PRINT*, "        <job_name>a.dat <job_name>a.d" 
     PRINT*, "        <job_name>a.bnd <job_name>a.lds"
     PRINT*
@@ -90,7 +90,7 @@ PROGRAM sg12mg
 ! 4. Read control data
 !------------------------------------------------------------------------------
 
-  fname = job_name(1:INDEX(job_name," ")-1) // ".dat"
+  fname = job_name(1:INDEX(job_name," ")-1) // ".mg"
   OPEN (10, file=fname, status='old', action='read')
 
   READ(10,*) program_name
@@ -153,7 +153,7 @@ PROGRAM sg12mg
     g_coord(:,g_num(:,iel)) = TRANSPOSE(coord)
   END DO
 
-  fname = job_name(1:INDEX(job_name, " ")-1) // "a.d" 
+  fname = job_name(1:INDEX(job_name, " ")-1) // ".d" 
   OPEN(11,FILE=fname,STATUS='REPLACE',ACTION='WRITE')
   
   WRITE(11,'(A)') "*THREE_DIMENSIONAL"
@@ -180,7 +180,7 @@ PROGRAM sg12mg
 ! 7.4 Boundary conditions
 !------------------------------------------------------------------------------
 
-  fname = job_name(1:INDEX(job_name, " ")-1) // "a.bnd" 
+  fname = job_name(1:INDEX(job_name, " ")-1) // ".bnd" 
   OPEN(12,FILE=fname,STATUS='REPLACE',ACTION='WRITE')
 
   CALL cube_bc20(rest,nxe,nye,nze)
@@ -195,7 +195,7 @@ PROGRAM sg12mg
 ! 7.5 Loading conditions
 !------------------------------------------------------------------------------
 
-  fname = job_name(1:INDEX(job_name, " ")-1) // "a.lds" 
+  fname = job_name(1:INDEX(job_name, " ")-1) // ".lds" 
   OPEN(13,FILE=fname,STATUS='REPLACE',ACTION='WRITE')
 
   CALL load_p121(no,val,nle,nxe,nze)
@@ -211,7 +211,7 @@ PROGRAM sg12mg
 ! 7.6 New control data
 !------------------------------------------------------------------------------
 
-  fname = job_name(1:INDEX(job_name, " ")-1) // "a.dat" 
+  fname = job_name(1:INDEX(job_name, " ")-1) // ".dat" 
   OPEN(14,FILE=fname,STATUS='REPLACE',ACTION='WRITE')
 
   WRITE(14,'(A)') "hexahedron"
