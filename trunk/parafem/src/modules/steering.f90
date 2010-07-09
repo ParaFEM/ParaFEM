@@ -10,7 +10,7 @@ MODULE STEERING
   !*
   !*    Subroutine             Purpose
   !*    
-  !*    REARRANGE              Modifies REST array
+  !*      REARRANGE              Modifies REST array
   !*    FIND_G                 Finds g from node numbers and restraints "rest"
   !*    ABAQUS2SG              Swaps node order from Abaqus to S&G convention
   !*
@@ -25,6 +25,7 @@ MODULE STEERING
   !*/
 
   USE precision
+  USE mp_interface
 
   CONTAINS
 
@@ -247,8 +248,6 @@ MODULE STEERING
     nels = UBOUND(g_num,2)
     nod  = UBOUND(g_num,1)
     
-    ALLOCATE(temp(nod))
-
 !------------------------------------------------------------------------------
 ! 2. Identify which type of element is being dealt with and reorder the nodes
 !------------------------------------------------------------------------------
@@ -261,8 +260,9 @@ MODULE STEERING
       
       CASE(20)
    
-!     This loop could be optimized by a compiler
-   
+      ALLOCATE(temp(nod))
+      temp = 0
+
       DO iel = 1,nels
         temp          = g_num(:,iel)
         g_num(1,iel)  = temp(4)
@@ -287,10 +287,36 @@ MODULE STEERING
         g_num(20,iel) = temp(15)
       END DO
         
+      DEALLOCATE(temp)
+     
+      CASE(8)
+      
+      ALLOCATE(temp(nod))
+      temp = 0
+
+      DO iel = 1,nels
+        temp          = g_num(:,iel)
+        g_num(1,iel)  = temp(1)
+        g_num(2,iel)  = temp(5)
+        g_num(3,iel)  = temp(6)
+        g_num(4,iel)  = temp(2)
+        g_num(5,iel)  = temp(4)
+        g_num(6,iel)  = temp(8)
+        g_num(7,iel)  = temp(7)
+        g_num(8,iel)  = temp(3)
+      END DO
+     
+      DEALLOCATE(temp)
+      
       CASE default
       
-        PRINT*, "Wrong number of nodes for a hexahedron"
-        
+        PRINT*
+        PRINT*, "This element type not supported in ABAQUS2SG"
+        PRINT*, "Program aborting"
+        PRINT*
+
+        CALL shutdown()
+ 
       END SELECT
     
     CASE('tetrahedron')
@@ -299,6 +325,8 @@ MODULE STEERING
       
       CASE(4)
 
+      ALLOCATE(temp(nod))
+      
       DO iel = 1,nels
         temp          = g_num(:,iel)
         g_num(1,iel)  = temp(1)
@@ -307,18 +335,29 @@ MODULE STEERING
         g_num(4,iel)  = temp(2)
       END DO
 
+      DEALLOCATE(temp)
+
       CASE default
         
+        PRINT*
         PRINT*, "Wrong number of nodes for a tetrahedron"
+        PRINT*, "Program aborting"
+        PRINT*
+        
+        CALL shutdown()
 
       END SELECT
+    
     CASE default
     
+      PRINT*
       PRINT*, "Wrong type of element in subroutine ABAQUS2SG"
+      PRINT*, "Program aborting"
+      PRINT*
+     
+      CALL shutdown()
     
     END SELECT
-    
-    DEALLOCATE(temp)
     
     RETURN
     

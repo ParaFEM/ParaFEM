@@ -1,7 +1,7 @@
 PROGRAM p128arg      
 !------------------------------------------------------------------------------
 !      program 10.4 eigenvalues and eigenvectors of a cuboidal elastic
-!      solid in 3d using  uniform 8-node hexahedral elements ; Arnoldi "dp" 
+!      solid in 3d using uniform 8-node hexahedral elements ; Arnoldi "dp" 
 !      for lumped mass this is done element by element : parallel version
 !------------------------------------------------------------------------------
  
@@ -18,16 +18,14 @@ PROGRAM p128arg
 
   ! neq,ntot are global variables - not declared
    
-! INTEGER               :: nn,nr,nip,nodof=3,nod=8,nst=6,i,j,k,l
-  INTEGER               :: nn,nr,nip,nodof=3,nod=4,nst=6,i,j,k,l
+  INTEGER               :: nn,nr,nip,nodof=3,nod,nst=6,i,j,k,l
   INTEGER               :: iel,ndim=3,iters,model,nconv,ncv,nev,maxitr 
   INTEGER               :: argc,iargc ! command line arguments
   INTEGER               :: nels,ndof,npes_pp,meshgen
   INTEGER               :: ido,ierr,info,iparam(11),ipntr(11),ishfts,lworkl  
   REAL(iwp)             :: rho,e,nu,det,sigma,tol
   REAL(iwp),PARAMETER   :: zero = 0.0_iwp , one = 1.0_iwp  
-! CHARACTER (LEN=15)    :: element = 'hexahedron'
-  CHARACTER (LEN=15)    :: element = 'tetrahedron'
+  CHARACTER (LEN=15)    :: element
   CHARACTER(LEN=50)     :: program_name='p128ar' 
   CHARACTER(LEN=50)     :: fname
   CHARACTER(LEN=50)     :: job_name
@@ -78,7 +76,7 @@ PROGRAM p128arg
 !------------------------------------------------------------------------------
 
  CALL read_p128ar(job_name,numpe,bmat,e,element,maxitr,meshgen,ncv,nels,nev,  &
-                  nip,nn,nr,rho,tol,nu,which)
+                  nip,nn,nod,nr,rho,tol,nu,which)
  
 !------------------------------------------------------------------------------
 ! 6. The master processor imports the mesh, material properties and restraints. 
@@ -97,6 +95,11 @@ PROGRAM p128arg
   g_num_pp   = 0
   g_coord_pp = 0
   rest       = 0
+
+  PRINT *, "NELS = ",nels
+  PRINT *, "NN   = ",nn
+  PRINT *, "NOD  = ",nod
+  PRINT *, "NR   = ",nr
 
   CALL read_g_num_pp(job_name,iel_start,nels,nn,numpe,g_num_pp)
   IF(meshgen == 2) CALL abaqus2sg(element,g_num_pp)
@@ -148,7 +151,9 @@ PROGRAM p128arg
   END DO elements_0b  
 
   neq = max_integer_p(neq)
- 
+
+  PRINT *, "NEQ      = ", neq
+  PRINT *, "NEQ calc =", (nn-nr)*nodof 
 ! timest(3) = elap_time()
   
 !------------------------------------------------------------------------------
@@ -160,7 +165,6 @@ PROGRAM p128arg
   CALL make_ggl(npes_pp,npes,g_g_pp)
  
 ! timest(4) = elap_time()
-  
   
 !------------------------------------------------------------------------------
 ! 11. Allocate arrays dimensioned by neq 
@@ -177,7 +181,7 @@ PROGRAM p128arg
 ! 12. Element stiffness integration and storage
 !------------------------------------------------------------------------------
 
-  CALL sample( element,points,weights) 
+  CALL sample(element,points,weights) 
   CALL deemat(e,nu,dee)
   store_km_pp = zero
                 
@@ -219,6 +223,8 @@ PROGRAM p128arg
   iters = 0
   diag  = one / sqrt(diag) ! diag holds l**(-1/2) 
 
+  IF(numpe == 1)  PRINT*, "DIAG = ", diag
+
   DO
     iters = iters + 1
     CALL dsaupd(ido,bmat,neq,which,nev,tol,resid,                 &
@@ -243,7 +249,7 @@ PROGRAM p128arg
                    END DO
     END DO elements_3
 
-     CALL MPI_ALLREDUCE(diag1,udiag,neq,MPI_REAL8,MPI_SUM,MPI_COMM_WORLD,ier)
+    CALL MPI_ALLREDUCE(diag1,udiag,neq,MPI_REAL8,MPI_SUM,MPI_COMM_WORLD,ier)
 
     udiag                             = udiag * diag 
     workd(ipntr(2):ipntr(2) + neq -1) = udiag

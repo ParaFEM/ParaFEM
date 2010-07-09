@@ -616,14 +616,14 @@ MODULE INPUT
 !------------------------------------------------------------------------------
 
   SUBROUTINE READ_P128ar(job_name,numpe,bmat,e,element,maxitr,mesh,ncv,nels,  &
-                         nev,nip,nn,nr,rho,tol,v,which)
+                         nev,nip,nn,nod,nr,rho,tol,v,which)
 
   !/****f* input/read_p128ar
   !*  NAME
   !*    SUBROUTINE: read_p128ar
   !*  SYNOPSIS
   !*    Usage:      CALL read_p128ar(job_name,numpe,bmat,e,element,maxitr,    &
-  !*                                 mesh,ncv,nels,nev,nip,nn,nr,rho,tol,     &
+  !*                                 mesh,ncv,nels,nev,nip,nn,nod,nr,rho,tol, &
   !*                                 v,which) 
   !*  FUNCTION
   !*    Master processor reads the general data for the problem and broadcasts 
@@ -655,6 +655,7 @@ MODULE INPUT
   !*    nev                    : Number of eigenvalues
   !*    nip                    : Number of integration points
   !*    nn                     : Number of nodes in the mesh
+  !*    nod                    : Number of nodes in the element
   !*    nr                     : Number of restrained nodes
   !*
   !*    The following scalar character argument has an INTENT(INOUT) attribute:
@@ -682,8 +683,9 @@ MODULE INPUT
   CHARACTER(LEN=1), INTENT(INOUT)  :: bmat
   CHARACTER(LEN=2), INTENT(INOUT)  :: which
   CHARACTER(LEN=50)                :: fname
+  CHARACTER(LEN=50)                :: program_name
   INTEGER, INTENT(IN)              :: numpe
-  INTEGER, INTENT(INOUT)           :: nels,nn,nr,nip,nev,ncv
+  INTEGER, INTENT(INOUT)           :: nels,nn,nod,nr,nip,nev,ncv
   INTEGER, INTENT(INOUT)           :: maxitr,mesh 
   REAL(iwp), INTENT(INOUT)         :: rho,e,v,tol
 
@@ -691,7 +693,7 @@ MODULE INPUT
 ! 1. Local variables
 !------------------------------------------------------------------------------
 
-  INTEGER                          :: bufsize,ier,integer_store(8)
+  INTEGER                          :: bufsize,ier,integer_store(9)
   REAL(iwp)                        :: real_store(4)
 
 !------------------------------------------------------------------------------
@@ -701,8 +703,9 @@ MODULE INPUT
   IF (numpe==1) THEN
     fname = job_name(1:INDEX(job_name, " ") -1) // ".dat"
     OPEN(10,FILE=fname,STATUS='OLD',ACTION='READ')
-    READ(10,*) element,mesh,nels,nip,nn,nr,rho,e,v,nev,ncv,bmat,which,tol,    &
-               maxitr
+    READ(10,*) program_name
+    READ(10,*) element,mesh,nels,nn,nr,nod,nip,rho,e,v,nev,ncv,bmat,which,   &
+               tol,maxitr
     CLOSE(10)
    
     integer_store      = 0
@@ -710,11 +713,12 @@ MODULE INPUT
     integer_store(1)   = mesh
     integer_store(2)   = nels
     integer_store(3)   = nn
-    integer_store(4)   = nr 
-    integer_store(5)   = nip
-    integer_store(6)   = nev
-    integer_store(7)   = ncv
-    integer_store(8)   = maxitr
+    integer_store(4)   = nod
+    integer_store(5)   = nr 
+    integer_store(6)   = nip
+    integer_store(7)   = nev
+    integer_store(8)   = ncv
+    integer_store(9)   = maxitr
 
     real_store         = 0.0_iwp
 
@@ -729,10 +733,10 @@ MODULE INPUT
 ! 3. Master processor broadcasts the temporary arrays to the slave processors
 !------------------------------------------------------------------------------
 
-  bufsize = 10
+  bufsize = 9 
   CALL MPI_BCAST(integer_store,bufsize,MPI_INTEGER,0,MPI_COMM_WORLD,ier)
 
-  bufsize = 8
+  bufsize = 4
   CALL MPI_BCAST(real_store,bufsize,MPI_REAL8,0,MPI_COMM_WORLD,ier)
 
   bufsize = 15
@@ -753,11 +757,12 @@ MODULE INPUT
     mesh         = integer_store(1)
     nels         = integer_store(2)
     nn           = integer_store(3)
-    nr           = integer_store(4)
-    nip          = integer_store(5)
-    nev          = integer_store(6)
-    ncv          = integer_store(7)
-    maxitr       = integer_store(8)
+    nod          = integer_store(4)
+    nr           = integer_store(5)
+    nip          = integer_store(6)
+    nev          = integer_store(7)
+    ncv          = integer_store(8)
+    maxitr       = integer_store(9)
 
     rho          = real_store(1)
     e            = real_store(2)
