@@ -44,6 +44,10 @@ PROGRAM sg12mg
   INTEGER                :: iargc
   INTEGER                :: limit
   INTEGER                :: loaded_freedoms
+  INTEGER                :: nev
+  INTEGER                :: ncv
+  INTEGER                :: maxitr
+  INTEGER                :: meshgen
   REAL(iwp)              :: aa
   REAL(iwp)              :: bb 
   REAL(iwp)              :: cc  
@@ -54,9 +58,12 @@ PROGRAM sg12mg
   REAL(iwp)              :: er  
   REAL(iwp)              :: acc  
   REAL(iwp)              :: tol 
+  CHARACTER(LEN=15)      :: element
   CHARACTER(LEN=50)      :: program_name
   CHARACTER(LEN=50)      :: job_name
   CHARACTER(LEN=50)      :: fname
+  CHARACTER(LEN=1)       :: bmat
+  CHARACTER(LEN=2)       :: which
 
 !------------------------------------------------------------------------------
 ! 2. Declare dynamic arrays
@@ -295,25 +302,49 @@ PROGRAM sg12mg
 
 !------------------------------------------------------------------------------
 ! 14. Program p128
-!------------------------------------------------------------------------------  
+!------------------------------------------------------------------------------
+ 
   CASE('p128')
-  
-  READ(10,*) nels, nxe, nze, nip
-  READ(10,*) aa, bb, cc, rho
-  READ(10,*) e, v
-  READ(10,*) nmodes
-  READ(10,*) el, er
-  READ(10,*) lalfa, leig, lx, lz, acc
+ 
+  PRINT*
+  PRINT*, "Program p128 not supported"
+  PRINT*
+  PRINT*, "      Use program p128ar instead "
+  PRINT*
+  PRINT*, "      The <my_job>.mg file should contain the following data:"
+  PRINT*
+  PRINT*, "      p128ar"
+  PRINT*, "      element"
+  PRINT*, "      nels, nxe, nze, nod, nip"
+  PRINT*, "      aa, bb, cc"
+  PRINT*, "      rho, e, v"
+  PRINT*, "      nev, ncv, bmat, which"
+  PRINT*, "      tol, maxitr"
+  PRINT*
+
+  STOP
+
+!------------------------------------------------------------------------------
+! 15. Program p128ar
+!------------------------------------------------------------------------------
+ 
+  CASE('p128ar')
+  READ(10,*) element
+  READ(10,*) meshgen
+  READ(10,*) nels, nxe, nze, nod, nip
+  READ(10,*) aa, bb, cc
+  READ(10,*) rho, e, v
+  READ(10,*) nev, ncv, bmat, which
+  READ(10,*) tol, maxitr
 
   nye   = nels/nxe/nze
   nr    = (nxe+1) * (nze+1)
   nn    = (nxe+1) * (nze+1) * (nye+1)
   ndim  = 3
   nodof = 3
-  nod   = 8
 
 !------------------------------------------------------------------------------
-! 14.x Allocate dynamic arrays
+! 15.1 Allocate dynamic arrays
 !------------------------------------------------------------------------------
 
   ALLOCATE(g_coord(ndim,nn))
@@ -363,13 +394,33 @@ PROGRAM sg12mg
 
   CLOSE(12)
  
+!------------------------------------------------------------------------------
+! 15.6 Write new control data file
+!------------------------------------------------------------------------------
+
+  fname = job_name(1:INDEX(job_name, " ")-1) // ".dat" 
+  OPEN(14,FILE=fname,STATUS='REPLACE',ACTION='WRITE')
+
+  WRITE(14,'(A)')         program_name
+  WRITE(14,'(A)')         "'hexahedron'"
+  WRITE(14,'(A)')         "'2'" 
+  WRITE(14,'(6I9)')       nels, nn, nr, nod, nip
+  WRITE(14,'(3E12.4,I8)') rho, e, v
+  WRITE(14,'(2I8,5A)')    nev, ncv, " '", bmat, "' '", which,"'"
+  WRITE(14,'(E12.4,I8)')  tol, maxitr
+  CLOSE(14)
+
+!------------------------------------------------------------------------------
+! 15.7 Deallocate arrays
+!------------------------------------------------------------------------------
+
   DEALLOCATE(coord)
   DEALLOCATE(g_coord)
   DEALLOCATE(g_num)
   DEALLOCATE(rest)
 
 !------------------------------------------------------------------------------
-! 15. Program p129
+! 16. Program p129
 !------------------------------------------------------------------------------  
   CASE('p129')
   
