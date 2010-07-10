@@ -1,0 +1,432 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html>
+<head>
+<title>LogicWidgets</title>
+</head>
+<body bgcolor="#92bfbf">
+
+<h1>LogicWidgets</h1>
+
+<h3>Synopsis</h3>
+
+<blockquote>
+This library contains common macros that allow a variety of logic operations to be performed.  They also allow logic components to be easily combined using the visual network editor.  The normal alternative to this would be to write specific procedural code. 
+</blockquote>
+
+
+<h3>General Notes</h3>
+
+<blockquote>
+It should be noted that these macros are not intended for the expression of essential application logic. If they were used in this way the system performance is unlikely to be acceptable. The macros are instead intended to help write small control routines and avoid the necessity of developing program code for these. Examples of these control routines include controlling the operation of a user interface and disconnecting certain areas of the network when they are not needed.
+</blockquote>
+
+<blockquote>
+The logical terms, <tt>TRUE</tt> and <tt>FALSE</tt>, have the same meaning in this library as they do in the C programming language.  A value is defined to be <tt>TRUE</tt> if it is not zero.  Conversely a value is defined to be <tt>FALSE</tt> if it is zero.  These conventions are used throughout this library.
+</blockquote>
+
+<blockquote>
+Before the individual macros are examined the specific meaning of a 'trigger' should be noted. When the value of a network component is updated AVS/Express sends a signal to all the components linked to it indicating that it has been updated. This is called a trigger signal. A trigger is sent whenever a value is updated with either a different value or the same value. Normally the trigger signal is used to notify other modules that new data is available. However it can be used to simply signify that something has happened. This is now the <tt>parse_v</tt> module uses its trigger input. Whenever a signal is recieved on the trigger input the parse_v module processes the supplied v code.
+</blockquote>
+
+<blockquote>
+Most of the macros in this library generate trigger outputs by examining certain inputs and determining whether a criteria is <tt>TRUE</tt> or <tt>FALSE</tt>.  These outputs can be used to trigger several modules.  These include parse_v, copy_on_change, <a href="doc_ne.html#BreakableLink">BreakableLink</a>, <a href="doc_ne.html#ToggleableLink">ToggleableLink</a> and several of the Database macros.
+</blockquote>
+
+
+
+
+<hr>
+
+<h2><a name="If...">If...</a></h2>
+
+<blockquote>
+There are a range of macros in the LogicWidgets library that all begin with the <i>If</i> phrase.  All of these macros implement forms of the programming structure <tt>if...then...else</tt>.  The purpose of this structure is to test a certain criteria to determine if it is true or false and perform one of two actions depending on this.  These macros implement this structure through the use of triggers.  If the criteria is <tt>TRUE</tt> then the true output is triggered else the false output is triggered.
+</blockquote>
+
+<blockquote>
+The <i>If...</i> macros can be separated into two catergories; those with a single logic input and those with two logic inputs.  The macros with a single logic input provide general logical behaviour, whilst those with two logic inputs provide higher level and more specific behaviour.
+</blockquote>
+
+
+<h3>
+<a name="IfTrue">IfTrue</a>, <a name="IfTrue">IfFalse</a>
+</h3>
+
+<blockquote>
+The IfTrue macro is the simplest of the <i>If...</i> macros. It is a wrapper around the <a href="doc_mod.html#TrueFalseCore">TrueFalseCore</a> module and does not provide any extra functionality. It tests the input value and triggers the appropriate output. Therefore the true output is triggered if the input is non-zero and the false output is triggered if it is zero. This behaviour is of limited use itself. However more complex logical statements can be expressed by using the v-code logical and arithmetic operators. A statement such as this can be used as the input to the IfTrue macro. AVS/Express evaluates the statement to a single value which is them tested by the IfTrue macro.
+</blockquote>
+
+<blockquote>
+A similar approach of using v-code statements combined with the low-level <a href="doc_mod.html#TrueFalseCore">TrueFalseCore</a> module is used in all the others <i>If...</i> macros.  The most basic of these enhancements is the IfFalse macro.  This provides the inverse behaviour of the IfTrue macro. If the input value is <tt>FALSE</tt> the true output is triggered.  Otherwise the input value is <tt>TRUE</tt> and the false output is triggered.
+</blockquote>
+
+
+
+<h3>
+<a name="IfEqualTo">IfEqualTo</a>, <a name="IfNotEqualTo">IfNotEqualTo</a><br>
+<a name="IfLessThan">IfLessThan</a>, <a name="IfGreaterThan">IfGreaterThan</a><br>
+<a name="IfLessThanEqual">IfLessThanEqual</a>, <a name="IfGreaterThanEqual">IfGreaterThanEqual</a><br>
+<a name="IfLogicalAND">IfLogicalAND</a>, <a name="IfLogicalOR">IfLogicalOR</a><br>
+<a name="IfBitwiseAND">IfBitwiseAND</a>, <a name="IfBitwiseOR">IfBitwiseOR</a>
+</h3>
+
+<blockquote>
+All of the above macros have two logical inputs.  The macros perform a wide variety of different tests on the inputs.  The simplest of these tests is implemented by the IfEqualTo macro.  This macro tests if the input numbers are numerically equal.  If they are the true output is triggered, otherwise the false output is triggered.  All the other macros derive from the IfEqualTo macro and alter it to provide a variety of different tests.  The exact definition of these tests is shown in the table below.
+</blockquote>
+
+
+<h3>Inputs</h3>
+
+<blockquote>
+<b><i>&amp;trigger</i></b>
+</blockquote>
+
+<blockquote>
+This integer parameter is a trigger input that is present on the IfTrue and IfFalse macros. When this parameter is triggered the value on the input of the module is evaluated and the appropriate outputs triggered. Changing the input itself also causes the input to be evaluated. However it is possible to cause the module to retrigger without altering its state by using this input. An example of its use can be seen in the <a href="#Toggle">Toggle</a> macro.  This trigger input is also available on the other macros however it is not directly exposed as an input.
+</blockquote>
+
+<blockquote>
+<i><b>&amp;in &amp;in1 &amp;in2</b></i>
+</blockquote>
+
+<blockquote>
+These integer parameter are the input parameters to the <i>If...</i> macros. The IfTrue and IfFalse macros use the single input <tt>in</tt>, whilst the two inputs macros use the inputs <tt>in1</tt> and <tt>in2</tt>.  These inputs are evaluated by the macros to determine which output should be triggered.
+</blockquote>
+
+
+<h3>Outputs</h3>
+
+<blockquote>
+<b><i>cond</i></b>
+</blockquote>
+
+<blockquote>
+This integer parameter is used to output the evaluated state of the input.  In logical terms this parameter will have the same value as the input criteria.  However it is restricted to a true binary representation of 0 and 1 only.  Therefore if the input criteria is <tt>TRUE</tt> a 1 is output, otherwise a 0 is output.  This parameter is triggered whenever the input is changed.
+</blockquote>
+
+<blockquote>
+<b><i>cond_true</i></b>
+</blockquote>
+
+<blockquote>
+This integer parameter is triggered whenever the input condition evaluates to <tt>TRUE</tt>. The actual value of this parameter is not significant and it should <b>not</b> be accessed.
+</blockquote>
+
+<blockquote>
+<b><i>state_false</i></b>
+</blockquote>
+
+<blockquote>
+This integer parameter is triggered whenever the the input condition evaluates to <tt>FALSE</tt>. The actual value of this parameter is not significant and it should <b>not</b> be accessed.
+</blockquote>
+
+
+<h3>Truth Table</h3>
+
+<blockquote>
+This table is intended to describe exactly how these macros will behave in logical terms.  It uses the same logic operators as the v language uses.
+</blockquote>
+
+<center>
+<table summary="Truth Table for If modules">
+<tr>
+<td width="170"><b>Macro Name</b></td>
+<td width="170"><center><b><tt>cond_true</tt> triggered</b></center></td>
+<td width="170"><center><b><tt>cond_false</tt> triggered</b></center></td>
+</tr>
+
+<tr>
+<td><i>IfTrue</i></td>
+<td><center><tt>in != 0</tt></center></td>
+<td><center><tt>in == 0</tt></center></td>
+</tr>
+
+<tr>
+<td><i>IfFalse</i></td>
+<td><center><tt>in == 0</tt></center></td>
+<td><center><tt>in != 0</tt></center></td>
+</tr>
+
+<tr>
+<td><i>IfEqualTo</i></td>
+<td><center><tt>in1 == in2</tt></center></td>
+<td><center><tt>in1 != in2</tt></center></td>
+</tr>
+
+<tr>
+<td><i>IfNotEqualTo</i></td>
+<td><center><tt>in1 != in2</tt></center></td>
+<td><center><tt>in1 == in2</tt></center></td>
+</tr>
+
+<tr>
+<td><i>IfLessThan</i></td>
+<td><center><tt>in1 < in2</tt></center></td>
+<td><center><tt>in1 >= in2</tt></center></td>
+</tr>
+
+<tr>
+<td><i>IfGreaterThan</i></td>
+<td><center><tt>in1 > in2</tt></center></td>
+<td><center><tt>in1 <= in2</tt></center></td>
+</tr>
+
+<tr>
+<td><i>IfLessThanEqual</i></td>
+<td><center><tt>in1 <= in2</tt></center></td>
+<td><center><tt>in1 > in2</tt></center></td>
+</tr>
+
+<tr>
+<td><i>IfGreaterThanEqual</i></td>
+<td><center><tt>in1 >= in2</tt></center></td>
+<td><center><tt>in1 < in2</tt></center></td>
+</tr>
+
+<tr>
+<td><i>IfLogicalAND</i></td>
+<td><center><tt>in1 &amp;&amp; in2</tt></center></td>
+<td><center><tt>!(in1 &amp;&amp; in2)</tt></center></td>
+</tr>
+
+<tr>
+<td><i>IfLogicalOR</i></td>
+<td><center><tt>in1 || in2</tt></center></td>
+<td><center><tt>!(in1 || in2)</tt></center></td>
+</tr>
+
+<tr>
+<td><i>IfBitwiseAND</i></td>
+<td><center><tt>(in1 &amp; in2) != 0</tt></center></td>
+<td><center><tt>(in1 &amp; in2) == 0</tt></center></td>
+</tr>
+
+<tr>
+<td><i>IfBitwiseOR</i></td>
+<td><center><tt>(in1 | in2) != 0</tt></center></td>
+<td><center><tt>(in1 | in2) == 0</tt></center></td>
+</tr>
+
+</table>
+</center>
+
+<hr>
+
+<h2><a name="Toggle">Toggle</a></h2>
+
+<blockquote>
+This macro stores a value that can be toggled between <tt>TRUE</tt> and <tt>FALSE</tt> through the use of a single trigger input.  Whenever a trigger is received on the macro input the state of the stored value is tested.  If the stored value is <tt>TRUE</tt> then the stored value is set to 0, and therefore <tt>FALSE</tt>.  Conversely if the stored value is <tt>FALSE</tt> then the stored value is set to 1, and therefore <tt>TRUE</tt>. The macro also has trigger outputs.  The Toggle macro can be used for a variety of tasks,
+in particular it should be useful for storing the results of a trigger output.
+</blockquote>
+
+
+<h3>Inputs</h3>
+
+<blockquote>
+<i><b>&amp;trigger</b></i>
+</blockquote>
+
+<blockquote>
+This integer trigger parameter is used to toggle the state of the stored value.  Whenever this parameter is triggered the stored value is changed from 0 to 1 or from 1 to 0 as appropriate.
+</blockquote>
+
+
+<h3>Outputs</h3>
+
+<blockquote>
+<i><b>out</b></i>
+</blockquote>
+
+<blockquote>
+The state of the toggle.
+</blockquote>
+
+<blockquote>
+<i><b>not_out</b></i>
+</blockquote>
+
+<blockquote>
+The inverse of the state of the toggle.
+</blockquote>
+
+<blockquote>
+<i><b>value_true</b></i>
+</blockquote>
+
+<blockquote>
+This integer parameter is triggered whenever the toggle state is changed from 0 to 1. The actual value of this parameter is not significant and it should <b>not</b> be accessed.
+</blockquote>
+
+<blockquote>
+<i><b>value_false</b></i>
+</blockquote>
+
+<blockquote>
+This integer parameter is triggered whenever the toggle state is changed from 1 to 0. The actual value of this parameter is not significant and it should <b>not</b> be accessed.
+</blockquote>
+
+
+
+<hr>
+
+<h2><a name="Switch">Switch</a></h2>
+
+<blockquote>
+This macro stores a value that can be switched between <tt>TRUE</tt> and <tt>FALSE</tt> throught the use of two trigger inputs.  Whenever a trigger is received on the <tt>on</tt> macro input the state of the stored value is switched to <tt>TRUE</tt>. Conversely whenever a trigger is received on the <tt>off</tt> macro input the state of the stored value is switched to <tt>FALSE</tt>.
+</blockquote>
+
+
+<h3>Inputs</h3>
+
+<blockquote>
+<i><b>&amp;on</b></i>
+</blockquote>
+
+<blockquote>
+This integer trigger parameter is used to switch the state of the stored value to <tt>TRUE</tt>.
+</blockquote>
+
+<blockquote>
+<i><b>&amp;off</b></i>
+</blockquote>
+
+<blockquote>
+This integer trigger parameter is used to switch the state of the stored value to <tt>FALSE</tt>.
+</blockquote>
+
+
+<h3>Outputs</h3>
+
+<blockquote>
+<i><b>out</b></i>
+</blockquote>
+
+<blockquote>
+The state of the switch.
+</blockquote>
+
+<hr>
+
+
+<h2><a name="parse_v_on...">parse_v_on...</a></h2>
+
+<blockquote>
+The <i>parse_v_on...</i> range of macros all allow v code statements to be executed whenever a set criteria is <tt>TRUE</tt>.  They combine the standard parse_v module with the <a href="doc_mod.html#TrueFalseCore">TrueFalseCore</a> module.  The TrueFalseCore module tests the supplied values to determine if they meet the set criteria. If they do the TrueFalseCore module triggers the parse_v module to process the set v code statements.  The parse_v module can be used in exactly the way that it is used normally.
+</blockquote>
+
+<blockquote>
+As with the <i>If...</i> macros the <i>parse_v_on...</i> macros can be spilt into two catergories; single and double input macros.  Boardly the logical criteria of each of the <i>parse_v_on...</i> macros corresponds with the respective <i>If...</i> macros.  However the  <i>parse_v_on...</i> macros do not implement as many criteria as the <i>If...</i> macros.  This is not a limitation of the system.  The extra macros are not present so that the number of macros in the LogicWidgets library could be keep to an acceptable number.  If the extra criteria are required the parse_v_on_equal macro can be easily used as the basis of the new macro.  This was done to generate all the other two input macros.
+</blockquote>
+
+
+<h3>Inputs</h3>
+
+<blockquote>
+<i><b>&amp;in &amp;in1 &amp;in2</b></i>
+</blockquote>
+
+<blockquote>
+These integer parameter are the input parameters to the <i>parse_v_on...</i> macros. The parse_v_on_true and parse_v_on_false macros use the single input <tt>in</tt>, whilst the two inputs macros use the inputs <tt>in1</tt> and <tt>in2</tt>.  These inputs are evaluated by the macros to determine whether the parse_v module should be triggered.
+</blockquote>
+
+<blockquote>
+<i><b>v_commands active on_inst relative</b></i>
+</blockquote>
+
+<blockquote>
+These parameters are all used by the standard parse_v module.  The v_commands parameter is a string value that allows the v code that should be processed to be stored.  The other parameters control the way the parse_v module works.  For full details please see the parse_v documentation.
+</blockquote>
+
+<h3>Outputs</h3>
+
+<blockquote>
+<i><b>(none)</b></i>
+</blockquote>
+
+
+<h3>Truth Table</h3>
+
+<blockquote>
+This table is intended to describe exactly how these macros will behave in logical terms.  It uses the same logic operators as the v language uses.
+</blockquote>
+
+<center>
+<table summary="Truth Table for parse_v_on modules">
+<tr>
+<td width="170"><b>Macro Name</b></td>
+<td width="170"><center><b>parse_v module triggered</b></center></td>
+</tr>
+
+<tr>
+<td><i>parse_v_on_true</i></td>
+<td><center><tt>in != 0</tt></center></td>
+</tr>
+
+<tr>
+<td><i>parse_v_on_false</i></td>
+<td><center><tt>in == 0</tt></center></td>
+</tr>
+
+<tr>
+<td><i>parse_v_on_equal</i></td>
+<td><center><tt>in1 == in2</tt></center></td>
+</tr>
+
+<tr>
+<td><i>parse_v_on_not_equal</i></td>
+<td><center><tt>in1 != in2</tt></center></td>
+</tr>
+
+<tr>
+<td><i>parse_v_on_less_than</i></td>
+<td><center><tt>in1 < in2</tt></center></td>
+</tr>
+
+<tr>
+<td><i>parse_v_on_greater_than</i></td>
+<td><center><tt>in1 > in2</tt></center></td>
+</tr>
+
+</table>
+</center>
+
+<hr>
+
+
+
+
+<h3>Files</h3>
+
+<blockquote>
+<I>iac_proj/common/lg_wdgts.v</I> contains the V definitions of the If..., Toggle, Switch and parse_v_on... macros.
+</blockquote>
+
+<h3>Other Notes</h3>
+
+<blockquote>
+The LogicWidgets library inherits its process. As this library contains no procedural code, the process is not important.  The CommonMods library contains all procedural code used by the Common project and should be compiled.
+</blockquote>
+
+
+<h3>Authors</h3>
+
+<blockquote><pre>
+Andrew Dodd, Various
+</pre></blockquote>
+
+<h3>Contact</h3>
+
+<blockquote><pre>
+International AVS Centre
+Manchester Visualization Centre
+Manchester Computing
+University of Manchester
+Oxford Road
+Manchester
+United Kingdom
+M13 9PL
+</pre></blockquote>
+
+</body>
+</html>
+

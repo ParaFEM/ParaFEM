@@ -1,0 +1,185 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 3.2//EN">
+<html>
+<head>
+<title>IOWidgets</title>
+</head>
+<body bgcolor="#92bfbf">
+
+<h1>IOWidgets</h1>
+
+<h3>Synopsis</h3>
+
+<blockquote>
+This library contains common macros that are intended to make designing modules that perform Input and Output tasks easier and quicker.
+</blockquote>
+
+<hr>
+
+<h2><a name="CreateIndexedFilename">CreateIndexedFilename</a></h2>
+
+<blockquote>
+CreateIndexedFilename generates a string based upon certain formatting parameters and an integer value. The formatting parameters allow the directory, filename stub, extension name and the width of the index number to be specified. The integer value is the index number to be inserted into the generated string. This module is used in the <a href="#AnimFilename">AnimFilename</a> module described below to generate a series of indexed filenames.
+</blockquote>
+
+<blockquote>
+The User Macro, createIndexedFilename is also provided. This macro combines the Functional Macro described here with a User Interface macro, CreateIndexedFilenameUI to create a component that can be easily used through the Network Editor without any further work.
+</blockquote>
+
+<h3>Inputs</h3>
+
+<blockquote>
+<i><b>index</b></i>
+</blockquote>
+
+<blockquote>
+The integer value that should be concatenated with the string parameters to form the indexed filename.
+</blockquote>
+
+<h3>Parameter Blocks</h3>
+
+<blockquote>
+<i><b>&amp;IndexedFileParams</b></i>
+</blockquote>
+
+<blockquote>
+Reference to the parameter block, which contains real instances of the string variables that are to be concatenated with the index to form the indexed filename.
+</blockquote>
+
+<blockquote>
+<i><b>IndexedFileParams.dir</b></i>
+</blockquote>
+
+<blockquote>
+The directory path string that should be appended to the beginning of the indexed filename. An example would be <TT>"iac_proj/build3d/"</TT>.
+</blockquote>
+
+<blockquote>
+<i><b>IndexedFileParams.filename_stub</b></i>
+</blockquote>
+
+<blockquote>
+The filenname stub string that states the name of file minus the index number. This is appended to the the indexed filename after the directory string. An example would be <TT>"cube"</TT>.
+</blockquote>
+
+<blockquote>
+<i><b>IndexedFileParams.extension</b></i>
+</blockquote>
+
+<blockquote>
+The file extension string that should be appended to the end of the indexed filename. This string should not include the leading fullstop(<TT>"."</TT>) An example would be <TT>"tif"</TT>.
+</blockquote>
+
+<blockquote>
+<i><b>IndexedFileParams.index_width</b></i>
+</blockquote>
+
+<blockquote>
+The minimum width, in characters, of the index number that should be included in the output filename. If the index number string is smaller than the minimum width then the remainder is padded with zeros. For example if the index width was 3 then each filename generated would be of the form <tt>cube001.tif</tt>. The default width is 0, which implies that the length of the generated filename will change to accommodate the index number.
+</blockquote>
+
+
+<h3>Outputs</h3>
+
+<blockquote>
+<i><b>filename</b></i>
+</blockquote>
+
+<blockquote>
+The complete indexed filename string. This is generated using the code below. The string generated does not include leading zeros. For example a filename generated using our examples above would be <TT>"iac_proj/build3d/cube002.tif"</TT>.
+
+<pre>
+string format => "%0" + IndexedFileParams.index_width + "d";
+
+string filename => IndexedFileParams.dir + IndexedFileParams.filename_stub + 
+                   str_format(.format,.index) + "." + IndexedFileParams.extension;
+</pre>
+</blockquote>
+
+<hr>
+
+<h2><a name="AnimFilename">AnimFilename</a></h2>
+
+<blockquote>
+The Functional Macro AnimFilename allows the user to generate a sequence of filenames, which may be passed to other modules and macros. For example this module can be used to allow a set of files to be read from disk if it is used in conjunction with an appropriate reader module. The macro operates by using a <a href="doc_ui.html#video">VideoLoop</a> component to iterate through a series of values which are then feed to the <a href="#CreateIndexedFilename">CreateIndexedFilename</a> module. Details of the formatting and loop control parameters present in the IndexedFileParams and VideoLoopParams blocks can be found in the documentation referenced above. 
+</blockquote>
+
+<blockquote>
+Once one of the run parameters in the VideoLoopParams block has been triggered the AnimFilename macro uses the CreateIndexedFilename module to generate one of a sequence of filenames each time the macro executes a step. This will continue until either the loop reaches its end value if it is not cycling, or the loop is stopped by changing a parameter in the VideoLoopParams block. For the AnimFilename macro to work correctly the start and end values of the index number are required to be specified in the VideoLoopParams block. Optionally the increment value may also be altered.
+</blockquote>
+
+<blockquote>
+The User Macro, animFilename is also provided. This macro combines the Functional Macro described here with the User Interface macros, CreateIndexedFilenameUI, VideoControl and AnimFilenameUI to create a component that can be easily used through the Network Editor without any further work.
+</blockquote>
+
+<h3>Parameter Blocks</h3>
+
+<blockquote>
+<i><b>&amp;VideoLoopParams</b></i>
+</blockquote>
+
+<blockquote>
+Reference to the parameter block, which contains real instances of the numerical variables that control the operation of the animation loop module, VideoLoop. Documentation of these parameters can be found in the <a href="doc_ui.html#video">UIWidgets</a> library.
+</blockquote>
+
+<blockquote>
+<i><b>&amp;IndexedFileParams</b></i>
+</blockquote>
+
+<blockquote>
+Reference to the parameter block, which contains real instances of the formatting variables that control the operation of the dynamic filename generation macro, CreateIndexedFilename. Documentation of these parameters can be found in the <a href="#CreateIndexedFilename">IOWidgets</a> library.
+</blockquote>
+
+<h3>Output Ports</h3>
+
+<blockquote>
+<i><b>out</b></i>
+</blockquote>
+
+<blockquote>
+The output filename string, which contains the generated filename based on the parameters given in the IndexedFileParams block, with the current sequence number inserted according to the index width specified in the IndexedFileParams block.
+</blockquote>
+
+
+<hr>
+
+<h3>Files</h3>
+
+<blockquote>
+<I>iac_proj/common/io_wdgts.v</I> contains the IndexedFileParams group and the CreateIndexedFilename, CreateIndexedFilenameUI, createIndexedFilename, AnimFilename, AnimFilenameUI and animFilename macro V definitions.
+</blockquote>
+
+<h3>Other Notes</h3>
+
+<blockquote>
+The IOWidgets library inherits its process. As this library contains no procedural code, the process is not important.
+</blockquote>
+
+
+<h3>Authors</h3>
+
+<blockquote><pre>
+Andrew Dodd
+</pre></blockquote>
+
+<h3>Contact</h3>
+
+<blockquote><pre>
+International AVS Centre
+Manchester Visualization Centre
+Manchester Computing
+University of Manchester
+Oxford Road
+Manchester
+United Kingdom
+M13 9PL
+</pre></blockquote>
+
+<h3>See Also</h3>
+
+<blockquote>
+IndexFileParams, CreateIndexedFilenameUI, createIndexedFilename, VideoLoopParams, VideoLoop, AnimFilenameUI, animFilename
+</blockquote>
+
+</body>
+</html>
+

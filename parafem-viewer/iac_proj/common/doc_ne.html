@@ -1,0 +1,356 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 3.2//EN">
+<html>
+<head>
+<title>NetworkWidgets</title>
+</head>
+<body bgcolor="#92bfbf">
+
+<h1>NetworkWidgets</h1>
+
+<h3>Synopsis</h3>
+
+<blockquote>
+This library contains common macros that are intended to make performing tasks upon the network and using the network editor for visual design, easier and quicker.
+</blockquote>
+
+
+
+
+<hr>
+
+<h2>
+<a name="Increment">Increment</a><br>
+<a name="Decrement">Decrement</a><br>
+<a name="Stepper">Stepper</a>
+</h2>
+
+<blockquote>
+These macros all implement forms of integer counters.  The Increment and Decrement macros implement counters that respectively count upwards and downwards from zero.  The Stepper macro combines these two macros to implement a counter that can count both upwards and downwards.  All of these macros can be reset back to their starting value.
+</blockquote>
+
+
+<h3>Inputs</h3>
+
+<blockquote>
+<i><b>&amp;in</b></i>
+</blockquote>
+
+<blockquote>
+A trigger parameter that is used by the Increment and Decrement counters to change the stored value.  When this parameter is triggered the count value increases or decreases by one as appropriate.
+</blockquote>
+
+<blockquote>
+<i><b>&amp;up</b></i>
+</blockquote>
+
+<blockquote>
+A trigger parameter that is used by the Stepper counter to increment the stored value.
+</blockquote>
+
+<blockquote>
+<i><b>&amp;down</b></i>
+</blockquote>
+
+<blockquote>
+A trigger parameter that is used by the Stepper counter to decrement the stored value.
+</blockquote>
+
+<blockquote>
+<i><b>&amp;reset</b></i>
+</blockquote>
+
+<blockquote>
+A trigger parameter that is used all these macros to reset the stored value back to its starting value.
+</blockquote>
+
+
+<h3>Outputs</h3>
+
+<blockquote>
+<i><b>value</b></i>
+</blockquote>
+
+<blockquote>
+The current value of the counter.
+</blockquote>
+
+
+
+
+<hr>
+
+<h2>
+<a name="last_of_2">last_of_2</a><br>
+<a name="last_of_3">last_of_3</a>
+</h2>
+
+<blockquote>
+These macros allow the last changed variable of a number of variables to be determined.  The last_of_2 macro monitors two integer inputs and determines which of these was the last to be changed.  The value of this variable is output. The last_of_3 macro is derieved from the last_of_2 macro and extends that macro so that three integer inputs are monitored.
+</blockquote>
+
+<blockquote>
+These macros could be used for a variety of tasks; such as determining whether a user input value or computer generated value should be used as the input to a module.  If more inputs are required to be monitored then the last_of_2 macro can be extended as required.  This can be done in the same way as was done for the last_of_3 macro.
+</blockquote>
+
+
+<h3>Inputs</h3>
+
+<blockquote>
+<i><b>&amp;in1 &amp;in2 &amp;in3</b></i>
+</blockquote>
+
+<blockquote>
+These integer parameters are monitored by the last_of macros.  Whenever any of these values are changed the value is passed through to the output.  This results in only the last changed value being present at the output.
+</blockquote>
+
+
+<h3>Outputs</h3>
+
+<blockquote>
+<i><b>out</b></i>
+</blockquote>
+
+<blockquote>
+The value of the last of the inputs to be changed.
+</blockquote>
+
+
+<hr>
+
+<h2>
+<a name="copy_on_trigger">copy_on_trigger</a>
+</h2>
+
+<blockquote>
+<p>This module modifies the original AVS/Express module copy_on_change.  The copy_on_change module copies an input value to an output port when the input value is changed or when a separate parameter is triggered.  By doing this the copied value can be changed without effecting the original value.  Further information can be found in the AVS/Express documentation.  The copy_on_trigger module modifies the copy_on_change module by specifying that the module is only triggered by the trigger parameter.  The module does not copy the input to the output when the input is changed.</p>
+
+<p>This module could be used in many ways.  For instance it could be used to improve the users control over module parameters.  Changing the parameters of many visualization modules causes a long delay while processing occurs.  If several parameters are changed this delay will happen several times.  In some instances these unnecessary delays can be prevented by isolating the user interface controls from the visualization modules and adding a "<i>Calculate Now</i>" button.  This button would trigger several copy_on_trigger modules that would transfer data from the user interface to the visualization modules.</p>
+
+<p>Please see the copy_on_change documentation for full information on the input and output ports of the copy_on_trigger module.</p>
+</blockquote>
+
+
+<hr>
+
+<h2>
+<a name="BreakableLink">BreakableLink</a><br>
+<a name="ToggleableLink">ToggleableLink</a><br>
+<a name="TemporaryLink">TemporaryLink</a>
+</h2>
+
+<blockquote>
+These macros all implement links that can be dynamically connected and disconnected so that the flow of data through the network can be changed. These macros could have various applications; for instance it could be used to stop the flow of data while a file is loaded and thereby prevent unnecessary visualization calculations.
+</blockquote>
+
+<blockquote>
+BreakableLink and ToggleableLink both implement a link that can maintain its connected or disconnected state for an indefinite period. The only substative difference between these modules is in the way they are triggered.  The BreakableLink macro has two trigger inputs, a connect trigger and a disconnect trigger.  These make and break the connect as appropriate. The ToggleableLink macro has a single trigger input.  This is used to toggle the link between connected and disconnected states.
+</blockquote>
+
+<blockquote>
+TemporaryLink works in a significantly different way.  The macro has a single trigger input.  When this is triggered the connection is made and then immediately broken again.  Although this behaviour may appear to have limited uses it could be used in a situation where data is only required temporarily so that a module can update its output.
+</blockquote>
+
+
+<h3>Inputs</h3>
+
+<blockquote>
+<i><b>&amp;in</b></i>
+</blockquote>
+
+<blockquote>
+The input data that is to flow through the link when the link is connected. This data can be of any type.
+</blockquote>
+
+<blockquote>
+<i><b>&amp;connect</b></i>
+</blockquote>
+
+<blockquote>
+A trigger parameter that is used by the BreaklableLink macro to connect the input to the output. When this parameter is triggered(i.e. changed) the network inside the macro is altered so that the input is connected to the output.
+</blockquote>
+
+<blockquote>
+<i><b>&amp;disconnect</b></i>
+</blockquote>
+
+<blockquote>
+A trigger parameter that is used by the BreakableLink macro to disconnect the input from the output. When this parameter is triggered the network inside the macro is altered so that the input is not connected to the output.
+</blockquote>
+
+<blockquote>
+<i><b>&amp;trigger</b></i>
+</blockquote>
+
+<blockquote>
+A trigger parameter that is used by the ToggleableLink and TemporaryLink macros. When this parameter is triggered on the ToggleableLink macro the link is toggled between being connected and being disconnected.  When this parameter is triggered on the TemporaryLink macro the link is connected and then immediately broken.
+</blockquote>
+
+
+<h3>Outputs</h3>
+
+<blockquote>
+<i><b>out</b></i>
+</blockquote>
+
+<blockquote>
+When the link is connected input data flows through the macro and is output through this link. This data can be of any type and should not be affected by the macro in any way.
+</blockquote>
+
+
+
+
+<hr>
+
+<h2><a name="SortTwoValues">SortTwoValues</a></h2>
+
+<blockquote>
+SortTwoValues is a very simple module that takes two numbers, determines which is greater and outputs them. The module operates on AVS primitives and therefore can operate on any of the numerical types.
+</blockquote>
+
+<h3>Inputs</h3>
+
+<blockquote>
+<i><b>value1 &amp; value2</b></i>
+</blockquote>
+
+<blockquote>
+The numbers that are to be arranged into numerical order.
+</blockquote>
+
+<h3>Outputs</h3>
+
+<blockquote>
+<i><b>low</b></i>
+</blockquote>
+
+<blockquote>
+The lesser of the two imput numbers.
+</blockquote>
+
+<blockquote>
+<i><b>high</b></i>
+</blockquote>
+
+<blockquote>
+The greater of the two imput numbers.
+</blockquote>
+
+
+
+
+<hr>
+<h2><a name="SetArrayElement">SetArrayElement</a></h2>
+
+<blockquote>
+This macro allows an element in an array to be set by inputting an index and a value.  This macro uses the parse_v module to achieve this.
+</blockquote>
+
+<h3>Inputs</h3>
+
+<blockquote>
+<i><b>&amp;index</b></i>
+</blockquote>
+
+<blockquote>
+The integer index of the array element that should be set.  When this parameter is changed the macro assigns the number present on the value input to the appropriate array element.  The index is not checked to determine whether it is in range and AVS/Express will report an error if it is not.
+</blockquote>
+
+<blockquote>
+<i><b>&amp;value</b></i>
+</blockquote>
+
+<blockquote>
+The primitive value that should be assigned to the array element.  Changing this parameter <i>does not</i> cause the array element value to be updated.  To set the array element value the the index parameter must be triggered.
+</blockquote>
+
+<blockquote>
+<i><b>&amp;data_array</b></i>
+</blockquote>
+
+<blockquote>
+The primitive array whose elements are to be set.  This array can be of any primitive type.
+</blockquote>
+
+
+<h3>Outputs</h3>
+
+<blockquote>
+<i><b>data_array</b></i>
+</blockquote>
+
+<blockquote>
+The primitive array whose elements have been set.  This output is a reference to the same array as the data_array input.  It is not a separate array in memory.  The output is only provided as a convenience so that clear networks can be formed more easily.
+</blockquote>
+
+
+
+<hr>
+
+<h2>
+<a name="kill_parent">kill_parent</a><br>
+<a name="kill_grandparent">kill_grandparent</a><br>
+<a name="kill_greatgrandparentk">kill_greatgrandparent</a>
+</h2>
+
+<blockquote>
+These macros delete the ancestors of the macro at various levels. The kill_parent macro causes the macro's parent to be removed when it is triggered. This also causes the macro itself and all of its siblings to be removed.  The kill_grandparent macro causes the macro's grandparent and all its subobjects to be removed. Similarly the kill_greatgrandparent causes the macro's great-grandparent and all its subobjects to be removed.
+</blockquote>
+
+<blockquote>
+These macros should be used with care.  If a kill_parent macro is placed directly within an application object then it will remove the entire application when triggered.  Any changes made to the application network will be lost.  It should be noted that high-level objects such as <TT>Libraries</TT> and <TT>Applications</TT> are protected by AVS/Express and hence cannot be deleted.
+</blockquote>
+
+<blockquote>
+kill_grandparent and kill_greatgrandparent are both derived from the kill_parent macro.  If ancestors further removed are required to be deleted then the kill_parent macro can be extended further.
+</blockquote>
+
+<h3>Inputs</h3>
+
+<blockquote>
+<i><b>&amp;trigger</b></i>
+</blockquote>
+
+<blockquote>
+When this parameter is triggered the appropriate ancestor object is removed.
+</blockquote>
+
+<hr>
+
+
+
+
+<h3>Files</h3>
+
+<blockquote>
+<I>iac_proj/common/ne_wdgts.v</I> contains the V definitions of the Increment, Decrement, Stepper, last_of_2, last_of_3, BreakableLink, ToggleableLink, TemporaryLink, SortTwoValues, SetArrayMember, kill_parent, kill_grandparent and kill_greatgrandparent macros.
+</blockquote>
+
+<h3>Other Notes</h3>
+
+<blockquote>
+The NetworkWidgets library inherits its process. As this library contains no procedural code, the process is not important.  The CommonMods library contains all procedural code used by the Common project and should be compiled.
+</blockquote>
+
+
+<h3>Authors</h3>
+
+<blockquote><pre>
+Andrew Dodd, Various
+</pre></blockquote>
+
+<h3>Contact</h3>
+
+<blockquote><pre>
+International AVS Centre
+Manchester Visualization Centre
+Manchester Computing
+University of Manchester
+Oxford Road
+Manchester
+United Kingdom
+M13 9PL
+</pre></blockquote>
+
+</body>
+</html>
+

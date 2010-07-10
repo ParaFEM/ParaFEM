@@ -1,0 +1,113 @@
+IAC Common Components
+---------------------
+
+This directory ( iac_proj/common/ ) contains all the V code, source code,
+HTML documentation, and installation information for the IAC Common 
+components. These libraries contain a variety of macros that are common to
+a number of IAC projects, such as the standard User Interface macros. The
+macros should also be of general use to many visualization projects. The
+components are packaged in the same way as all other IAC Projects.
+
+The directory should be placed into your existing project directory, which
+should already contain the IAC Project File structure, i.e., the iac_proj/,
+iac_lib/ and v/ directories.
+
+The file INSTALL contains information on how to edit the existing IAC
+files: a single line addition to the iac_proj/iac_proj.v file, to add the
+new Common project, and additions to one or more of files in the iac_lib/
+directory, to link appropriate objects to the top-level IAC library page.
+
+Once the files have been correctly installed, the low-level modules of the new
+project may be compiled. If you opt to leave the process unspecified, it will
+by default use the "express" process. Doing so means the module may be
+compiled by using one of the following commands in the top-level directory of
+your project (whilst AVS/Express is not running):
+
+	base -comp_proc express -exit
+or
+	make -f express.mk
+
+	Using the 'make' command, requires that the express.mk file already
+exists, and has been updated accordingly.
+
+	If you modify the Common project, and elect to specify the process
+as "user" or another user-defined process, then the module may be compiled
+without having to exit the AVS/Express application. Use the following command
+in the VCP to compile the module:
+
+	$compile IAC_PROJ.Common.CommonMods
+
+	Users of the Developer's Edition may select the module in the 
+relevant Templates library, and choose 'compile' from the Project menu.
+
+Files
+-----
+
+The following files can be found in the iac_proj/common/ directory.
+
+INSTALL 	Contains installation instructions for editing the iac_proj.v
+		and iac_lib/ files. This file should not be edited as the
+		future installation script will use this file.
+
+common.v	Creates the IAC_PROJ.Common library.
+
+cmn-mods.v	Creates the CommonMods library containing the low-level
+		modules TrueFalseCore, BreakLinkCore and RandomNumCore.
+
+ui-wdgts.v	Creates the UIWidgets library containing the macros
+		SmartTextTypein, SmartFieldTypein, titleLabel, mainTitleLabel,
+		IAC_StandardUI and the parameter group SmartTypeinParams.
+
+io-wdgts.v	Creates the IOWidgets library containing the macros
+		CreateIndexedFilename, CreateIndexedFilenameUI,
+		createIndexedFilename, AnimFilename, AnimFilenameUI,
+		animFilename and the parameter groups IndexedFileParams
+		and AnimLoopParams.
+
+ne-wdgts.v	Creates the NetworkWidgets library containing the macros
+		Increment, Decrement, Stepper, last_of_2, last_of_3, BreakableLink,
+                ToggleableLink, TemporaryLink, SortTwoValues, SetArrayMember,
+                kill_parent, kill_grandparent and kill_greatgrandparent.
+
+lg-wdgts.v	Creates the LogicWidgets library containing the macros
+                If..., Toggle, Switch and parse_v_on...
+
+ms-wdgts.v	Creates the MiscWidgets library containing the macro
+                random_num.
+
+tfmod.c         The C source code for the TrueFalseCore module.
+
+bklmod.c        The C source code for the BreakLinkCore module.
+
+randmod.c       The C source code for the RandomNumCore module.
+
+doc_ne.html	HTML documentation for the low-level modules.
+
+doc_ui.html	HTML documentation for the UIWidgets library.
+
+doc_io.html	HTML documentation for the IOWidgets library.
+
+doc_ne.html	HTML documentation for the NetworkWidgets library.
+
+doc_lg.html	HTML documentation for the LogicWidgets library.
+
+doc_ms.html	HTML documentation for the MiscWidgets library.
+
+README		This file.
+
+
+Generated Files
+---------------
+
+When the project is compiled, the following files will be generated. Once
+compiled, you may safely remove these files; any future recompilations
+will regenerate these files.
+
+gen.h	        AVS/Express generated header file.
+
+gen.cxx	        AVS/Express generated source code.
+
+bklmod.o        Intermediate object files.
+tfmod.o
+randmod.o
+

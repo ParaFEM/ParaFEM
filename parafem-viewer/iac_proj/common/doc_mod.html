@@ -1,0 +1,312 @@
+<!DOCTYPE html PUBLIC "-//w3c//dtd html 4.0 transitional//en">
+<html>
+<head>
+   <title>Common Modules</title>
+</head>
+<body bgcolor="#92BFBF">
+
+<h1>Common Modules</h1>
+
+<h3>Synopsis</h3>
+
+<blockquote>
+The library contains modules used in macros in the Common project.  These modules contain procedural code and hence require compilation.
+</blockquote>
+
+<hr>
+
+<h2><a name="TrueFalseCore">TrueFalseCore</a></h2>
+
+<blockquote>
+
+<pre>
+   module TrueFalseCore &lt;src_file="tfmod.c"&gt; {
+      int+IPort2 trigger = 0;
+      int+IPort2 state = 0;
+
+      omethod+req TF_update(
+         .state+read+notify+req,
+         .trigger+notify,
+         .state_out+nonotify+write,
+         .state_true+nonotify+write,
+         .state_false+nonotify+write
+      ) = "TF_update";
+
+      boolean+OPort2 state_out;
+      boolean+OPort2 state_true;
+      boolean+OPort2 state_false;
+   };
+</pre>
+
+</blockquote>
+
+<h3>Description</h3>
+
+<blockquote>
+<p>The TrueFalseCore module provides the basis for condition execution of network components.  The module evaluates the input expression for logical truth.  If the expression is <tt>TRUE</tt> (i.e. non-zero) then the module triggers the <tt>state_true</tt> output.  Otherwise the expression is <tt>FALSE</tt> (i.e. zero) and the module triggers the <tt>state_false</tt> output.  The logical state of the expression is also output on the <tt>state_out</tt> output.</p>
+
+<p>The specific meaning of 'triggered' should be noted.  When the value of a network component is updated AVS/Express sends a signal to all the components linked to it indicating that it has been updated.  This is called a trigger signal.  A trigger is sent whenever a value is updated with either a different value or the same value.  Normally the trigger signal is used to notify other modules that new data is available.  However it can be used to simply signify that something has happened.  This is now the <tt>parse_v</tt> module uses its trigger input.  Whenever a signal is received on the trigger input the parse_v module processes the supplied v code.</p>
+
+<p>From this description an obvious use of the TrueFalseCore module can be seen. By connecting the trigger outputs of a <tt>TrueFalseCore</tt> module to two <tt>parse_v</tt> modules, two alternative pieces of v code can be processed. The v code processed would be selected by whether the supplied value was true or false. Several others modules such as copy_on_change, <a href="doc_ne.html#BreakableLink">BreakableLink</a> and several of the Database modules also have trigger inputs and can be used in similar ways. If more complex logic is required several TrueFalseCore modules can be connected together. Alternatively v statements can be used to express a logical statement.</p>
+
+<p>The TrueFalseCore module is extensively used in the <a href="doc_lg.html">LogicWidgets</a> library.  This library contains more user friendly and specific versions of macro.  It also contains a number of alternative uses of this module, such as the <a href="doc_lg.html#Toggle">Toggle</a> macro.</p>
+</blockquote>
+
+
+<h3>Inputs</h3>
+
+<blockquote>
+<b><i>trigger</i></b>
+</blockquote>
+
+<blockquote>
+This integer parameter is a trigger input to the TrueFalseCore module.  When this parameter is triggered the value on the <tt>state</tt> input of the module is evaluated and the appropriate outputs triggered.  Changing the <tt>state</tt> input also causes the input to be evaluated.  However it is possible to cause the module to re-trigger without altering the <tt>state</tt> by using this input.  An example of its use can be seen in the <a href="doc_lg.html#Toggle">Toggle</a> macro.
+</blockquote>
+
+<blockquote>
+<b><i>state</i></b>
+</blockquote>
+
+<blockquote>
+This integer parameter is evaluated by the module to determine which output is triggered.  If the parameter is zero than the <tt>state_false</tt> output is triggered, otherwise the <tt>state_true</tt> output is triggered.  The state input is just a simple number; however the v code logic operators can be used to create more complex logical statements.  This is done in many of the macros in the <a href="doc_lg.html">LogicWidgets</a> library.
+</blockquote>
+
+
+
+<h3>Outputs</h3>
+
+<blockquote>
+<b><i>state_out</i></b>
+</blockquote>
+
+<blockquote>
+This integer parameter is used to output the evaluated state of the input.  In logical terms this parameter has the same value as the <tt>state</tt> input.  However it is restricted to a true binary representation of 0 and 1 only.  If the <tt>state</tt> input is <tt>TRUE</tt> a 1 is output, otherwise a 0 is output.  This parameter is triggered whenever the input is changed.
+</blockquote>
+
+<blockquote>
+<b><i>state_true</i></b>
+</blockquote>
+
+<blockquote>
+This integer parameter is triggered whenever the <tt>state</tt> input evaluates to <tt>TRUE</tt>. The actual value of this parameter is not significant and it should <b>not</b> be accessed.
+</blockquote>
+
+<blockquote>
+<b><i>state_false</i></b>
+</blockquote>
+
+<blockquote>
+This integer parameter is triggered whenever the <tt>state</tt> input evaluates to <tt>FALSE</tt>. The actual value of this parameter is not significant and it should <b>not</b> be accessed.
+</blockquote>
+
+<hr>
+
+
+
+<h2><a name="BreakLinkCore">BreakLinkCore</a></h2>
+
+<blockquote>
+
+<pre>
+   module BreakLinkCore &lt;src_file="bklmod.c"&gt; {
+      ilink in;
+      int+IPort2 make;
+      int+IPort2 break;
+
+      omethod+req BKL_update(
+         .in+read+notify+req,
+         .make+read+notify,
+         .break+read+notify,
+         .out+nonotify+write
+      ) = "BKL_update";
+
+      olink out;
+   };
+</pre>
+
+
+</blockquote>
+
+<h3>Description</h3>
+
+<blockquote>
+<p>The BreakLinkCore module implements a network link that can be dynamically made and broken.  This allows the flow of data through a application network to be more tightly controlled.  The BreakLinkCore module provides two trigger inputs, one of which makes the link and one of which breaks the link.  This module is used in two Functional macros, <a href="doc_ne.html#BreakableLink">BreakableLink</a> and <a href="doc_ne.html#ToggleableLink">ToggleableLink</a>.  The BreakableLink macro presents a very simple wrapper around the module and does not affect the module functionality.  The ToggleableLink macro combines the BreakLinkCore module with the TrueFalseCore module to implement a link that can be toggled between being connected and disconnected.</p>
+
+<p>A breakable link can be created using two <tt>parse_v</tt> modules.  This is now this macro was implemented in the original version of the Common library.  However using specific C code means that this module should function significantly quicker than the original macro.</p>
+</blockquote>
+
+
+<h3>Inputs</h3>
+
+<blockquote>
+<i><b>&amp;in</b></i>
+</blockquote>
+
+<blockquote>
+The input data that is to flow through the link when the link is connected. This data can be of any type.
+</blockquote>
+
+<blockquote>
+<i><b>make</b></i>
+</blockquote>
+
+<blockquote>
+The trigger parameter that is used to make the link. When this parameter is triggered the program code in the BreakLinkCore module makes the connection from the input to the output.
+</blockquote>
+
+<blockquote>
+<i><b>break</b></i>
+</blockquote>
+
+<blockquote>
+The trigger parameter that is used to break the link. When this parameter is triggered the program code in the BreakLinkCore module disconnects the output from the input.
+</blockquote>
+
+
+<h3>Outputs</h3>
+
+<blockquote>
+<i><b>out</b></i>
+</blockquote>
+
+<blockquote>
+When the link is connected input data flows through the module and is output through this link. This data can be of any type and should not be affected by the module in any way.
+</blockquote>
+
+
+<hr>
+
+<h2><a name="RandomNumCore">RandomNumCore</a></h2>
+
+<blockquote>
+<pre>
+   module RandomNumCore &lt;src_file="randmod.c"&gt; {
+
+      RandomNumParams+IPort2 &amp;RandomNumParams;
+
+      int num_vals =&gt; RandomNumParams.num_vals;
+      float min_val =&gt; RandomNumParams.min_val;
+      float max_val =&gt; RandomNumParams.max_val;
+      int rseed =&gt; RandomNumParams.rseed;
+
+      omethod+req+notify_inst RAND_update(
+         .num_vals+read+notify+req,
+         .min_val+read+notify+req,
+         .max_val+read+notify+req,
+         .rseed+read+notify,
+         .out_vals+write
+      ) = "RAND_update";
+
+      float+OPort2 out_vals[num_vals];
+   };
+</pre>
+</blockquote>
+
+
+<h3>Description</h3>
+
+<blockquote>
+The RandomNumCore module generates an array of random numbers between specified maximum and minimum values.  The resultant array has a type of float.  The module also allows a seed value to be set.  Pseudo-random numbers are generated from a seed value using a set algorithm.  Normally the seed value is derived from a measured value such as key-press timing.  However by using a definite value as the seed, a constant defined sequence of random numbers can be generated.  This technique is used in the <a href="../Ellipse/doc_umac.html">Ellipse</a> project to generate predictable test data.
+</blockquote>
+
+
+<h3>Inputs</h3>
+
+<blockquote>
+<i><b>&amp;RandomNumParams</b></i>
+</blockquote>
+
+<blockquote>
+Reference to the parameter block, which contains real instances of the parameters for the RandomNumCore module.
+</blockquote>
+
+<blockquote>
+<b><i>num_vals</i></b>
+</blockquote>
+
+<blockquote>
+The number of random numbers that should be generated. The parameter is of type int. Normally the value of this parameter is found by referring to the parameter block, which is referenced by the &amp;RandomNumParams input.
+</blockquote>
+
+<blockquote>
+<b><i>min_val max_val</i></b>
+</blockquote>
+
+<blockquote>
+The minimum and maximum values that define the range of the generated random numbers. The parameters are of type float.  All generated random numbers will be between these two values. If the specified minimum value is greater than the maximum value then the two parameters are swapped internally before the random numbers are generated. Normally the value of this parameter is found by referring to the parameter block, which is referenced by the &amp;RandomNumParams input.
+</blockquote>
+
+<blockquote>
+<b><i>rseed</i></b>
+</blockquote>
+
+<blockquote>
+The seed value used to setup the random number generator. The parameter is of type int. If the seed value does not have a value then the random number generator is not reinitialized. If the seed value does have a specific value then the random number generator is reinitialized with that value every time the output is generated. Normally the value of this parameter is found by referring to the parameter block, which is referenced by the &amp;RandomNumParams input.
+</blockquote>
+
+
+<h3>Outputs</h3>
+
+<blockquote>
+<b><i>out_vals[num_vals]</i></b>
+</blockquote>
+
+<blockquote>
+An array containing the generated random numbers.  The array has a type of float.
+</blockquote>
+
+
+
+<hr>
+
+<h3>Utility Modules</h3>
+
+<blockquote>
+The low-level TrueFalseCore module is used by many of the Functional Macros in the <a href="doc_lg.html">LogicWidgets</a> library.  The low-level BreakLinkCore module is used by the <a href="doc_ne.html#BreakableLink">BreakableLink</a> and <a href="doc_ne.html#ToggleableLink">ToggleableLink</a> Functional Macros.
+</blockquote>
+
+
+<h3>Files</h3>
+
+<blockquote>
+<i>iac_proj/common/cmn_mods.v</i> contains the TrueFalseCore, BreakLinkCore and RandomNumCore module V definitions.
+</blockquote>
+
+
+<h3>Other Notes</h3>
+
+<blockquote>
+The low-level CommonMods library containing these low-level modules does not specify a process. By default the <TT>express</TT> process will be used.
+</blockquote>
+
+
+<h3>Author</h3>
+
+<blockquote><pre>
+Andrew Dodd, International AVS Centre
+</pre></blockquote>
+
+
+<h3>Contact</h3>
+
+<blockquote><pre>
+International AVS Centre
+Manchester Visualization Centre
+Manchester Computing
+University of Manchester
+Oxford Road
+Manchester
+United Kingdom
+M13 9PL
+</pre></blockquote>
+
+
+<h3>See Also</h3>
+
+<blockquote>
+<a href="doc_lg.html">LogicWidgets</a>, <a href="doc_ne.html#BreakableLink">BreakableLink</a>, <a href="doc_ne.html#ToggleableLink">ToggleableLink</a>
+</blockquote>
+
+</body>
+</html>
+
