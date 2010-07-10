@@ -1,0 +1,29 @@
+# IAC Project Installation Information - DO NOT EDIT!
+#
+# Insert the following line into the iac_proj/iac_proj.v file
+  "../iac_proj/common/common.v" Common;
+# In the following iac_lib file
+common.v
+# insert the following line
+  NElink UIWidgets => Templates.IAC_PROJ.Common.UIWidgets;
+# In the following iac_lib file
+common.v
+# insert the following line
+   NElink IOWidgets => Templates.IAC_PROJ.Common.IOWidgets;
+# In the following iac_lib file
+common.v
+# insert the following line
+   NElink NetworkWidgets => Templates.IAC_PROJ.Common.NetworkWidgets;
+# In the following iac_lib file
+common.v
+# insert the following line
+   NElink LogicWidgets => Templates.IAC_PROJ.Common.LogicWidgets;
+# In the following iac_lib file
+common.v
+# insert the following line
+   NElink MiscWidgets => Templates.IAC_PROJ.Common.MiscWidgets;
+# In the following iac_lib file
+common.v
+# insert the following line
+   NElink CommonMods => Templates.IAC_PROJ.Common.CommonMods;
+

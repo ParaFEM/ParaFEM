@@ -1,0 +1,341 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 3.2//EN">
+<html>
+<head>
+<title>UIWidgets</title>
+</head>
+<body bgcolor="#92bfbf">
+
+<h1>UIWidgets</h1>
+
+<h3>Synopsis</h3>
+
+<blockquote>
+This library contains common macros that are intended to make designing a user interface for a module easier and quicker.
+</blockquote>
+
+<hr>
+
+<h2><a name="SmartTypein">Smart Typein Macros</a></h2>
+
+<blockquote>
+The Smart Typein Macros are a group of three macros that are intended to improve upon the standard components UIfieldTypein and UItextTypein. The purpose of these macros is to group a label and a text box into a single component so that laying out a user interface becomes a simpler process. The Smart Typein macros improve upon the originals by providing for simpler and more intelligent customization, and by providing a parameter block so that all Typein macros can easily share the same set of parameters.
+</blockquote>
+
+<h3><a name="SmartTypeinParams">SmartTypeinParams</a></h3>
+
+<blockquote>
+This parameter block contains three integer parameters that specify how the label and text field should be positioned. This parameter block is used by both SmartTextTypein and SmartFieldTypein and it is intended that groups of Typein macros should share a single block so that the positioning can be altered easily. As well as the components shown below the parameter block also inherits components from the GMOD.hconnect module. This module is used to provide for automatic connection of SmartTypein macros.
+</blockquote>
+
+<blockquote>
+<i><b>total_width</b></i>
+</blockquote>
+
+<blockquote>
+The total width of the label, offset and text field in pixels.
+</blockquote>
+
+<blockquote>
+<i><b>label_width</b></i>
+</blockquote>
+
+<blockquote>
+The width of the label text in pixels.
+</blockquote>
+
+<blockquote>
+<i><b>offset</b></i>
+</blockquote>
+
+<blockquote>
+The width of the gap between the label text and the text field in pixels. The text field takes up the remainder of the space after the label and offset have been accounted for.
+</blockquote>
+
+
+
+<h3><a name="SmartTextTypein">SmartTextTypein</a></h3>
+
+<blockquote>
+This macro positions a label and a text field box next to each other as specified in the referenced SmartTypeinParams parameter group. Apart from the positioning of components this macro functions in exactly the same way as the standard UItextTypein macro.
+</blockquote>
+
+<h3>Inputs</h3>
+
+<blockquote>
+<i><b>&amp;UIparent</b></i>
+</blockquote>
+
+<blockquote>
+A link to User Interface component that should manage the drawing of the SmartTextTypein object.
+</blockquote>
+
+<blockquote>
+<i><b>&amp;slabel</b></i>
+</blockquote>
+
+<blockquote>
+A link to the string that should be displayed as the label for this text box.
+</blockquote>
+
+<blockquote>
+<i><b>&amp;stext</b></i>
+</blockquote>
+
+<blockquote>
+A link to the string that is to be used to store the text displayed in the text box. If this string has a value then it is displayed initially.
+</blockquote>
+
+<blockquote>
+<i><b>&amp;SmartTypeinParams</b></i>
+</blockquote>
+
+<blockquote>
+Reference to the parameter block, which contains real instances of the positioning parameters for the SmartTextTypein function. If a parameter block is already present then this link is made automatically.
+</blockquote>
+
+
+
+<h3><a name="SmartFieldTypein">SmartFieldTypein</a></h3>
+
+<blockquote>
+This macro positions a label and a numerical field box next to each other as specified in the referenced SmartTypeinParams parameter group. Apart from the positioning of components this macro functions in exactly the same way as the standard UIfieldTypein macro.
+</blockquote>
+
+<h3>Inputs</h3>
+
+<blockquote>
+<i><b>&amp;UIparent</b></i>
+</blockquote>
+
+<blockquote>
+A link to User Interface component that should manage the drawing of the SmartFieldTypein object.
+</blockquote>
+
+<blockquote>
+<i><b>&amp;flabel</b></i>
+</blockquote>
+
+<blockquote>
+A link to the string that should be displayed as the label for this text box.
+</blockquote>
+
+<blockquote>
+<i><b>&amp;fval</b></i>
+</blockquote>
+
+<blockquote>
+A link to the field that is to be used to store the number displayed in the field box. If this field has a value then it is displayed initially.
+</blockquote>
+
+<blockquote>
+<i><b>&amp;fmin</b></i>
+</blockquote>
+
+<blockquote>
+A link to the field that specifies the minimum value allowed in the field box.
+</blockquote>
+
+<blockquote>
+<i><b>&amp;fmax</b></i>
+</blockquote>
+
+<blockquote>
+A link to the field that specifies the maximum value allowed in the field box.
+</blockquote>
+
+<blockquote>
+<i><b>&amp;SmartTypeinParams</b></i>
+</blockquote>
+
+<blockquote>
+Reference to the parameter block, which contains real instances of the positioning parameters for the SmartTextTypein function. If a parameter block is already present then this link is made automatically.
+</blockquote>
+
+
+<hr>
+
+<h2><a name="video">VideoControl</a></h2>
+
+<blockquote>
+The VideoControl macro and its associated parameter group and altered loop module implement a graphical control that allows the user to interact with a loop through an interface similar to that of a standard video player. This module has many possible uses but it is primarily intended to be used to implement simple animation within modules. The VideoControl user interface allows the user to run the loop forwards and backwards, stop the loop running, step through the loop forward and backward, and reset the loop to its start and the end values.
+</blockquote>
+<blockquote>
+The altered loop module, VideoLoop, interacts with the VideoControl macro through the VideoLoopParams common parameter block. The parameter block contains parameters for all the actions mentioned above. It also contains input parameters through which the starting, ending and incrementing values can be specified and a output parameter which contains the current count value of the loop. These additional parameters are present so that that user interface controls can be easily combined with the VideoControl to provide for complete control of the loop module. This facility can be seen in the <a
+href="doc_io.html#AnimFilename">animFilename</a> macro.
+</blockquote>
+
+<h3>Parameter Block</h3>
+
+<blockquote>
+<i><b>&amp;VideoLoopParams</b></i>
+</blockquote>
+
+<blockquote>
+Reference to the parameter block, which contains real instances of the variables that control the operation of the VideoLoop module.
+</blockquote>
+
+<blockquote>
+<i><b>VideoLoopParams.reset</b></i>
+</blockquote>
+
+<blockquote>
+When set to 1 this parameter will reset the sequence number to the start value.
+</blockquote>
+
+<blockquote>
+<i><b>VideoLoopParams.reset_back</b></i>
+</blockquote>
+
+<blockquote>
+When set to 1 this parameter will reset the sequence number to the end value.
+</blockquote>
+
+<blockquote>
+<i><b>VideoLoopParams.run</b></i>
+</blockquote>
+
+<blockquote>
+When set to 1 this parameter will start the loop counting upwards from the start value. This parameter is set to 0 when the stop button is pressed. This causes a network update that stops the loop running both forward and backwards.
+</blockquote>
+
+<blockquote>
+<i><b>VideoLoopParams.run_back</b></i>
+</blockquote>
+
+<blockquote>
+When set to 1 this parameter will start the loop counting downwards from the end value.
+</blockquote>
+
+<blockquote>
+<i><b>VideoLoopParams.step</b></i>
+</blockquote>
+
+<blockquote>
+When set to 1 this parameter will increase the loop count by the increment value once before stopping.
+</blockquote>
+
+<blockquote>
+<i><b>VideoLoopParams.step_back</b></i>
+</blockquote>
+
+<blockquote>
+When set to 1 this parameter will decrease the loop count by the increment value once before stopping.
+</blockquote>
+
+<blockquote>
+<i><b>VideoLoopParams.cycle</b></i>
+</blockquote>
+
+<blockquote>
+Setting this parameter to 1 will allow the sequence to cycle continuously through the specified loop, until either the sequence is stopped by turning off the run parameter or the cycle toggle is de-selected. In the latter case the sequence continues until it reaches the end value.
+</blockquote>
+
+<blockquote>
+<i><b>VideoLoopParams.start_value</b></i>
+</blockquote>
+
+<blockquote>
+The first number to be used in the sequence generation.
+</blockquote>
+
+<blockquote>
+<i><b>VideoLoopParams.end_value</b></i>
+</blockquote>
+
+<blockquote>
+The last number to be used in the sequence generation. The value of the increment parameter may result in this value not being reached; in this instance the numbers generated will not exceed this end value.
+</blockquote>
+
+<blockquote>
+<i><b>VideoLoopParams.incr</b></i>
+</blockquote>
+
+<blockquote>
+The amount to increment the sequence number by each time the loop executes.
+</blockquote>
+
+<h3>Other Notes</h3>
+
+<blockquote>
+Due to the underlying behaviour of the AVS/Express loop module the VideoControl component does not behave exactly as would be expected. In particular if the single step controls are used to move to an intermediate frame and then the loop is run the loop does not start counting from the current frame.  Instead it starts at either the start or end value depending upon whether the loop is being run forward or backwards.
+</blockquote>
+
+<hr>
+
+<h2><a name="labels">titleLabel &amp; mainTitleLabel</a></h2>
+
+<blockquote>
+titleLabel is a trivial modification of the UIlabel template that specifies that the label text should left aligned and that the label should be the same width as the container of the label. mainTitleLabel extends from titleLabel and as well as specifiying the above it also specifies that the label should consist of white text on a blue background. This is used within the IAC_StandardUI mod panel to provide a standardised look for IAC user interface panels.
+</blockquote>
+
+<hr>
+
+<h2><a name="IAC_StandardUI">IAC_StandardUI</a></h2>
+
+<blockquote>
+The IAC_StandardUI is a macro containing some of the basic first elements necessary for creating a module control panel. These are the following:-
+</blockquote>
+
+<blockquote>
+<i><b>UImod_panel panel</b></i>
+</blockquote>
+
+<blockquote>
+This object defines the behaviour that allows a collection of user interface components to act as a module control panel. All components that are to be displayed in the control panel should be connected to this object, either directly or indirectly. The user interface components in this library are setup so that they will automatically connect to this panel when they are instanced.
+</blockquote>
+<blockquote>
+As well as the default behaviour the UImod_panel used here also specifies that the display name used in the modules list box should be the same as the name of the enclosing macro. It also specifies that the parent property should be exposed. The help message displayed should be replaced by something useful.
+</blockquote>
+
+<blockquote>
+<i><b>mainTitleLabel mainTitleLabel</b></i>
+</blockquote>
+
+<blockquote>
+This object generates a title box at the top of the module control panel which is displayed in the standard white text on a blue background.
+</blockquote>
+
+<blockquote>
+<i><b>SmartTypeinParams</b></i>
+</blockquote>
+
+<blockquote>
+This parameter block contains the parameters used in the positioning of any SmartTypein macros that are added to the container macro. The SmartTypein macros are designed with a reference to this component already set and will connect to it automatically.
+</blockquote>
+
+<hr>
+
+<h3>Files</h3>
+
+<blockquote>
+<I>iac_proj/common/ui_wdgts.v</I> contains the SmartTypeinParams parameter group and the SmartTextTypein, SmartFieldTypein, titleLabel, mainTitleLabel and IAC_StandardUI macros V definitions.
+</blockquote>
+
+<h3>Other Notes</h3>
+
+<blockquote>
+The UIWidgets library inherits its process. As this library contains no procedural code, the process is not important.
+</blockquote>
+
+<h3>Authors</h3>
+
+<blockquote><pre>
+Andrew Dodd
+</pre></blockquote>
+
+<h3>Contact</h3>
+
+<blockquote><pre>
+International AVS Centre
+Manchester Visualization Centre
+Manchester Computing
+University of Manchester
+Oxford Road
+Manchester
+United Kingdom
+M13 9PL
+</pre></blockquote>
+
+</body>
+</html>
+
