@@ -237,7 +237,7 @@ The *Axis* module provides control over the orientation axis glyph in the 3D Vie
 
 Obtaining high-quality output can be achieved by using the *Output Image* module. Figure 19 shows the user interface for this module. The top panel allows the output file to be set using the *Browse* button and type-in, along with the *Write File* button which saves the current image in the viewer to the selected file. The toggle *Overwrite* over-rides the warning when a file is to be over-written. The toggle *Flip* will vertically flip the output image.
 
-||http://parafem.googlecode.com/svn/trunk/parafem-viewer/docs/images/mod_output_image_a.png mod_output_image_b.png||
+||http://parafem.googlecode.com/svn/trunk/parafem-viewer/docs/images/mod_output_image_a.png http://parafem.googlecode.com/svn/trunk/parafem-viewer/docs/images/mod_output_image_b.png||
 ||_Figure 19: User interface of the Output Image module_||
 
 The second panel provides a selection of image formats to choose from. Depending on the format selected the subsequent panels will be active or inactive as necessary. These panels control *Bits Per Pixel*, *Color Type*, *Compression Type*, *Reduction Type* and *File Type*.
