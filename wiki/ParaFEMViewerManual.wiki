@@ -71,154 +71,175 @@ The 3D View displays the currently loaded model and result data using the user s
 ||http://parafem.googlecode.com/svn/trunk/parafem-viewer/docs/images/overview.jpg||
 ||_Figure 1: The ParaFEM-Viewer user interface_||
 
-The Control Panel is where most of the user interface resides for controlling what model and data is loaded and how that data is visualized in the 3D View.  Figure 1 shows an overview of the Control Panel. The control panel includes a number of icons for manipulating the scene and controlling interaction in the 3D View.
+The Control Panel is where most of the user interface resides for controlling what model and data is loaded and how that data is visualized in the 3D View. Figure 1 shows an overview of the Control Panel. The control panel includes a number of icons for manipulating the scene and controlling interaction in the 3D View.
 
-||<tablewidth="641px" width="47px">{{attachment:cp_transform.png}}||<width="594px">'''Transform Options<<BR>>'''These three icons allow the user to toggle between interactive transformation in the 3D View of (a) the '''Object''', (b) the '''Camera''' and (c) the '''Lights'''.||
-||<width="47px">{{attachment:cp_transform_mode.png}}||<width="594px">'''Transform Modes'''<<BR>>These four options allow the user to toggle between the interactive transformation modes assigned to the ''Left-Mouse-Button'' in the 3D View. The four modes are (a) '''Rotation''', (b) '''Scaling''', (c) '''XY'''-axis '''Translation''' and (d) '''Z'''-axis '''Translation'''.||
-||<width="47px">{{attachment:cp_rnc.png}}||<width="594px">'''Reset, Normalize and Centre'''<<BR>>These four icons allow the user to reset the 3D View when required. The four actions are (a) '''Reset''' the view, (b) '''Normalize''' to the current viewer window, (c) '''Centre''' the view based on the current viewpoint and (d) a combination of all three actions: '''Reset-Normalize-Centre''' (known as RNC). The latter option is the one most commonly used as it fits the loaded model into a sensible position, scale and orientation.||
-||<width="47px">{{attachment:cp_other.png}}||<width="594px">'''Miscellaneous Icons'''<<BR>>The first two icons are used to (a) toggle the user of an '''Alternate Object''' and (b) toggle the '''Jitter''' of the outline display. An alternate object is rendered whenever the object is interacted with e.g., rotated. When active, the alternate object will simply render the bounds of the object instead of the whole model. This is useful for large models that are rendering slowly. Jitter is used when the outline of the model is rendered to overcome rendering artifacts when the faces and lines coincide. The next two icons control (c) '''Auto-Normalize''' mode and (d) toggle '''Orthogonal''' or '''Perspective''' view modes. When data or the visualization style changes, the viewer attempts to re-fit the view of the model to the window. This can be distracting particularly when animating data. It is advised to turn Auto-Normalize off by default. The next icon (e) controls '''Bi-directional Lighting'''. Some of the model meshes will have faces orientated such that they are back-facing by default and therefore not lit very well. Bi-directional lighting allows lighting of front-face and back-face lighting. The final icon (f) toggles between '''Hardware''' and '''Software''' rendering modes. Use hardware when you have an OpenGL graphics card available.||
+||http://parafem.googlecode.com/svn/trunk/parafem-viewer/docs/images/cp_transform.png||*Transform Options*`<br>`These three icons allow the user to toggle between interactive transformation in the 3D View of (a) the *Object*, (b) the *Camera* or (c) the *Lights*.||
+||http://parafem.googlecode.com/svn/trunk/parafem-viewer/docs/images/cp_transform_mode.png||*Transform Modes*<br>These four options allow the user to toggle between the interactive transformation modes assigned to the _Left-Mouse-Button_ in the 3D View. The four modes are (a) *Rotation*, (b) *Scaling*, (c) *XY-axis Translation* and (d) *Z-axis Translation*.||
+||http://parafem.googlecode.com/svn/trunk/parafem-viewer/docs/images/cp_rnc.png||*Reset, Normalize and Centre*<br>These four icons allow the user to reset the 3D View when required. The four actions are (a) *Reset* the view, (b) *Normalize* to the current viewer window, (c) *Centre* the view based on the current viewpoint and (d) a combination of all three actions: *Reset-Normalize-Centre* (known as RNC). The latter option is the one most commonly used as it fits the loaded model into a sensible position, scale and orientation.||
+||http://parafem.googlecode.com/svn/trunk/parafem-viewer/docs/images/cp_other.png||*Miscellaneous Icons*<br>The first two icons are used to (a) toggle the user of an *Alternate Object* and (b) toggle the *Jitter* of the outline display. An alternate object is rendered whenever the object is interacted with e.g., rotated. When active, the alternate object will simply render the bounds of the object instead of the whole model. This is useful for large models that are rendering slowly. Jitter is used when the outline of the model is rendered to overcome rendering artefacts when the faces and lines coincide. The next two icons control (c) *Auto-Normalize* mode and (d) toggle *Orthogonal* or *Perspective* view modes. When data or the visualization style changes, the viewer attempts to re-fit the view of the model to the window. This can be distracting particularly when animating data. It is advised to turn Auto-Normalize off by default. The next icon (e) controls *Bi-directional Lighting*. Some of the model meshes will have faces orientated such that they are back-facing by default and therefore not lit very well. Bi-directional lighting allows lighting of front-face and back-face lighting. The final icon (f) toggles between *Hardware* and *Software* rendering modes. Use hardware when you have an OpenGL graphics card available.||
 
-The Control Panel also includes a Status Area at the bottom. Figure 2 shows the status area. The top-left shows the viewer mode and is always fixed as 3D in the ParaFEM-Viewer. The next section shows the '''Current Object''' and the '''Select Object...''' button. The objects in the ParaFEM-Viewer are hierarchically arranged and this can be seen by using the Select Object pop-up. Typically the user will want to modify the ''“Top”'' object as this allows for interaction of the whole 3D scene but excludes the legends and titles. Finally the bottom section shows the '''Progress Bar''' and '''Execution Toggles''' or ''“traffic-lights”''. Whenever ParaFEM-Viewer is performing some calculations or rendering the progress is shown in the bar. The two toggles allow for (a) disabling the progress bar and (b) disabling all execution of the ParaFEM-Viewer.
+The Control Panel also includes a Status Area at the bottom. Figure 2 shows the status area. The top-left shows the viewer mode and is always fixed as 3D in the ParaFEM-Viewer. The next section shows the *Current Object* and the *Select Object...* buttons. The objects in the ParaFEM-Viewer are hierarchically arranged and this can be seen by using the Select Object pop-up. Typically the user will want to modify the _Top_ object as this allows for interaction of the whole 3D scene but excludes the legends and titles. Finally the bottom section shows the *Progress Bar* and *Execution Toggles* or _traffic-lights_. Whenever ParaFEM-Viewer is performing some calculations or rendering the progress is shown in the bar. The two toggles allow for (a) disabling the progress bar and (b) disabling all execution of the ParaFEM-Viewer.
 
-||<tablewidth="70%">{{attachment:cp_status.png}}||
+||http://parafem.googlecode.com/svn/trunk/parafem-viewer/docs/images/cp_status.png||
 ||''Figure 2: The status area of the Control Panel''||
 
-The Control Panel also has two menus available. The '''File''' menu is not used for loading models and result data but is simply used to ''Exit'' the application. The '''Editors''' menu is used to primarily access the ''“Modules”'' of the application but also allow access to other editor panels. The Editors Menu is shown in Figure 3.
+The Control Panel also has two menus available. The *File* menu is not used for loading models and result data but is simply used to _Exit_ the application. The *Editors* menu is used to primarily access the _Modules_ of the application but also allow access to other editor panels. The Editors Menu is shown in Figure 3.
 
-||<tablewidth="70%">{{attachment:editors_menu.png}}||
-||''Figure 3: The Editors Menu options''||
+||http://parafem.googlecode.com/svn/trunk/parafem-viewer/docs/images/editors_menu.png||
+||_Figure 3: The Editors Menu options_||
 
-=== The Modules Editor ===
+== The Modules Editor ==
 
 This is where the main modules of the ParaFEM-Viewer application user interface are to be found. The modules represent the different visualization options and styles available as well as the reader user interface. Figure 4 shows the ParaFEM-Viewer list of modules.
 
-||<tablewidth="70%">{{attachment:modules_menu.png}}||
-||''Figure 4: The ParaFEM-Viewer list of modules''||
+||http://parafem.googlecode.com/svn/trunk/parafem-viewer/docs/images/modules_menu.png||
+||_Figure 4: The ParaFEM-Viewer list of modules_||
 
-The first module is '''Read FE Data''' and selecting this will show the reader user interface panel below. This is described in more detail below in the section ''Loading the FE Model and Results''.
+The first module is *Read FE Data* and selecting this will show the reader user interface panel below. This is described in more detail below in the section _Loading the FE Model and Results_.
 
-The second module is '''FE Visualization''' and this provides a user interface to a selection of visualization techniques. It is described in more detail in the section ''Visualizing the Data.''
+The second module is *FE Visualization* and this provides a user interface to a selection of visualization techniques. It is described in more detail in the section _Visualizing the Data._
 
-The third module is '''FE Style '''and its four child modules contain the user interfaces for changing the style of visualization presented. Further details are given in the ''Altering the Appearance of the Visualization'' section.
+The third module is *FE Style *and its four child modules contain the user interfaces for changing the style of visualization presented. Further details are given in the _Altering the Appearance of the Visualization_ section.
 
-The final module '''Output Image''' provides an interface for exporting images from the viewer including high-resolution output for print quality.
+The final module *Output Image* provides an interface for exporting images from the viewer including high-resolution output for print quality.
 
-=== The View Editor ===
+== The View Editor ==
 
-This editor allows more control over the view and further interface pages accessible via the drop-down ''View'' menu. The ''General'' options allow the user to specify the renderer (Hardware or Software), set the 3D view window resolution and manipulate the background colour.
+This editor allows more control over the view and further interface pages accessible via the drop-down _View_ menu. The _General_ options allow the user to specify the renderer (Hardware or Software), set the 3D view window resolution and manipulate the background colour.
 
-=== The Transform Editor ===
+== The Transform Editor ==
 
-This editor allows more control over the 3D View's trackball interaction with the scene. There are two pages available from the drop-down ''Transform'' menu.
+This editor allows more control over the 3D View's trackball interaction with the scene. There are two pages available from the drop-down _Transform_ menu.
 
-=== The Light Editor ===
+== The Light Editor ==
 
 This editor allows control over the several light sources available in the ParaFEM-Viewer to illuminate the model in the 3D View. A number of default lights are defined but more can be set or edited using this panel.
 
-=== The Camera Editor ===
+== The Camera Editor ==
 
 This editor allows detailed control over the camera and can be used to edit the tripod and lens settings as an example. Clipping planes and depth cueing options are also available.
 
-=== The Object Editor ===
+== The Object Editor ==
 
 This editor allows for more control over the individual objects in the scene hierarchy. Options and actions here apply to the Current Object as selected in the main Control Panel.
 
-The drop-down ''Object'' menu comprises the four panels (a) General, (b) Field Conversion (c) Modes and (d) Properties.
+The drop-down _Object_ menu comprises the four panels (a) General, (b) Field Conversion (c) Modes and (d) Properties.
 
-In the ''General'' panel, there is a '''Visible''' toggle to control visibility of the selected object in the scene. The '''Cached''' toggle is used to provide performance boosts with hardware graphics cards and should normally remain selected. Of particular note is the '''Cache Size (MB)''' field, which sets the ''maximum'' size of object that ParaFEM-Viewer will attempt to cache. If any loaded model exceeds the cache size set here a warning is issued. The user may then set the cache size setting to a higher value as necessary. Finally, the '''Alternate Object''' Enable toggle is of use when interacting with the scene. This is equivalent to the '''Alternate Object''' toggle button in the main ''Control Panel'' icons.
+In the _General_ panel, there is a *Visible* toggle to control visibility of the selected object in the scene. The *Cached* toggle is used to provide performance boosts with hardware graphics cards and should normally remain selected. Of particular note is the *Cache Size (MB)* field, which sets the _maximum_ size of object that ParaFEM-Viewer will attempt to cache. If any loaded model exceeds the cache size set here a warning is issued. The user may then set the cache size setting to a higher value as necessary. Finally, the *Alternate Object* Enable toggle is of use when interacting with the scene. This is equivalent to the *Alternate Object* toggle button in the main _Control Panel_ icons.
 
-=== The Datamap Editor ===
+== The Datamap Editor ==
 
-ParaFEM-Viewer comes with three default datamaps (available in the main '''FE Style''' module) but the Datamap Editor may be used to edit these as required. The datamap is responsible for mapping the data values (node result data) to a range of colours for visualization. As the data has a range ''[min,max]'' the datamap can specify a number of ranges. Each range has two control points; its minimum and maximum. Each control point then has a colour and opacity value assigned to it. With the addition of the '''Color Range Mapping''' option, the change in colour can either be in ''Step'' mode or ''Linear'' mode.
+ParaFEM-Viewer comes with some default datamaps (available in the main *FE Style* module) but the Datamap Editor may be used to edit these as required. The datamap is responsible for mapping the data values (node result data) to a range of colours for visualization. As the data has a range _[min,max]_ the datamap can specify a number of ranges. Each range has two control points; its minimum and maximum. Each control point then has a colour and opacity value assigned to it. With the addition of the *Color Range Mapping* option, the change in colour can either be in _Step_ mode or _Linear_ mode.
 
 Further details may be found in the AVS/Express documentation.
 
-=== The Print Editor ===
+== The Print Editor ==
 
-This is an additional editor that allows for direct printing of the current view. The resolution can be set here and the '''Print Setup''' button allows the printer to be selected, before '''Print''' is used to execute the job. The '''Output Image''' module is the preferred method for outputting large resolution images for later printing outside of the ParaFEM-Viewer application.
+This is an additional editor that allows for direct printing of the current view. The resolution can be set here and the *Print Setup* button allows the printer to be selected, before *Print* is used to execute the job. The *Output Image* module is the preferred method for outputting large resolution images for later printing outside of the ParaFEM-Viewer application.
 
-== Loading the FE Model and Results ==
+= Loading the FE Model and Results =
 
-Loading data in the ParaFEM-Viewer is achieved by using the '''Read FE Data''' module, accessed from the list of modules in the ''Module Editor'' page. The user interface is shown in Figure 5. The '''Browse''' button raises a file browser to select a file (one at a time). When a file is selected, the reader will parse the file and extract information about its contents. The '''FE Information''' area shows these details, along with the list of files added so far. Repeat the Browse process until all files have been added. One model file (extension “.d”) is mandatory, whereas any number of node data files may be loaded.
+Loading data in the ParaFEM-Viewer is achieved by using the *Read FE Data* module, accessed from the list of modules in the _Module Editor_ page. The user interface is shown in Figure 5. The *Browse* button raises a file browser to select a file (one at a time). When a file is selected, the reader will parse the file and extract information about its contents. The *FE Information* area shows these details, along with the list of files added so far. Repeat the Browse process until all files have been added. One model file (extension .d) is mandatory, whereas any number of node data files may be loaded.
 
-||<tablewidth="70%">{{attachment:read_fe_data.png}}||
-||''Figure 5: The Read FE Data module user interface''||
+||http://parafem.googlecode.com/svn/trunk/parafem-viewer/docs/images/mod_read_fe_data.png||
+||_Figure 5: The Read FE Data module user interface_||
 
-The '''Load Data''' button is then used to load all the data in the files. Once complete the model and any loaded results will be displayed in the 3D View, based on the current visualization settings. If data is already loaded the button will change to say '''Reload Data''' allowing a reload of all currently selected files.
+The *Load Data* button is then used to load all the data in the files. Once complete the model and any loaded results will be displayed in the 3D View, based on the current visualization settings. If data is already loaded the button will change to say *Reload Data* allowing a reload of all currently selected files.
 
-The '''Clear All Data''' button clears all the loaded data from memory but retains the list of selected files. This allows for subsequent ''re-loading'' of the data or the addition of further data files.
+The *Clear All Data* button clears all the loaded data from memory but retains the list of selected files. This allows for subsequent _re-loading_ of the data or the addition of further data files.
 
-The '''Clear All Files''' button erases both the data and the list of files. Further files must be added using the Browse button to load a new model and any result data.
+The *Clear All Files* button erases both the data and the list of files. Further files must be added using the Browse button to load a new model and any result data.
 
-== Visualizing the Data ==
+= Visualizing the Data =
 
-Visualization options are accessed in the '''FE Visualization''' module. The user interface is shown in Figure 6.
+Visualization options are accessed in the *FE Visualization* module. The user interface is shown in Figure 6.
 
-The first panel shows '''Node Data''' mapping options. The '''Colour From''' drop down menu allows selection of node data to be used to colour the loaded model using the selected Datamap. The ''“none”'' option allows for the model mesh to be shown without any node data and instead with a single uniform colour. If no node data has been loaded then only this option is available. Otherwise the ''“scalar/magnitude”'' and ''“component”'' options are available and the '''Data''' drop-down menu becomes active, listing the loaded data. If a scalar data set is selected, then the data is used directly to colour the data via the datamap. If a vector data set is selected and ''“scalar/magnitude” ''is selected then the magnitude of the vector is used to colour the data. If a vector data set is selected and ''“component” ''is selected, then the '''Component''' radio box options become active. At this point, one of the vector elements must be selected e.g., X, Y or Z from the 3D vector. The extracted scalar is then used to colour the model.
+The first panel shows *Element and Node Data* mapping options. The *Colour From* drop down menu allows selection of element or node data to be used to colour the loaded model using the selected Datamap. The _“none”_ option allows for the model mesh to be shown without any node data and instead with a single uniform colour. If no node data has been loaded then only this option is available. Otherwise the _"element"_, _“scalar/magnitude”_ and _“component”_ options are available and the *Data* drop-down menu becomes active, listing the loaded data. If a scalar data set is selected, then the data is used directly to colour the data via the datamap. If a vector data set is selected and _“scalar/magnitude” _is selected then the magnitude of the vector is used to colour the data. If a vector data set is selected and _“component” _is selected, then the *Component* radio box options become active. At this point, one of the vector elements must be selected e.g., X, Y or Z from the 3D vector. The extracted scalar is then used to colour the model.
 
-||<tablewidth="70%">{{attachment:fe_visualization.png}}||
-||''Figure 6: The FE Visualization module user interface''||
+<wiki:comment>
+Add text about min/max (from tutorial)
+</wiki:comment>
 
-The second panel '''Mesh''' provides control over the mesh deformation options. The '''Mesh''' drop-down menu allows the options of ''“undeformed”'' or ''“deformed”''. If set to undeformed the mesh is shown as defined in the model file. If set to deformed, then the '''Displacement data''' drop-down menu becomes active and any loaded data sets are listed for selection. Only vector displacements datasets should be used although any vector dataset will provide vector offset data for displacement/deformation of the mesh. The displacements can be scaled using the '''Displacement scale''' slider and type-in. By default the scale is set to 1.0 which scales the mesh according to the displacements defined in the file. Increase or decrease the scale factor to exaggerate or diminish the scaling effect. Figure 7 shows a deformed mesh.
+||http://parafem.googlecode.com/svn/trunk/parafem-viewer/docs/images/mod_viz_panel_data.png||
+||_Figure 6: The FE Visualization module user interface, showing the control panel for manipulating Element and Node Data_||
 
-||<tablewidth="70%">{{attachment:deformed_mag.png}}||
-||''Figure 7: An example deformed mesh''||
+The second panel *Time Step and Animation* allows the user to select a specific time-step in the series, if multiple time steps have been loaded. The animation controls allow the user to step forwards and backwards, play forwards and backwards or reset to the start and end of the sequence. The *Run* drop-down menu allows a choice _Once_, _Cycle_ and _Bounce_ animation modes.
 
-||<tablewidth="70%">{{attachment:deformed_mag_glyphs.png}}||
-||''Figure 8: A deformed mesh showing the displacement vectors as arrow glyphs''||
+||http://parafem.googlecode.com/svn/trunk/parafem-viewer/docs/images/mod_viz_panel_time_step.png||
+||_Figure 7: The control panel for time step and animation||
 
-The third panel '''Glyphs''' allows glyphs to be annotated to each node using any attached vector data set. Once '''Show Glyphs''' is selected, the '''Glyph data''' drop-down menu is available to select the loaded data set to be used for glyphing. The vector glyphs are represented as Arrows in the 3D view and the '''Glyph scale''' slider and type-in can be used to set the scale of rendered arrows. Again a default scale of 1.0 represents the glyphs/arrows at the size determined in the loaded file. Figure 8 shows a deformed mesh with glyphs.
+The third panel *Mesh* provides control over the mesh deformation options. The *Deform Mesh* toggle allows the enabling of deformation. If deactivated the mesh is shown as defined in the model file. If active, then the *Displacement data* drop-down menu becomes active and any loaded data sets are listed for selection. Only vector displacements datasets should be used although any vector dataset will provide vector offset data for displacement/deformation of the mesh. The displacements can be scaled using the *Displacement scale* slider and type-in. By default the scale is set to 1.0 which scales the mesh according to the displacements defined in the file. Increase or decrease the scale factor to exaggerate or diminish the scaling effect. Figure 9 shows an undeformed mesh and Figure 10 shows an example deformed mesh.
 
-The fourth panel '''Slice''' can be activated by toggling '''Show Slice'''. This enables an ''Orthogonal Slice'' tool that shows one of the X, Y or Z-axis planes passing through the bounds of the 3D model. Use the '''Axis''' radio buttons to select the plane axis and use the '''Plane''' slider and type-in to pick which slice in the axis is shown. Figure 9 shows an example slice through a model.
+||http://parafem.googlecode.com/svn/trunk/parafem-viewer/docs/images/mod_viz_panel_mesh.png||
+||_Figure 8: The control panel for mesh deformation||
 
-The fifth panel '''Transform''' provides four buttons to reset the view to four pre-defined settings. These are '''XY''', '''XZ''', and''' YZ '''for ''Front, Side ''and ''Top ''views respectively. The ''Isometric'' option sets the view to an isometric viewpoint.
+||http://parafem.googlecode.com/svn/trunk/parafem-viewer/docs/images/view_mesh_undeformed.png||
+||_Figure 9: An example mesh undeformed by default_||
 
-||<tablewidth="70%">{{attachment:slice_mag.png}}||
-||''Figure 9: Example of an Orthogonal Slice through the model mesh''||
+||http://parafem.googlecode.com/svn/trunk/parafem-viewer/docs/images/view_mesh_deformed.png||
+||_Figure 10: An example mesh deformed using a Displacement vector field_||
 
-== Altering the Appearance of the Visualization ==
+The fourth panel *Glyphs* allows glyphs to be annotated to each node using any attached vector data set. Once *Show Glyphs* is selected, the *Glyph data* drop-down menu is available to select the loaded data set to be used for glyphing. The vector glyphs are represented as Arrows in the 3D view and the *Glyph scale* slider and type-in can be used to set the scale of rendered arrows. Again a default scale of 1.0 represents the glyphs/arrows at the size determined in the loaded file. Figure 12 shows a deformed mesh with glyphs.
 
-Options for presentation are available in the '''FE Style''' module and its child modules '''Title''', '''Legend''', '''Legend Title''' and '''Axis'''. The parent module provides toggles for '''Display Legend''' and the sub-options of toggling '''Display legend title''' and '''Use text for legend'''. The type-in box allows for the over-ride text to be set. A toggle for '''Display title''' is available with a type-in for the title itself. Display axis toggles the display of the orientation axis glyph. The '''Display bounding box''' toggle controls the visibility of the models bounding box.
+||http://parafem.googlecode.com/svn/trunk/parafem-viewer/docs/images/mod_viz_panel_glyphs.png||
+||_Figure 11: The control panel for glyph tools||
 
-The drop-down menu '''Style''' sets the rendering style of the model. The available options are '''Wireframe''', '''Solid Wireframe''', '''Surface''' and '''Surface smooth'''. Figure 10 shows the mesh displayed in ''Wireframe'' mode. The outline wireframe is now coloured by any selected data.
+||http://parafem.googlecode.com/svn/trunk/parafem-viewer/docs/images/view_glyphs.png||
+||_Figure 12: An example mesh with arrow glyhps displayed for the displacement data_||
 
-Figure 11 shows the model with the ''Wireframe Solid'' option selected. The outline wireframe is shown but the faces are rendered with the background colour to enable Hidden-Line and Hidden-Surface removal. Figure 12 shows the model with the ''Surface ''option selected. This renders the solid faces with flat shading, so the shape of the model mesh can be seen more clearly. Figure 13 shows the model with the ''Surface Smooth'' option selected. This renders the solid faces of the mesh with Gourad shading to “smooth” the appearance of the surface.
+The fifth panel *Slice and Cut* can be activated by toggling *Enable*. This enables by default an _Orthogonal Slice_ tool that shows one of the X, Y or Z-axis planes passing through the bounds of the 3D model. Use the *Axis* radio buttons to select the plane axis and use the *Plane* slider and type-in to pick where the slice in the axis is made. Figure 14 shows an example slice through a model.
 
-||<tablewidth="70%">{{attachment:undeformed_mag_wireframe.png}}||
-||''Figure 10: Mesh displayed in Wireframe mode''||
+Selecting _Cut_ in the *Mode* radio box allows the tool to perform a cut operation rather than a slice, leaving a partial 3D model rather than a 2D slice. The *Cut Above* toggle swaps which side of the cut plane is removed. 
 
-||<tablewidth="70%">{{attachment:undeformed_mag_solid_wireframe.png}}||
-||''Figure 11: Example mesh rendered with Solid Wireframe option''||
+The _Free_ axis option allows an arbitrary slice/cut plane to be used. Once selected, the user should also select the _FreePlaneObj_ object from the *Select Object...* pop-up menu. The rotate and translate transformation tools can now be used on the arbitrary slice/cut place. Select _Top_ to return to normal transformation mode.
 
-||<tablewidth="70%">{{attachment:undeformed_mag_surface.png}}||
-||''Figure 12: Example mesh rendered with Surface mode''||
+<wiki:comment>
+This will change in future release: addition of specific Transform Model/Camera/Lights/FreePlane toggles.
+</wiki:comment>
 
-||<tablewidth="70%">{{attachment:undeformed_mag_surface_smooth.png}}||
-||''Figure 13: Example mesh rendered with Surface Smooth option''||
+||http://parafem.googlecode.com/svn/trunk/parafem-viewer/docs/images/mod_viz_panel_slice_and_cut.png||
+||_Figure 13: The control panel for model slicing and cutting tools_||
 
-The '''Title''' module allows more detailed control over the title displayed in the 3D view. In addition to the text itself, the ''Font'' and some text display options can be set. The '''X, Y '''and''' Z Offset '''values can be used to position the text in the viewer window.
+||http://parafem.googlecode.com/svn/trunk/parafem-viewer/docs/images/view_slice_and_bounds.png||
+||_Figure 14: Example of an Orthogonal Slice through the model mesh_||
 
-The '''Legend''' module provides more control over the position of the legend in the 3D view and the number of '''Intervals''' to define how many labels are displayed. The '''Labels Offset''' positions the label text relative to the legend. The '''Format''' type-in allows the text format to be defined using a C-style format string. Again the '''Font''' can be set, along with toggles for '''Outline''' of the legend, the visibility of '''Labels''' and the visibility of the '''Ticks'''.
+The fifth panel *Transform* provides four buttons to reset the view to four pre-defined settings. These are *XY*, *XZ*, and* YZ *for _Front, Side _and _Top _views respectively. The _Isometric_ option sets the view to an isometric viewpoint.
 
-The '''Legend Title''' has the same options available as the '''Title''' module and simply applies to the label placed near to the legend.
+= Altering the Appearance of the Visualization =
 
-The '''Axis''' module provides control over the orientation axis glyph in the 3D View. The '''Axis title''' and '''Axis scale''' type-ins allow the glyph labels and scaling to be set. The '''Font''' may also be specified. The next set of options control the appearance of the axis glyph text and their offset from the glyph.
+Options for presentation are available in the *FE Style* module and its child modules *Title*, *Legend*, *Legend Title* and *Axis*. The parent module provides toggles for *Display Legend* and the sub-options of toggling *Display legend title* and *Use text for legend*. The type-in box allows for the over-ride text to be set. A toggle for *Display title* is available with a type-in for the title itself. Display axis toggles the display of the orientation axis glyph. The *Display bounding box* toggle controls the visibility of the models bounding box.
 
-== Exporting Images ==
+The drop-down menu *Style* sets the rendering style of the model. The available options include *Wireframe*, *Solid Wireframe*, *Surface* and *Surface smooth*. Figure 15 shows the mesh displayed in _Wireframe_ mode. The outline wireframe is now coloured by any selected data.
 
-Obtaining high-quality output can be achieved by using the '''Output Image''' module. Figure 14 shows the user interface for this module. The top panel allows the output file to be set using the '''Browse''' button and type-in, along with the '''Write File''' button which saves the current image in the viewer to the selected file. The toggle '''Overwrite''' over-rides the warning when a file is to be over-written. The toggle '''Flip''' will vertically flip the output image.
+Figure 16 shows the model with the _Wireframe Solid_ option selected. The outline wireframe is shown but the faces are rendered with the background colour to enable Hidden-Line and Hidden-Surface removal. Figure 17 shows the model with the _Surface _option selected. This renders the solid faces with flat shading, so the shape of the model mesh can be seen more clearly. Figure 18 shows the model with the _Surface Smooth_ option selected. This renders the solid faces of the mesh with Gourad shading to “smooth” the appearance of the surface.
 
-||<tablewidth="70%">{{attachment:output_image.png}}||
-||''Figure 14: User interface of the Output Image module''||
+||http://parafem.googlecode.com/svn/trunk/parafem-viewer/docs/images/view_style_wireframe.png||
+||_Figure 15: Mesh displayed in Wireframe mode_||
 
-The second panel provides a selection of image formats to choose from. Depending on the format selected the subsequent panels will be active or inactive as necessary. These panels control '''Bits Per Pixel''', '''Color Type''', '''Compression Type''', '''Reduction Type''' and '''File Type'''.
+||http://parafem.googlecode.com/svn/trunk/parafem-viewer/docs/images/view_style_solid_wireframe.png||
+||_Figure 16: Example mesh rendered with Solid Wireframe option_||
 
-The final panel allows the '''Output Image Size''' to be set. The '''Width''' and '''Height''' sliders and type-ins can be set to values larger than the screen display for high-resolution output. Once all settings have been specified the '''Write File''' button is used to trigger output.
+||http://parafem.googlecode.com/svn/trunk/parafem-viewer/docs/images/view_style_surface.png||
+||_Figure 17: Example mesh rendered with Surface mode_||
 
+||http://parafem.googlecode.com/svn/trunk/parafem-viewer/docs/images/view_style_surface_smooth.png||
+||_Figure 18: Example mesh rendered with Surface Smooth option_||
 
-= Details =
+The *Title* module allows more detailed control over the title displayed in the 3D view. In addition to the text itself, the _Font_ and some text display options can be set. The *X, Y *and* Z Offset *values can be used to position the text in the viewer window.
 
-Add your content here.  Format your content with:
-  * Text in *bold* or _italic_
-  * Headings, paragraphs, and lists
-  * Automatic links to other wiki pages
+The *Legend* module provides more control over the position of the legend in the 3D view and the number of *Intervals* to define how many labels are displayed. The *Labels Offset* positions the label text relative to the legend. The *Format* type-in allows the text format to be defined using a C-style format string. Again the *Font* can be set, along with toggles for *Outline* of the legend, the visibility of *Labels* and the visibility of the *Ticks*.
+
+The *Legend Title* has the same options available as the *Title* module and simply applies to the label placed near to the legend.
+
+The *Axis* module provides control over the orientation axis glyph in the 3D View. The *Axis title* and *Axis scale* type-ins allow the glyph labels and scaling to be set. The *Font* may also be specified. The next set of options control the appearance of the axis glyph text and their offset from the glyph.
+
+= Exporting Images =
+
+Obtaining high-quality output can be achieved by using the *Output Image* module. Figure 19 shows the user interface for this module. The top panel allows the output file to be set using the *Browse* button and type-in, along with the *Write File* button which saves the current image in the viewer to the selected file. The toggle *Overwrite* over-rides the warning when a file is to be over-written. The toggle *Flip* will vertically flip the output image.
+
+||http://parafem.googlecode.com/svn/trunk/parafem-viewer/docs/images/mod_output_image_a.png mod_output_image_b.png||
+||_Figure 19: User interface of the Output Image module_||
+
+The second panel provides a selection of image formats to choose from. Depending on the format selected the subsequent panels will be active or inactive as necessary. These panels control *Bits Per Pixel*, *Color Type*, *Compression Type*, *Reduction Type* and *File Type*.
+
+The final panel allows the *Output Image Size* to be set. The *Width* and *Height* sliders and type-ins can be set to values larger than the screen display for high-resolution output. Once all settings have been specified the *Write File* button is used to trigger output.
