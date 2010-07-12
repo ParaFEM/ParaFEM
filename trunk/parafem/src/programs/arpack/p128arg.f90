@@ -21,7 +21,7 @@ PROGRAM p128arg
   INTEGER               :: nn,nr,nip,nodof=3,nod,nst=6,i,j,k,l,inode
   INTEGER               :: iel,ndim=3,iters,model,nconv,ncv,nev,maxitr 
   INTEGER               :: argc,iargc ! command line arguments
-  INTEGER               :: nels,ndof,npes_pp,meshgen
+  INTEGER               :: nels,ndof,npes_pp,meshgen,first,last,ic
   INTEGER               :: ido,ierr,info,iparam(11),ipntr(11),ishfts,lworkl  
   REAL(iwp)             :: rho,e,nu,det,sigma,tol
   REAL(iwp),PARAMETER   :: zero = 0.0_iwp , one = 1.0_iwp  
@@ -43,9 +43,10 @@ PROGRAM p128arg
                            bee(:,:),store_km_pp(:,:,:),emm(:,:),ecm(:,:),     &
                            diag(:),pmul(:),d(:,:),v(:,:),workl(:),workd(:),   &
                            g_coord_pp(:,:,:),diag1(:),udiag(:),utemp(:),      &
-                           eigv(:,:)   
- INTEGER, ALLOCATABLE   :: rest(:,:), g(:), num(:) , g_num_pp(:,:) ,          &
-                           g_g_pp(:,:)
+                           eigv(:,:),eigv1(:,:)
+ INTEGER, ALLOCATABLE   :: rest(:,:), g(:), num(:), g_num_pp(:,:),            &
+                           g_g_pp(:,:), g_g_local(:,:), g_g(:,:), g_num(:,:), &
+                           g_num_local(:,:)
  LOGICAL, ALLOCATABLE   :: select(:)   
  
  INCLUDE  'debug.h'     ! From ARPACK library
@@ -95,11 +96,6 @@ PROGRAM p128arg
   g_num_pp   = 0
   g_coord_pp = 0
   rest       = 0
-
-  PRINT *, "NELS = ",nels
-  PRINT *, "NN   = ",nn
-  PRINT *, "NOD  = ",nod
-  PRINT *, "NR   = ",nr
 
   CALL read_g_num_pp(job_name,iel_start,nels,nn,numpe,g_num_pp)
   IF(meshgen == 2) CALL abaqus2sg(element,g_num_pp)
@@ -152,8 +148,6 @@ PROGRAM p128arg
 
   neq = max_integer_p(neq)
 
-  PRINT *, "NEQ      = ", neq
-  PRINT *, "NEQ calc =", (nn-nr)*nodof 
 ! timest(3) = elap_time()
   
 !------------------------------------------------------------------------------
@@ -222,8 +216,6 @@ PROGRAM p128arg
  
   iters = 0
   diag  = one / sqrt(diag) ! diag holds l**(-1/2) 
-
-  IF(numpe == 1)  PRINT*, "DIAG = ", diag
 
   DO
     iters = iters + 1
@@ -300,7 +292,33 @@ PROGRAM p128arg
   END IF
 
   ALLOCATE(eigv(ndim,nn))
-   
+  ALLOCATE(g_num(nod,nels))
+  ALLOCATE(g_num_local(nod,nels))
+  ALLOCATE(g_g(ntot,nels))
+  ALLOCATE(g_g_local(ntot,nels))
+  
+  eigv        = zero
+  g_num       = 0
+  g_num_local = 0
+  g_g         = 0
+  g_g_local   = 0
+ 
+  first = iel_start
+  last  = iel_start + nels_pp - 1
+
+  g_num_local(:,first:last) = g_num_pp(:,:)
+  g_g_local(:,first:last)   = g_g_pp(:,:)
+
+  ic = nod*nels 
+  CALL MPI_ALLREDUCE(g_num_local,g_num,ic,MPI_INTEGER,MPI_SUM,               &
+                     MPI_COMM_WORLD,ier)
+
+  ic = ntot*nels
+  CALL MPI_ALLREDUCE(g_g_local,g_g,ic,MPI_INTEGER,MPI_SUM,                   &
+                     MPI_COMM_WORLD,ier)
+
+
+
   DO i=1,nev
 
     eigv        = zero
@@ -308,19 +326,20 @@ PROGRAM p128arg
     udiag(:)    = v(1:neq,i) 
     udiag       = udiag * diag  
 
-    DO iel = 1,nels_pp
+    DO iel = 1,nels
       DO j = 1,nod
-         inode = g_num_pp(j,iel)
+         inode = g_num(j,iel)
         DO k = 1,ndim
            l = ((j-1)*ndim) + k
-           IF(g_g_pp(l,iel) /=0) THEN
-             eigv(k,inode) =   udiag(g_g_pp(l,iel))
+           IF(g_g(l,iel) /=0) THEN
+             eigv(k,inode) =   udiag(g_g(l,iel))
            END IF
          END DO
        END DO
      END DO
 
-     IF(numpe == 1) THEN
+
+    IF(numpe == 1) THEN
  
        WRITE(24,'(A)')   "*DISPLACEMENT"
        WRITE(24,*)    i
