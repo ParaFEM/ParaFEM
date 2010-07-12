@@ -18,7 +18,7 @@ PROGRAM p128arg
 
   ! neq,ntot are global variables - not declared
    
-  INTEGER               :: nn,nr,nip,nodof=3,nod,nst=6,i,j,k,l
+  INTEGER               :: nn,nr,nip,nodof=3,nod,nst=6,i,j,k,l,inode
   INTEGER               :: iel,ndim=3,iters,model,nconv,ncv,nev,maxitr 
   INTEGER               :: argc,iargc ! command line arguments
   INTEGER               :: nels,ndof,npes_pp,meshgen
@@ -304,15 +304,17 @@ PROGRAM p128arg
   DO i=1,nev
 
     eigv        = zero
+    udiag       = zero
     udiag(:)    = v(1:neq,i) 
     udiag       = udiag * diag  
 
     DO iel = 1,nels_pp
       DO j = 1,nod
+         inode = g_num_pp(j,iel)
         DO k = 1,ndim
-           l = ((j-1)*k) + k
+           l = ((j-1)*ndim) + k
            IF(g_g_pp(l,iel) /=0) THEN
-             eigv(k,g_num_pp(j,iel)) = udiag(g_g_pp(l,iel))
+             eigv(k,inode) =   udiag(g_g_pp(l,iel))
            END IF
          END DO
        END DO
