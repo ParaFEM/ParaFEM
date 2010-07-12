@@ -403,7 +403,7 @@ PROGRAM sg12mg
 
   WRITE(14,'(A)')         program_name
   WRITE(14,'(A)')         "'hexahedron'"
-  WRITE(14,'(A)')         "'2'" 
+  WRITE(14,'(A)')         "2" 
   WRITE(14,'(6I9)')       nels, nn, nr, nod, nip
   WRITE(14,'(3E12.4,I8)') rho, e, v
   WRITE(14,'(2I8,5A)')    nev, ncv, " '", bmat, "' '", which,"'"
