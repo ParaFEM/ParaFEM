@@ -86,8 +86,8 @@ PROGRAM sg12mg
     PRINT*, "Usage:  sg12mg <job_name>"
     PRINT*
     PRINT*, "        program expects <job_name>.mg and outputs any or all of"
-    PRINT*, "        <job_name>a.dat <job_name>a.d" 
-    PRINT*, "        <job_name>a.bnd <job_name>a.lds"
+    PRINT*, "        <job_name>.dat <job_name>.d" 
+    PRINT*, "        <job_name>.bnd <job_name>.lds"
     PRINT*
     STOP
   END IF
@@ -167,12 +167,12 @@ PROGRAM sg12mg
   WRITE(11,'(A)') "*NODES"
 
   DO i = 1, nn
-    WRITE(11,'(I6,3F12.4)') i, g_coord(:,i)
+    WRITE(11,'(I12,3F12.4)') i, g_coord(:,i)
   END DO
 
   WRITE(11,'(A)') "*ELEMENTS"
   DO iel = 1, nels
-    WRITE(11,'(I6,A,20I10,A)') iel, " 3 20 1 ", g_num(3,iel),g_num(5,iel),    &
+    WRITE(11,'(I12,A,20I12,A)') iel, " 3 20 1 ", g_num(3,iel),g_num(5,iel),   &
                                  g_num(7,iel),g_num(1,iel),g_num(15,iel),     &
                                  g_num(17,iel),g_num(19,iel),g_num(13,iel),   &
                                  g_num(4,iel),g_num(6,iel),g_num(8,iel),      &
@@ -193,7 +193,7 @@ PROGRAM sg12mg
   CALL cube_bc20(rest,nxe,nye,nze)
  
   DO i = 1, nr
-    WRITE(12,'(4I6)') rest(i,:) 
+    WRITE(12,'(I8,3I6)') rest(i,:) 
   END DO
 
   CLOSE(12)
@@ -209,7 +209,7 @@ PROGRAM sg12mg
   val = -val * aa * bb / 12._iwp
  
   DO i = 1, loaded_freedoms
-    WRITE(13,'(I6,2A,3E12.4)') no(i), "  0.0000E+00  ", "0.0000E+00", val(i) 
+    WRITE(13,'(I10,2A,3E12.4)') no(i), "  0.0000E+00  ", "0.0000E+00", val(i) 
   END DO
 
   CLOSE(13)

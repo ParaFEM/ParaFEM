@@ -8,7 +8,7 @@ PROGRAM p128arg
   USE precision     ; USE global_variables ; USE mp_interface
   USE input         ; USE output           ; USE loading
   USE maths         ; USE gather_scatter   ; USE partition     
-  USE elements      ; USE steering         ; USE pcg          !  ; USE timing 
+  USE elements      ; USE steering         ; USE pcg           ! ; USE timing 
   
   IMPLICIT NONE
 
