@@ -15,7 +15,8 @@ MODULE INPUT
   !*    READ_NUM               Reads the element nodal steering array
   !*    READ_REST              Reads the restraints
   !*    READ_P121              Reads the control data for program p121
-  !*    READ_P128AR            Reads the control data for program p121ar
+  !*    READ_P126              Reads the control data for program p126
+  !*    READ_P128AR            Reads the control data for program p128ar
   !*    READ_P129              Reads the control data for program p129
   !*  AUTHOR
   !*    L. Margetts
@@ -610,6 +611,184 @@ MODULE INPUT
 
   RETURN
   END SUBROUTINE READ_P121
+
+!------------------------------------------------------------------------------
+!------------------------------------------------------------------------------
+!------------------------------------------------------------------------------
+
+  SUBROUTINE READ_P126(job_name,numpe,cjits,cjtol,ell,kappa,limit,meshgen,    &
+                       nels,nip,nn,nr,nres,penalty,rho,tol,x0,visc)
+
+  !/****f* input/read_p126
+  !*  NAME
+  !*    SUBROUTINE: read_p126
+  !*  SYNOPSIS
+  !*    Usage:      CALL read_p126(job_name,numpe,cjits,cjtol,ell,kappa,      &
+  !*                               limit,meshgen,nels,nip,nn,nr,nres,penalty, &
+  !*                               rho,tol,x0,visc
+  !*  FUNCTION
+  !*    Master processor reads the general data for the problem and broadcasts 
+  !*    it to the slave processors.
+  !*  INPUTS
+  !*    The following arguments have the INTENT(IN) attribute:
+  !*
+  !*    job_name               : Character
+  !*                           : File name that contains the data to be read
+  !*
+  !*    numpe                  : Integer
+  !*                           : Processor number
+  !*
+  !*    The following arguments have the INTENT(INOUT) attribute:
+  !*
+  !*    cjits                  : Integer
+  !*                           : BiCGSTAB(l) parameter
+  !*
+  !*    cjtol                  : Real
+  !*                           : BiCGSTAB(l) parameter
+  !*
+  !*    ell                    : Real
+  !*                           : BiCGSTAB(l) parameter
+  !*
+  !*    limit                  : Integer
+  !*                           : Maximum number of iterations allowed
+  !*
+  !*    meshgem                : Integer
+  !*                           : 1 = Smith and Griffiths numbering scheme
+  !*                           : 2 = Abaqus numbering scheme
+  !*
+  !*    nels                   : Integer
+  !*                           : Total number of elements
+  !*
+  !*    nip                    : Integer
+  !*                           : Number of Gauss integration points
+  !*
+  !*    nn                     : Integer
+  !*                           : Total number of nodes in the mesh
+  !*
+  !*    nr                     : Integer
+  !*                           : Number of nodes with restrained degrees of
+  !*                             freedom 
+  !*
+  !*    nres                   : Integer
+  !*                           :
+  !*
+  !*    penalty                : Real
+  !*                           :
+  !*
+  !*    rho                    : Real
+  !*                           : Fluid parameter
+  !*
+  !*    tol                    : Real
+  !*                           : Tolerance for PCG
+  !*
+  !*    x0                     : Real
+  !*                           :
+  !*
+  !*    visc                   : Real
+  !*                           : Fluid viscosity
+  !*  AUTHOR
+  !*    Lee Margetts
+  !*  CREATION DATE
+  !*    03.03.2010
+  !*  COPYRIGHT
+  !*    (c) University of Manchester 2010
+  !******
+  !*  Place remarks that should not be included in the documentation here.
+  !*  Need to add some error traps
+  !*/
+
+  IMPLICIT NONE
+
+  CHARACTER(LEN=50), INTENT(IN)    :: job_name
+  INTEGER, INTENT(IN)              :: numpe
+  INTEGER, INTENT(INOUT)           :: nels,nn,nr,nres,nod,nip,cjits
+  INTEGER, INTENT(INOUT)           :: limit,meshgen 
+  REAL(iwp), INTENT(INOUT)         :: cjtol,ell,kappa,penalty,rho,tol,x0,visc
+
+!------------------------------------------------------------------------------
+! 1. Local variables
+!------------------------------------------------------------------------------
+
+  INTEGER                          :: bufsize,ier,integer_store(8)
+  REAL(iwp)                        :: real_store(8)
+  CHARACTER(LEN=50)                :: fname
+  CHARACTER(LEN=50)                :: program_name
+  
+!------------------------------------------------------------------------------
+! 2. Master processor reads the data and copies it into temporary arrays
+!------------------------------------------------------------------------------
+
+  IF (numpe==1) THEN
+    fname = job_name(1:INDEX(job_name, " ") -1) // ".dat"
+    OPEN(10,FILE=fname,STATUS='OLD',ACTION='READ')
+    READ(10,*) program_name
+    READ(10,*) meshgen,nels,nn,nr,nres,nip,visc,rho,tol,limit,                &
+               cjtol,cjits,penalty,x0,ell,kappa
+    CLOSE(10)
+   
+    integer_store      = 0
+
+    integer_store(1)   = meshgen
+    integer_store(2)   = nels
+    integer_store(3)   = nn
+    integer_store(4)   = nr 
+    integer_store(5)   = nres 
+    integer_store(6)   = nip
+    integer_store(7)   = limit
+    integer_store(8)   = cjits
+
+    real_store         = 0.0_iwp
+
+    real_store(1)      = visc  
+    real_store(2)      = rho  
+    real_store(3)      = tol
+    real_store(4)      = cjtol
+    real_store(5)      = penalty
+    real_store(6)      = x0
+    real_store(7)      = ell
+    real_store(8)      = kappa
+    
+  END IF
+
+!------------------------------------------------------------------------------
+! 3. Master processor broadcasts the temporary arrays to the slave processors
+!------------------------------------------------------------------------------
+
+  bufsize = 8
+  CALL MPI_BCAST(integer_store,bufsize,MPI_INTEGER,0,MPI_COMM_WORLD,ier)
+
+  bufsize = 8
+  CALL MPI_BCAST(real_store,bufsize,MPI_REAL8,0,MPI_COMM_WORLD,ier)
+
+
+!------------------------------------------------------------------------------
+! 4. Slave processors extract the variables from the temporary arrays
+!------------------------------------------------------------------------------
+
+  IF (numpe/=1) THEN
+
+    meshgen      = integer_store(1)
+    nels         = integer_store(2)
+    nn           = integer_store(3)
+    nr           = integer_store(4)
+    nres         = integer_store(5)
+    nip          = integer_store(6)
+    limit        = integer_store(7)
+    cjits        = integer_store(8)
+
+    visc         = real_store(1)
+    rho          = real_store(2)
+    tol          = real_store(3)
+    cjtol        = real_store(4)
+    penalty      = real_store(5)
+    x0           = real_store(6)
+    ell          = real_store(7)
+    kappa        = real_store(8)
+
+  END IF
+
+  RETURN
+  END SUBROUTINE READ_P126
 
 !------------------------------------------------------------------------------
 !------------------------------------------------------------------------------
