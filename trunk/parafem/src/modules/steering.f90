@@ -206,6 +206,129 @@ MODULE STEERING
 !------------------------------------------------------------------------------
 !------------------------------------------------------------------------------
 
+  SUBROUTINE g_t_g_ns(nod,g_t,g)
+  
+    !/****f* structure_dof/g_t_g_ns
+    !*  NAME
+    !*    SUBROUTINE: g_t_g_ns
+    !*  SYNOPSIS
+    !*    Usage:      CALL g_t_g_ns(nod,g_t,g)
+    !*  FUNCTION
+    !*    Finds g from g_t (Navier - Stokes)
+    !*  INPUTS
+    !*  AUTHOR
+    !*    Ian M. Smith
+    !*  COPYRIGHT
+    !*    (c) University of Manchester
+    !******
+    !*  
+    !*/
+
+    IMPLICIT NONE
+    
+    INTEGER,INTENT(IN)  :: nod,g_t(:)
+    INTEGER,INTENT(OUT) :: g(:)
+    INTEGER             :: i
+    
+    DO i=1,nod
+      g(i)    = g_t(4*i-3)
+      g(i+28) = g_t(4*i-1)
+      g(i+48) = g_t(4*i) 
+    END DO
+    
+    DO i=1,4 
+      g(i+20) = g_t(8*i-6)
+      g(i+24) = g_t(8*i+42)
+    END DO
+    
+  END SUBROUTINE g_t_g_ns
+  
+!------------------------------------------------------------------------------
+!------------------------------------------------------------------------------
+!------------------------------------------------------------------------------  
+  
+    SUBROUTINE REINDEX_FIXED_NODES (ieq_start,no,no_local_temp,num_no,  &
+                                    no_index_start,neq_pp)
+  
+      !/****f* structure_dof/reindex_fixed_nodes
+      !*  NAME
+      !*    SUBROUTINE: reindex_fixed_nodes
+      !*  SYNOPSIS
+      !*    Usage:      CALL reindex_fixed_nodes(ieq_start,no,no_local_temp,  &
+      !*                                         num_no,no_index_start,neq_pp)
+      !*  FUNCTION
+      !*    Creates a local index of loaded equations. Will function in both
+      !*    serial and MPI based programs.
+      !*  INPUTS
+      !*    The following arguments have the INTENT(IN) attribute:
+      !*
+      !*    ieq_start           : Integer
+      !*                        : The starting equation number on the processor
+      !*
+      !*    neq_pp              : Integer
+      !*                          Number of equations per processor
+      !*
+      !*    no(:)               : Integer
+      !*                        : List of the nodes with some degree of freedom
+      !*                          loaded.
+      !*
+      !*    The following arguments have the INTENT(INOUT) attribute:    
+      !*
+      !*    no_local_temp(:)    : Integer
+      !*                        : A temporary array
+      !*
+      !*  OUTPUTS
+      !*    The following arguments have the INTENT(OUT) attribute:
+      !*
+      !*    num_no              : Integer
+      !*                        : The number of local fixed nodes
+      !*
+      !*    no_index_start      : Integer
+      !*                        : The starting position in the array no_local_temp
+      !*    
+      !*  AUTHOR
+      !*    Lee Margetts
+      !*  CREATION DATE
+      !*    24.04.2002
+      !*  COPYRIGHT
+      !*    (c) University of Manchester
+      !******
+      !*  Place remarks that should not be included in the documentation here.
+      !*
+      !*/
+      
+      IMPLICIT NONE
+  
+      INTEGER, INTENT(IN)     :: ieq_start, neq_pp, no(:)
+      INTEGER, INTENT(INOUT)  :: no_local_temp(:)
+      INTEGER, INTENT(OUT)    :: num_no, no_index_start
+      INTEGER                 :: fixed_nodes, i
+  
+      fixed_nodes    = UBOUND(no,1)
+      no_index_start = 0
+      num_no         = 0
+  
+      DO i = 1,fixed_nodes
+        IF (no(i) < ieq_start) THEN
+          CYCLE
+        ELSE IF (no(i) >= ieq_start + neq_pp) THEN
+          EXIT
+        ELSE IF (no_index_start==0) THEN
+          no_index_start   = i
+          no_local_temp(1) = no(i)
+          num_no           = 1
+        ELSE
+          num_no                = num_no + 1
+          no_local_temp(num_no) = no(i)
+        END IF
+      END DO
+   
+  END SUBROUTINE REINDEX_FIXED_NODES
+  
+!------------------------------------------------------------------------------
+!------------------------------------------------------------------------------
+!------------------------------------------------------------------------------  
+  
   SUBROUTINE ABAQUS2SG(element,g_num)
 
     !/****f* steering/abaqus2sg
