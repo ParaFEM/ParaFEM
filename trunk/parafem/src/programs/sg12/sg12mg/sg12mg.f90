@@ -41,7 +41,9 @@ PROGRAM sg12mg
   INTEGER                :: i
   INTEGER                :: iel
   INTEGER                :: argc
+  INTEGER                :: cjits
   INTEGER                :: ell
+  INTEGER                :: fixed_nodes
   INTEGER                :: iargc
   INTEGER                :: limit
   INTEGER                :: loaded_freedoms
@@ -52,6 +54,7 @@ PROGRAM sg12mg
   REAL(iwp)              :: aa
   REAL(iwp)              :: bb 
   REAL(iwp)              :: cc  
+  REAL(iwp)              :: cjtol  
   REAL(iwp)              :: rho   
   REAL(iwp)              :: e 
   REAL(iwp)              :: v  
@@ -380,7 +383,7 @@ PROGRAM sg12mg
   val = 1.0
  
   DO i = 1, fixed_nodes
-    WRITE(13,'(I10,2A,3E12.4)') no(i), "  0.0000E+00  ", "0.0000E+00", val(i) 
+    WRITE(13,'(I10,A,E12.4,A)') no(i), "  0.0000E+00 ", val(i), "  0.0000E+00" 
   END DO
 
   CLOSE(13)
@@ -392,8 +395,10 @@ PROGRAM sg12mg
   fname = job_name(1:INDEX(job_name, " ")-1) // ".dat" 
   OPEN(14,FILE=fname,STATUS='REPLACE',ACTION='WRITE')
 
-  WRITE(14,'(A)') "p126"
-  WRITE(14,'(A)') 2              ! Abaqus node numbering scheme
+  meshgen = 2 ! current default
+
+  WRITE(14,'(A)') "'p126'"
+  WRITE(14,'(I4)') meshgen
   WRITE(14,'(6I9)') nels, nn, nr, nip, fixed_nodes
   WRITE(14,'(3E12.4,I8)') visc, rho, tol, limit
   WRITE(14,'(E12.4,I8,E12.4)') cjtol, cjits, penalty
