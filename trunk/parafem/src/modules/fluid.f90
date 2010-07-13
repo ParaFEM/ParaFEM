@@ -23,7 +23,7 @@ MODULE FLUID
   !---
   
   USE precision
-  USE simple_meshes
+  USE geometry
 
   CONTAINS
   

@@ -701,7 +701,7 @@ MODULE INPUT
 
   CHARACTER(LEN=50), INTENT(IN)    :: job_name
   INTEGER, INTENT(IN)              :: numpe
-  INTEGER, INTENT(INOUT)           :: nels,nn,nr,nres,nod,nip,cjits
+  INTEGER, INTENT(INOUT)           :: nels,nn,nr,nres,nip,cjits
   INTEGER, INTENT(INOUT)           :: limit,meshgen 
   REAL(iwp), INTENT(INOUT)         :: cjtol,ell,kappa,penalty,rho,tol,x0,visc
 
