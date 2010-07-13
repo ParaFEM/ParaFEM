@@ -646,7 +646,7 @@ MODULE INPUT
   !*    cjtol                  : Real
   !*                           : BiCGSTAB(l) parameter
   !*
-  !*    ell                    : Real
+  !*    ell                    : Integer
   !*                           : BiCGSTAB(l) parameter
   !*
   !*    limit                  : Integer
@@ -702,15 +702,15 @@ MODULE INPUT
   CHARACTER(LEN=50), INTENT(IN)    :: job_name
   INTEGER, INTENT(IN)              :: numpe
   INTEGER, INTENT(INOUT)           :: nels,nn,nr,nres,nip,cjits
-  INTEGER, INTENT(INOUT)           :: limit,meshgen 
-  REAL(iwp), INTENT(INOUT)         :: cjtol,ell,kappa,penalty,rho,tol,x0,visc
+  INTEGER, INTENT(INOUT)           :: limit,meshgen,ell 
+  REAL(iwp), INTENT(INOUT)         :: cjtol,kappa,penalty,rho,tol,x0,visc
 
 !------------------------------------------------------------------------------
 ! 1. Local variables
 !------------------------------------------------------------------------------
 
-  INTEGER                          :: bufsize,ier,integer_store(8)
-  REAL(iwp)                        :: real_store(8)
+  INTEGER                          :: bufsize,ier,integer_store(9)
+  REAL(iwp)                        :: real_store(7)
   CHARACTER(LEN=50)                :: fname
   CHARACTER(LEN=50)                :: program_name
   
@@ -736,6 +736,7 @@ MODULE INPUT
     integer_store(6)   = nip
     integer_store(7)   = limit
     integer_store(8)   = cjits
+    integer_store(9)   = ell
 
     real_store         = 0.0_iwp
 
@@ -745,8 +746,7 @@ MODULE INPUT
     real_store(4)      = cjtol
     real_store(5)      = penalty
     real_store(6)      = x0
-    real_store(7)      = ell
-    real_store(8)      = kappa
+    real_store(7)      = kappa
     
   END IF
 
@@ -754,10 +754,10 @@ MODULE INPUT
 ! 3. Master processor broadcasts the temporary arrays to the slave processors
 !------------------------------------------------------------------------------
 
-  bufsize = 8
+  bufsize = 9 
   CALL MPI_BCAST(integer_store,bufsize,MPI_INTEGER,0,MPI_COMM_WORLD,ier)
 
-  bufsize = 8
+  bufsize = 7
   CALL MPI_BCAST(real_store,bufsize,MPI_REAL8,0,MPI_COMM_WORLD,ier)
 
 
@@ -775,6 +775,7 @@ MODULE INPUT
     nip          = integer_store(6)
     limit        = integer_store(7)
     cjits        = integer_store(8)
+    ell          = integer_store(8)
 
     visc         = real_store(1)
     rho          = real_store(2)
@@ -782,8 +783,7 @@ MODULE INPUT
     cjtol        = real_store(4)
     penalty      = real_store(5)
     x0           = real_store(6)
-    ell          = real_store(7)
-    kappa        = real_store(8)
+    kappa        = real_store(7)
 
   END IF
 
