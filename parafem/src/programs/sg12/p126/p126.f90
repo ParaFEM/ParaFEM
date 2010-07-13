@@ -11,6 +11,8 @@ PROGRAM p126
  USE timing          ; USE maths                 ; USE gather_scatter
  USE partition       ; USE elements              ; USE steering
  USE bicg            ; USE fluid
+
+ USE pcg ! This is to access CHECON_PAR - perhaps should move out of module
  
  IMPLICIT NONE
  
@@ -451,7 +453,7 @@ PROGRAM p126
        cjiters," iterations to converge"
    END IF
 
-   CALL checon_par(x_pp,xold_pp,tol,converged)
+   CALL checon_par(x_pp,tol,converged,xold_pp)
    IF(converged.OR.iters==limit)EXIT
 
  END DO iterations
