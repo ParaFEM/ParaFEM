@@ -41,6 +41,7 @@ PROGRAM sg12mg
   INTEGER                :: i
   INTEGER                :: iel
   INTEGER                :: argc
+  INTEGER                :: ell
   INTEGER                :: iargc
   INTEGER                :: limit
   INTEGER                :: loaded_freedoms
@@ -54,10 +55,14 @@ PROGRAM sg12mg
   REAL(iwp)              :: rho   
   REAL(iwp)              :: e 
   REAL(iwp)              :: v  
+  REAL(iwp)              :: visc
   REAL(iwp)              :: el  
   REAL(iwp)              :: er  
   REAL(iwp)              :: acc  
+  REAL(iwp)              :: kappa  
+  REAL(iwp)              :: penalty  
   REAL(iwp)              :: tol 
+  REAL(iwp)              :: x0 
   CHARACTER(LEN=15)      :: element
   CHARACTER(LEN=50)      :: program_name
   CHARACTER(LEN=50)      :: job_name
@@ -68,6 +73,7 @@ PROGRAM sg12mg
 !------------------------------------------------------------------------------
 ! 2. Declare dynamic arrays
 !------------------------------------------------------------------------------   
+
   INTEGER, ALLOCATABLE   :: g_num(:,:)
   INTEGER, ALLOCATABLE   :: rest(:,:)
   INTEGER, ALLOCATABLE   :: nf(:,:)
@@ -282,11 +288,119 @@ PROGRAM sg12mg
 
   CASE('p126')
 
-  PRINT*
-  PRINT*, "Program p126 not supported"
-  PRINT*
+  READ(10,*) nels, nxe, nze, nip
+  READ(10,*) aa, bb, cc
+  READ(10,*) visc, rho, tol, limit
+  READ(10,*) cjtol, cjits, penalty
+  READ(10,*) x0, ell, kappa
+  
+  nye         = nels/nxe/nze
+  fixed_nodes = 3*nxe*nye+2*nxe+2*nye+1
+  nr          = 3*nxe*nye*nze+4*(nxe*nye+nye*nze+nze*nxe)+nxe+nye+nze+2
+  ndim        = 3
+  nodof       = 3
+  nod         = 20
+  nn          = (((2*nxe+1)*(nze+1))+((nxe+1)*nze))*(nye+1) +                      &
+                (nxe+1)*(nze+1)*nye
 
-  STOP
+!------------------------------------------------------------------------------
+! 12.1 Allocate dynamic arrays
+!------------------------------------------------------------------------------
+
+  ALLOCATE(coord(nod,ndim))
+  ALLOCATE(g_coord(ndim,nn))
+  ALLOCATE(g_num(nod,nels))
+  ALLOCATE(rest(nr,nodof+1))
+  ALLOCATE(val(fixed_nodes))
+  ALLOCATE(no(fixed_nodes))
+  
+  coord    = 0.0_iwp
+  g_coord  = 0.0_iwp
+  g_num    = 0
+  rest     = 0
+  val      = 0.0_iwp
+  no       = 0
+
+!------------------------------------------------------------------------------
+! 12.2 Find nodal coordinates and element steering array
+!     Write to file using Abaqus node numbering convention 
+!------------------------------------------------------------------------------
+
+  DO iel = 1, nels
+    CALL geometry_20bxz(iel,nxe,nze,aa,bb,cc,coord,g_num(:,iel))
+    g_coord(:,g_num(:,iel)) = TRANSPOSE(coord)
+  END DO
+
+  fname = job_name(1:INDEX(job_name, " ")-1) // ".d" 
+  OPEN(11,FILE=fname,STATUS='REPLACE',ACTION='WRITE')
+  
+  WRITE(11,'(A)') "*THREE_DIMENSIONAL"
+  WRITE(11,'(A)') "*NODES"
+
+  DO i = 1, nn
+    WRITE(11,'(I12,3F12.4)') i, g_coord(:,i)
+  END DO
+
+  WRITE(11,'(A)') "*ELEMENTS"
+  DO iel = 1, nels
+    WRITE(11,'(I12,A,20I12,A)') iel, " 3 20 1 ", g_num(3,iel),g_num(5,iel),   &
+                                 g_num(7,iel),g_num(1,iel),g_num(15,iel),     &
+                                 g_num(17,iel),g_num(19,iel),g_num(13,iel),   &
+                                 g_num(4,iel),g_num(6,iel),g_num(8,iel),      &
+                                 g_num(2,iel),g_num(16,iel),g_num(18,iel),    &
+                                 g_num(20,iel),g_num(14,iel),g_num(10,iel),   &
+                                 g_num(11,iel),g_num(12,iel),g_num(9,iel)," 1 "
+  END DO
+
+  CLOSE(11)
+
+!------------------------------------------------------------------------------
+! 12.3 Boundary conditions
+!------------------------------------------------------------------------------
+
+  fname = job_name(1:INDEX(job_name, " ")-1) // ".bnd" 
+  OPEN(12,FILE=fname,STATUS='REPLACE',ACTION='WRITE')
+
+  CALL ns_cube_bc20(rest,nxe,nye,nze)
+ 
+  DO i = 1, nr
+    WRITE(12,'(I8,3I6)') rest(i,:) 
+  END DO
+
+  CLOSE(12)
+
+!------------------------------------------------------------------------------
+! 12.4 Loading conditions
+!------------------------------------------------------------------------------
+
+  fname = job_name(1:INDEX(job_name, " ")-1) // ".lds" 
+  OPEN(13,FILE=fname,STATUS='REPLACE',ACTION='WRITE')
+
+  CALL ns_loading(no,nxe,nye,nze)
+  val = 1.0
+ 
+  DO i = 1, fixed_nodes
+    WRITE(13,'(I10,2A,3E12.4)') no(i), "  0.0000E+00  ", "0.0000E+00", val(i) 
+  END DO
+
+  CLOSE(13)
+
+!------------------------------------------------------------------------------
+! 12.5 New control data
+!------------------------------------------------------------------------------
+
+  fname = job_name(1:INDEX(job_name, " ")-1) // ".dat" 
+  OPEN(14,FILE=fname,STATUS='REPLACE',ACTION='WRITE')
+
+  WRITE(14,'(A)') "p126"
+  WRITE(14,'(A)') 2              ! Abaqus node numbering scheme
+  WRITE(14,'(6I9)') nels, nn, nr, nip, fixed_nodes
+  WRITE(14,'(3E12.4,I8)') visc, rho, tol, limit
+  WRITE(14,'(E12.4,I8,E12.4)') cjtol, cjits, penalty
+  WRITE(14,'(E12.4,I8,E12.4)') x0, ell, kappa
+  
+  CLOSE(14)
+
 
 !------------------------------------------------------------------------------
 ! 13. Program p127
