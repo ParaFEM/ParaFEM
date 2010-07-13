@@ -34,6 +34,7 @@ PROGRAM p126
   LOGICAL               :: converged,cj_converged
   CHARACTER(LEN=15)     :: element='hexahedron'
   CHARACTER(LEN=50)     :: program_name='p126'
+  CHARACTER(LEN=50)     :: job_name
   
 !------------------------------------------------------------------------------
 ! 2. Declare dynamic arrays
@@ -41,7 +42,7 @@ PROGRAM p126
 
   REAL(iwp),ALLOCATABLE :: points(:,:),coord(:,:),derivf(:,:),fun(:),jac(:,:)
   REAL(iwp),ALLOCATABLE :: kay(:,:),der(:,:),deriv(:,:),weights(:),derf(:,:)
-  REAL(iwp),ALLOCATABLE :: funf(:),coordf(:,:),p_g_co_pp(:,:,:)
+  REAL(iwp),ALLOCATABLE :: funf(:),coordf(:,:),g_coord_pp(:,:,:)
   REAL(iwp),ALLOCATABLE :: c11(:,:),c21(:,:),c12(:,:),val(:),wvel(:),ke(:,:)
   REAL(iwp),ALLOCATABLE :: c23(:,:),c32(:,:),x_pp(:),b_pp(:),r_pp(:,:)
   REAL(iwp),ALLOCATABLE :: funny(:,:),row1(:,:),row2(:,:),uvel(:),vvel(:)
@@ -49,7 +50,7 @@ PROGRAM p126
   REAL(iwp),ALLOCATABLE :: utemp_pp(:,:),xold_pp(:),c24(:,:),c42(:,:)
   REAL(iwp),ALLOCATABLE :: row3(:,:),u_pp(:,:),rt_pp(:),y_pp(:),y1_pp(:)
   REAL(iwp),ALLOCATABLE :: s(:),Gamma(:),GG(:,:),diag_tmp(:,:),store_pp(:)
-  REAL(iwp),ALLOCATABLE :: pmul_pp(:,:)
+  REAL(iwp),ALLOCATABLE :: pmul_pp(:,:),timest(:)
   INTEGER,ALLOCATABLE   :: rest(:,:),g(:),num(:),g_num_pp(:,:),g_g_pp(:,:)
   INTEGER,ALLOCATABLE   :: no(:),g_t(:),no_local(:),no_local_temp(:)
 
@@ -97,7 +98,7 @@ PROGRAM p126
           derf(ndim,nodf),funf(nodf),coordf(nodf,ndim),funny(nod,1),          &
           g_g_pp(ntot,nels_pp),c11(nod,nod),c12(nod,nodf),c21(nodf,nod),      &
           ke(ntot,ntot),rest(nr,nodof+1),c24(nodf,nod),c42(nod,nodf),         &
-          p_g_co_pp(nod,ndim,nels_pp),g_num_pp(nod,nels_pp),num(nod),         &
+          num(nod),                                                           &
           c32(nod,nodf),c23(nodf,nod),uvel(nod),vvel(nod),row1(1,nod),        &
           funnyf(nodf,1),rowf(1,nodf),no_local_temp(fixed_nodes),             &
           storke_pp(ntot,ntot,nels_pp),wvel(nod),row3(1,nod),g_t(n_t),        &
@@ -122,10 +123,10 @@ PROGRAM p126
 
   neq = 0
   
-  elements_2: DO iel = 1, nels_pp  
+  elements_1a: DO iel = 1, nels_pp  
     i = MAXVAL(g_g_pp(:,iel))
     IF(i > neq) neq = i
-  END DO elements_2  
+  END DO elements_1a 
 
   neq = MAX_INTEGER_P(neq)
   timest(3) = elap_time()
@@ -167,7 +168,8 @@ PROGRAM p126
 ! 8. Organise fixed nodes
 !------------------------------------------------------------------------------
 
- CALL ns_loading(no,nxe,nye,nze)
+!CALL ns_loading(no,nxe,nye,nze) ! Need to replace this with a READ SUBROUTINE
+
  CALL reindex_fixed_nodes(ieq_start,no,no_local_temp,num_no,no_index_start, &
                           neq_pp)          
  ALLOCATE(no_local(1:num_no))
@@ -248,7 +250,7 @@ PROGRAM p126
        END IF
 
        CALL shape_der(der,points,i)
-       jac = MATMUL(der,p_g_co_pp(:,:,iel))
+       jac = MATMUL(der,g_coord_pp(:,:,iel))
        det = determinant(jac)
        CALL invert(jac)
        deriv     = MATMUL(jac,der)
@@ -267,8 +269,8 @@ PROGRAM p126
 
        CALL shape_fun(funnyf(:,1),points,i)
        CALL shape_der(derf,points,i)
-       coordf(1:4,:) = p_g_co_pp(1:7:2,:,iel)
-       coordf(5:8,:) = p_g_co_pp(13:19:2,:,iel)
+       coordf(1:4,:) = g_coord_pp(1:7:2,:,iel)
+       coordf(5:8,:) = g_coord_pp(13:19:2,:,iel)
        jac           = MATMUL(derf,coordf)
        det           = determinant(jac)
        CALL invert(jac)
@@ -466,7 +468,7 @@ PROGRAM p126
    DO i=1,nels_pp,nels_pp-1                                            
      WRITE(11,'(A,I10)')"Element  ",i
      DO k=1,nod
-       WRITE(11,'(A,I10,3E12.4)')"Node",g_num_pp(k,i),p_g_co_pp(k,:,i)
+       WRITE(11,'(A,I10,3E12.4)')"Node",g_num_pp(k,i),g_coord_pp(k,:,i)
      END DO
    END DO
    WRITE(11,'(A,3(I10,A))')"There are ",nn,"  nodes ",nr,                  &
