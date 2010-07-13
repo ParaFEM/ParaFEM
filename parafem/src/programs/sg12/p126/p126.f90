@@ -1,32 +1,17 @@
 PROGRAM p126     
 !-------------------------------------------------------------------------
-!      Program 9.2 steady state  3-d Navier-Stokes equation
-!      using 20-node velocity hexahedral elements  : ns_cube
+!      Program 12.6 steady state  3-d Navier-Stokes equation
+!      using 20-node velocity hexahedral elements  
 !      coupled to 8-node pressure hexahedral elements : u-p-v-w order
 !      element by element solution using BiCGSTAB(L) : parallel version
 !-------------------------------------------------------------------------
 
- USE precision
- USE maths_serial
- USE small_deformations
- USE elements
- USE decomposition
- USE structure_dof
- USE loading
- USE simple_meshes
- USE fluid_flow
-
- USE use_parallel
- USE start_finish
- USE input_output
- USE krylov_methods
- USE maths_parallel
- USE stress
- USE global_variables
- USE gather_scatter
- USE others_parallel
- USE timing
-
+ USE precision       ; USE global_variables      ; USE mp_interface
+ USE input           ; USE output                ; USE loading
+ USE timing          ; USE maths                 ; USE gather_scatter
+ USE partition       ; USE elements              ; USE steering
+ USE bicg            ; USE fluid
+ 
  IMPLICIT NONE
  
  !----------------------------------------------------------------------------- 
@@ -35,112 +20,125 @@ PROGRAM p126
 
  ! neq,ntot are now global variables - not declared
  
- INTEGER             :: nxe,nye,nze,nn,nip,nodof=4,nod=20,nodf=8,ndim=3
- INTEGER             :: cj_tot,i,j,k,l,iel,ell,limit,fixed_nodes,iters
- INTEGER             :: cjiters,cjits,nr,n_t,num_no,no_index_start
- INTEGER             :: nn_temp,neq_temp,nres,is,it,nlen,nels,ndof
- INTEGER             :: ielpe,npes_pp
- REAL(iwp)           :: visc,rho,rho1,det,ubar,vbar,wbar,tol,cjtol,alpha
- REAL(iwp)           :: beta,aa,bb,cc,penalty,x0,pp,kappa,gama,omega
- REAL(iwp)           :: norm_r,r0_norm,error
- REAL(iwp),PARAMETER :: zero = 0.0_iwp
- REAL(iwp),PARAMETER :: one  = 1.0_iwp
- LOGICAL             :: converged,cj_converged
- CHARACTER(LEN=15)   :: element='hexahedron'
- 
+  INTEGER               :: nn,nip,nodof=4,nod=20,nodf=8,ndim=3
+  INTEGER               :: cj_tot,i,j,k,l,iel,ell,limit,fixed_nodes,iters
+  INTEGER               :: cjiters,cjits,nr,n_t,num_no,no_index_start
+  INTEGER               :: nres,is,it,nlen,nels,ndof
+  INTEGER               :: ielpe,npes_pp
+  INTEGER               :: argc,iargc,meshgen
+  REAL(iwp)             :: visc,rho,rho1,det,ubar,vbar,wbar,tol,cjtol,alpha
+  REAL(iwp)             :: beta,penalty,x0,pp,kappa,gama,omega
+  REAL(iwp)             :: norm_r,r0_norm,error
+  REAL(iwp),PARAMETER   :: zero = 0.0_iwp
+  REAL(iwp),PARAMETER   :: one  = 1.0_iwp
+  LOGICAL               :: converged,cj_converged
+  CHARACTER(LEN=15)     :: element='hexahedron'
+  CHARACTER(LEN=50)     :: program_name='p126'
+  
 !------------------------------------------------------------------------------
 ! 2. Declare dynamic arrays
 !------------------------------------------------------------------------------
 
- REAL(iwp),ALLOCATABLE::points(:,:),coord(:,:),derivf(:,:),fun(:),        &
-   jac(:,:),kay(:,:),der(:,:),deriv(:,:),weights(:),derf(:,:),funf(:),    &
-   coordf(:,:),p_g_co_pp(:,:,:),c11(:,:),c21(:,:),c12(:,:),val(:),wvel(:),&
-   ke(:,:),c23(:,:),c32(:,:),x_pp(:),b_pp(:),r_pp(:,:),funny(:,:),        &
-   row1(:,:),row2(:,:),uvel(:),vvel(:),funnyf(:,:),rowf(:,:),             &
-   storke_pp(:,:,:),diag_pp(:),utemp_pp(:,:),xold_pp(:),c24(:,:),c42(:,:),&
-   row3(:,:),u_pp(:,:),rt_pp(:),y_pp(:),y1_pp(:),s(:),Gamma(:),GG(:,:),   &
-   diag_tmp(:,:),store_pp(:),pmul_pp(:,:)
- INTEGER,ALLOCATABLE::rest(:,:),g(:),num(:),g_num_pp(:,:),g_g_pp(:,:),    &
-   no(:),g_t(:),no_local(:),no_local_temp(:)
+  REAL(iwp),ALLOCATABLE :: points(:,:),coord(:,:),derivf(:,:),fun(:),jac(:,:)
+  REAL(iwp),ALLOCATABLE :: kay(:,:),der(:,:),deriv(:,:),weights(:),derf(:,:)
+  REAL(iwp),ALLOCATABLE :: funf(:),coordf(:,:),p_g_co_pp(:,:,:)
+  REAL(iwp),ALLOCATABLE :: c11(:,:),c21(:,:),c12(:,:),val(:),wvel(:),ke(:,:)
+  REAL(iwp),ALLOCATABLE :: c23(:,:),c32(:,:),x_pp(:),b_pp(:),r_pp(:,:)
+  REAL(iwp),ALLOCATABLE :: funny(:,:),row1(:,:),row2(:,:),uvel(:),vvel(:)
+  REAL(iwp),ALLOCATABLE :: funnyf(:,:),rowf(:,:),storke_pp(:,:,:),diag_pp(:)
+  REAL(iwp),ALLOCATABLE :: utemp_pp(:,:),xold_pp(:),c24(:,:),c42(:,:)
+  REAL(iwp),ALLOCATABLE :: row3(:,:),u_pp(:,:),rt_pp(:),y_pp(:),y1_pp(:)
+  REAL(iwp),ALLOCATABLE :: s(:),Gamma(:),GG(:,:),diag_tmp(:,:),store_pp(:)
+  REAL(iwp),ALLOCATABLE :: pmul_pp(:,:)
+  INTEGER,ALLOCATABLE   :: rest(:,:),g(:),num(:),g_num_pp(:,:),g_g_pp(:,:)
+  INTEGER,ALLOCATABLE   :: no(:),g_t(:),no_local(:),no_local_temp(:)
 
 !------------------------------------------------------------------------------
-! 3. Read input data and initialise problem
+! 3. Read job_name from the command line.
+!    Read control data, mesh data, boundary and loading conditions
 !------------------------------------------------------------------------------
 
- timest(1) = elap_time()
+  ALLOCATE(timest(20))
+  timest    = zero
+  timest(1) = elap_time()
 
- CALL find_pe_procs(numpe,npes)
- IF(numpe==npes)THEN
-   OPEN(10,FILE='p126.dat',STATUS='OLD',ACTION='READ')
-   READ(10,*)nels,nxe,nze,nip,aa,bb,cc,visc,rho,tol,limit,cjtol,cjits,    &
-     penalty,x0,ell,kappa
- END IF
- CALL bcast_inputdata_p126(numpe,npes,nels,nxe,nze,nip,aa,bb,cc,visc,rho, &
-   tol,limit,cjtol,cjits,penalty,x0,ell,kappa)
- CALL calc_nels_pp(nels)
+  CALL find_pe_procs(numpe,npes)
+  argc = iargc()
+  IF (argc /= 1) CALL job_name_error(numpe,program_name)
+  CALL GETARG(1, job_name) 
+
+  CALL read_p126(job_name,numpe,cjits,cjtol,ell,kappa,limit,meshgen,nels,nip, &
+                 nn,nr,nres,penalty,rho,tol,x0,visc)
+
+  CALL calc_nels_pp(nels)
  
- ntot        = nod+nodf+nod+nod
- n_t         = nod*nodof
- neq_temp    = 0
- nn_temp     = 0
- nye         = nels/nxe/nze
- fixed_nodes = 3*nxe*nye+2*nxe+2*nye+1
- nr          = 3*nxe*nye*nze+4*(nxe*nye+nye*nze+nze*nxe)+nxe+nye+nze+2
+  ntot        = nod+nodf+nod+nod
+  n_t         = nod*nodof
 
+  ALLOCATE(g_num_pp(nod, nels_pp)) 
+  ALLOCATE(g_coord_pp(nod,ndim,nels_pp)) 
+  ALLOCATE(rest(nr,nodof+1)) 
+ 
+  g_num_pp   = 0
+  g_coord_pp = zero
+  rest       = 0
+
+  CALL read_g_num_pp(job_name,iel_start,nels,nn,numpe,g_num_pp)
+  IF(meshgen == 2) CALL abaqus2sg(element,g_num_pp)
+  CALL read_g_coord_pp(job_name,g_num_pp,nn,npes,numpe,g_coord_pp)
+  CALL read_rest(job_name,numpe,rest)
+    
 !------------------------------------------------------------------------------
 ! 4. Allocate dynamic arrays used in main program
 !------------------------------------------------------------------------------
 
- ALLOCATE(points(nip,ndim),coord(nod,ndim),derivf(ndim,nodf),fun(nod),    &
-   jac(ndim,ndim),kay(ndim,ndim),der(ndim,nod),deriv(ndim,nod),           &
-   derf(ndim,nodf),funf(nodf),coordf(nodf,ndim),funny(nod,1),             &
-   g_g_pp(ntot,nels_pp),c11(nod,nod),c12(nod,nodf),c21(nodf,nod),         &
-   ke(ntot,ntot),rest(nr,nodof+1),c24(nodf,nod),c42(nod,nodf),            &
-   p_g_co_pp(nod,ndim,nels_pp),g_num_pp(nod,nels_pp),num(nod),            &
-   c32(nod,nodf),c23(nodf,nod),uvel(nod),vvel(nod),row1(1,nod),           &
-   funnyf(nodf,1),rowf(1,nodf),no_local_temp(fixed_nodes),                &
-   storke_pp(ntot,ntot,nels_pp),wvel(nod),row3(1,nod),g_t(n_t),s(ell+1),  &
-   GG(ell+1,ell+1),g(ntot),Gamma(ell+1),weights(nip),no(fixed_nodes),     &
-   val(fixed_nodes),diag_tmp(ntot,nels_pp),utemp_pp(ntot,nels_pp),        &
-   pmul_pp(ntot,nels_pp),row2(1,nod))
+ ALLOCATE(points(nip,ndim),coord(nod,ndim),derivf(ndim,nodf),fun(nod),        &
+          jac(ndim,ndim),kay(ndim,ndim),der(ndim,nod),deriv(ndim,nod),        &
+          derf(ndim,nodf),funf(nodf),coordf(nodf,ndim),funny(nod,1),          &
+          g_g_pp(ntot,nels_pp),c11(nod,nod),c12(nod,nodf),c21(nodf,nod),      &
+          ke(ntot,ntot),rest(nr,nodof+1),c24(nodf,nod),c42(nod,nodf),         &
+          p_g_co_pp(nod,ndim,nels_pp),g_num_pp(nod,nels_pp),num(nod),         &
+          c32(nod,nodf),c23(nodf,nod),uvel(nod),vvel(nod),row1(1,nod),        &
+          funnyf(nodf,1),rowf(1,nodf),no_local_temp(fixed_nodes),             &
+          storke_pp(ntot,ntot,nels_pp),wvel(nod),row3(1,nod),g_t(n_t),        &
+          GG(ell+1,ell+1),g(ntot),Gamma(ell+1),weights(nip),no(fixed_nodes),  &
+          val(fixed_nodes),diag_tmp(ntot,nels_pp),utemp_pp(ntot,nels_pp),     &
+          pmul_pp(ntot,nels_pp),row2(1,nod),s(ell+1))
 
  timest(2) = elap_time()
 
 !------------------------------------------------------------------------------
-! 5. Loop the elements for global coordinates etc.
+! 5. Loop the elements to find the steering array and the number of equations
+!    to solve.
 !------------------------------------------------------------------------------
 
- CALL ns_cube_bc20(rest,nxe,nye,nze)
- CALL rearrange(rest)
- ielpe = iel_start
+  CALL rearrange(rest)
+  ielpe = iel_start
 
- elements_1: DO iel=1,nels_pp
-   CALL geometry_20bxz(ielpe,nxe,nze,aa,bb,cc,p_g_co_pp(:,:,iel),             &
-                       g_num_pp(:,iel))
-   CALL find_g3(g_num_pp(:,iel),g_t,rest)
-   CALL g_t_g_ns(nod,g_t,g_g_pp(:,iel))
-   ielpe = ielpe+1
-   i     = MAXVAL(g_g_pp(:,iel))
-   j     = MAXVAL(g_num_pp(:,iel))
-   IF(i>neq_temp) neq_temp = i
-   IF(j>nn_temp)  nn_temp  = j
- END DO elements_1
+  elements_1: DO iel=1,nels_pp
+    CALL find_g(g_num_pp(:,iel),g_t,rest)
+    CALL g_t_g_ns(nod,g_t,g_g_pp(:,iel))
+  END DO elements_1
 
- timest(3) = elap_time()
+  neq = 0
+  
+  elements_2: DO iel = 1, nels_pp  
+    i = MAXVAL(g_g_pp(:,iel))
+    IF(i > neq) neq = i
+  END DO elements_2  
+
+  neq = MAX_INTEGER_P(neq)
+  timest(3) = elap_time()
 
 !------------------------------------------------------------------------------
-! 6. Determine interprocessor communication tables
+! 6. Create interprocessor communication tables
 !------------------------------------------------------------------------------
  
- neq = max_integer_p(neq_temp)
- nn  = max_integer_p(nn_temp)
  CALL calc_neq_pp
  CALL calc_npes_pp(npes,npes_pp)
  CALL make_ggl(npes_pp,npes,g_g_pp)
 
  timest(4) = elap_time()
-
- nres = nze*(nxe+1)+3*nxe+1
 
  DO i = 1,neq_pp
    IF(nres==ieq_start+i-1)THEN
@@ -149,7 +147,8 @@ PROGRAM p126
    END IF
  END DO
  
- IF(numpe==it) OPEN(11,FILE='p126.res',STATUS='REPLACE',ACTION='WRITE')              
+ IF(numpe==it) OPEN(11,FILE='p126.res',STATUS='REPLACE',ACTION='WRITE')     
+
 !------------------------------------------------------------------------------
 ! 7. Allocate arrays dimensioned by neq_pp 
 !------------------------------------------------------------------------------
@@ -158,16 +157,9 @@ PROGRAM p126
           u_pp(neq_pp,ell+1),b_pp(neq_pp),diag_pp(neq_pp),xold_pp(neq_pp),    &
           y_pp(neq_pp),y1_pp(neq_pp),store_pp(neq_pp))
    
- x_pp            = zero
- rt_pp           = zero
- r_pp            = zero
- u_pp            = zero
- b_pp            = zero
- diag_pp         = zero
- xold_pp         = zero
- y_pp            = zero
- y1_pp           = zero
- store_pp        = zero
+ x_pp     = zero   ;  rt_pp  = zero   ;  r_pp    = zero
+ u_pp     = zero   ;  b_pp   = zero   ;  diag_pp = zero
+ xold_pp  = zero   ;  y_pp   = zero   ;  y1_pp   = zero  ;  store_pp = zero
  
  timest(5) = elap_time()
  
@@ -190,14 +182,17 @@ PROGRAM p126
 
  CALL sample(element,points,weights)
  
- val      = 1.0_iwp
- uvel     = zero
- vvel     = zero
- wvel     = zero
- kay      = zero
+ val      = 1.0_iwp        
+ 
+ uvel     = zero  
+ vvel     = zero  
+ wvel     = zero   
+ 
+ kay      = zero  
  kay(1,1) = visc/rho
  kay(2,2) = visc/rho
  kay(3,3) = visc/rho
+ 
  iters    = 0
  cj_tot   = 0
  

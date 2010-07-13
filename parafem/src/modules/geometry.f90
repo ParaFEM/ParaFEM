@@ -10,9 +10,30 @@ MODULE GEOMETRY
    !*    Chapter 12 of "Programming the Finite Element Method"
    !*
    !*    Subroutine             Purpose
-   !*    GEOMETRY_20BXZ     
-   !*    GEOMETRY_20BXZV
-   !*    CUBE_BC20
+   !*
+   !*    GEOMETRY_8BXZ          Forms the coordinates and nodal vector for
+   !*                           boxes of 8-node brick elements counting x-z 
+   !*                           planes in y-direction
+   !*
+   !*    GEOMETRY_20BXZ         Nodal vector and nodal coordinates for boxes
+   !*                           of 20-node bricks counting x-z planes in the 
+   !*                           y-direction
+   !*
+   !*    GEOMETRY_20BXZV        Nodal vector and nodal coordinates for boxes 
+   !*                           of 20-node bricks counting x-z planes in the 
+   !*                           y-direction. Variable mesh version.
+   !*
+   !*    CUBE_BC20              Boundary conditions for simple 20-node element
+   !*                           cuboid  
+   !*
+   !*    BOX_BC8                Boundary conditions for simple 8-node element
+   !*                           box
+   !*
+   !*    NS_LOADING             Simple lid displacement of a square 
+   !*                           Navier-Stokes patch 
+   !*
+   !*    NS_CUBE_BC20           Boundary conditions for simple Navier-Stokes 
+   !*                           20-node element cuboid
    !*  AUTHOR
    !*    L. Margetts
    !*    I.M. Smith
@@ -525,7 +546,7 @@ MODULE GEOMETRY
    !*  SYNOPSIS
    !*    Usage:      CALL ns_cube_bc20(rest,nxe,nye,nze)
    !*  FUNCTION
-   !*    boundary conditions for simple Navier-Stokes 20-node element cuboid  
+   !*    Boundary conditions for simple Navier-Stokes 20-node element cuboid  
    !*  INPUTS
    !*  OUTPUTS
    !*  AUTHOR
