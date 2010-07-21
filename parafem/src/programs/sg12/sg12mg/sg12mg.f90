@@ -47,6 +47,7 @@ PROGRAM sg12mg
   INTEGER                :: iargc
   INTEGER                :: limit
   INTEGER                :: loaded_freedoms
+  INTEGER                :: fixed_freedoms
   INTEGER                :: nev
   INTEGER                :: ncv
   INTEGER                :: maxitr
@@ -379,7 +380,7 @@ PROGRAM sg12mg
   fname = job_name(1:INDEX(job_name, " ")-1) // ".lid" 
   OPEN(13,FILE=fname,STATUS='REPLACE',ACTION='WRITE')
 
-  CALL loading_p161(no,nxe,nye,nze)
+  CALL loading_p126(no,nxe,nye,nze)
   val = 1.0
  
   DO i = 1, fixed_freedoms
