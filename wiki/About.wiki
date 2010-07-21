@@ -2,12 +2,8 @@
 
 = Introduction =
 
-Add your content here.
+ParaFEM was originally the output of a PhD Thesis "Parallel Finite Element Analysis", written by L. Margetts in 2002. It has since been used for solving very large finite element problems in a range of disciplines including geotechnical engineering (tunnels, excavations and dams), nuclear engineering (pressure vessels, structural components), the auto/aerospace sectors and materials science (microstructural modelling of materials). As well as providing the source code, the developers undertake consultancy in order to help engineers solve challenging engineering problems that are beyond the limits of commercial engineering packages.
 
+= Current Status =
 
-= Details =
-
-Add your content here.  Format your content with:
-  * Text in *bold* or _italic_
-  * Headings, paragraphs, and lists
-  * Automatic links to other wiki pages
+L. Margetts is currently transferring software developed by himself and various contributors from a closed university repository to this open Google Code platform. This effort started on 8 March 2010 and will take a while to complete, especially as L. Margetts is re-engineering and documenting the code as it is transferred. In the mean time, please see http://www.parafem.org.uk for further details or contact L. Margetts about code that is not already available here.
