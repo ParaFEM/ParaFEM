@@ -297,14 +297,14 @@ PROGRAM sg12mg
   READ(10,*) cjtol, cjits, penalty
   READ(10,*) x0, ell, kappa
   
-  nye         = nels/nxe/nze
-  fixed_nodes = 3*nxe*nye+2*nxe+2*nye+1
-  nr          = 3*nxe*nye*nze+4*(nxe*nye+nye*nze+nze*nxe)+nxe+nye+nze+2
-  ndim        = 3
-  nodof       = 3
-  nod         = 20
-  nn          = (((2*nxe+1)*(nze+1))+((nxe+1)*nze))*(nye+1) +                      &
-                (nxe+1)*(nze+1)*nye
+  nye            = nels/nxe/nze
+  fixed_freedoms = 3*nxe*nye+2*nxe+2*nye+1
+  nr             = 3*nxe*nye*nze+4*(nxe*nye+nye*nze+nze*nxe)+nxe+nye+nze+2
+  ndim           = 3
+  nodof          = 3
+  nod            = 20
+  nn             = (((2*nxe+1)*(nze+1))+((nxe+1)*nze))*(nye+1) +              &
+                   (nxe+1)*(nze+1)*nye
 
 !------------------------------------------------------------------------------
 ! 12.1 Allocate dynamic arrays
@@ -314,8 +314,8 @@ PROGRAM sg12mg
   ALLOCATE(g_coord(ndim,nn))
   ALLOCATE(g_num(nod,nels))
   ALLOCATE(rest(nr,nodof+1))
-  ALLOCATE(val(fixed_nodes))
-  ALLOCATE(no(fixed_nodes))
+  ALLOCATE(val(fixed_freedoms))
+  ALLOCATE(no(fixed_freedoms))
   
   coord    = 0.0_iwp
   g_coord  = 0.0_iwp
@@ -373,17 +373,17 @@ PROGRAM sg12mg
   CLOSE(12)
 
 !------------------------------------------------------------------------------
-! 12.4 Loading conditions
+! 12.4 Loading conditions for the lid
 !------------------------------------------------------------------------------
 
-  fname = job_name(1:INDEX(job_name, " ")-1) // ".lds" 
+  fname = job_name(1:INDEX(job_name, " ")-1) // ".lid" 
   OPEN(13,FILE=fname,STATUS='REPLACE',ACTION='WRITE')
 
-  CALL ns_loading(no,nxe,nye,nze)
+  CALL loading_p161(no,nxe,nye,nze)
   val = 1.0
  
-  DO i = 1, fixed_nodes
-    WRITE(13,'(I10,A,E12.4,A)') no(i), "  0.0000E+00 ", val(i), "  0.0000E+00" 
+  DO i = 1, fixed_freedoms
+    WRITE(13,'(I10,E12.4)') no(i), val(i) 
   END DO
 
   CLOSE(13)
@@ -399,7 +399,7 @@ PROGRAM sg12mg
 
   WRITE(14,'(A)') "'p126'"
   WRITE(14,'(I4)') meshgen
-  WRITE(14,'(6I9)') nels, nn, nr, nip, fixed_nodes
+  WRITE(14,'(6I9)') nels, nn, nr, nip, fixed_freedoms
   WRITE(14,'(3E12.4,I8)') visc, rho, tol, limit
   WRITE(14,'(E12.4,I8,E12.4)') cjtol, cjits, penalty
   WRITE(14,'(E12.4,I8,E12.4)') x0, ell, kappa
