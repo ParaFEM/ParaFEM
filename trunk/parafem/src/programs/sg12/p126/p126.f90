@@ -23,7 +23,7 @@ PROGRAM p126
  ! neq,ntot are now global variables - not declared
  
   INTEGER               :: nn,nip,nodof=4,nod=20,nodf=8,ndim=3
-  INTEGER               :: cj_tot,i,j,k,l,iel,ell,limit,fixed_nodes,iters
+  INTEGER               :: cj_tot,i,j,k,l,iel,ell,limit,fixed_equations,iters
   INTEGER               :: cjiters,cjits,nr,n_t,num_no,no_index_start
   INTEGER               :: nres,is,it,nlen,nels,ndof
   INTEGER               :: ielpe,npes_pp
@@ -70,8 +70,8 @@ PROGRAM p126
   IF (argc /= 1) CALL job_name_error(numpe,program_name)
   CALL GETARG(1, job_name) 
 
-  CALL read_p126(job_name,numpe,cjits,cjtol,ell,kappa,limit,meshgen,nels,nip, &
-                 nn,nr,nres,penalty,rho,tol,x0,visc)
+  CALL read_p126(job_name,numpe,cjits,cjtol,ell,fixed_equations,kappa,limit,  &
+                 meshgen,nels,nip,nn,nr,penalty,rho,tol,x0,visc)
 
   CALL calc_nels_pp(nels)
  
@@ -102,11 +102,11 @@ PROGRAM p126
           ke(ntot,ntot),rest(nr,nodof+1),c24(nodf,nod),c42(nod,nodf),         &
           num(nod),                                                           &
           c32(nod,nodf),c23(nodf,nod),uvel(nod),vvel(nod),row1(1,nod),        &
-          funnyf(nodf,1),rowf(1,nodf),no_local_temp(fixed_nodes),             &
+          funnyf(nodf,1),rowf(1,nodf),no_local_temp(fixed_equations),         &
           storke_pp(ntot,ntot,nels_pp),wvel(nod),row3(1,nod),g_t(n_t),        &
-          GG(ell+1,ell+1),g(ntot),Gamma(ell+1),weights(nip),no(fixed_nodes),  &
-          val(fixed_nodes),diag_tmp(ntot,nels_pp),utemp_pp(ntot,nels_pp),     &
-          pmul_pp(ntot,nels_pp),row2(1,nod),s(ell+1))
+          GG(ell+1,ell+1),g(ntot),Gamma(ell+1),no(fixed_equations),           &
+          val(fixed_equations),diag_tmp(ntot,nels_pp),utemp_pp(ntot,nels_pp), &
+          pmul_pp(ntot,nels_pp),row2(1,nod),s(ell+1),weights(nip))
 
  timest(2) = elap_time()
 
@@ -167,11 +167,13 @@ PROGRAM p126
  timest(5) = elap_time()
  
 !------------------------------------------------------------------------------
-! 8. Organise fixed nodes
+! 8. Organise fixed equations
 !------------------------------------------------------------------------------
 
 !CALL ns_loading(no,nxe,nye,nze) ! Need to replace this with a READ SUBROUTINE
 
+ CALL read_loads_ns(job_name,numpe,no,val)
+ 
  CALL reindex_fixed_nodes(ieq_start,no,no_local_temp,num_no,no_index_start, &
                           neq_pp)          
  ALLOCATE(no_local(1:num_no))
@@ -503,7 +505,7 @@ PROGRAM p126
    WRITE(11,'(A,F12.6,F8.2)') "Allocate neq_pp arrays                       ",&
                           timest(5)-timest(4),                                &
                          ((timest(5)-timest(4))/(timest(12)-timest(1)))*100  
-   WRITE(11,'(A,F12.6,F8.2)') "Organize fixed nodes                         ",&
+   WRITE(11,'(A,F12.6,F8.2)') "Organize fixed equations                     ",&
                           timest(6)-timest(5),                                &
                          ((timest(6)-timest(5))/(timest(12)-timest(1)))*100  
    WRITE(11,'(A,F12.6,F8.2)') "Element stiffness integration                ",&

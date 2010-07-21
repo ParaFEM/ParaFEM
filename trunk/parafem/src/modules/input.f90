@@ -12,7 +12,9 @@ MODULE INPUT
   !*    Subroutine             Purpose
   !*
   !*    READ_G_COORD_PP        Reads the global coordinates
-  !*    READ_NUM               Reads the element nodal steering array
+  !*    READ_G_NUM_PP          Reads the element nodal steering array
+  !*    READ_LOADS             Reads nodal forces
+  !*    READ_LOADS_NS          Reads lid velocities for p126
   !*    READ_REST              Reads the restraints
   !*    READ_P121              Reads the control data for program p121
   !*    READ_P126              Reads the control data for program p126
@@ -388,6 +390,72 @@ MODULE INPUT
 !---------------------------------------------------------------------------
 !---------------------------------------------------------------------------
 
+  SUBROUTINE READ_LOADS_NS(JOB_NAME,NUMPE,NO,VAL)
+
+  !/****f* input/read_loads_ns
+  !*  NAME
+  !*    SUBROUTINE: read_loads_ns
+  !*  SYNOPSIS
+  !*    Usage:      CALL read_loads_ns(job_name,numpe,no,val)
+  !*  FUNCTION
+  !*    Master processor reads the lid velocities for program p126 of Smith 
+  !*    and Griffiths and sends a copy to all the slave processors. 
+  !*  INPUTS
+  !*    The following arguments have the INTENT(IN) attribute:
+  !*
+  !*    job_name                 : Character
+  !*                             : Used to generate file name to read
+  !*
+  !*    numpe                    : Integer
+  !*                             : Processor number used for I/O
+  !*
+  !*    The following arguments have the INTENT(OUT) attribute:
+  !*
+  !*    no(fixed_equations)       : Integer
+  !*                              : Equations that have a prescribed velocity 
+  !*
+  !*    val(ndim,fixed_equations) : Real
+  !*                              : Velocity that is applied to each equation
+  !*  AUTHOR
+  !*    L. Margetts
+  !*  COPYRIGHT
+  !*    (c) University of Manchester 2007-2010
+  !******
+  !*  The method is based on reading a global array, although it's not a
+  !*  worry because the nodes with loads are a small proportion of the 
+  !*  whole mesh.
+  !*
+  !*/
+  
+  IMPLICIT NONE
+  CHARACTER(LEN=50), INTENT(IN) :: job_name
+  CHARACTER(LEN=50)             :: fname  
+  INTEGER                       :: i,bufsize,ier,ielpe
+  INTEGER,INTENT(IN)            :: numpe
+  INTEGER,INTENT(INOUT)         :: no(:)
+  REAL(iwp),INTENT(INOUT)       :: val(:)
+
+  IF(numpe==1)THEN
+    fname = job_name(1:INDEX(job_name, " ")-1) // ".lid"
+    OPEN(22, FILE=fname, STATUS='OLD', ACTION='READ')
+    DO i = 1,ubound(no,1)   !ubound(node,1)=fixed_equations 
+      READ(22,*) no(i),val(i)
+    END DO
+    CLOSE(22)
+  END IF
+
+  bufsize = ubound(no,1)
+  CALL MPI_BCAST(no,bufsize,MPI_INTEGER,0,MPI_COMM_WORLD,ier)
+  CALL MPI_BCAST(val,bufsize,MPI_REAL8,0,MPI_COMM_WORLD,ier)
+
+  RETURN
+
+  END SUBROUTINE READ_LOADS_NS
+  
+!---------------------------------------------------------------------------
+!---------------------------------------------------------------------------
+!---------------------------------------------------------------------------
+
   SUBROUTINE READ_REST(JOB_NAME,NUMPE,REST)
 
   !/****f* input/read_rest
@@ -616,16 +684,17 @@ MODULE INPUT
 !------------------------------------------------------------------------------
 !------------------------------------------------------------------------------
 
-  SUBROUTINE READ_P126(job_name,numpe,cjits,cjtol,ell,kappa,limit,meshgen,    &
-                       nels,nip,nn,nr,nres,penalty,rho,tol,x0,visc)
+  SUBROUTINE READ_P126(job_name,numpe,cjits,cjtol,ell,fixed_equations,kappa,  &
+                       limit,meshgen,nels,nip,nn,nr,penalty,rho,tol,     &
+                       x0,visc)
 
   !/****f* input/read_p126
   !*  NAME
   !*    SUBROUTINE: read_p126
   !*  SYNOPSIS
-  !*    Usage:      CALL read_p126(job_name,numpe,cjits,cjtol,ell,kappa,      &
-  !*                               limit,meshgen,nels,nip,nn,nr,nres,penalty, &
-  !*                               rho,tol,x0,visc
+  !*    Usage:      CALL read_p126(job_name,numpe,cjits,cjtol,ell,
+  !*                               fixed_equations,kappa,limit,meshgen,nels,  &
+  !*                               nip,nn,nr,penalty,rho,tol,x0,visc
   !*  FUNCTION
   !*    Master processor reads the general data for the problem and broadcasts 
   !*    it to the slave processors.
@@ -649,6 +718,9 @@ MODULE INPUT
   !*    ell                    : Integer
   !*                           : BiCGSTAB(l) parameter
   !*
+  !*    fixed_equations        : Integer
+  !*                           : Number of fixed equations in the lid 
+  !*
   !*    limit                  : Integer
   !*                           : Maximum number of iterations allowed
   !*
@@ -668,9 +740,6 @@ MODULE INPUT
   !*    nr                     : Integer
   !*                           : Number of nodes with restrained degrees of
   !*                             freedom 
-  !*
-  !*    nres                   : Integer
-  !*                           :
   !*
   !*    penalty                : Real
   !*                           :
@@ -701,7 +770,7 @@ MODULE INPUT
 
   CHARACTER(LEN=50), INTENT(IN)    :: job_name
   INTEGER, INTENT(IN)              :: numpe
-  INTEGER, INTENT(INOUT)           :: nels,nn,nr,nres,nip,cjits
+  INTEGER, INTENT(INOUT)           :: nels,nn,nr,nip,cjits,fixed_equations
   INTEGER, INTENT(INOUT)           :: limit,meshgen,ell 
   REAL(iwp), INTENT(INOUT)         :: cjtol,kappa,penalty,rho,tol,x0,visc
 
@@ -709,7 +778,7 @@ MODULE INPUT
 ! 1. Local variables
 !------------------------------------------------------------------------------
 
-  INTEGER                          :: bufsize,ier,integer_store(9)
+  INTEGER                          :: bufsize,ier,integer_store(10)
   REAL(iwp)                        :: real_store(7)
   CHARACTER(LEN=50)                :: fname
   CHARACTER(LEN=50)                :: program_name
@@ -722,7 +791,7 @@ MODULE INPUT
     fname = job_name(1:INDEX(job_name, " ") -1) // ".dat"
     OPEN(10,FILE=fname,STATUS='OLD',ACTION='READ')
     READ(10,*) program_name
-    READ(10,*) meshgen,nels,nn,nr,nres,nip,visc,rho,tol,limit,                &
+    READ(10,*) meshgen,nels,nn,nr,fixed_equations,nip,visc,rho,tol,limit,     &
                cjtol,cjits,penalty,x0,ell,kappa
     CLOSE(10)
    
@@ -732,7 +801,7 @@ MODULE INPUT
     integer_store(2)   = nels
     integer_store(3)   = nn
     integer_store(4)   = nr 
-    integer_store(5)   = nres 
+    integer_store(5)   = fixed_equations 
     integer_store(6)   = nip
     integer_store(7)   = limit
     integer_store(8)   = cjits
@@ -767,24 +836,24 @@ MODULE INPUT
 
   IF (numpe/=1) THEN
 
-    meshgen      = integer_store(1)
-    nels         = integer_store(2)
-    nn           = integer_store(3)
-    nr           = integer_store(4)
-    nres         = integer_store(5)
-    nip          = integer_store(6)
-    limit        = integer_store(7)
-    cjits        = integer_store(8)
-    ell          = integer_store(8)
+    meshgen         = integer_store(1)
+    nels            = integer_store(2)
+    nn              = integer_store(3)
+    nr              = integer_store(4)
+    fixed_equations = integer_store(5)
+    nip             = integer_store(6)
+    limit           = integer_store(7)
+    cjits           = integer_store(8)
+    ell             = integer_store(8)
 
-    visc         = real_store(1)
-    rho          = real_store(2)
-    tol          = real_store(3)
-    cjtol        = real_store(4)
-    penalty      = real_store(5)
-    x0           = real_store(6)
-    kappa        = real_store(7)
-
+    visc            = real_store(1)
+    rho             = real_store(2)
+    tol             = real_store(3)
+    cjtol           = real_store(4)
+    penalty         = real_store(5)
+    x0              = real_store(6)
+    kappa           = real_store(7)
+ 
   END IF
 
   RETURN
