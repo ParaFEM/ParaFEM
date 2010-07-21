@@ -232,6 +232,64 @@ MODULE LOADING
 !------------------------------------------------------------------------------
 !------------------------------------------------------------------------------
 
+ SUBROUTINE loading_p126(no,nxe,nye,nze)
+
+   !/****f* loading/loading_p126
+   !*  NAME
+   !*    SUBROUTINE: loading_p126
+   !*  SYNOPSIS
+   !*    Usage:      CALL loading_p126(no,nxe,nye,nze)
+   !*  FUNCTION
+   !*    Simple lid displacement of a square  Navier-Stokes patch  
+   !*  INPUTS
+   !*  OUTPUTS
+   !*  AUTHOR
+   !*    Smith & Griffiths, Edition 4
+   !******
+   !*/  
+   
+   IMPLICIT NONE
+   INTEGER,INTENT(IN)  :: nxe,nye,nze
+   INTEGER,INTENT(OUT) :: no(:)
+   INTEGER             :: f1,f2,f3,count,i,j
+   
+   f1 = 3*nxe+1 + (nxe+1)*nze
+   f2 = 3*(nxe-1)*(nze-1)+(nxe+1)
+   f3 = 10*nxe*nze -3*nxe - 5*nze + 4
+   
+   no(1) = 1
+   count = 2
+   
+   DO  i = 1,nxe   ! front face
+     no(count) = 3*i -1
+     count     = count+1
+     no(count) = 3*i
+     count     = count + 1
+   END DO
+ 
+   DO j = 0 , nye-1    ! other face pairs
+     DO i = 1 , nxe + 1   ! mid - planes
+       no(count) = i + f1 + j*(f2 + f3)    
+       count     = count + 1
+     END DO
+     no(count) = f1+(j+1)*f2+j*f3 +1
+     count     = count + 1
+     DO i = 1 , nxe 
+       no(count) = 3*i-1 + f1 +(j+1) * f2 + j * f3   
+       count     = count + 1
+       no(count) = 3*i + f1 +(j+1) * f2 + j * f3   
+       count     = count + 1
+     END DO
+   END DO
+
+   RETURN
+   
+ END SUBROUTINE loading_p126
+ 
+!------------------------------------------------------------------------------
+!------------------------------------------------------------------------------
+!------------------------------------------------------------------------------
+
   SUBROUTINE load_p121(node,val,nle,nxe,nze)
 
   !/****f* loading/load_p121

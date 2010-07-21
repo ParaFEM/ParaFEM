@@ -10,7 +10,7 @@ MODULE STEERING
   !*
   !*    Subroutine             Purpose
   !*    
-  !*      REARRANGE              Modifies REST array
+  !*    REARRANGE              Modifies REST array
   !*    FIND_G                 Finds g from node numbers and restraints "rest"
   !*    ABAQUS2SG              Swaps node order from Abaqus to S&G convention
   !*
@@ -293,7 +293,7 @@ MODULE STEERING
       !*  COPYRIGHT
       !*    (c) University of Manchester
       !******
-      !*  Place remarks that should not be included in the documentation here.
+      !*  Note: This looks more like REINDEX_FIXED_EQUATIONS. Rename?
       !*
       !*/
       
