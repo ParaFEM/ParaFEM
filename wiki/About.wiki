@@ -1,10 +1,14 @@
 #summary How the ParaFEM project started
 
-= About ParaFEM =
+= ParaFEM =
 
 ParaFEM is an extension of the software developed in Smith I.M. and Griffiths D.V. "Programming the Finite Element Method", Wiley, 2004. ParaFEM is also used for parallel boundary element analysis in Beer G., Smith I.M. and Duenser C. "The Boundary Element Method with Programming", Springer, 2008.
 
-ParaFEM was originally the output of a PhD Thesis "Parallel Finite Element Analysis", written by L. Margetts in 2002. It has since been used for solving very large finite element problems in a range of disciplines including geotechnical engineering (tunnels, excavations and dams), nuclear engineering (pressure vessels, structural components), the auto/aerospace sectors and materials science (microstructural modelling of materials). As well as providing the source code, the developers undertake consultancy in order to help engineers solve challenging engineering problems that are beyond the limits of commercial engineering packages.
+The first version of ParaFEM was developed by L. Margetts under the supervision of I.M. Smith and with the support of M.A. Pettipher, leading to:
+
+{{{Margetts L. (2002), "Parallel Finite Element Analysis", PhD Thesis, University of Manchester, UK.}}}
+
+It has since been used for solving very large finite element problems in a range of disciplines including geotechnical engineering (tunnels, excavations and dams), nuclear engineering (pressure vessels, structural components), the auto/aerospace sectors and materials science (microstructural modelling of materials). As well as providing the source code, the developers undertake consultancy in order to help engineers solve challenging engineering problems that are beyond the limits of commercial engineering packages.
 
 = Current Status =
 
