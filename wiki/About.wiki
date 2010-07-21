@@ -1,4 +1,4 @@
-#summary About the ParaFEM project
+#summary How the ParaFEM project started
 
 = Introduction =
 
