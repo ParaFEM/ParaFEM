@@ -302,7 +302,7 @@ PROGRAM sg12mg
   fixed_freedoms = 3*nxe*nye+2*nxe+2*nye+1
   nr             = 3*nxe*nye*nze+4*(nxe*nye+nye*nze+nze*nxe)+nxe+nye+nze+2
   ndim           = 3
-  nodof          = 3
+  nodof          = 4
   nod            = 20
   nn             = (((2*nxe+1)*(nze+1))+((nxe+1)*nze))*(nye+1) +              &
                    (nxe+1)*(nze+1)*nye
@@ -368,7 +368,7 @@ PROGRAM sg12mg
   CALL ns_cube_bc20(rest,nxe,nye,nze)
  
   DO i = 1, nr
-    WRITE(12,'(I8,3I6)') rest(i,:) 
+    WRITE(12,'(I8,4I6)') rest(i,:) 
   END DO
 
   CLOSE(12)
@@ -400,7 +400,7 @@ PROGRAM sg12mg
 
   WRITE(14,'(A)') "'p126'"
   WRITE(14,'(I4)') meshgen
-  WRITE(14,'(6I9)') nels, nn, nr, nip, fixed_freedoms
+  WRITE(14,'(6I9)') nels, nn, nr, fixed_freedoms, nip
   WRITE(14,'(3E12.4,I8)') visc, rho, tol, limit
   WRITE(14,'(E12.4,I8,E12.4)') cjtol, cjits, penalty
   WRITE(14,'(E12.4,I8,E12.4)') x0, ell, kappa

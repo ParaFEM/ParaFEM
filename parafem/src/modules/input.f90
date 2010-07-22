@@ -507,7 +507,7 @@ MODULE INPUT
   IF(numpe==1)THEN
     fname     = job_name(1:INDEX(job_name, " ")-1) // ".bnd"
     OPEN(23, FILE=fname, STATUS='OLD', ACTION='READ')
-    DO i = 1,ubound(rest,1)  !ubound(rest,1) = nr
+    DO i = 1, UBOUND(rest,1)
       READ(23,*) rest(i,:)
     END DO
     CLOSE(23)
@@ -778,12 +778,12 @@ MODULE INPUT
 ! 1. Local variables
 !------------------------------------------------------------------------------
 
-  INTEGER                          :: bufsize,ier,integer_store(10)
+  INTEGER                          :: bufsize,ier,integer_store(9)
   REAL(iwp)                        :: real_store(7)
   CHARACTER(LEN=50)                :: fname
   CHARACTER(LEN=50)                :: program_name
   
-!------------------------------------------------------------------------------
+!------------------------------------------------ ------------------------------
 ! 2. Master processor reads the data and copies it into temporary arrays
 !------------------------------------------------------------------------------
 
@@ -844,7 +844,7 @@ MODULE INPUT
     nip             = integer_store(6)
     limit           = integer_store(7)
     cjits           = integer_store(8)
-    ell             = integer_store(8)
+    ell             = integer_store(9)
 
     visc            = real_store(1)
     rho             = real_store(2)
