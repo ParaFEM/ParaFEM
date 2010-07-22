@@ -26,7 +26,7 @@ PROGRAM p126
   INTEGER               :: cj_tot,i,j,k,l,iel,ell,limit,fixed_equations,iters
   INTEGER               :: cjiters,cjits,nr,n_t,num_no,no_index_start
   INTEGER               :: nres,is,it,nlen,nels,ndof
-  INTEGER               :: ielpe,npes_pp
+  INTEGER               :: npes_pp
   INTEGER               :: argc,iargc,meshgen
   REAL(iwp)             :: visc,rho,rho1,det,ubar,vbar,wbar,tol,cjtol,alpha
   REAL(iwp)             :: beta,penalty,x0,pp,kappa,gama,omega
@@ -73,6 +73,12 @@ PROGRAM p126
   CALL read_p126(job_name,numpe,cjits,cjtol,ell,fixed_equations,kappa,limit,  &
                  meshgen,nels,nip,nn,nr,penalty,rho,tol,x0,visc)
 
+  PRINT*, "NODOF = ", nodof
+  PRINT*, "NR   = ", nr
+  PRINT*, "NN   = ", nn
+  PRINT*, "NELS = ", nels
+  PRINT*, "FIXED_EQUATIONS = ", fixed_equations
+
   CALL calc_nels_pp(nels)
  
   ntot        = nod+nodf+nod+nod
@@ -94,6 +100,7 @@ PROGRAM p126
 !------------------------------------------------------------------------------
 ! 4. Allocate dynamic arrays used in main program
 !------------------------------------------------------------------------------
+ PRINT*, "Allocate dynamic arrays"
 
  ALLOCATE(points(nip,ndim),coord(nod,ndim),derivf(ndim,nodf),fun(nod),        &
           jac(ndim,ndim),kay(ndim,ndim),der(ndim,nod),deriv(ndim,nod),        &
@@ -115,11 +122,14 @@ PROGRAM p126
 !    to solve.
 !------------------------------------------------------------------------------
 
+  PRINT*, "Find steering array"
+
   CALL rearrange(rest)
-  ielpe = iel_start
+
+  g_g_pp = 0
 
   elements_1: DO iel=1,nels_pp
-    CALL find_g(g_num_pp(:,iel),g_t,rest)
+    CALL find_g3(g_num_pp(:,iel),g_t,rest)
     CALL g_t_g_ns(nod,g_t,g_g_pp(:,iel))
   END DO elements_1
 
@@ -133,15 +143,21 @@ PROGRAM p126
   neq = MAX_INTEGER_P(neq)
   timest(3) = elap_time()
 
+  PRINT *, "neq = ", neq
+
 !------------------------------------------------------------------------------
 ! 6. Create interprocessor communication tables
 !------------------------------------------------------------------------------
  
+ PRINT*, "Create interprocessor communication tables"
+
  CALL calc_neq_pp
  CALL calc_npes_pp(npes,npes_pp)
  CALL make_ggl(npes_pp,npes,g_g_pp)
 
  timest(4) = elap_time()
+
+ nres = 481
 
  DO i = 1,neq_pp
    IF(nres==ieq_start+i-1)THEN
@@ -155,6 +171,8 @@ PROGRAM p126
 !------------------------------------------------------------------------------
 ! 7. Allocate arrays dimensioned by neq_pp 
 !------------------------------------------------------------------------------
+
+ PRINT*, "Allocate arrays dimensioned by neq_pp"
   
  ALLOCATE(x_pp(neq_pp),rt_pp(neq_pp),r_pp(neq_pp,ell+1),                      &
           u_pp(neq_pp,ell+1),b_pp(neq_pp),diag_pp(neq_pp),xold_pp(neq_pp),    &
@@ -170,12 +188,15 @@ PROGRAM p126
 ! 8. Organise fixed equations
 !------------------------------------------------------------------------------
 
+ PRINT*, "Organize fixed equations"
+
 !CALL ns_loading(no,nxe,nye,nze) ! Need to replace this with a READ SUBROUTINE
 
  CALL read_loads_ns(job_name,numpe,no,val)
  
  CALL reindex_fixed_nodes(ieq_start,no,no_local_temp,num_no,no_index_start, &
                           neq_pp)          
+
  ALLOCATE(no_local(1:num_no))
  no_local = no_local_temp(1:num_no)
  DEALLOCATE(no_local_temp)
@@ -185,6 +206,8 @@ PROGRAM p126
 !------------------------------------------------------------------------------
 ! 9. Main iteration loop
 !------------------------------------------------------------------------------
+ 
+ PRINT*, "Main iteration loop"
 
  CALL sample(element,points,weights)
  
@@ -216,6 +239,8 @@ PROGRAM p126
 ! 10. Element stiffness integration
 !------------------------------------------------------------------------------
 
+   PRINT*, "Element stiffness integration"
+  
    timest(7) = elap_time()
    
    elements_2: DO iel=1,nels_pp
@@ -241,6 +266,8 @@ PROGRAM p126
 !------------------------------------------------------------------------------
 ! 10a. Velocity contribution
 !------------------------------------------------------------------------------
+
+       PRINT*, "Velocity contribution"
 
        CALL shape_fun(funny(:,1),points,i)
        ubar = DOT_PRODUCT(funny(:,1),uvel)
@@ -270,6 +297,8 @@ PROGRAM p126
 !------------------------------------------------------------------------------
 ! 10b. Velocity contribution
 !------------------------------------------------------------------------------
+
+       PRINT*, "Velocity contribution"
 
        CALL shape_fun(funnyf(:,1),points,i)
        CALL shape_der(derf,points,i)
@@ -301,6 +330,8 @@ PROGRAM p126
 ! 11. Build the diagonal preconditioner
 !------------------------------------------------------------------------------
 
+   PRINT*, "Build diagonal preconditioner"
+
    timest(7) = elap_time()
    
    diag_tmp = zero
@@ -320,6 +351,8 @@ PROGRAM p126
 ! 12. Get the prescribed values of velocity and pressure
 !------------------------------------------------------------------------------
  
+   PRINT*, "Get prescribed values of velocity and pressure"
+
    DO i = 1,num_no
      k           = no_local(i) - ieq_start + 1
      diag_pp(k)  = diag_pp(k) + penalty
@@ -331,6 +364,8 @@ PROGRAM p126
 ! 13. Solve the simultaneous equations element by element using BiCGSTAB(l)
 !     Initialisation phase
 !------------------------------------------------------------------------------
+
+   PRINT*, "Solve the simultaneous equations"
 
    IF(iters == 1) x_pp = x0
   
@@ -449,6 +484,8 @@ PROGRAM p126
 ! 13a. BiCGSTAB(ell) iterations
 !------------------------------------------------------------------------------
 
+   PRINT*, "Write output"
+
    IF(numpe==it)THEN
      WRITE(11,'(A,E12.4)')"Norm of the error is :",pp
      WRITE(11,'(A,I5,A)')"It took BiCGSTAB(L) ",                          &
@@ -464,6 +501,8 @@ PROGRAM p126
 ! 14. Output results
 !------------------------------------------------------------------------------
 
+ PRINT*, "Write more output"
+
  timest(11) = elap_time()
  
  IF(numpe==it)THEN
@@ -477,6 +516,16 @@ PROGRAM p126
    END DO
    WRITE(11,'(A,3(I10,A))')"There are ",nn,"  nodes ",nr,                  &
      "  restrained and  ",neq,"  equations"
+   WRITE(11,'(A,E12.4)')" visc :", visc
+   WRITE(11,'(A,E12.4)')" rho  :", rho
+   WRITE(11,'(A,E12.4)')" tol  :", tol
+   WRITE(11,'(A,E12.4)')" cjtol:", cjtol
+   WRITE(11,'(A,I6)')   " limit:", limit
+   WRITE(11,'(A,I6)')   " cjits:", cjits
+   WRITE(11,'(A,E12.4)')" pen  :", penalty
+   WRITE(11,'(A,E12.4)')" x0   :", x0
+   WRITE(11,'(A,I6)')   " ell  :", ell
+   WRITE(11,'(A,E12.4)')   " kappa:", kappa
    WRITE(11,'(A)')" The pressure at the corner of the box is   :"
    WRITE(11,'(A)')" Freedom   Pressure   "
    WRITE(11,'(I8,E12.4)')nres,x_pp(is)
@@ -489,6 +538,8 @@ PROGRAM p126
 !------------------------------------------------------------------------------
 ! 15. Output performance data
 !------------------------------------------------------------------------------
+
+ PRINT*, "Output performance data"
 
  IF(numpe==it) THEN
    WRITE(11,'(/3A)')   "Program section execution times                   ",  &

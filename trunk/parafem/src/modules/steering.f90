@@ -121,7 +121,7 @@ MODULE STEERING
 
     INTEGER, INTENT(IN)  :: rest(:,:),num(:)
     INTEGER, INTENT(OUT) :: g(:)
-    INTEGER              :: i,j,k,l,nod,nodof,s1,s2,s3,only,first,last,half
+    INTEGER              :: i,j,l,nod,nodof,s1,s2,s3,only,first,last,half
     LOGICAL              :: found
     
     nod   = ubound(num,1) 
@@ -151,18 +151,19 @@ MODULE STEERING
           g(nodof*i-nodof+j) = rest(only,j+1)  
         END DO
       ELSE
-        k = 1
-        DO
-          s1 = only - k
-          IF(sum(rest(s1,2:))/=0) EXIT
-          k = k + 1
-        END DO
+!       k = 1
+!       DO
+!         s1 = only - k
+!         IF(sum(rest(s1,2:))/=0) EXIT
+!         k = k + 1
+!       END DO
 
+        s1 = only -1
         s2 = maxval(rest(s1,2:))    
         s3 = l - rest(s1,1)
   
         DO j=1,nodof
-          g(nodof*i-nodof+j) = s2+nodof*s3 - k*nodof + j
+          g(nodof*i-nodof+j) = s2+nodof*s3 - nodof + j
         END DO
  
       END IF
