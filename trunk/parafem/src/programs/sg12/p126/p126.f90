@@ -477,7 +477,7 @@ PROGRAM p126
    DO i=1,nels_pp,nels_pp-1                                            
      WRITE(11,'(A,I10)')"Element  ",i
      DO k=1,nod
-       WRITE(11,'(A,I10,3E12.4)')"Node",g_num_pp(k,i),p_g_co_pp(k,:,i)
+       WRITE(11,'(A,I10,3E12.4)')"Node",g_num_pp(k,i),g_coord_pp(k,:,i)
      END DO
    END DO
    WRITE(11,'(A,3(I10,A))')"There are ",nn,"  nodes ",nr,                  &
