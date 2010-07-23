@@ -501,7 +501,7 @@ PROGRAM p126
   disp_pp = zero
 
   IF(numpe==1) THEN
-    fname   = job_name(1:INDEX(job_name, " ")-1)//".dis"
+    fname   = job_name(1:INDEX(job_name, " ")-1)//".upvw"
     OPEN(24, file=fname, status='replace', action='write')
   END IF
 
