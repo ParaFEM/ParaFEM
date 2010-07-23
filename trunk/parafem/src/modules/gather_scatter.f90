@@ -1396,4 +1396,183 @@ MODULE GATHER_SCATTER
 !------------------------------------------------------------------------------  
 !------------------------------------------------------------------------------
 
+  SUBROUTINE SCATTER_NODES_NS(npes,nn,nels_pp,g_num_pp,nod,numvar,nodes_pp,   &
+                    node_start,node_end,element_contribution,nodal_value,flag)
+
+    !/****f* gather_scatter/scatter_nodes_ns
+    !*  NAME
+    !*    SUBROUTINE: scatter_nodes_ns
+    !*  SYNOPSIS
+    !*    Usage:      CALL scatter_nodes_ns(npes,nn,nels_pp,g_num_pp,nod,     &
+    !*                            numvar,nodes_pp,node_start,node_end,        &
+    !*                            element_contribution,nodal_value,flag)
+    !*  FUNCTION
+    !*    Assemble element contributions of a nodal value for program p126
+    !*    in Smith and Griffiths "Programming the Finite Element Method" (Ed 4)
+    !*    Deals with coupled 20 node velocity elements and 8 node pressure 
+    !*    elements
+    !*  INPUTS
+    !*    The following arguments have the INTENT(IN) attribute:
+    !*
+    !*    flag                  : Integer
+    !*                          : Indicator (1 average sum, 0 total sum)
+    !*
+    !*    nels_pp               : Integer
+    !*                          : Number of elements per processor
+    !*
+    !*    nn                    : Integer
+    !*                          : Total number of nodes
+    !*
+    !*    nod                   : Integer
+    !*                          : Number of nodes per element
+    !*
+    !*    node_end              : Integer
+    !*                          : Last node stored in the process
+    !*
+    !*    node_start            : Integer
+    !*                          : First node stored in the process
+    !*
+    !*    nodes_pp              : Integer
+    !*                          : Number of nodes stored in the process
+    !*
+    !*    npes                  : Integer
+    !*                          : Number of processes
+    !*
+    !*    numvar                : Integer
+    !*                          : Number of components of the variable
+    !*                            (1-scalar, 3-vector, 6-tensor)
+    !*
+    !*    g_num_pp(nod,nels_pp) : Integer
+    !*                          : Elements connectivity
+    !*
+    !*    element_contribution(ntot,nels_pp) : Real
+    !*                                       : Elements contribution to the 
+    !*                                         nodal variable
+    !*
+    !*    The following arguments have the INTENT(OUT) attribute:
+    !*
+    !*    nodal_value(nodes_pp*nodof)        : Real
+    !*                                       : Value after assembling elements
+    !*                                         contribution
+    !*  AUTHOR
+    !*    L. Margetts
+    !*  COPYRIGHT
+    !*    (c) University of Manchester 2007-2010
+    !******
+    !*  Place remarks that should not be included in the documentation here.
+    !*
+    !*/
+
+    IMPLICIT NONE
+
+    INTEGER,   INTENT(IN)  :: flag, nels_pp, nn, nod, node_end, node_start, &
+                              nodes_pp, npes, numvar, g_num_pp(:,:)
+    REAL(iwp), INTENT(IN)  :: element_contribution(:,:)
+    REAL(iwp), INTENT(OUT) :: nodal_value(:)
+    INTEGER                :: i, j, k, iel, startNode, endNode, sizee, idx1
+    INTEGER                :: idx2, bufsize, ier
+    REAL(iwp)              :: zero = 0.0_iwp
+    INTEGER, ALLOCATABLE   :: itemp(:), itempdest(:)
+    REAL(iwp), ALLOCATABLE :: temp(:)
+
+!------------------------------------------------------------------------------
+! 1. Allocate internal arrays
+!------------------------------------------------------------------------------
+    
+    sizee = (nodes_pp+1)*numvar
+    ALLOCATE( itemp(sizee), itempdest(sizee), temp(sizee) )
+
+!------------------------------------------------------------------------------
+! 2. Every process (first loop) sends the range of nodes assigned to that
+!    process. The other processes check whether the elements contain nodes
+!    in that range for the contribution. The contributions are summed up
+!    and the process collects the results
+!------------------------------------------------------------------------------
+    
+    bufsize = 1
+
+    DO i = 1,npes
+      startNode = node_start
+      endNode   = node_end
+      CALL MPI_BCAST(startNode,bufsize,MPI_INTEGER,i-1,MPI_COMM_WORLD,ier)
+      CALL MPI_BCAST(endNode,bufsize,MPI_INTEGER,i-1,MPI_COMM_WORLD,ier)
+
+      sizee = nodes_pp*numvar
+      CALL MPI_BCAST(sizee,bufsize,MPI_INTEGER,i-1,MPI_COMM_WORLD,ier)
+
+      temp = 0.0
+      itemp = 0
+
+      DO iel = 1,nels_pp
+        DO j = 1,nod
+          IF (g_num_pp(j,iel)>=startNode .and. g_num_pp(j,iel)<=endNode) THEN
+            idx1 = (g_num_pp(j,iel)-startNode)*numvar
+            idx2 = (j-1)*numvar
+
+!           DO k = 1,numvar
+!             temp(idx1+k)  = temp(idx1+k) + element_contribution(idx2+k,iel)
+!             itemp(idx1+k) = itemp(idx1+k) + 1
+!           END DO
+            
+            k = 1
+            temp(idx1+k)  = temp(idx1+k) + element_contribution(idx2+k,iel)
+            itemp(idx1+k) = itemp(idx1+k) + 1
+ 
+            k = 2
+            
+            IF(nod==1 .or. nod==3 .or. nod==5 .or. nod==7) THEN
+              temp(idx1+k)  = temp(idx1+k) + element_contribution(idx2+k,iel)
+              itemp(idx1+k) = itemp(idx1+k) + 1
+            ELSE IF(nod==13 .or. nod==15 .or. nod==17 .or. nod==19) THEN 
+              temp(idx1+k)  = temp(idx1+k) + element_contribution(idx2+k,iel)
+              itemp(idx1+k) = itemp(idx1+k) + 1
+            ELSE
+              temp(idx1+k)  = temp(idx1+k) + zero
+              itemp(idx1+k) = itemp(idx1+k) + 1
+            END IF
+
+            k = 3
+            temp(idx1+k)  = temp(idx1+k) + element_contribution(idx2+k,iel)
+            itemp(idx1+k) = itemp(idx1+k) + 1
+
+            k = 4
+            temp(idx1+k)  = temp(idx1+k) + element_contribution(idx2+k,iel)
+            itemp(idx1+k) = itemp(idx1+k) + 1
+ 
+
+          END IF
+        END DO
+      END DO
+
+      CALL MPI_REDUCE(temp, nodal_value, sizee, MPI_REAL8, MPI_SUM, i-1, &
+                      MPI_COMM_WORLD, ier)
+      CALL MPI_REDUCE(itemp, itempdest, sizee, MPI_INTEGER, MPI_SUM, i-1, &
+                      MPI_COMM_WORLD, ier)
+    END DO
+
+!------------------------------------------------------------------------------
+! 3. Compute average if required
+!------------------------------------------------------------------------------
+
+    IF (flag==1) THEN
+      DO i = 1,nodes_pp*numvar
+        IF (itempdest(i) == 0) THEN
+          write(*,*)"Error in average: itemp = 0"
+        END IF
+        nodal_value(i) = nodal_value(i)/itempdest(i)
+      END DO
+    END IF
+
+!------------------------------------------------------------------------------
+! 4. Deallocate internal arrays
+!------------------------------------------------------------------------------
+
+    DEALLOCATE(itemp,itempdest,temp)
+      
+  END SUBROUTINE SCATTER_NODES_NS
+
+!------------------------------------------------------------------------------
+!------------------------------------------------------------------------------
+!------------------------------------------------------------------------------
+  
 END MODULE GATHER_SCATTER
