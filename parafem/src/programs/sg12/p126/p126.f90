@@ -194,30 +194,26 @@ PROGRAM p126
 ! 9. Main iteration loop
 !------------------------------------------------------------------------------
  
- PRINT*, "Main iteration loop"
-
  CALL sample(element,points,weights)
  
- uvel     = zero  
- vvel     = zero  
- wvel     = zero   
- 
- kay      = zero  
+ uvel     = zero
+ vvel     = zero
+ wvel     = zero
+ kay      = zero
  kay(1,1) = visc/rho
  kay(2,2) = visc/rho
  kay(3,3) = visc/rho
- 
  iters    = 0
  cj_tot   = 0
  
  iterations: DO
-   iters     = iters+1
-   storke_pp = zero
-   ke        = zero
-   diag_pp   = zero
-   b_pp      = zero
-   utemp_pp  = zero
-   pmul_pp   = zero
+   iters    = iters+1
+   ke       = zero
+   storke_pp= zero
+   diag_pp  = zero
+   b_pp     = zero
+   utemp_pp = zero
+   pmul_pp  = zero
    CALL gather(x_pp,utemp_pp)
    CALL gather(xold_pp,pmul_pp)
    
@@ -250,12 +246,11 @@ PROGRAM p126
 !------------------------------------------------------------------------------
 ! 10a. Velocity contribution
 !------------------------------------------------------------------------------
-
-       CALL shape_fun(fun,points,i)
-       funny(:,1) = fun
-       ubar = DOT_PRODUCT(fun,uvel)
-       vbar = DOT_PRODUCT(fun,vvel)
-       wbar = DOT_PRODUCT(fun,wvel)
+ 
+       CALL shape_fun(funny(:,1),points,i)
+       ubar = DOT_PRODUCT(funny(:,1),uvel)
+       vbar = DOT_PRODUCT(funny(:,1),vvel)
+       wbar = DOT_PRODUCT(funny(:,1),wvel)
        
        IF(iters==1)THEN
          ubar = one
@@ -276,13 +271,12 @@ PROGRAM p126
                    MATMUL(funny,row1)*det*weights(i)*ubar +                    &
                    MATMUL(funny,row2)*det*weights(i)*vbar +                    &
                    MATMUL(funny,row3)*det*weights(i)*wbar
-                   
+
 !------------------------------------------------------------------------------
 ! 10b. Pressure contribution
 !------------------------------------------------------------------------------
 
-       CALL shape_fun(funf,points,i)
-       funnyf(:,1) = funf
+       CALL shape_fun(funnyf(:,1),points,i)
        CALL shape_der(derf,points,i)
        coordf(1:4,:) = g_coord_pp(1:7:2,:,iel)
        coordf(5:8,:) = g_coord_pp(13:19:2,:,iel)
@@ -315,8 +309,7 @@ PROGRAM p126
    timest(7) = elap_time()
    
    diag_tmp = zero
-   diag_pp  = zero
- 
+   
    elements_2a: DO iel = 1,nels_pp
      DO k = 1,ntot
        diag_tmp(k,iel) = diag_tmp(k,iel) + storke_pp(k,k,iel)
@@ -484,21 +477,11 @@ PROGRAM p126
    DO i=1,nels_pp,nels_pp-1                                            
      WRITE(11,'(A,I10)')"Element  ",i
      DO k=1,nod
-       WRITE(11,'(A,I10,3E12.4)')"Node",g_num_pp(k,i),g_coord_pp(k,:,i)
+       WRITE(11,'(A,I10,3E12.4)')"Node",g_num_pp(k,i),p_g_co_pp(k,:,i)
      END DO
    END DO
    WRITE(11,'(A,3(I10,A))')"There are ",nn,"  nodes ",nr,                  &
      "  restrained and  ",neq,"  equations"
-   WRITE(11,'(A,E12.4)')" visc :", visc
-   WRITE(11,'(A,E12.4)')" rho  :", rho
-   WRITE(11,'(A,E12.4)')" tol  :", tol
-   WRITE(11,'(A,E12.4)')" cjtol:", cjtol
-   WRITE(11,'(A,I6)')   " limit:", limit
-   WRITE(11,'(A,I6)')   " cjits:", cjits
-   WRITE(11,'(A,E12.4)')" pen  :", penalty
-   WRITE(11,'(A,E12.4)')" x0   :", x0
-   WRITE(11,'(A,I6)')   " ell  :", ell
-   WRITE(11,'(A,E12.4)')   " kappa:", kappa
    WRITE(11,'(A)')" The pressure at the corner of the box is   :"
    WRITE(11,'(A)')" Freedom   Pressure   "
    WRITE(11,'(I8,E12.4)')nres,x_pp(is)
@@ -527,7 +510,7 @@ PROGRAM p126
    WRITE(11,'(A,F12.6,F8.2)') "Allocate neq_pp arrays                       ",&
                           timest(5)-timest(4),                                &
                          ((timest(5)-timest(4))/(timest(12)-timest(1)))*100  
-   WRITE(11,'(A,F12.6,F8.2)') "Organize fixed equations                     ",&
+   WRITE(11,'(A,F12.6,F8.2)') "Organize fixed nodes                         ",&
                           timest(6)-timest(5),                                &
                          ((timest(6)-timest(5))/(timest(12)-timest(1)))*100  
    WRITE(11,'(A,F12.6,F8.2)') "Element stiffness integration                ",&
@@ -547,6 +530,6 @@ PROGRAM p126
    CLOSE(11)
  END IF
  
- CALL shutdown()  
+ CALL shutdown()    
 
 END PROGRAM p126
