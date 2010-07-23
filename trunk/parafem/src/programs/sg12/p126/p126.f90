@@ -1,10 +1,10 @@
 PROGRAM p126     
-!-------------------------------------------------------------------------
+!------------------------------------------------------------------------------
 !      Program 12.6 steady state  3-d Navier-Stokes equation
 !      using 20-node velocity hexahedral elements  
 !      coupled to 8-node pressure hexahedral elements : u-p-v-w order
 !      element by element solution using BiCGSTAB(L) : parallel version
-!-------------------------------------------------------------------------
+!------------------------------------------------------------------------------
 
  USE precision       ; USE global_variables      ; USE mp_interface
  USE input           ; USE output                ; USE loading
@@ -28,6 +28,7 @@ PROGRAM p126
   INTEGER               :: nres,is,it,nlen,nels,ndof
   INTEGER               :: npes_pp
   INTEGER               :: argc,iargc,meshgen
+  INTEGER               :: node_end,node_start,nodes_pp  
   REAL(iwp)             :: visc,rho,rho1,det,ubar,vbar,wbar,tol,cjtol,alpha
   REAL(iwp)             :: beta,penalty,x0,pp,kappa,gama,omega
   REAL(iwp)             :: norm_r,r0_norm,error
@@ -35,8 +36,7 @@ PROGRAM p126
   REAL(iwp),PARAMETER   :: one  = 1.0_iwp
   LOGICAL               :: converged,cj_converged
   CHARACTER(LEN=15)     :: element='hexahedron'
-  CHARACTER(LEN=50)     :: program_name='p126'
-  CHARACTER(LEN=50)     :: job_name
+  CHARACTER(LEN=50)     :: program_name='p126',job_name,label
   
 !------------------------------------------------------------------------------
 ! 2. Declare dynamic arrays
@@ -52,7 +52,7 @@ PROGRAM p126
   REAL(iwp),ALLOCATABLE :: utemp_pp(:,:),xold_pp(:),c24(:,:),c42(:,:)
   REAL(iwp),ALLOCATABLE :: row3(:,:),u_pp(:,:),rt_pp(:),y_pp(:),y1_pp(:)
   REAL(iwp),ALLOCATABLE :: s(:),Gamma(:),GG(:,:),diag_tmp(:,:),store_pp(:)
-  REAL(iwp),ALLOCATABLE :: pmul_pp(:,:),timest(:)
+  REAL(iwp),ALLOCATABLE :: pmul_pp(:,:),timest(:),disp_pp(:,:)
   INTEGER,ALLOCATABLE   :: rest(:,:),g(:),num(:),g_num_pp(:,:),g_g_pp(:,:)
   INTEGER,ALLOCATABLE   :: no(:),g_t(:),no_local(:),no_local_temp(:)
 
@@ -465,31 +465,52 @@ PROGRAM p126
 
  END DO iterations
  
+  timest(11) = elap_time()
+ 
 !------------------------------------------------------------------------------
 ! 14. Output results
 !------------------------------------------------------------------------------
+  
+  IF(numpe==it)THEN
+    WRITE(11,'(A,I8,A)')"This job ran on ",npes,"  processors"
+    WRITE(11,'(A)')"Global coordinates and node numbers"
+    DO i=1,nels_pp,nels_pp-1                                            
+      WRITE(11,'(A,I10)')"Element  ",i
+      DO k=1,nod
+        WRITE(11,'(A,I10,3E12.4)')"Node",g_num_pp(k,i),g_coord_pp(k,:,i)
+      END DO
+    END DO
+    WRITE(11,'(A,3(I10,A))')"There are ",nn,"  nodes ",nr,                  &
+      "  restrained and  ",neq,"  equations"
+    WRITE(11,'(A)')" The pressure at the corner of the box is   :"
+    WRITE(11,'(A)')" Freedom   Pressure   "
+    WRITE(11,'(I8,E12.4)')nres,x_pp(is)
+    WRITE(11,'(A,I5)')"The total number of BiCGStab iterations was :",cj_tot
+    WRITE(11,'(A,I5,A)')"The solution took",iters,"  iterations to converge"
+  END IF
 
- timest(11) = elap_time()
- 
- IF(numpe==it)THEN
-   WRITE(11,'(A,I8,A)')"This job ran on ",npes,"  processors"
-   WRITE(11,'(A)')"Global coordinates and node numbers"
-   DO i=1,nels_pp,nels_pp-1                                            
-     WRITE(11,'(A,I10)')"Element  ",i
-     DO k=1,nod
-       WRITE(11,'(A,I10,3E12.4)')"Node",g_num_pp(k,i),g_coord_pp(k,:,i)
-     END DO
-   END DO
-   WRITE(11,'(A,3(I10,A))')"There are ",nn,"  nodes ",nr,                  &
-     "  restrained and  ",neq,"  equations"
-   WRITE(11,'(A)')" The pressure at the corner of the box is   :"
-   WRITE(11,'(A)')" Freedom   Pressure   "
-   WRITE(11,'(I8,E12.4)')nres,x_pp(is)
-   WRITE(11,'(A,I5)')"The total number of BiCGStab iterations was :",cj_tot
-   WRITE(11,'(A,I5,A)')"The solution took",iters,"  iterations to converge"
- END IF
+!- Untested
 
- timest(12) = elap_time()
+  CALL calc_nodes_pp(nn,npes,numpe,node_end,node_start,nodes_pp)
+  ALLOCATE(disp_pp(nodes_pp*nodof))
+    
+  disp_pp = zero
+
+  IF(numpe==1) THEN
+    fname   = job_name(1:INDEX(job_name, " ")-1)//".dis"
+    OPEN(24, file=fname, status='replace', action='write')
+  END IF
+
+  label     = "*DISPLACEMENT"
+  utemp_pp  = zero
+  CALL gather(xnew_pp(1:),utemp_pp)
+  CALL scatter_nodes(npes,nn,nels_pp,g_num_pp,nod,nodof,nodes_pp,              &
+                     node_start,node_end,utemp_pp,disp_pp,1)
+  CALL write_nodal_variable(label,24,1,nodes_pp,npes,numpe,nodof,disp_pp)
+
+  IF(numpe==1) CLOSE(24)
+  
+  timest(12) = elap_time()
  
 !------------------------------------------------------------------------------
 ! 15. Output performance data
