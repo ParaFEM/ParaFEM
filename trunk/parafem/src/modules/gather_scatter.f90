@@ -1507,37 +1507,61 @@ MODULE GATHER_SCATTER
         DO j = 1,nod
           IF (g_num_pp(j,iel)>=startNode .and. g_num_pp(j,iel)<=endNode) THEN
             idx1 = (g_num_pp(j,iel)-startNode)*numvar
-            idx2 = (j-1)*numvar
+!           idx2 = (j-1)*numvar
 
 !           DO k = 1,numvar
 !             temp(idx1+k)  = temp(idx1+k) + element_contribution(idx2+k,iel)
 !             itemp(idx1+k) = itemp(idx1+k) + 1
 !           END DO
             
-            k = 1
-            temp(idx1+k)  = temp(idx1+k) + element_contribution(idx2+k,iel)
-            itemp(idx1+k) = itemp(idx1+k) + 1
+            idx2 = j
+            temp(idx1+1)  = temp(idx1+1) + element_contribution(idx2,iel)
+            itemp(idx1+1) = itemp(idx1+1) + 1
  
-            k = 2
-            
-            IF(nod==1 .or. nod==3 .or. nod==5 .or. nod==7) THEN
-              temp(idx1+k)  = temp(idx1+k) + element_contribution(idx2+k,iel)
-              itemp(idx1+k) = itemp(idx1+k) + 1
-            ELSE IF(nod==13 .or. nod==15 .or. nod==17 .or. nod==19) THEN 
-              temp(idx1+k)  = temp(idx1+k) + element_contribution(idx2+k,iel)
-              itemp(idx1+k) = itemp(idx1+k) + 1
+            IF(j==1) THEN
+              idx2 = 20+1
+              temp(idx1+2)  = temp(idx1+2) + element_contribution(idx2,iel)
+              itemp(idx1+2) = itemp(idx1+2) + 1
+            ELSE IF(j==3) THEN
+              idx2 = 20+2
+              temp(idx1+2)  = temp(idx1+2) + element_contribution(idx2,iel)
+              itemp(idx1+2) = itemp(idx1+2) + 1
+            ELSE IF(j==5) THEN
+              idx2 = 20+3
+              temp(idx1+2)  = temp(idx1+2) + element_contribution(idx2,iel)
+              itemp(idx1+2) = itemp(idx1+2) + 1
+            ELSE IF(j==7) THEN
+              idx2 = 20+4
+              temp(idx1+2)  = temp(idx1+2) + element_contribution(idx2,iel)
+              itemp(idx1+2) = itemp(idx1+2) + 1
+            ELSE IF(j==13) THEN
+              idx2 = 20+5
+              temp(idx1+2)  = temp(idx1+2) + element_contribution(idx2,iel)
+              itemp(idx1+2) = itemp(idx1+2) + 1
+            ELSE IF(j==15) THEN
+              idx2 = 20+6
+              temp(idx1+2)  = temp(idx1+2) + element_contribution(idx2,iel)
+              itemp(idx1+2) = itemp(idx1+2) + 1
+            ELSE IF(j==17) THEN
+              idx2 = 20+7
+              temp(idx1+2)  = temp(idx1+2) + element_contribution(idx2,iel)
+              itemp(idx1+2) = itemp(idx1+2) + 1
+            ELSE IF(j==19) THEN
+              idx2 = 20+8
+              temp(idx1+2)  = temp(idx1+2) + element_contribution(idx2,iel)
+              itemp(idx1+2) = itemp(idx1+2) + 1
             ELSE
-              temp(idx1+k)  = temp(idx1+k) + zero
-              itemp(idx1+k) = itemp(idx1+k) + 1
+              temp(idx1+2)  = temp(idx1+2) + zero
+              itemp(idx1+2) = itemp(idx1+2) + 1
             END IF
 
-            k = 3
-            temp(idx1+k)  = temp(idx1+k) + element_contribution(idx2+k,iel)
-            itemp(idx1+k) = itemp(idx1+k) + 1
+            idx2 = j+28
+            temp(idx1+3)  = temp(idx1+3) + element_contribution(idx2,iel)
+            itemp(idx1+3) = itemp(idx1+3) + 1
 
-            k = 4
-            temp(idx1+k)  = temp(idx1+k) + element_contribution(idx2+k,iel)
-            itemp(idx1+k) = itemp(idx1+k) + 1
+            idx2 = j+48
+            temp(idx1+4)  = temp(idx1+4) + element_contribution(idx2,iel)
+            itemp(idx1+4) = itemp(idx1+4) + 1
  
 
           END IF

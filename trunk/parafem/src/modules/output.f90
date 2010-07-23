@@ -499,6 +499,9 @@ MODULE OUTPUT
       IF (numvar==3) THEN
         WRITE(filnum,2003)i,(stress(j),j=idx1,idx1+numvar-1)
       END IF
+      IF (numvar==4) THEN
+        WRITE(filnum,2004)i,(stress(j),j=idx1,idx1+numvar-1)
+      END IF
       IF (numvar==6) THEN
         WRITE(filnum,2006)i,(stress(j),j=idx1,idx1+numvar-1)
       END IF
@@ -558,6 +561,9 @@ MODULE OUTPUT
         IF (numvar==3) THEN
           WRITE(filnum,2003)n-1+i,(stress_r(j),j=idx1,idx1+numvar-1)
         END IF
+        IF (numvar==4) THEN
+          WRITE(filnum,2004)n-1+i,(stress_r(j),j=idx1,idx1+numvar-1)
+        END IF
         IF (numvar==6) THEN
           WRITE(filnum,2006)n-1+i,(stress_r(j),j=idx1,idx1+numvar-1)
         END IF
@@ -577,6 +583,7 @@ MODULE OUTPUT
 
   2001 FORMAT(i8,1(1p,e12.4))
   2003 FORMAT(i8,3(1p,e12.4))
+  2004 FORMAT(i8,4(1p,e12.4))
   2006 FORMAT(i8,6(1p,e12.4))
 
   END SUBROUTINE WRITE_NODAL_VARIABLE
