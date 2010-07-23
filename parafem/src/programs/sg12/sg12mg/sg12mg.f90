@@ -38,7 +38,7 @@ PROGRAM sg12mg
   INTEGER                :: leig
   INTEGER                :: lx
   INTEGER                :: lz
-  INTEGER                :: i
+  INTEGER                :: i, j
   INTEGER                :: iel
   INTEGER                :: argc
   INTEGER                :: cjits
@@ -334,7 +334,7 @@ PROGRAM sg12mg
     CALL geometry_20bxz(iel,nxe,nze,aa,bb,cc,coord,g_num(:,iel))
     g_coord(:,g_num(:,iel)) = TRANSPOSE(coord)
   END DO
-
+ 
   fname = job_name(1:INDEX(job_name, " ")-1) // ".d" 
   OPEN(11,FILE=fname,STATUS='REPLACE',ACTION='WRITE')
   
