@@ -37,6 +37,7 @@ PROGRAM p126
   LOGICAL               :: converged,cj_converged
   CHARACTER(LEN=15)     :: element='hexahedron'
   CHARACTER(LEN=50)     :: program_name='p126',job_name,label
+  CHARACTER(LEN=50)     :: fname
   
 !------------------------------------------------------------------------------
 ! 2. Declare dynamic arrays
@@ -52,7 +53,7 @@ PROGRAM p126
   REAL(iwp),ALLOCATABLE :: utemp_pp(:,:),xold_pp(:),c24(:,:),c42(:,:)
   REAL(iwp),ALLOCATABLE :: row3(:,:),u_pp(:,:),rt_pp(:),y_pp(:),y1_pp(:)
   REAL(iwp),ALLOCATABLE :: s(:),Gamma(:),GG(:,:),diag_tmp(:,:),store_pp(:)
-  REAL(iwp),ALLOCATABLE :: pmul_pp(:,:),timest(:),disp_pp(:,:)
+  REAL(iwp),ALLOCATABLE :: pmul_pp(:,:),timest(:),disp_pp(:)
   INTEGER,ALLOCATABLE   :: rest(:,:),g(:),num(:),g_num_pp(:,:),g_g_pp(:,:)
   INTEGER,ALLOCATABLE   :: no(:),g_t(:),no_local(:),no_local_temp(:)
 
@@ -155,8 +156,11 @@ PROGRAM p126
      is = i
    END IF
  END DO
- 
- IF(numpe==it) OPEN(11,FILE='p126.res',STATUS='REPLACE',ACTION='WRITE')     
+
+ IF(numpe==it) THEN
+   fname = job_name(1:INDEX(job_name, " ")-1) // ".res"
+   OPEN(11,FILE=fname,STATUS='REPLACE',ACTION='WRITE')     
+ END IF
 
 !------------------------------------------------------------------------------
 ! 7. Allocate arrays dimensioned by neq_pp 
@@ -503,8 +507,8 @@ PROGRAM p126
 
   label     = "*DISPLACEMENT"
   utemp_pp  = zero
-  CALL gather(xnew_pp(1:),utemp_pp)
-  CALL scatter_nodes(npes,nn,nels_pp,g_num_pp,nod,nodof,nodes_pp,              &
+  CALL gather(x_pp(1:),utemp_pp)
+  CALL scatter_nodes_ns(npes,nn,nels_pp,g_num_pp,nod,nodof,nodes_pp,          &
                      node_start,node_end,utemp_pp,disp_pp,1)
   CALL write_nodal_variable(label,24,1,nodes_pp,npes,numpe,nodof,disp_pp)
 
