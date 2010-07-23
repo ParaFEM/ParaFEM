@@ -73,18 +73,12 @@ PROGRAM p126
   CALL read_p126(job_name,numpe,cjits,cjtol,ell,fixed_equations,kappa,limit,  &
                  meshgen,nels,nip,nn,nr,penalty,rho,tol,x0,visc)
 
-  PRINT*, "NODOF = ", nodof
-  PRINT*, "NR   = ", nr
-  PRINT*, "NN   = ", nn
-  PRINT*, "NELS = ", nels
-  PRINT*, "FIXED_EQUATIONS = ", fixed_equations
-
   CALL calc_nels_pp(nels)
  
   ntot        = nod+nodf+nod+nod
   n_t         = nod*nodof
 
-  ALLOCATE(g_num_pp(nod, nels_pp)) 
+  ALLOCATE(g_num_pp(nod,nels_pp)) 
   ALLOCATE(g_coord_pp(nod,ndim,nels_pp)) 
   ALLOCATE(rest(nr,nodof+1)) 
  
@@ -106,7 +100,7 @@ PROGRAM p126
           jac(ndim,ndim),kay(ndim,ndim),der(ndim,nod),deriv(ndim,nod),        &
           derf(ndim,nodf),funf(nodf),coordf(nodf,ndim),funny(nod,1),          &
           g_g_pp(ntot,nels_pp),c11(nod,nod),c12(nod,nodf),c21(nodf,nod),      &
-          ke(ntot,ntot),rest(nr,nodof+1),c24(nodf,nod),c42(nod,nodf),         &
+          ke(ntot,ntot),c24(nodf,nod),c42(nod,nodf),                          &
           num(nod),                                                           &
           c32(nod,nodf),c23(nodf,nod),uvel(nod),vvel(nod),row1(1,nod),        &
           funnyf(nodf,1),rowf(1,nodf),no_local_temp(fixed_equations),         &
@@ -121,8 +115,6 @@ PROGRAM p126
 ! 5. Loop the elements to find the steering array and the number of equations
 !    to solve.
 !------------------------------------------------------------------------------
-
-  PRINT*, "Find steering array"
 
   CALL rearrange(rest)
 
@@ -142,8 +134,6 @@ PROGRAM p126
 
   neq = MAX_INTEGER_P(neq)
   timest(3) = elap_time()
-
-  PRINT *, "neq = ", neq
 
 !------------------------------------------------------------------------------
 ! 6. Create interprocessor communication tables
@@ -190,10 +180,7 @@ PROGRAM p126
 
  PRINT*, "Organize fixed equations"
 
-!CALL ns_loading(no,nxe,nye,nze) ! Need to replace this with a READ SUBROUTINE
-
  CALL read_loads_ns(job_name,numpe,no,val)
- 
  CALL reindex_fixed_nodes(ieq_start,no,no_local_temp,num_no,no_index_start, &
                           neq_pp)          
 
@@ -211,8 +198,6 @@ PROGRAM p126
 
  CALL sample(element,points,weights)
  
- val      = 1.0_iwp        
- 
  uvel     = zero  
  vvel     = zero  
  wvel     = zero   
@@ -226,12 +211,13 @@ PROGRAM p126
  cj_tot   = 0
  
  iterations: DO
-   iters    = iters+1
-   ke       = zero
-   diag_pp  = zero
-   b_pp     = zero
-   utemp_pp = zero
-   pmul_pp  = zero
+   iters     = iters+1
+   storke_pp = zero
+   ke        = zero
+   diag_pp   = zero
+   b_pp      = zero
+   utemp_pp  = zero
+   pmul_pp   = zero
    CALL gather(x_pp,utemp_pp)
    CALL gather(xold_pp,pmul_pp)
    
@@ -239,14 +225,12 @@ PROGRAM p126
 ! 10. Element stiffness integration
 !------------------------------------------------------------------------------
 
-   PRINT*, "Element stiffness integration"
-  
    timest(7) = elap_time()
    
    elements_2: DO iel=1,nels_pp
 
      uvel = (utemp_pp(1:nod,iel)+pmul_pp(1:nod,iel))*.5_iwp
-     DO i = nod+nodf+1,nod+nodf,nod
+     DO i = nod+nodf+1,nod+nodf+nod
        vvel(i-nod-nodf) = (utemp_pp(i,iel)+pmul_pp(i,iel))*.5_iwp
      END DO
      DO i = nod+nodf+nod+1,ntot
@@ -267,12 +251,11 @@ PROGRAM p126
 ! 10a. Velocity contribution
 !------------------------------------------------------------------------------
 
-       PRINT*, "Velocity contribution"
-
-       CALL shape_fun(funny(:,1),points,i)
-       ubar = DOT_PRODUCT(funny(:,1),uvel)
-       vbar = DOT_PRODUCT(funny(:,1),vvel)
-       wbar = DOT_PRODUCT(funny(:,1),wvel)
+       CALL shape_fun(fun,points,i)
+       funny(:,1) = fun
+       ubar = DOT_PRODUCT(fun,uvel)
+       vbar = DOT_PRODUCT(fun,vvel)
+       wbar = DOT_PRODUCT(fun,wvel)
        
        IF(iters==1)THEN
          ubar = one
@@ -295,12 +278,11 @@ PROGRAM p126
                    MATMUL(funny,row3)*det*weights(i)*wbar
                    
 !------------------------------------------------------------------------------
-! 10b. Velocity contribution
+! 10b. Pressure contribution
 !------------------------------------------------------------------------------
 
-       PRINT*, "Velocity contribution"
-
-       CALL shape_fun(funnyf(:,1),points,i)
+       CALL shape_fun(funf,points,i)
+       funnyf(:,1) = funf
        CALL shape_der(derf,points,i)
        coordf(1:4,:) = g_coord_pp(1:7:2,:,iel)
        coordf(5:8,:) = g_coord_pp(13:19:2,:,iel)
@@ -330,12 +312,11 @@ PROGRAM p126
 ! 11. Build the diagonal preconditioner
 !------------------------------------------------------------------------------
 
-   PRINT*, "Build diagonal preconditioner"
-
    timest(7) = elap_time()
    
    diag_tmp = zero
-   
+   diag_pp  = zero
+ 
    elements_2a: DO iel = 1,nels_pp
      DO k = 1,ntot
        diag_tmp(k,iel) = diag_tmp(k,iel) + storke_pp(k,k,iel)
@@ -351,8 +332,6 @@ PROGRAM p126
 ! 12. Get the prescribed values of velocity and pressure
 !------------------------------------------------------------------------------
  
-   PRINT*, "Get prescribed values of velocity and pressure"
-
    DO i = 1,num_no
      k           = no_local(i) - ieq_start + 1
      diag_pp(k)  = diag_pp(k) + penalty
@@ -364,8 +343,6 @@ PROGRAM p126
 ! 13. Solve the simultaneous equations element by element using BiCGSTAB(l)
 !     Initialisation phase
 !------------------------------------------------------------------------------
-
-   PRINT*, "Solve the simultaneous equations"
 
    IF(iters == 1) x_pp = x0
   
@@ -484,8 +461,6 @@ PROGRAM p126
 ! 13a. BiCGSTAB(ell) iterations
 !------------------------------------------------------------------------------
 
-   PRINT*, "Write output"
-
    IF(numpe==it)THEN
      WRITE(11,'(A,E12.4)')"Norm of the error is :",pp
      WRITE(11,'(A,I5,A)')"It took BiCGSTAB(L) ",                          &
@@ -500,8 +475,6 @@ PROGRAM p126
 !------------------------------------------------------------------------------
 ! 14. Output results
 !------------------------------------------------------------------------------
-
- PRINT*, "Write more output"
 
  timest(11) = elap_time()
  
@@ -538,8 +511,6 @@ PROGRAM p126
 !------------------------------------------------------------------------------
 ! 15. Output performance data
 !------------------------------------------------------------------------------
-
- PRINT*, "Output performance data"
 
  IF(numpe==it) THEN
    WRITE(11,'(/3A)')   "Program section execution times                   ",  &
