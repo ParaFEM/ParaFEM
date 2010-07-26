@@ -256,7 +256,6 @@ MODULE OUTPUT
     DO i = 1, iters
       WRITE(11,'(A,I12,I12,E12.4)') "    ",i,bicg(i),bicg_pp(i)
     END DO
-    Number of BiCGSTAB(l) iterations:           ",cjiters
     
 !------------------------------------------------------------------------------
 ! 4. Output timing data
@@ -292,7 +291,7 @@ MODULE OUTPUT
                           timest(12)-timest(11),                              &
                           ((timest(12)-timest(11))/(timest(12)-timest(1)))*100  
     WRITE(11,'(A,F12.6,A)') "Total execution time                         ",  &
-                           elap_time()-timest(1),"  100.00"
+                           timest(12)-timest(1),"  100.00"
     CLOSE(11)
     
   END IF
