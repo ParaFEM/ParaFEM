@@ -53,9 +53,9 @@ PROGRAM p126
   REAL(iwp),ALLOCATABLE :: utemp_pp(:,:),xold_pp(:),c24(:,:),c42(:,:)
   REAL(iwp),ALLOCATABLE :: row3(:,:),u_pp(:,:),rt_pp(:),y_pp(:),y1_pp(:)
   REAL(iwp),ALLOCATABLE :: s(:),Gamma(:),GG(:,:),diag_tmp(:,:),store_pp(:)
-  REAL(iwp),ALLOCATABLE :: pmul_pp(:,:),timest(:),disp_pp(:)
+  REAL(iwp),ALLOCATABLE :: pmul_pp(:,:),timest(:),disp_pp(:),biCG_pp(:)
   INTEGER,ALLOCATABLE   :: rest(:,:),g(:),num(:),g_num_pp(:,:),g_g_pp(:,:)
-  INTEGER,ALLOCATABLE   :: no(:),g_t(:),no_local(:),no_local_temp(:)
+  INTEGER,ALLOCATABLE   :: no(:),g_t(:),no_local(:),no_local_temp(:),biCG(:)
 
 !------------------------------------------------------------------------------
 ! 3. Read job_name from the command line.
@@ -108,7 +108,8 @@ PROGRAM p126
           storke_pp(ntot,ntot,nels_pp),wvel(nod),row3(1,nod),g_t(n_t),        &
           GG(ell+1,ell+1),g(ntot),Gamma(ell+1),no(fixed_equations),           &
           val(fixed_equations),diag_tmp(ntot,nels_pp),utemp_pp(ntot,nels_pp), &
-          pmul_pp(ntot,nels_pp),row2(1,nod),s(ell+1),weights(nip))
+          pmul_pp(ntot,nels_pp),row2(1,nod),s(ell+1),weights(nip),biCG(limit),&
+          biCG_pp(limit))
 
  timest(2) = elap_time()
 
@@ -448,52 +449,29 @@ PROGRAM p126
      
    END DO bicg_iterations            
 
-   b_pp   = x_pp - xold_pp
-   pp     = norm_p(b_pp)
-   cj_tot = cj_tot+cjiters
+   b_pp           = x_pp - xold_pp
+   pp             = norm_p(b_pp)
 
+   cj_tot         = cj_tot+cjiters   ! Data for reporting
+   biCG(iters)    = cjiters
+   biCG_pp(iters) = pp
+   
    timest(10) = timest(10) + (elap_time() - timest(7))
  
 !------------------------------------------------------------------------------
 ! 13a. BiCGSTAB(ell) iterations
 !------------------------------------------------------------------------------
 
-   IF(numpe==it)THEN
-     WRITE(11,'(A,E12.4)')"Norm of the error is :",pp
-     WRITE(11,'(A,I5,A)')"It took BiCGSTAB(L) ",                          &
-       cjiters," iterations to converge"
-   END IF
-
    CALL checon_par(x_pp,tol,converged,xold_pp)
    IF(converged.OR.iters==limit)EXIT
 
  END DO iterations
  
-  timest(11) = elap_time()
+ timest(11) = elap_time()
  
 !------------------------------------------------------------------------------
 ! 14. Output results
 !------------------------------------------------------------------------------
-  
-  IF(numpe==it)THEN
-    WRITE(11,'(A,I8,A)')"This job ran on ",npes,"  processors"
-    WRITE(11,'(A)')"Global coordinates and node numbers"
-    DO i=1,nels_pp,nels_pp-1                                            
-      WRITE(11,'(A,I10)')"Element  ",i
-      DO k=1,nod
-        WRITE(11,'(A,I10,3E12.4)')"Node",g_num_pp(k,i),g_coord_pp(k,:,i)
-      END DO
-    END DO
-    WRITE(11,'(A,3(I10,A))')"There are ",nn,"  nodes ",nr,                  &
-      "  restrained and  ",neq,"  equations"
-    WRITE(11,'(A)')" The pressure at the corner of the box is   :"
-    WRITE(11,'(A)')" Freedom   Pressure   "
-    WRITE(11,'(I8,E12.4)')nres,x_pp(is)
-    WRITE(11,'(A,I5)')"The total number of BiCGStab iterations was :",cj_tot
-    WRITE(11,'(A,I5,A)')"The solution took",iters,"  iterations to converge"
-  END IF
-
-!- Untested
 
   CALL calc_nodes_pp(nn,npes,numpe,node_end,node_start,nodes_pp)
   ALLOCATE(disp_pp(nodes_pp*nodof))
@@ -520,41 +498,9 @@ PROGRAM p126
 ! 15. Output performance data
 !------------------------------------------------------------------------------
 
- IF(numpe==it) THEN
-   WRITE(11,'(/3A)')   "Program section execution times                   ",  &
-                       "Seconds  ", "%Total    "
-   WRITE(11,'(A,F12.6,F8.2)') "Setup                                        ",&
-                          timest(2)-timest(1),                                &
-                         ((timest(2)-timest(1))/(timest(12)-timest(1)))*100  
-   WRITE(11,'(A,F12.6,F8.2)') "Compute coordinates and steering array       ",&
-                          timest(3)-timest(2),                                &
-                         ((timest(3)-timest(2))/(timest(12)-timest(1)))*100  
-   WRITE(11,'(A,F12.6,F8.2)') "Compute interprocessor communication tables  ",&
-                          timest(4)-timest(3),                                &
-                         ((timest(4)-timest(3))/(timest(12)-timest(1)))*100  
-   WRITE(11,'(A,F12.6,F8.2)') "Allocate neq_pp arrays                       ",&
-                          timest(5)-timest(4),                                &
-                         ((timest(5)-timest(4))/(timest(12)-timest(1)))*100  
-   WRITE(11,'(A,F12.6,F8.2)') "Organize fixed nodes                         ",&
-                          timest(6)-timest(5),                                &
-                         ((timest(6)-timest(5))/(timest(12)-timest(1)))*100  
-   WRITE(11,'(A,F12.6,F8.2)') "Element stiffness integration                ",&
-                          timest(8),                                          &
-                         ((timest(8))/(timest(12)-timest(1)))*100  
-   WRITE(11,'(A,F12.6,F8.2)') "Build the preconditioner                     ",&
-                          timest(9),                                          &
-                         ((timest(9))/(timest(12)-timest(1)))*100  
-   WRITE(11,'(A,F12.6,F8.2)') "Solve equations                              ",&
-                          timest(10),                                         &
-                         ((timest(10))/(timest(12)-timest(1)))*100  
-   WRITE(11,'(A,F12.6,F8.2)') "Output results                               ",&
-                          timest(12)-timest(11),                              &
-                         ((timest(12)-timest(11))/(timest(12)-timest(1)))*100  
-   WRITE(11,'(A,F12.6,A)')  "Total execution time                         ",  &
-                          elap_time()-timest(1),"  100.00"
-   CLOSE(11)
- END IF
- 
+  CALL WRITE_P126(bicg,bicg_pp,cj_tot,iters,job_name,neq,nn,npes,nr,numpe,    &
+                  timest)
+
  CALL shutdown()    
 
 END PROGRAM p126
