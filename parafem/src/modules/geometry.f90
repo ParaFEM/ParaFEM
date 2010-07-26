@@ -540,176 +540,120 @@ MODULE GEOMETRY
 
   SUBROUTINE ns_cube_bc20(rest,nxe,nye,nze)
 
-   !/****f* geometry/ns_cube_bc20
-   !*  NAME
-   !*    SUBROUTINE: ns_cube_bc20
-   !*  SYNOPSIS
-   !*    Usage:      CALL ns_cube_bc20(rest,nxe,nye,nze)
-   !*  FUNCTION
-   !*    Boundary conditions for simple Navier-Stokes 20-node element cuboid  
-   !*  INPUTS
-   !*  OUTPUTS
-   !*  AUTHOR
-   !*    Smith & Griffiths, Edition 4
-   !******
-   !*/   
-   
-   IMPLICIT NONE
-   INTEGER,INTENT(IN)  :: nxe,nye,nze
-   INTEGER,INTENT(OUT) :: rest(:,:)
-   INTEGER             :: i,j,k,l,m, count,node
+  !/****f* geometry/ns_cube_bc20
+  !*  NAME
+  !*    SUBROUTINE: ns_cube_bc20
+  !*  SYNOPSIS
+  !*    Usage:      CALL ns_cube_bc20(rest,nxe,nye,nze)
+  !*  FUNCTION
+  !*    Boundary conditions for simple Navier-Stokes 20-node element cuboid  
+  !*  INPUTS
+  !*  OUTPUTS
+  !*  AUTHOR
+  !*    Smith & Griffiths, Edition 4
+  !******
+  !*/   
+  
+  IMPLICIT NONE
+  INTEGER,INTENT(IN)  :: nxe,nye,nze
+  INTEGER,INTENT(OUT) :: rest(:,:)
+  INTEGER             :: i,j,k,l,m, count,node
 
-   node  = 0
-   count = 0
-   k     = 2*nxe+1
-   l     = nxe+1
- 
-   DO m = 0 , nye
-     IF(m==0 .OR. m==nye) THEN    ! front or back
-       DO j=1,nze
-         DO i=1,k
-           IF((j==1.AND.i==1).OR.(j==1.AND.MOD(i,2)==0)) THEN 
-             node           = node +1
-             count          = count + 1
-             rest(count,1)  = node
-             rest(count,2:) = (/1,0,0,0/)
-           ELSE IF (j==1) THEN
-             node           = node +1
-             count          = count + 1
-             rest(count,1)  = node
-             rest(count,2:) = (/1,1,0,0/)
-           ELSE IF ((j>1.AND.mod(i,2)/=0)) THEN
-             node           = node +1 
-             count          = count + 1
-             rest(count,1)  = node
-             rest(count,2:) = (/0,1,0,0/)
-           ELSE IF (mod(i,2)==0) THEN
-             node            = node +1
-             count           = count + 1
-             rest(count,1)   = node
-             rest(count,2:)  = (/0,0,0,0/)
-           END IF
-         END DO
- 
-         DO i=1,l
-           node           = node +1
-           count          = count + 1
-           rest(count,1)  = node
-           rest(count,2:) = (/0,0,0,0/)
-         END DO
-       END DO
-
-       DO i = 1,k
-         IF(mod(i,2)/=0) THEN
-           node           = node +1
-           count          = count + 1
-           rest(count,1)  = node
-           rest(count,2:) = (/0,1,0,0/)
+  node = 0;  count = 0; k = 2*nxe+1; l = nxe+1
+  DO m = 0 , nye
+         IF(m==0 .OR. m==nye) THEN    ! front or back
+          DO j=1,nze
+             DO i=1,k
+                IF((j==1.AND.i==1).OR.(j==1.AND.MOD(i,2)==0)) THEN 
+                   node = node +1; count = count + 1
+                   rest(count,1)=node; rest(count,2:)=(/1,0,0,0/)
+                ELSE IF (j==1) THEN
+                   node = node +1; count = count + 1
+                   rest(count,1)=node; rest(count,2:)=(/1,1,0,0/)
+                ELSE IF ((j>1.AND.mod(i,2)/=0)) THEN
+                   node = node +1 ; count = count + 1
+                   rest(count,1)=node; rest(count,2:)=(/0,1,0,0/)
+                ELSE IF (mod(i,2)==0) THEN
+                   node = node +1; count = count + 1
+                   rest(count,1)=node; rest(count,2:)=(/0,0,0,0/)
+                END IF
+             END DO
+             DO i=1,l
+                node = node +1; count = count + 1
+                rest(count,1)=node; rest(count,2:)=(/0,0,0,0/)
+             END DO
+          END DO
+          DO i = 1,k
+             IF(mod(i,2)/=0) THEN
+                node = node +1; count = count + 1
+                rest(count,1)=node; rest(count,2:)=(/0,1,0,0/)
+             ELSE
+                node = node + 1; count = count + 1
+                rest(count,1)=node; rest(count,2:)=(/0,0,0,0/)
+             END IF
+          END DO
          ELSE
-           node           = node + 1
-           count          = count + 1
-           rest(count,1)  = node
-           rest(count,2:) = (/0,0,0,0/)
+          DO j=1,nze        !  interiors
+             DO i=1,k
+                IF((j==1.AND.i==1).OR.(j==1.AND.mod(i,2)==0)) THEN 
+                   node = node +1; count = count + 1
+                   rest(count,1)=node; rest(count,2:)=(/1,0,0,0/)
+                ELSE IF (j==1) THEN
+                   node = node +1; count = count + 1
+                   rest(count,1)=node; rest(count,2:)=(/1,1,0,0/)
+                ELSE IF ((j>1.AND.i==1).OR.(j>1.AND.i==k)) THEN
+                   node = node +1; count = count + 1
+                   rest(count,1)=node; rest(count,2:)=(/0,1,0,0/)
+                ELSE IF (j>1.AND.mod(i,2)/=0) THEN
+                   node = node +1 
+                ELSE IF (j>1.AND.mod(i,2)==0) THEN
+                   node = node +1; count = count + 1
+                   rest(count,1)=node; rest(count,2:)=(/1,0,1,1/)
+                END IF
+             END DO
+             DO i=1,l
+                IF(i==1.OR.i==l) THEN 
+                   node = node +1; count = count + 1
+                   rest(count,1)=node; rest(count,2:)=(/0,0,0,0/)
+                ELSE
+                   node = node +1; count = count + 1
+                   rest(count,1)=node; rest(count,2:)=(/1,0,1,1/)
+                END IF
+             END DO
+          END DO
+          DO i = 1,k    ! base
+             IF(mod(i,2)/=0) THEN
+                node = node +1; count = count + 1
+                rest(count,1)=node; rest(count,2:)=(/0,1,0,0/)
+             ELSE
+                node = node + 1; count = count + 1
+                rest(count,1)=node; rest(count,2:)=(/0,0,0,0/)
+             END IF
+          END DO
          END IF
-       END DO
-
-       ELSE
-
-       DO j=1,nze        !  interiors
-         DO i=1,k
-           IF((j==1.AND.i==1).OR.(j==1.AND.mod(i,2)==0)) THEN 
-             node           = node +1
-             count          = count + 1
-             rest(count,1)  = node
-             rest(count,2:) = (/1,0,0,0/)
-           ELSE IF (j==1) THEN
-             node           = node +1
-             count          = count + 1
-             rest(count,1)  = node
-             rest(count,2:) = (/1,1,0,0/)
-           ELSE IF ((j>1.AND.i==1).OR.(j>1.AND.i==k)) THEN
-             node           = node +1
-             count          = count + 1
-             rest(count,1)  = node
-             rest(count,2:) = (/0,1,0,0/)
-           ELSE IF (j>1.AND.mod(i,2)/=0) THEN
-             node           = node +1 
-           ELSE IF (j>1.AND.mod(i,2)==0) THEN
-             node           = node +1
-             count          = count + 1
-             rest(count,1)  = node
-             rest(count,2:) = (/1,0,1,1/)
-           END IF
-         END DO
-         
-         DO i=1,l
-           IF(i==1.OR.i==l) THEN 
-             node           = node +1
-             count          = count + 1
-             rest(count,1)  = node
-             rest(count,2:) = (/0,0,0,0/)
-           ELSE
-             node           = node +1
-             count          = count + 1
-             rest(count,1)  = node
-             rest(count,2:) = (/1,0,1,1/)
-           END IF
-         END DO
-       
-       END DO
-       
-       DO i = 1,k    ! base
-         IF(mod(i,2)/=0) THEN
-           node           = node +1
-           count          = count + 1
-           rest(count,1)  = node
-           rest(count,2:) = (/0,1,0,0/)
-         ELSE
-           node           = node + 1
-           count          = count + 1
-           rest(count,1)  = node
-           rest(count,2:) = (/0,0,0,0/)
+         IF(m<nye) THEN
+          DO j=1,nze
+             DO i=1,l
+                IF(j==1) THEN
+                 node = node + 1; count = count + 1
+                 rest(count,1)=node; rest(count,2:)=(/1,0,0,0/)
+                ELSE IF(i==1.OR.i==l) THEN
+                 node = node + 1; count = count + 1
+                 rest(count,1)=node; rest(count,2:)=(/0,0,0,0/)
+                ELSE
+                 node = node + 1; count = count + 1
+                 rest(count,1)=node; rest(count,2:)=(/1,0,1,1/)
+                END IF
+             END DO
+          END DO
+          DO i=1,l
+              node = node + 1; count = count + 1
+              rest(count,1)=node; rest(count,2:)=(/0,0,0,0/)
+          END DO
          END IF
-       END DO
-       
-     END IF
-     
-     IF(m<nye) THEN
-       DO j=1,nze
-         DO i=1,l
-           IF(j==1) THEN
-             node           = node + 1
-             count          = count + 1
-             rest(count,1)  = node
-             rest(count,2:) = (/1,0,0,0/)
-           ELSE IF(i==1.OR.i==l) THEN
-             node           = node + 1
-             count          = count + 1
-             rest(count,1)  = node
-             rest(count,2:) = (/0,0,0,0/)
-           ELSE
-             node           = node + 1
-             count          = count + 1
-             rest(count,1)  = node
-             rest(count,2:) = (/1,0,1,1/)
-           END IF
-           
-         END DO
-       
-       END DO
-       
-       DO i=1,l
-         node           = node + 1
-         count          = count + 1
-         rest(count,1)  = node
-         rest(count,2:) = (/0,0,0,0/)
-       END DO
-       
-     END IF
-   
-   END DO
- 
- END SUBROUTINE ns_cube_bc20
+  END DO
+  
+  END SUBROUTINE ns_cube_bc20
 
 !---------------------------------------------------------------------------
 !---------------------------------------------------------------------------
