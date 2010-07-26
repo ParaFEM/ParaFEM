@@ -330,6 +330,8 @@ PROGRAM sg12mg
 !     Write to file using Abaqus node numbering convention 
 !------------------------------------------------------------------------------
 
+  PRINT *, "  Writing nodal coordinates and element steering array"
+
   DO iel = 1, nels
     CALL geometry_20bxz(iel,nxe,nze,aa,bb,cc,coord,g_num(:,iel))
     g_coord(:,g_num(:,iel)) = TRANSPOSE(coord)
@@ -362,6 +364,8 @@ PROGRAM sg12mg
 ! 12.3 Boundary conditions
 !------------------------------------------------------------------------------
 
+  PRINT *, "  Writing boundary conditions"
+
   fname = job_name(1:INDEX(job_name, " ")-1) // ".bnd" 
   OPEN(12,FILE=fname,STATUS='REPLACE',ACTION='WRITE')
 
@@ -376,6 +380,8 @@ PROGRAM sg12mg
 !------------------------------------------------------------------------------
 ! 12.4 Loading conditions for the lid
 !------------------------------------------------------------------------------
+
+  PRINT *, "  Writing loading conditions for the lid"
 
   fname = job_name(1:INDEX(job_name, " ")-1) // ".lid" 
   OPEN(13,FILE=fname,STATUS='REPLACE',ACTION='WRITE')
@@ -393,6 +399,8 @@ PROGRAM sg12mg
 ! 12.5 New control data
 !------------------------------------------------------------------------------
 
+  PRINT *, "  Writing new control data file"
+ 
   fname = job_name(1:INDEX(job_name, " ")-1) // ".dat" 
   OPEN(14,FILE=fname,STATUS='REPLACE',ACTION='WRITE')
 
@@ -407,7 +415,91 @@ PROGRAM sg12mg
   
   CLOSE(14)
 
+!------------------------------------------------------------------------------
+! 12.6 Write a .dis file so that boundary conditions can be checked
+!------------------------------------------------------------------------------
 
+  PRINT *, "  Writing dummy .dis file with flags for boundary conditions"
+
+  fname = job_name(1:INDEX(job_name, " ")-1) // ".dis" 
+  OPEN(15,FILE=fname,STATUS='REPLACE',ACTION='WRITE')
+
+  WRITE(15,'(A)') "*DISPLACEMENT"
+  WRITE(15,'(A)') " 1"
+ 
+  j = 1
+ 
+  DO i = 1,nn
+    IF(rest(j,1) == i) THEN
+      j = j+1
+      IF(rest(j,2) == 0) THEN
+        WRITE(15,'(I8,3A)') i, " 1.0000E+00", "  0.0000E+00", "  0.0000E+00"
+      ELSE
+        WRITE(15,'(I8,3A)') i, " 0.0000E+00", "  0.0000E+00", "  0.0000E+00"
+      END IF
+    ELSE
+      WRITE(15,'(I8,3A)') i, " 0.0000E+00", "  0.0000E+00", "  0.0000E+00"
+    END IF
+  END DO
+
+  WRITE(15,'(A)') "*DISPLACEMENT"
+  WRITE(15,'(A)') " 2"
+  
+  j = 1
+
+  DO i = 1,nn
+    IF(rest(j,1) == i) THEN
+      j = j + 1
+      IF(rest(j,3) == 0) THEN
+        WRITE(15,'(I8,3A)') i, " 1.0000E+00", "  0.0000E+00", "  0.0000E+00"
+      ELSE
+        WRITE(15,'(I8,3A)') i, " 0.0000E+00", "  0.0000E+00", "  0.0000E+00"
+      END IF
+    ELSE
+      WRITE(15,'(I8,3A)') i, " 0.0000E+00", "  0.0000E+00", "  0.0000E+00"
+    END IF
+  END DO
+
+  WRITE(15,'(A)') "*DISPLACEMENT"
+  WRITE(15,'(A)') " 3"
+  
+  j = 1
+
+  DO i = 1,nn
+    IF(rest(j,1) == i) THEN
+      j = j + 1
+      IF(rest(j,4) == 0) THEN
+        WRITE(15,'(I8,3A)') i, " 1.0000E+00", "  0.0000E+00", "  0.0000E+00"
+      ELSE
+        WRITE(15,'(I8,3A)') i, " 0.0000E+00", "  0.0000E+00", "  0.0000E+00"
+      END IF
+    ELSE
+      WRITE(15,'(I8,3A)') i, " 0.0000E+00", "  0.0000E+00", "  0.0000E+00"
+    END IF
+  END DO
+
+  WRITE(15,'(A)') "*DISPLACEMENT"
+  WRITE(15,'(A)') " 4"
+ 
+  j = 1
+ 
+  DO i = 1,nn
+    IF(rest(j,1) == i) THEN
+      j = j + 1
+      IF(rest(j,5) == 0) THEN
+        WRITE(15,'(I8,3A)') i, " 1.0000E+00", "  0.0000E+00", "  0.0000E+00"
+      ELSE
+        WRITE(15,'(I8,3A)') i, " 0.0000E+00", "  0.0000E+00", "  0.0000E+00"
+      END IF
+    ELSE
+      WRITE(15,'(I8,3A)') i, " 0.0000E+00", "  0.0000E+00", "  0.0000E+00"
+    END IF
+  END DO
+
+  CLOSE(15)
+
+!------------------------------------------------------------------------------
+!------------------------------------------------------------------------------
 !------------------------------------------------------------------------------
 ! 13. Program p127
 !------------------------------------------------------------------------------

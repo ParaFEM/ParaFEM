@@ -53,9 +53,9 @@ PROGRAM p126
   REAL(iwp),ALLOCATABLE :: utemp_pp(:,:),xold_pp(:),c24(:,:),c42(:,:)
   REAL(iwp),ALLOCATABLE :: row3(:,:),u_pp(:,:),rt_pp(:),y_pp(:),y1_pp(:)
   REAL(iwp),ALLOCATABLE :: s(:),Gamma(:),GG(:,:),diag_tmp(:,:),store_pp(:)
-  REAL(iwp),ALLOCATABLE :: pmul_pp(:,:),timest(:),disp_pp(:),biCG_pp(:)
+  REAL(iwp),ALLOCATABLE :: pmul_pp(:,:),timest(:),disp_pp(:),bicg_pp(:)
   INTEGER,ALLOCATABLE   :: rest(:,:),g(:),num(:),g_num_pp(:,:),g_g_pp(:,:)
-  INTEGER,ALLOCATABLE   :: no(:),g_t(:),no_local(:),no_local_temp(:),biCG(:)
+  INTEGER,ALLOCATABLE   :: no(:),g_t(:),no_local(:),no_local_temp(:),bicg_its(:)
 
 !------------------------------------------------------------------------------
 ! 3. Read job_name from the command line.
@@ -108,8 +108,8 @@ PROGRAM p126
           storke_pp(ntot,ntot,nels_pp),wvel(nod),row3(1,nod),g_t(n_t),        &
           GG(ell+1,ell+1),g(ntot),Gamma(ell+1),no(fixed_equations),           &
           val(fixed_equations),diag_tmp(ntot,nels_pp),utemp_pp(ntot,nels_pp), &
-          pmul_pp(ntot,nels_pp),row2(1,nod),s(ell+1),weights(nip),biCG(limit),&
-          biCG_pp(limit))
+          pmul_pp(ntot,nels_pp),row2(1,nod),s(ell+1),weights(nip),            &
+          bicg_its(limit),bicg_pp(limit))
 
  timest(2) = elap_time()
 
@@ -453,8 +453,8 @@ PROGRAM p126
    pp             = norm_p(b_pp)
 
    cj_tot         = cj_tot+cjiters   ! Data for reporting
-   biCG(iters)    = cjiters
-   biCG_pp(iters) = pp
+   bicg_its(iters)= cjiters
+   bicg_pp(iters) = pp
    
    timest(10) = timest(10) + (elap_time() - timest(7))
  
@@ -498,7 +498,7 @@ PROGRAM p126
 ! 15. Output performance data
 !------------------------------------------------------------------------------
 
-  CALL WRITE_P126(bicg,bicg_pp,cj_tot,iters,job_name,neq,nn,npes,nr,numpe,    &
+  CALL WRITE_P126(bicg_its,bicg_pp,cj_tot,iters,job_name,neq,nn,npes,nr,numpe,&
                   timest)
 
  CALL shutdown()    
