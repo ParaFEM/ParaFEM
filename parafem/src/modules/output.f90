@@ -11,6 +11,7 @@ MODULE OUTPUT
   !*    
   !*    Subroutine             Purpose
   !*    WRITE_P121             Writes out basic program data and timing info
+  !*    WRITE_P126             Writes out basic program data and timing info  
   !*    WRITE_P129             Writes out basic program data and timing info
   !*    WRITE_NODAL_VARIABLE   Writes out results computed at the nodes
   !*    JOB_NAME_ERROR         Writes error message if job_name is missing
@@ -158,6 +159,146 @@ MODULE OUTPUT
   
   RETURN
   END SUBROUTINE WRITE_P121
+
+!------------------------------------------------------------------------------
+!------------------------------------------------------------------------------
+!------------------------------------------------------------------------------
+
+  SUBROUTINE WRITE_P126(bicg,bicg_pp,cj_tot,iters,job_name,neq,nn,npes,nr,    &
+                        numpe,timest)
+
+  !/****f* output/write_p126
+  !*  NAME
+  !*    SUBROUTINE: write_p126
+  !*  SYNOPSIS
+  !*    Usage:      CALL write_p126(bicg,bicg_pp,cj_tot,iters,job_name,neq,   &
+  !*                                nn,npes,nr,numpe,timest)
+  !*  FUNCTION
+  !*    Master processor writes out brief details about the problem and 
+  !*    some performance data
+  !*  INPUTS
+  !*    The following arguments have the INTENT(IN) attribute:
+  !*
+  !*    cj_tot                 : Integer
+  !*                           : Total number of BiCGSTAB(l) iterations taken 
+  !*                           : to solve problem
+  !*
+  !*    iters                  : Integer
+  !*                           : Number of external iterations required
+  !*
+  !*    job_name               : Character
+  !*                           : Job name used to name output file
+  !*
+  !*    neq                    : Integer
+  !*                           : Total number of equations in the mesh
+  !*
+  !*    nn                     : Integer
+  !*                           : Number of nodes in the mesh
+  !*
+  !*    npes                   : Integer
+  !*                           : Number of processors used in the simulations
+  !*
+  !*    nr                     : Integer
+  !*                           : Number of restrained nodes in the mesh
+  !*
+  !*    numpe                  : Integer
+  !*                           : Processor number
+  !*
+  !*    timest(:)              : Real array
+  !*                           : Holds timing information
+  !*
+  !*  AUTHOR
+  !*    Lee Margetts
+  !*  CREATION DATE
+  !*    26.07.2010
+  !*  COPYRIGHT
+  !*    (c) University of Manchester 2010
+  !******
+  !*  Place remarks that should not be included in the documentation here.
+  !*
+  !*/  
+  
+  IMPLICIT NONE
+
+  CHARACTER(LEN=50), INTENT(IN)  :: job_name
+  INTEGER, INTENT(IN)            :: numpe,npes,nn,nr,neq,cj_tot,iters,bicg(:)
+  REAL(iwp), INTENT(IN)          :: timest(:),bicg_pp(:)
+
+!------------------------------------------------------------------------------
+! 1. Local variables
+!------------------------------------------------------------------------------
+  
+  CHARACTER(LEN=50)              :: fname
+  INTEGER                        :: i          ! loop counter
+ 
+  IF(numpe==1) THEN
+
+    fname       = job_name(1:INDEX(job_name, " ")-1) // ".res"
+    OPEN(11,FILE=fname,STATUS='REPLACE',ACTION='WRITE')     
+
+!------------------------------------------------------------------------------
+! 2. Write basic details about the problem
+!------------------------------------------------------------------------------
+
+    WRITE(11,'(/A,I12)') "Number of processors used:                  ",npes 
+    WRITE(11,'(A,I12)')  "Number of nodes in the mesh:                ",nn
+    WRITE(11,'(A,I12)')  "Number of nodes that were restrained:       ",nr
+    WRITE(11,'(A,I12/)') "Number of equations solved:                 ",neq
+
+!------------------------------------------------------------------------------
+! 3. Write output for the BiCGSTAB(l) iterations 
+!------------------------------------------------------------------------------
+
+    WRITE(11,'(A,I12/)') "Total BiCGSTAB(l) iterations:               ",cj_tot
+
+    WRITE(11,'(2A)')  "                  iterations        norm"
+
+    DO i = 1, iters
+      WRITE(11,'(A,I12,I12,E12.4)') "    ",i,bicg(i),bicg_pp(i)
+    END DO
+    Number of BiCGSTAB(l) iterations:           ",cjiters
+    
+!------------------------------------------------------------------------------
+! 4. Output timing data
+!------------------------------------------------------------------------------
+ 
+    WRITE(11,'(/3A)')  "Program section execution times                   ",  &
+                        "Seconds  ", "%Total    "
+    WRITE(11,'(A,F12.6,F8.2)')"Setup                                        ",&
+                          timest(2)-timest(1),                                &
+                          ((timest(2)-timest(1))/(timest(12)-timest(1)))*100  
+    WRITE(11,'(A,F12.6,F8.2)')"Compute coordinates and steering array       ",&
+                          timest(3)-timest(2),                                &
+                          ((timest(3)-timest(2))/(timest(12)-timest(1)))*100  
+    WRITE(11,'(A,F12.6,F8.2)')"Compute interprocessor communication tables  ",&
+                          timest(4)-timest(3),                                &
+                          ((timest(4)-timest(3))/(timest(12)-timest(1)))*100  
+    WRITE(11,'(A,F12.6,F8.2)')"Allocate neq_pp arrays                       ",&
+                          timest(5)-timest(4),                                &
+                          ((timest(5)-timest(4))/(timest(12)-timest(1)))*100  
+    WRITE(11,'(A,F12.6,F8.2)')"Organize fixed nodes                         ",&
+                          timest(6)-timest(5),                                &
+                          ((timest(6)-timest(5))/(timest(12)-timest(1)))*100  
+    WRITE(11,'(A,F12.6,F8.2)')"Element stiffness integration                ",&
+                          timest(8),                                          &
+                          ((timest(8))/(timest(12)-timest(1)))*100  
+    WRITE(11,'(A,F12.6,F8.2)')"Build the preconditioner                     ",&
+                          timest(9),                                          &
+                          ((timest(9))/(timest(12)-timest(1)))*100  
+    WRITE(11,'(A,F12.6,F8.2)')"Solve equations                              ",&
+                          timest(10),                                         &
+                          ((timest(10))/(timest(12)-timest(1)))*100  
+    WRITE(11,'(A,F12.6,F8.2)')"Output results                               ",&
+                          timest(12)-timest(11),                              &
+                          ((timest(12)-timest(11))/(timest(12)-timest(1)))*100  
+    WRITE(11,'(A,F12.6,A)') "Total execution time                         ",  &
+                           elap_time()-timest(1),"  100.00"
+    CLOSE(11)
+    
+  END IF
+  
+  RETURN
+  END SUBROUTINE WRITE_P126
   
 !------------------------------------------------------------------------------
 !------------------------------------------------------------------------------
