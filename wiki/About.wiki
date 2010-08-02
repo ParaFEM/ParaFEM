@@ -1,4 +1,4 @@
-#summary How the ParaFEM project started
+#summary About the ParaFEM project
 
 = ParaFEM =
 
@@ -6,15 +6,7 @@ The first version of ParaFEM was developed by L. Margetts under the supervision 
 
 {{{Margetts L. (2002), "Parallel Finite Element Analysis", PhD Thesis, University of Manchester, UK.}}}
 
-ParaFEM formed the basis for Chapter 12 in Smith I.M. and Griffiths D.V. "Programming the Finite Element Method", Wiley, 2004. ParaFEM is also used for parallel boundary element analysis in Beer G., Smith I.M. and Duenser C. "The Boundary Element Method with Programming", Springer, 2008. 
-
-ParaFEM is used for solving very large finite element problems in a range of disciplines including geotechnical engineering (tunnels, excavations and dams), nuclear engineering (pressure vessels, structural components), the auto/aerospace sectors and materials science (microstructural modelling of materials). As well as providing the source code, the developers undertake consultancy in order to help engineers solve challenging engineering problems that are beyond the limits of commercial engineering packages.
-
-= Status =
-
-L. Margetts is currently transferring software developed by himself and various contributors from a closed university repository to this open Google Code platform. This effort started on 8 March 2010 and will take a while to complete, especially as L. Margetts is re-engineering and documenting the code as it is transferred. In the mean time, please see http://www.parafem.org.uk for further details or contact L. Margetts about code that is not already available here.
-
-= Funded Projects =
+After this, ParaFEM formed the basis for Chapter 12 in Smith I.M. and Griffiths D.V. "Programming the Finite Element Method", Wiley, 2004. ParaFEM is also used for parallel boundary element analysis in Beer G., Smith I.M. and Duenser C. "The Boundary Element Method with Programming", Springer, 2008. 
 
 The following projects are contributing to the ongoing development of ParaFEM:
 
@@ -23,3 +15,8 @@ The following projects are contributing to the ongoing development of ParaFEM:
  * [http://www.rcs.manchester.ac.uk/research/dcse Microstructurally Faithful Modelling of Materials]
  * [http://wiki.rcs.manchester.ac.uk/community/BrainSurgery Massively Parallel Brain Surgery]
  * [http://www.rcs.manchester.ac.uk/research/spacecraft Accurate Thermo-elastic Modelling of Materials for Spacecraft Applications]
+
+= Status of the Google Code Repository =
+
+Independently of the projects listed above, L. Margetts is currently transferring software developed by himself and various contributors from a closed university repository to this open Google Code platform. This effort started on 8 March 2010 and will take a while to complete, especially as L. Margetts is re-engineering and documenting the code as it is transferred. In the mean time, please see http://www.parafem.org.uk for further details or contact L. Margetts about code that is not already available here.
+
