@@ -105,14 +105,14 @@ PROGRAM upvw2dis
   WRITE(20,'(A)') " 1" 
 
   DO i = 1, nn
-    WRITE(20,'(3E20.12)') upvw(1,i), upvw(3,i), upvw(4,i)
+    WRITE(20,'(I8,3E20.12)') i, upvw(1,i), upvw(3,i), upvw(4,i)
   END DO
 
   WRITE(20,'(A)') "*DISPLACEMENT"
   WRITE(20,'(A)') " 2" 
 
   DO i = 1, nn
-    WRITE(20,'(E20.12,2A)') upvw(2,i),"  0.0000E+00", "  0.0000E+00"
+    WRITE(20,'(I8, E20.12,2A)') i, upvw(2,i),"  0.0000E+00", "  0.0000E+00"
   END DO
 
   
