@@ -1,17 +1,17 @@
 
-  PROGRAM: p128ar.f90
+  PROGRAM: p128arg.f90
 
-  Program p128ar.f90 computes the eigenvalues and eigenvectors of a 3d elastic
+  Program p128arg.f90 computes the eigenvalues and eigenvectors of a 3d elastic
   solid. The program is a modified version of p128 published in Smith I.M. and 
   Griffiths D.V., "Programming the Finite Element Method", 4th Edition, Wiley, 
   2004.
     
-    Usage: p128ar <job_name>
+    Usage: p128arg <job_name>
   
   
   NOTES
   
-  p128ar.f90 requires ARPACK. This distribution includes a copy of ARPACK. 
+  p128arg.f90 requires ARPACK. This distribution includes a copy of ARPACK. 
   The original copy of ARPACK was called:
 
     arpack96.tar.gz
