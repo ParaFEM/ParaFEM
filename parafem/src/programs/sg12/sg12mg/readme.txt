@@ -1,12 +1,18 @@
-sg12mg is a simple program that generates the built-in meshes for the 10 
-programs in Smith and Griffiths "Programming the Finite Element Method."
 
-  Usage: sg12mg <job_name>
+  PROGRAM: sg12mg.f90
 
-NOTES: 
+  sg12mg is a simple program that generates the built-in meshes for the 10 
+  programs in Smith I.M. and Griffiths D.V., "Programming the Finite Element
+  Method", 4th Edition, Wiley, 2004.
 
- 24 June 2010
+    Usage: sg12mg <job_name>
 
- o The program has not yet been finished
- o The output meshes are in S&G format
+  NOTES 
+
+  o The program has not yet been finished
+  o By default, the output meshes are in Abaqus format
+
+  AUTHOR
+
+  lee.margetts@manchester.ac.uk
 
