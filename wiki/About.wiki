@@ -1,6 +1,6 @@
 #summary About the ParaFEM project
 
-= ParaFEM =
+== ParaFEM ==
 
 The first version of ParaFEM was developed by L. Margetts under the supervision of I.M. Smith and M.A. Pettipher:
 
@@ -16,7 +16,6 @@ The following projects are contributing to the ongoing development of ParaFEM:
  * [http://wiki.rcs.manchester.ac.uk/community/BrainSurgery Massively Parallel Brain Surgery]
  * [http://www.rcs.manchester.ac.uk/research/spacecraft Accurate Thermo-elastic Modelling of Materials for Spacecraft Applications]
 
-= Status of the Google Code Repository =
+== Status of the Google Code Repository ==
 
 Independently of the projects listed above, L. Margetts is currently transferring software developed by himself and various contributors from a closed university repository to this open Google Code platform. This effort started on 8 March 2010 and will take a while to complete, especially as L. Margetts is re-engineering and documenting the code as it is transferred. In the mean time, please see http://www.parafem.org.uk for further details or contact L. Margetts about code that is not already available here.
-
