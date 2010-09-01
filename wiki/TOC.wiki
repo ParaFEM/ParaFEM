@@ -1,3 +1,8 @@
 #summary Table of Contents
 
  * [About About]
+ * [Documentation Documentation]
+  * [GettingStarted Getting Started]
+  * [Input ParaFEM Input Decks]
+  * [ParaFEMViewerManual ParaFEM Viewer]
+ * [Contribute How to Contribute]
