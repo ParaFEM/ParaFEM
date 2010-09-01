@@ -1,6 +1,8 @@
 #summary How to download and install ParaFEM and ParaFEM-Viewer.
 #sidebar TOC
 
+<wiki:toc max_depth="2" />
+
 = ParaFEM =
 == Checkout the latest version of source code ==
  * ParaFEM uses the _subversion_ version control system (svn). Follow the instructions under the [http://code.google.com/p/parafem/source/checkout Source] tab. 
