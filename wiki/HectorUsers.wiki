@@ -1,4 +1,5 @@
 #summary Special information for HECToR users.
+#sidebar TOC
 
 = Introduction =
 
