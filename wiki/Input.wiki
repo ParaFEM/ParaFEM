@@ -1,8 +1,10 @@
-#summary ParaFEM ASCII input decks
+#summary ParaFEM ASCII input decks explained
+
+<wiki:toc max_depth="2" />
 
 = Introduction =
 
-Add your content here.
+This page describes the format of the ParaFEM ASCII input decks.
 
 == Content of the ".d" file ==
 
