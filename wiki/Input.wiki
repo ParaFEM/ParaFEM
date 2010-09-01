@@ -7,7 +7,71 @@ Add your content here.
 
 = Details =
 
-Add your content here.  Format your content with:
-  * Text in *bold* or _italic_
-  * Headings, paragraphs, and lists
-  * Automatic links to other wiki pages
+== Content of the ".d" file ==
+
+The ".d" format is based on the DANFE format created by Dr Daniel Kidger, a former Lecturer at the University of Manchester. ".d" files can be viewed in the [[http://wiki.rcs.manchester.ac.uk/community/FEAR ParaFEM-Viewer]].
+
+<<BR>>
+
+The [[attachment:helix.d]] [??MB] file has the following format:<<BR>>
+
+''*THREE_DIMENSIONAL''
+
+''*NODES''
+
+''nodeID x-coordinate y-coordinate z-coordinate''
+
+''*ELEMENTS''
+
+''elementID ndim nod type num (list of nodes belonging to the element) materialID''
+
+<<BR>>
+
+||<tableclass="datatable"rowbgcolor="#66cc66"> '''Variable Name''' || '''Variable Type''' ||<60%> '''Variable Meaning''' ||
+||<rowclass="odd"> *THREE_DIMENSIONAL || Character || A keyword describing the model as three dimensional. ||
+||<rowclass="even"> *NODES || Character || A keyword marking the start of a list of nodes and their coordinates. ||
+||<rowclass="odd"> *ELEMENTS || Character || A keyword marking the start of a list of element data. ||
+||<rowclass="even"> nodeID || Integer || A unique number that identifies the node. PalaeoFEM assumes sequential numbering from 1 to nn. ||
+||<rowclass="odd"> x-coordinate || Real || The x-coordinate of the node. ||
+||<rowclass="even"> y-coordinate || Real || The y-coordinate of the node. ||
+||<rowclass="odd"> z-coordinate || Real || The z-coordinate of the node. ||
+||<rowclass="even"> elementID || Integer || A unique number that identifies the element. PalaeoFEM assumes sequential numbering from 1 to nels.||
+||<rowclass="odd"> ndim || Integer || The number of dimensions. PalaeoFEM only supports 3D elements. ||
+||<rowclass="even"> nod || Integer || The number of nodes in the element. PalaeoFEM only supports the values 4, 8, 10, 20: 4-node tetrahedra, 8-node hexahedra, 10-node tetrahedra and 20-node hexahedra. ||
+||<rowclass="odd"> type || Integer || Code for element type. Default is 1.||
+||<rowclass="even"> num || Integer List || A list of nodes that belong to the element. 4 nodes are expected for 4-node tetrahedra, 8 nodes for 8-node hexahedra and so on. Refer to Smith and Griffiths for the correct node ordering.||
+||<rowclass="odd"> materialID || Integer || A number that identifies which material properties to select for the element.||
+
+<<BR>>
+
+A real example follows:
+
+*THREE_DIMENSIONAL
+
+*NODES
+
+1   15.0989017   2.49846721  0.940066218
+
+2   15.0960474   2.40614152  0.983345568
+
+3   15.0937481   2.51739144  0.975006104
+
+4   15.0070047   2.48403239  0.964258492
+
+5   15.1986771    2.4753387  0.957266092
+
+*ELEMENTS
+
+1 3 4 1      1     2     3     4  1
+
+2 3 4 1      5     2     3     1  1
+
+<<BR>>
+
+''Note that for *ELEMENTS, ABAQUS would be:
+
+1  1  2  3  4
+
+2  5  2  3  1 
+
+So, in this case, if you were editing the file manually, you need to insert 3  4   1 and 1.''
