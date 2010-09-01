@@ -19,7 +19,7 @@ elementID ndim nod type num materialID
 }}}
 
 ||*Variable Name*||*Type*||*Purpose*||
-||'*'THREE_DIMENSIONAL || Character || A keyword describing the model as three dimensional. ||
+||{{{*THREE_DIMENSIONAL}}} || Character || A keyword describing the model as three dimensional. ||
 ||'*'NODES || Character || A keyword marking the start of a list of nodes and their coordinates. ||
 ||'*'ELEMENTS || Character || A keyword marking the start of a list of element data. ||
 ||nodeID || Integer || A unique number that identifies the node. PalaeoFEM assumes sequential numbering from 1 to nn. ||
