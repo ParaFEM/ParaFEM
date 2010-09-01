@@ -4,7 +4,20 @@
 
 = Introduction =
 
-This page describes the format of the ParaFEM ASCII input decks.
+This page describes the format of the ParaFEM ASCII input decks. Each example program typically requires a control data file called {{{<job_name>.dat}}}. This contains basic data about the problem such as the number of elements and nodes in the model, as well as parameters required by the solver.
+
+The input decks comprise a number of separate files:
+
+ * The {{{.dat}}} file holds basic control data
+ * The {{{.d}}} file contains the geometry of the problem
+ * The {{{.bnd}}} file defines the boundary conditions
+ * The {{{.lds}}} file lists the loads to be applied
+
+The philosophy behind having separate files is that it reduces the burden of data transfer when running very large problems on parallel supercomputers. An enhancement to ParaFEM for those running smaller problems would be to allow the user to decide whether to use a single input file or have several separate files as defined here.
+
+= The .dat file =
+
+Please refer to the [ book].
 
 = The .d file =
 
