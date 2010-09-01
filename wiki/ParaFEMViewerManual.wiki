@@ -1,4 +1,6 @@
 #summary Manual for the ParaFEM-Viewer application.
+#sidebar TOC
+<wiki:toc max_depth="2" />
 
 = Introduction =
 
