@@ -76,7 +76,7 @@ nodeID-3  restraint_x  restraint_y  restraint_z
 nodeID-nr restraint_x  restraint_y  restraint_z
 }}}
 
-|| *Variable Name* || *Type* || *Variable Meaning* ||
+|| *Variable Name* || *Type* || *Purpose* ||
 ||{{{nodeID}}} || Integer || A unique number that identifies the node. ParaFEM assumes sequential numbering from 1 to {{{nr}}}, shown here as {{{nodeID-1, nodeID-2, nodeID-3,,, ... , nodeID-nr}}}. Nodes where all the restraints are free need not be included.||
 ||{{{restraint_x}}} || Integer || Restraint in X direction. The convention is that 0 = restrained and 1 = free. ||
 ||{{{restraint_y}}} || Integer || Restraint in Y direction. The convention is that 0 = restrained and 1 = free. ||
@@ -108,3 +108,20 @@ The significance of the "{{{0}}}" or "{{{1}}}" coding is explained below:
 }}}
 
 By default, all nodes that are not listed will not be restrained in x, y or z.
+
+= The .lds file =
+The .lds file has the following format:
+
+{{{
+nodeID-1 value_x value_y value_z
+nodeID-2 value_x value_y value_z
+nodeID-3 value_x value_y value_z
+...
+nodeID-loaded_nodes value_x value_y value_z
+}}}
+
+|| *Variable Name* || *Type* || *Purpose* ||
+||{{{nodeID}}} || Integer || A unique number that identifies the loaded node. ParaFEM assumes sequential numbering from {{{1 to loaded_nodes}}}, shown here as {{{nodeID-1, nodeID-2, nodeID-3, ... , nodeID-loaded_nodes}}}. Nodes which do not have applied loads need not be included.||
+||{{{value_x}}} || Real || Value of load applied in X direction. ||
+||{{{value_y}}} || Real || Value of load applied in Y direction. ||
+||{{{value_z}}} || Real || Value of load applied in Z direction. ||
