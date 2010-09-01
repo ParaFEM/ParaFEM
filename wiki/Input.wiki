@@ -6,7 +6,7 @@
 
 This page describes the format of the ParaFEM ASCII input decks.
 
-= The ".d" file =
+= The .d file =
 
 The ".d" format is based on the DANFE format created by Dr Daniel Kidger, a former Lecturer at the University of Manchester. ".d" files can be viewed in the [ParaFEMViewerManual ParaFEM-Viewer].
 
@@ -64,7 +64,7 @@ So, in this case, if you were converting an Abaqus .inp file to ParaFEM ASCII fo
 2  3  4  1  5  2  3  1  1
 }}}
 
-= The ".bnd" file =
+= The .bnd file =
 
 A typical ".bnd" file has the following format:
 
@@ -83,7 +83,7 @@ nodeID-nr restraint_x  restraint_y  restraint_z
 ||{{{restraint_z}}} || Integer || Restraint in Z direction. The convention is that 0 = restrained and 1 = free. ||
 ||{{{nr}}} || Integer || Number of restrained nodes. This is expected to be less than the total number of nodes in the mesh, {{{nn}}} ||
 
-A sample follows:
+A real example follows:
 
 {{{
 24616  0  1  1
@@ -110,7 +110,8 @@ The significance of the "{{{0}}}" or "{{{1}}}" coding is explained below:
 By default, all nodes that are not listed will not be restrained in x, y or z.
 
 = The .lds file =
-The .lds file has the following format:
+
+The ".lds" file has the following format:
 
 {{{
 nodeID-1 value_x value_y value_z
@@ -125,3 +126,13 @@ nodeID-loaded_nodes value_x value_y value_z
 ||{{{value_x}}} || Real || Value of load applied in X direction. ||
 ||{{{value_y}}} || Real || Value of load applied in Y direction. ||
 ||{{{value_z}}} || Real || Value of load applied in Z direction. ||
+||{{{loaded_nodes}}} || Integer || The number of loaded nodes in the model. ||
+
+A real example follows:
+
+{{{
+11935 0. 0. 2.08333333
+11936 0. 0. 8.33333333
+27347 0. 0. 4.16666666
+27349 0. 0. 8.33333333
+}}}
