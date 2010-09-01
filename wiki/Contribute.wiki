@@ -1,4 +1,5 @@
 #summary How to Contribute to ParaFEM
+#sidebar TOC
 
 == Contributing to ParaFEM ==
 If you would like to contribute source code to ParaFEM, please contact [http://www.rcs.manchester.ac.uk/aboutus/staff/LeeMargetts Lee Margetts].
