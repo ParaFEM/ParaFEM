@@ -18,20 +18,20 @@ nodeID x-coordinate y-coordinate z-coordinate
 elementID ndim nod type num materialID
 }}}
 
-||'''Variable Name''' || '''Type''' ||'''Purpose''' ||
-||<rowclass="odd"> *THREE_DIMENSIONAL || Character || A keyword describing the model as three dimensional. ||
-||<rowclass="even"> *NODES || Character || A keyword marking the start of a list of nodes and their coordinates. ||
-||<rowclass="odd"> *ELEMENTS || Character || A keyword marking the start of a list of element data. ||
-||<rowclass="even"> nodeID || Integer || A unique number that identifies the node. PalaeoFEM assumes sequential numbering from 1 to nn. ||
-||<rowclass="odd"> x-coordinate || Real || The x-coordinate of the node. ||
-||<rowclass="even"> y-coordinate || Real || The y-coordinate of the node. ||
-||<rowclass="odd"> z-coordinate || Real || The z-coordinate of the node. ||
-||<rowclass="even"> elementID || Integer || A unique number that identifies the element. PalaeoFEM assumes sequential numbering from 1 to nels.||
-||<rowclass="odd"> ndim || Integer || The number of dimensions. PalaeoFEM only supports 3D elements. ||
-||<rowclass="even"> nod || Integer || The number of nodes in the element. PalaeoFEM only supports the values 4, 8, 10, 20: 4-node tetrahedra, 8-node hexahedra, 10-node tetrahedra and 20-node hexahedra. ||
-||<rowclass="odd"> type || Integer || Code for element type. Default is 1.||
-||<rowclass="even"> num || Integer List || A list of nodes that belong to the element. 4 nodes are expected for 4-node tetrahedra, 8 nodes for 8-node hexahedra and so on. Refer to Smith and Griffiths for the correct node ordering.||
-||<rowclass="odd"> materialID || Integer || A number that identifies which material properties to select for the element.||
+||*Variable Name*||*Type*||*Purpose*||
+||'*'THREE_DIMENSIONAL || Character || A keyword describing the model as three dimensional. ||
+||'*'NODES || Character || A keyword marking the start of a list of nodes and their coordinates. ||
+||'*'ELEMENTS || Character || A keyword marking the start of a list of element data. ||
+||nodeID || Integer || A unique number that identifies the node. PalaeoFEM assumes sequential numbering from 1 to nn. ||
+||x-coordinate || Real || The x-coordinate of the node. ||
+||y-coordinate || Real || The y-coordinate of the node. ||
+||z-coordinate || Real || The z-coordinate of the node. ||
+||elementID || Integer || A unique number that identifies the element. PalaeoFEM assumes sequential numbering from 1 to nels.||
+||ndim || Integer || The number of dimensions. PalaeoFEM only supports 3D elements. ||
+||nod || Integer || The number of nodes in the element. PalaeoFEM only supports the values 4, 8, 10, 20: 4-node tetrahedra, 8-node hexahedra, 10-node tetrahedra and 20-node hexahedra. ||
+||type || Integer || Code for element type. Default is 1.||
+||num || Integer List || A list of nodes that belong to the element. 4 nodes are expected for 4-node tetrahedra, 8 nodes for 8-node hexahedra and so on. Refer to Smith and Griffiths for the correct node ordering.||
+||materialID || Integer || A number that identifies which material properties to select for the element.||
 
 <<BR>>
 
