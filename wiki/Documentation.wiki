@@ -15,7 +15,7 @@ Where possible, the variable names match those used in Smith I.M. and Griffiths 
 == Translation ==
 The following Google Gadget can be used to help translate the documentation to your local language:
 
-<script src="http://www.gmodules.com/ig/ifr?url=http://lovemygadget.com/language/language_translation2.xml&amp;synd=open&amp;w=320&amp;h=200&amp;title=Babelfish+Translation&amp;lang=all&amp;country=ALL&amp;border=%23ffffff%7C3px%2C1px+solid+%23999999&amp;output=js"></script>
+<wiki:gadget url="http://www.gmodules.com/ig/ifr?url=http://lovemygadget.com/language/language_translation2.xml&amp;synd=open&amp;w=320&amp;h=200&amp;title=Babelfish+Translation&amp;lang=all&amp;country=ALL&amp;border=%23ffffff%7C3px%2C1px+solid+%23999999&amp;output=js" />
 
 == FAQ ==
 
