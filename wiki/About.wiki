@@ -1,4 +1,5 @@
 #summary About the ParaFEM project
+#sidebar TOC
 
 == ParaFEM ==
 
