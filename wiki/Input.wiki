@@ -50,14 +50,14 @@ A real example follows:
 2  3  4  1  5  2  3  1  1
 }}}
 
-_Note that for '*'ELEMENTS, ABAQUS would be:_
+Note that in the '*'ELEMENTS section, ABAQUS would have:
 
 {{{
 1  1  2  3  4
 2  5  2  3  1 
 }}}
 
-_So, in this case, if you were editing the file manually, you need to insert 3 4 1 and 1._
+So, in this case, if you were converting an Abaqus .inp file to ParaFEM ASCII format manually, you need to insert 3 4 1 and 1.
 
 {{{
 1  3  4  1  1  2  3  4  1
