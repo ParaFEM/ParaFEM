@@ -67,18 +67,19 @@ So, in this case, if you were converting an Abaqus .inp file to ParaFEM ASCII fo
 A typical ".bnd" file has the following format:
 
 {{{
-nodeID,,1,, restraint_x  restraint_y  restraint_z
-nodeID,,2,, restraint_x  restraint_y  restraint_z
-nodeID,,3,, restraint_x  restraint_y  restraint_z
+nodeID-1  restraint_x  restraint_y  restraint_z
+nodeID-2  restraint_x  restraint_y  restraint_z
+nodeID-3  restraint_x  restraint_y  restraint_z
 ...
-nodeID,,NR,, restraint_x  restraint_y  restraint_z
+nodeID-nr restraint_x  restraint_y  restraint_z
 }}}
 
 || *Variable Name* || *Type* || *Variable Meaning* ||
-||{{{nodeID}}} || Integer || A unique number that identifies the node. ParaFEM assumes sequential numbering from 1 to NR, shown here as {{{nodeID,,1,,, nodeID,,2,,, nodeID,,3,,, ... , nodeID,,NR,,}}}. Nodes where all the restraints are free need not be included.||
+||{{{nodeID}}} || Integer || A unique number that identifies the node. ParaFEM assumes sequential numbering from 1 to {{{nr}}}, shown here as {{{nodeID-1, nodeID-2, nodeID-3,,, ... , nodeID-nr}}}. Nodes where all the restraints are free need not be included.||
 ||{{{restraint_x}}} || Integer || Restraint in X direction. The convention is that 0 = restrained and 1 = free. ||
 ||{{{restraint_y}}} || Integer || Restraint in Y direction. The convention is that 0 = restrained and 1 = free. ||
 ||{{{restraint_z}}} || Integer || Restraint in Z direction. The convention is that 0 = restrained and 1 = free. ||
+||{{{nr}}} || Integer || Number of restrained nodes. This is expected to be less than the total number of nodes in the mesh, {{{nn}}} ||
 
 A sample follows:
 
