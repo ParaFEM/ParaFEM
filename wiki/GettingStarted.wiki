@@ -1,4 +1,5 @@
 #summary How to download and install ParaFEM and ParaFEM-Viewer.
+#sidebar TOC
 
 = ParaFEM =
 == Checkout the latest version of source code ==
