@@ -9,23 +9,15 @@ Add your content here.
 
 == Content of the ".d" file ==
 
-The ".d" format is based on the DANFE format created by Dr Daniel Kidger, a former Lecturer at the University of Manchester. ".d" files can be viewed in the [[http://wiki.rcs.manchester.ac.uk/community/FEAR ParaFEM-Viewer]].
+The ".d" format is based on the DANFE format created by Dr Daniel Kidger, a former Lecturer at the University of Manchester. ".d" files can be viewed in the [ParaFEMViewerManual ParaFEM-Viewer].
 
-<<BR>>
+A typical ".d" file has the following format:
 
-The [[attachment:helix.d]] [??MB] file has the following format:<<BR>>
-
-''*THREE_DIMENSIONAL''
-
-''*NODES''
-
-''nodeID x-coordinate y-coordinate z-coordinate''
-
-''*ELEMENTS''
-
-''elementID ndim nod type num (list of nodes belonging to the element) materialID''
-
-<<BR>>
+{{{*THREE_DIMENSIONAL
+*NODES
+nodeID x-coordinate y-coordinate z-coordinate
+*ELEMENTS''
+elementID ndim nod type num materialID}}}
 
 ||<tableclass="datatable"rowbgcolor="#66cc66"> '''Variable Name''' || '''Variable Type''' ||<60%> '''Variable Meaning''' ||
 ||<rowclass="odd"> *THREE_DIMENSIONAL || Character || A keyword describing the model as three dimensional. ||
