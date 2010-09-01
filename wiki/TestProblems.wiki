@@ -1,4 +1,5 @@
 #summary Creating the simple test problems in Smith and Griffiths Chapter 12
+#sidebar TOC
 
 = Creating simple test problems =
 
