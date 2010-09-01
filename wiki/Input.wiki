@@ -4,20 +4,19 @@
 
 Add your content here.
 
-
-= Details =
-
 == Content of the ".d" file ==
 
 The ".d" format is based on the DANFE format created by Dr Daniel Kidger, a former Lecturer at the University of Manchester. ".d" files can be viewed in the [ParaFEMViewerManual ParaFEM-Viewer].
 
 A typical ".d" file has the following format:
 
-{{{*THREE_DIMENSIONAL
+{{{
+*THREE_DIMENSIONAL
 *NODES
 nodeID x-coordinate y-coordinate z-coordinate
 *ELEMENTS''
-elementID ndim nod type num materialID}}}
+elementID ndim nod type num materialID
+}}}
 
 ||<tableclass="datatable"rowbgcolor="#66cc66"> '''Variable Name''' || '''Variable Type''' ||<60%> '''Variable Meaning''' ||
 ||<rowclass="odd"> *THREE_DIMENSIONAL || Character || A keyword describing the model as three dimensional. ||
