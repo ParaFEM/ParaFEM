@@ -1,5 +1,5 @@
 #summary ParaFEM ASCII input decks explained
-#sidebar TableOfContents
+#sidebar TOC
 <wiki:toc max_depth="2" />
 
 = Introduction =
