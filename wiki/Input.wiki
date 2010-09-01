@@ -8,8 +8,8 @@ This page describes the format of the ParaFEM ASCII input decks. The input decks
 
 ||{{{.dat}}}|| Basic control data||
 ||{{{.d}}}  || The geometry of the problem||
-||{{{.bnd}}}|| Defines the boundary conditions||
-||{{{.lds}}}|| Lists the loads to be applied||
+||{{{.bnd}}}|| The boundary conditions||
+||{{{.lds}}}|| The loads to be applied||
 
 The philosophy behind having separate files is that it reduces the burden of data transfer when running very large problems on parallel supercomputers. An enhancement to ParaFEM for those running smaller problems would be to allow the user to decide whether to use a single input file or have several separate files as defined here.
 
