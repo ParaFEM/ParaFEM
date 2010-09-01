@@ -96,13 +96,13 @@ A sample follows:
 The significance of the "{{{0}}}" or "{{{1}}}" coding is explained below:
 
 {{{ 
-24616  0  1  1 _restrained in x 
-24652  1  0  1 _restrained in y
-24654  1  1  0 _restrained in z
-24655  0  0  1 _restrained in x, y
-24656  1  0  0 _restrained in y, z
-24689  0  1  0 _restrained in x, z
-24690  0  0  0 _restrained in x, y and z
+24616  0  1  1  restrained in x 
+24652  1  0  1  restrained in y
+24654  1  1  0  restrained in z
+24655  0  0  1  restrained in x, y
+24656  1  0  0  restrained in y, z
+24689  0  1  0  restrained in x, z
+24690  0  0  0  restrained in x, y and z
 }}}
 
 By default, all nodes that are not listed will not be restrained in x, y or z.
