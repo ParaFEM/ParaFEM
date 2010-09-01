@@ -1,4 +1,5 @@
 #summary Where to find documentation.
+#sidebar TOC
 
 == ParaFEM API ==
 A program called AUTODOC is used to automatically generate a detailed API from headers placed in the source code. Currently a pre-generated API can be found in ~/parafem/docs. For simplicity, the revision number in the document "ParaFEM API 14.0" matches the svn version of the source code from which the documentation was created. Simply open in a web browser.
