@@ -67,17 +67,41 @@ So, in this case, if you were converting an Abaqus .inp file to ParaFEM ASCII fo
 A typical ".bnd" file has the following format:
 
 {{{
-nodeID x-freedom y-freedom z-freedom
-nodeID x-freedom y-freedom z-freedom
-nodeID x-freedom y-freedom z-freedom
+nodeID,,1,, restraint_x  restraint_y  restraint_z
+nodeID,,2,, restraint_x  restraint_y  restraint_z
+nodeID,,3,, restraint_x  restraint_y  restraint_z
 ...
+nodeID,,NR,, restraint_x  restraint_y  restraint_z
 }}}
 
-A real example follows:
+|| *Variable Name* || *Type* || *Variable Meaning* ||
+||{{{nodeID}}} || Integer || A unique number that identifies the node. ParaFEM assumes sequential numbering from 1 to NR, shown here as {{{nodeID,,1,,, nodeID,,2,,, nodeID,,3,,, ... , nodeID,,NR,,}}}. Nodes where all the restraints are free need not be included.||
+||{{{restraint_x}}} || Integer || Restraint in X direction. The convention is that 0 = restrained and 1 = free. ||
+||{{{restraint_y}}} || Integer || Restraint in Y direction. The convention is that 0 = restrained and 1 = free. ||
+||{{{restraint_z}}} || Integer || Restraint in Z direction. The convention is that 0 = restrained and 1 = free. ||
+
+A sample follows:
 
 {{{
-1  1  0  1
-2  0  0  1
-4  0  0  0
-8  0  1  0
+24616  0  1  1
+24652  1  0  1
+24654  1  1  0
+24655  0  0  1
+24656  1  0  0
+24689  0  1  0
+24690  0  0  0
 }}}
+
+The significance of the "{{{0}}}" or "{{{1}}}" coding is explained below:
+
+{{{ 
+24616  0  1  1 _restrained in x 
+24652  1  0  1 _restrained in y
+24654  1  1  0 _restrained in z
+24655  0  0  1 _restrained in x, y
+24656  1  0  0 _restrained in y, z
+24689  0  1  0 _restrained in x, z
+24690  0  0  0 _restrained in x, y and z
+}}}
+
+By default, all nodes that are not listed will not be restrained in x, y or z.
