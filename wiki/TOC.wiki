@@ -3,6 +3,6 @@
  * [About About]
  * [Documentation Documentation]
   * [GettingStarted Getting Started]
-  * [Input ParaFEM Input Decks]
-  * [ParaFEMViewerManual ParaFEM Viewer]
+  * [Input Input Decks]
+  * [ParaFEMViewerManual Visualization Tool]
  * [Contribute How to Contribute]
