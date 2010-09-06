@@ -2,6 +2,11 @@
 #sidebar TOC
 
 = Publications =
+{{{
+Simulating sauropod manus-only trackway formation using finite-element analysis
+Author(s): Falkingham, PL; Bates KT; Margetts L and Manning PL
+Source: Biology Letters (published online before print June 30 2010) 
+}}}
 
 {{{
 Fossil vertebrate tracks as palaeopenetrometers: Confounding effects of foot morphology
