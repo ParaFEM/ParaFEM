@@ -4,6 +4,12 @@
 = Publications =
 
 {{{
+FOSSIL VERTEBRATE TRACKS AS PALEOPENETROMETERS: CONFOUNDING EFFECTS OF FOOT MORPHOLOGY
+Author(s): Falkingham, PL; Margetts, L; Manning, PL
+Source: Palaios Volume: 25 Issue: 5-6 Pages: 356-360 Published: 2010
+}}}
+
+{{{
 Reinterpretation of palmate and semi-palmate (webbed) fossil tracks; insights from finite element modelling
 Author(s): FALKINGHAM, PL; MARGETTS, L; SMITH, IM; et al.
 Source: PALAEOGEOGRAPHY PALAEOCLIMATOLOGY PALAEOECOLOGY Volume: 271 Issue: 1-2 Pages: 69-76 Published: 2009 
