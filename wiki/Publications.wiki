@@ -41,6 +41,12 @@ Source: Engineering Computations Volume: 23 Issue: 1-2 Pages: 154-165 Published:
 }}}
 
 {{{
+Modelling the core convection using finite element and finite difference methods 
+Author(s): Chan KH, Ligang Lia and Xinhao Liao
+Source: Physics of The Earth and Planetary Interiors Volume: 157 Issue 1-2 Pages 124-138 Published: 2006 
+}}}
+
+{{{
 Programming the Finite Element Method
 Author(s): Smith, IM and Griffiths DV
 Source: Wiley, 4th Edition
