@@ -2,6 +2,24 @@
 #sidebar TOC
 
 = Publications =
+
+== Books ==
+{{{
+The Boundary Element Method with Programming
+Author(s): Beer, G; Smith IM and Duenser C.
+Source: Springer-Verlag
+Published: 2008
+}}}
+
+{{{
+Programming the Finite Element Method
+Author(s): Smith, IM and Griffiths DV
+Source: Wiley, 4th Edition
+Published: 2004
+}}}
+
+== Journals ==
+
 {{{
 Simulating sauropod manus-only trackway formation using finite-element analysis
 Author(s): Falkingham, PL; Bates KT; Margetts L and Manning PL
@@ -18,13 +36,6 @@ Source: Palaios Volume: 25 Issue: 5-6 Pages: 356-360 Published: 2010
 Reinterpretation of palmate and semi-palmate (webbed) fossil tracks; insights from finite element modelling
 Author(s): Falkingham, PL; Margetts, L; Smith, IM; et al.
 Source: Palaeogeography Palaeoclimatology Palaeoecology Volume: 271 Issue: 1-2 Pages: 69-76 Published: 2009 
-}}}
-
-{{{
-The Boundary Element Method with Programming
-Author(s): Beer, G; Smith IM and Duenser C.
-Source: Springer-Verlag
-Published: 2008
 }}}
 
 {{{
@@ -55,11 +66,4 @@ Source: Engineering Computations Volume: 23 Issue: 1-2 Pages: 154-165 Published:
 Modelling the core convection using finite element and finite difference methods 
 Author(s): Chan KH, Ligang Lia and Xinhao Liao
 Source: Physics of The Earth and Planetary Interiors Volume: 157 Issue 1-2 Pages 124-138 Published: 2006 
-}}}
-
-{{{
-Programming the Finite Element Method
-Author(s): Smith, IM and Griffiths DV
-Source: Wiley, 4th Edition
-Published: 2004
 }}}
