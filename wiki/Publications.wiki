@@ -29,6 +29,12 @@ Source: Numerical Models In Geomechanics: NUMOG X Pages: 177-181 Published: 2007
 }}}
 
 {{{
+A new generation of convection-driven spherical dynamos using EBE finite element method 
+Author(s): Chan KH, Zhang K, Li L and Liao X
+Source: Physics of The Earth and Planetary Interiors Volume: 163 Issue: 1-4 Pages 251-265 Published: 2007
+}}}
+
+{{{
 Parallel three dimensional finite element analysis of dinosaur trackway formation
 Author(s): Margetts, L; Leng, JM; Smith, IM; et al.
 Source: Numerical Methods in Geotechnical Engineering Pages: 743-749 Published: 2006 
