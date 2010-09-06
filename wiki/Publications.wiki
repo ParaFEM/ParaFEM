@@ -1,4 +1,5 @@
 #summary Selected publications that have used ParaFEM.
+#sidebar TOC
 
 = Publications =
 
