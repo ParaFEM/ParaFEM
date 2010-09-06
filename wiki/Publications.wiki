@@ -4,31 +4,45 @@
 = Publications =
 
 {{{
-FOSSIL VERTEBRATE TRACKS AS PALEOPENETROMETERS: CONFOUNDING EFFECTS OF FOOT MORPHOLOGY
+Fossil vertebrate tracks as palaeopenetrometers: Confounding effects of foot morphology
 Author(s): Falkingham, PL; Margetts, L; Manning, PL
 Source: Palaios Volume: 25 Issue: 5-6 Pages: 356-360 Published: 2010
 }}}
 
 {{{
 Reinterpretation of palmate and semi-palmate (webbed) fossil tracks; insights from finite element modelling
-Author(s): FALKINGHAM, PL; MARGETTS, L; SMITH, IM; et al.
-Source: PALAEOGEOGRAPHY PALAEOCLIMATOLOGY PALAEOECOLOGY Volume: 271 Issue: 1-2 Pages: 69-76 Published: 2009 
+Author(s): Falkingham, PL; Margetts, L; Smith, IM; et al.
+Source: Palaeogeography Palaeoclimatology Palaeoecology Volume: 271 Issue: 1-2 Pages: 69-76 Published: 2009 
+}}}
+
+{{{
+The Boundary Element Method with Programming
+Author(s): Beer, G; Smith IM and Duenser C.
+Source: Springer-Verlag
+Published: 2008
 }}}
 
 {{{
 Parallelising the boundary element method using ParaFEM
-Author(s): SMITH, IM; MARGETTS, L; BEER, G; et al.
-Source: NUMERICAL MODELS IN GEOMECHANICS: NUMOG X Pages: 177-181 Published: 2007 
+Author(s): Smith, IM; Margetts, L; Beer, G; et al.
+Source: Numerical Models In Geomechanics: NUMOG X Pages: 177-181 Published: 2007 
 }}}
 
 {{{
 Parallel three dimensional finite element analysis of dinosaur trackway formation
-Author(s): MARGETTS, L; LENG, JM; SMITH, IM; et al.
+Author(s): Margetts, L; Leng, JM; Smith, IM; et al.
 Source: Numerical Methods in Geotechnical Engineering Pages: 743-749 Published: 2006 
 }}}
 
 {{{
 The convergence variability of parallel iterative solvers
-Author(s): SMITH, IM; MARGETTS, L
-Source: ENGINEERING COMPUTATIONS Volume: 23 Issue: 1-2 Pages: 154-165 Published: 2006 
+Author(s): Smith, IM; Margetts, L
+Source: Engineering Computations Volume: 23 Issue: 1-2 Pages: 154-165 Published: 2006 
+}}}
+
+{{{
+Programming the Finite Element Method
+Author(s): Smith, IM and Griffiths DV
+Source: Wiley, 4th Edition
+Published: 2004
 }}}
