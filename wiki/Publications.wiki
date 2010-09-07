@@ -21,6 +21,12 @@ Published: 2004
 == Journals ==
 
 {{{
+Reduced numerical solution times for combined boundary-initial value problems using parallel computing
+Author(s) Salimi and Hayhurst DR
+Source: Engineering Computations Volume: 27 Issue: 6 Pages: 746-772 Published: 2010
+}}}
+
+{{{
 Simulating sauropod manus-only trackway formation using finite-element analysis
 Author(s): Falkingham, PL; Bates KT; Margetts L and Manning PL
 Source: Biology Letters (published online before print June 30 2010) 
