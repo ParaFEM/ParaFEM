@@ -22,7 +22,7 @@ Published: 2004
 
 {{{
 Reduced numerical solution times for combined boundary-initial value problems using parallel computing
-Author(s) Salimi and Hayhurst DR
+Author(s) Salimi B and Hayhurst DR
 Source: Engineering Computations Volume: 27 Issue: 6 Pages: 746-772 Published: 2010
 }}}
 
