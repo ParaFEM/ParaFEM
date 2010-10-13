@@ -53,10 +53,10 @@ CONTAINS
   !*/
    
  
-  INTEGER :: count,count_rate
- 
-  CALL SYSTEM_CLOCK(count,count_rate)
-  elap_time = REAL(count,iwp)/REAL(count_rate,iwp)
+  REAL(iwp) :: time
+
+  CALL CPU_TIME(time)
+  elap_time = REAL(time,iwp) 
  
  
   END FUNCTION elap_time
