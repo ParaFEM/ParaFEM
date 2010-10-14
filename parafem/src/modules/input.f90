@@ -685,15 +685,14 @@ MODULE INPUT
 !------------------------------------------------------------------------------
 
   SUBROUTINE READ_P126(job_name,numpe,cjits,cjtol,ell,fixed_equations,kappa,  &
-                       limit,meshgen,nels,nip,nn,nr,penalty,rho,tol,     &
-                       x0,visc)
+                       limit,mesh,nels,nip,nn,nr,penalty,rho,tol,x0,visc)
 
   !/****f* input/read_p126
   !*  NAME
   !*    SUBROUTINE: read_p126
   !*  SYNOPSIS
   !*    Usage:      CALL read_p126(job_name,numpe,cjits,cjtol,ell,
-  !*                               fixed_equations,kappa,limit,meshgen,nels,  &
+  !*                               fixed_equations,kappa,limit,mesh,nels,     &
   !*                               nip,nn,nr,penalty,rho,tol,x0,visc
   !*  FUNCTION
   !*    Master processor reads the general data for the problem and broadcasts 
@@ -710,13 +709,13 @@ MODULE INPUT
   !*    The following arguments have the INTENT(INOUT) attribute:
   !*
   !*    cjits                  : Integer
-  !*                           : BiCGSTAB(l) parameter
+  !*                           : Iteration limit for BiCGSTAB(l)
   !*
   !*    cjtol                  : Real
-  !*                           : BiCGSTAB(l) parameter
+  !*                           : Tolerance for BiCGSTAB(l)
   !*
   !*    ell                    : Integer
-  !*                           : BiCGSTAB(l) parameter
+  !*                           : l in BiCGSTAB(l) process
   !*
   !*    fixed_equations        : Integer
   !*                           : Number of fixed equations in the lid 
@@ -724,7 +723,7 @@ MODULE INPUT
   !*    limit                  : Integer
   !*                           : Maximum number of iterations allowed
   !*
-  !*    meshgem                : Integer
+  !*    mesh                   : Integer
   !*                           : 1 = Smith and Griffiths numbering scheme
   !*                           : 2 = Abaqus numbering scheme
   !*
@@ -742,16 +741,16 @@ MODULE INPUT
   !*                             freedom 
   !*
   !*    penalty                : Real
-  !*                           :
+  !*                           : Penalty
   !*
   !*    rho                    : Real
-  !*                           : Fluid parameter
+  !*                           : Fluid viscosity
   !*
   !*    tol                    : Real
-  !*                           : Tolerance for PCG
+  !*                           : Tolerance for outer loop
   !*
   !*    x0                     : Real
-  !*                           :
+  !*                           : Starting value
   !*
   !*    visc                   : Real
   !*                           : Fluid viscosity
@@ -771,7 +770,7 @@ MODULE INPUT
   CHARACTER(LEN=50), INTENT(IN)    :: job_name
   INTEGER, INTENT(IN)              :: numpe
   INTEGER, INTENT(INOUT)           :: nels,nn,nr,nip,cjits,fixed_equations
-  INTEGER, INTENT(INOUT)           :: limit,meshgen,ell 
+  INTEGER, INTENT(INOUT)           :: limit,mesh,ell 
   REAL(iwp), INTENT(INOUT)         :: cjtol,kappa,penalty,rho,tol,x0,visc
 
 !------------------------------------------------------------------------------
@@ -783,7 +782,7 @@ MODULE INPUT
   CHARACTER(LEN=50)                :: fname
   CHARACTER(LEN=50)                :: program_name
   
-!------------------------------------------------ ------------------------------
+!------------------------------------------------------------------------------
 ! 2. Master processor reads the data and copies it into temporary arrays
 !------------------------------------------------------------------------------
 
@@ -791,13 +790,13 @@ MODULE INPUT
     fname = job_name(1:INDEX(job_name, " ") -1) // ".dat"
     OPEN(10,FILE=fname,STATUS='OLD',ACTION='READ')
     READ(10,*) program_name
-    READ(10,*) meshgen,nels,nn,nr,fixed_equations,nip,visc,rho,tol,limit,     &
+    READ(10,*) mesh,nels,nn,nr,fixed_equations,nip,visc,rho,tol,limit,        &
                cjtol,cjits,penalty,x0,ell,kappa
     CLOSE(10)
    
     integer_store      = 0
 
-    integer_store(1)   = meshgen
+    integer_store(1)   = mesh
     integer_store(2)   = nels
     integer_store(3)   = nn
     integer_store(4)   = nr 
@@ -836,7 +835,7 @@ MODULE INPUT
 
   IF (numpe/=1) THEN
 
-    meshgen         = integer_store(1)
+    mesh            = integer_store(1)
     nels            = integer_store(2)
     nn              = integer_store(3)
     nr              = integer_store(4)
