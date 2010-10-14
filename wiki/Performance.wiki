@@ -14,11 +14,11 @@ The table below gives some performance figures for program p121 (3D small strain
 {{{
 1,000,000 elements 
 4,090,601 nodes
-- equations
+12,059,800 equations
 }}}
 
 || Number of cores || Time (s) in solver || Speed up || Efficiency || Total time (s) || Speed up || Efficiency ||
-||384||-||-||-||-||-||-||
+||384||66||-||-||252||-||-||
 ||768||-||-||-||-||-||-||
 
 = p126 =
