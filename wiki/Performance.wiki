@@ -46,6 +46,7 @@ The table below gives some performance figures for program p126 (direct numerica
 }}}
 
 || Number of processors || Number of cores || Time (s) in solver || Speed up || Efficiency || Total time (s) || Speed up || Efficiency ||
+||8||96||12932||-||-||13011||-||-||
 ||16||192||6040||-||-||6109||-||-||
 ||32||384||3119||-||-||3200||-||-||
 ||64||768||1987||-||-||2052||-||-||
