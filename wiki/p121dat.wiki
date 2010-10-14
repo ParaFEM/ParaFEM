@@ -2,6 +2,8 @@
 
 ==p121.dat==
 
+A typical p121.dat file has the following format:
+
 {{{
 element
 mesh
