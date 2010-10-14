@@ -1,4 +1,6 @@
 #summary p121 control file data format.
+#sidebar TOC
+<wiki:toc max_depth="2" />
 
 ==p121.dat==
 
