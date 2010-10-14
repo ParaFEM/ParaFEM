@@ -19,7 +19,7 @@ The table below gives some performance figures for program p121 (3D small strain
 
 || Number of processors || Number of cores || Time (s) in solver || Speed up || Efficiency || Total time (s) || Speed up || Efficiency ||
 ||8||96||247||-||-||299||-||-||
-||16||192||126||-||-||453||-||-||
+||16||192||127||-||-||178||-||-||
 ||32||384||66||-||-||252||-||-||
 ||64||768||-||-||-||-||-||-||
 
