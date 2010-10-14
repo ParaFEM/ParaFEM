@@ -98,7 +98,7 @@ PROGRAM p121
   g_g_pp = 0
 
   elements_1: DO iel = 1, nels_pp
-    CALL find_g(g_num_pp(:,iel),g_g_pp(:,iel),rest)
+    CALL find_g3(g_num_pp(:,iel),g_g_pp(:,iel),rest)
   END DO elements_1
 
   neq = 0

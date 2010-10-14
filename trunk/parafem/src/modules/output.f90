@@ -124,7 +124,7 @@ MODULE OUTPUT
     WRITE(11,'(A,F12.6,F8.2)') "Setup                                       ",&
                            timest(2)-timest(1),                               &
                            ((timest(2)-timest(1))/(timest(11)-timest(1)))*100  
-    WRITE(11,'(A,F12.6,F8.2)') "Compute coordinates and steering array      ",&
+    WRITE(11,'(A,F12.6,F8.2)') "Compute steering array and neq              ",&
                            timest(3)-timest(2),                               &
                           ((timest(3)-timest(2))/(timest(11)-timest(1)))*100  
     WRITE(11,'(A,F12.6,F8.2)') "Compute interprocessor communication tables ",&
