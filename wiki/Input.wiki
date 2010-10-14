@@ -16,7 +16,7 @@ The philosophy behind having separate files is that it reduces the burden of dat
 
 = The .dat file =
 
-Each example program typically requires a control data file called {{{<job_name>.dat}}}. This contains basic data about the problem such as the number of elements and nodes in the model, as well as parameters required by the solver. Please click on the following links for program specific details: [p121dat p121.dat].
+Each example program typically requires a control data file called {{{<job_name>.dat}}}. This contains basic data about the problem such as the number of elements and nodes in the model, as well as parameters required by the solver. Please click on the following links for program specific details: [p121dat p121.dat], [p126dat p126.dat].
 
 = The .d file =
 
