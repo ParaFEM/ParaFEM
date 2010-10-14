@@ -2,7 +2,7 @@
 #sidebar TOC
 <wiki:toc max_depth="2" />
 
-==p126.dat==
+== p126.dat ==
 
 A typical p126.dat file has the following format:
 
@@ -11,7 +11,8 @@ program_name
 mesh
 nels nn nr fixed_equations nip
 visc rho tol limit
-cjtol cjits penalty x0 ell kappa
+cjtol cjits penalty
+x0 ell kappa
 }}}
 
 ||*Variable Name*||*Type*||*Meaning*||
@@ -27,7 +28,7 @@ cjtol cjits penalty x0 ell kappa
 ||{{{limit}}} || Integer || Iteration limit for outer loop.||
 ||{{{cjtol}}} || Real || Convergence tolerance for BiCGStab(l).||
 ||{{{cjits}}} || Real || Iteration limit for BiCGStab(l).||
-||{{{penalty}}} || Real || ||
+||{{{penalty}}} || Real || Penalty.||
 ||{{{x0}}} || Real || Start value.||
 ||{{{ell}}} || Integer || l in the BiCGStab(l) process.||
 ||{{{kappa}}} || Real || kappa in the BiCGStab(l) process.||
@@ -36,8 +37,10 @@ cjtol cjits penalty x0 ell kappa
 A real example follows:
 
 {{{
-hexahedron
+'p126'
 2
-2560 12465 225 8 20 17
-100000. .3 1.e-5 5000
+1000000 4090601 3120302 20401 8
+0.1000E-01 0.1000E+01 0.1000E-02 30
+0.1000E-04 5000 0.1000E+06
+0.1000E+01    4 0.0000E+00
 }}}
