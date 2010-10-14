@@ -21,7 +21,11 @@ The table below gives some performance figures for program p121 (3D small strain
 ||8||96||247||-||-||299||-||-||
 ||16||192||127||-||-||178||-||-||
 ||32||384||66||-||-||117||-||-||
-||64||768||-||-||-||-||-||-||
+||64{{{*}}}||768||-||-||-||-||-||-||
+
+{{{
+* No output and no error message
+}}}
 
 = p126 =
 
