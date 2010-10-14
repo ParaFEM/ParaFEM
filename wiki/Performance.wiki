@@ -12,14 +12,14 @@ This page presents some basic performance data for the programs supplied with Pa
 The table below gives some performance figures for program p121 (3D small strain elasticity) using HECToR Phase 2b. Basic data about the problem are listed as follows:
 
 {{{
-- elements 
-- nodes
+1,000,000 elements 
+4,090,601 nodes
 - equations
 }}}
 
 || Number of cores || Time (s) in solver || Speed up || Efficiency || Total time (s) || Speed up || Efficiency ||
-||-||-||-||-||-||-||-||
-||-||-||-||-||-||-||-||
+||384||-||-||-||-||-||-||
+||768||-||-||-||-||-||-||
 
 = p126 =
 
