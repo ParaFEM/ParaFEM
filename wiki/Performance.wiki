@@ -7,7 +7,13 @@ This page presents some basic performance data for the programs supplied with Pa
 
 = p126 on HECToR Phase 2b =
 
-The table below gives some performance figures for program p126 (direct numerical solution of the Navier Stokes equations) using HECToR Phase 2b. 
+The table below gives some performance figures for program p126 (direct numerical solution of the Navier Stokes equations) using HECToR Phase 2b. Basic data about the problem:
+
+{{{
+1,000,000 hexahedral elements 
+4,090,601 nodes
+12,792,398 equations
+}}}
 
 || Number of cores || Time (s) in solver || Speed up || Efficiency || Total time (s) || Speed up || Efficiency ||
 ||384||3119||-||-||3200||-||-||
