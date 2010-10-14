@@ -246,6 +246,8 @@ MODULE INPUT
   !*  
   !*  An improvement would be to avoid allocating the global array
   !*
+  !*  Can copy the method in subroutine READ_G_COORD_PP
+  !*
   !*/
 
   IMPLICIT NONE
