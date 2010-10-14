@@ -10,7 +10,7 @@
   NOTES 
 
   o The program has not yet been finished
-  o By default, the output meshes are in Abaqus format
+  o By default, the element node ordering follows the Abaqus convention
 
   AUTHOR
 
