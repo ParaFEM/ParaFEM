@@ -18,6 +18,8 @@ The table below gives some performance figures for program p121 (3D small strain
 }}}
 
 || Number of processors || Number of cores || Time (s) in solver || Speed up || Efficiency || Total time (s) || Speed up || Efficiency ||
+||2{{{*}}}||24||-||-||-||-||-||-||
+||4||24||1103||-||-||1170||-||-||
 ||4||48||478||-||-||535||-||-||
 ||8||96||247||-||-||299||-||-||
 ||16||192||127||-||-||178||-||-||
@@ -25,7 +27,7 @@ The table below gives some performance figures for program p121 (3D small strain
 ||64{{{*}}}||768||-||-||-||-||-||-||
 
 {{{
-* No output and no error message
+* No output and no error message. Suspected memory fault, but not reported by system
 }}}
 
 = p126 =
