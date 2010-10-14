@@ -26,7 +26,7 @@ The table below gives some performance figures for program p121 (3D small strain
 ||32||384||67||-||-||118||-||-||
 ||64||768||36||-||-||87||-||-||
 ||128||1536||24||-||-||88||-||-||
-
+||256{{{*}}}||3072||-||-||-||-||-||-||
 {{{
 * Memory fault reported by the system.
 }}}
