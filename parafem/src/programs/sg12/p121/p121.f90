@@ -84,7 +84,7 @@ PROGRAM p121
            der(ndim,nod),deriv(ndim,nod),eld_pp(ntot,nels_pp),bee(nst,ntot),  &
            storkm_pp(ntot,ntot,nels_pp),eld(ntot),eps(nst),sigma(nst),        &
            pmul_pp(ntot,nels_pp),utemp_pp(ntot,nels_pp),                      &
-           weights(nip),diag_precon_tmp(ntot,nels_pp),g_g_pp(ntot,nels_pp))
+           weights(nip),g_g_pp(ntot,nels_pp))
 
   timest(2) = elap_time()
 
@@ -163,7 +163,8 @@ PROGRAM p121
 !------------------------------------------------------------------------------
 ! 9. Build the diagonal preconditioner
 !------------------------------------------------------------------------------
-
+  
+  ALLOCATE(diag_precon_tmp(ntot,nels_pp))
   diag_precon_tmp = zero
  
   elements_4: DO iel = 1,nels_pp 
@@ -201,6 +202,8 @@ PROGRAM p121
 
   END IF
   
+  DEALLOCATE(g_g_pp)
+  
   timest(8) = elap_time()
 
   diag_precon_pp = 1._iwp/diag_precon_pp
@@ -236,6 +239,8 @@ PROGRAM p121
     IF(converged.OR.iters==limit)EXIT
   END DO iterations
 
+  DEALLOCATE(p_pp,r_pp,x_pp,u_pp,d_pp,diag_precon_pp,storkm_pp,pmul_pp) 
+  
   timest(9) = elap_time()
 
 !------------------------------------------------------------------------------
