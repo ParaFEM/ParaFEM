@@ -4,8 +4,25 @@
 
 This page presents some basic performance data for the programs supplied with ParaFEM.
 
+= p121 =
 
-= p126 on HECToR Phase 2b =
+== HECToR Phase 2b ==
+
+The table below gives some performance figures for program p121 (3D small strain elasticity) using HECToR Phase 2b. Basic data about the problem are listed as follows:
+
+{{{
+- elements 
+- nodes
+- equations
+}}}
+
+|| Number of cores || Time (s) in solver || Speed up || Efficiency || Total time (s) || Speed up || Efficiency ||
+||-||-||-||-||-||-||-||
+||-||-||-||-||-||-||-||
+
+= p126 =
+
+== HECToR Phase 2b ==
 
 The table below gives some performance figures for program p126 (direct numerical solution of the Navier Stokes equations) using HECToR Phase 2b. Basic data about the problem are listed as follows:
 
