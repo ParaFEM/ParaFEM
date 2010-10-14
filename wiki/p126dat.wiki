@@ -1,13 +1,43 @@
-#summary One-sentence summary of this page.
+#summary p126 control file data format.
+#sidebar TOC
+<wiki:toc max_depth="2" />
 
-= Introduction =
+==p126.dat==
 
-Add your content here.
+A typical p126.dat file has the following format:
+
+{{{
+program_name
+mesh
+nels nn nr fixed_equations nip
+visc rho tol limit
+cjtol cjits penalty x0 ell kappa
+}}}
+
+||*Variable Name*||*Type*||*Meaning*||
+||{{{program_name}}} || Character || Name of the program. Here the permitted value is {{{p126}}}||
+||{{{mesh}}} || Integer || Element node ordering scheme. Permitted values are {{{1}}} (Smith and Griffiths scheme) or {{{2}}} (Abaqus scheme).||
+||{{{nels}}} || Integer || Number of elements in the mesh.||
+||{{{nr}}} || Integer || Number of restrained nodes in the mesh.||
+||{{{fixed_equations}}} || Integer || Number of equations with an applied velocity.||
+||{{{nip}}} || Integer || Number of integration points.||
+||{{{visc}}} || Real || Fluid viscosity.||
+||{{{rho}}} || Real || Fluid density.||
+||{{{tol}}} || Real || Tolerance for outer loop.||
+||{{{limit}}} || Integer || Iteration limit for outer loop.||
+||{{{cjtol}}} || Real || Convergence tolerance for BiCGStab(l).||
+||{{{cjits}}} || Real || Iteration limit for BiCGStab(l).||
+||{{{penalty}}} || Real || ||
+||{{{x0}}} || Real || Start value.||
+||{{{ell}}} || Integer || l in the BiCGStab(l) process.||
+||{{{kappa}}} || Real || kappa in the BiCGStab(l) process.||
 
 
-= Details =
+A real example follows:
 
-Add your content here.  Format your content with:
-  * Text in *bold* or _italic_
-  * Headings, paragraphs, and lists
-  * Automatic links to other wiki pages
+{{{
+hexahedron
+2
+2560 12465 225 8 20 17
+100000. .3 1.e-5 5000
+}}}
