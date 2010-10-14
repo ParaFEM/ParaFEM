@@ -470,6 +470,7 @@ PROGRAM p126
  END DO iterations
  
  DEALLOCATE(rt_pp,r_pp,u_pp,b_pp,diag_pp,xold_pp,y_pp,y1_pp,store_pp)
+ DEALLOCATE(storke_pp,pmul_pp)
 
  timest(11) = elap_time()
  
