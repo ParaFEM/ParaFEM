@@ -335,14 +335,16 @@ MODULE GATHER_SCATTER
  
     SELECT CASE (npes)
 
-      CASE (1:16)
+      CASE (1:32)
         npes_pp = npes
-      CASE (64:256)
+      CASE (33:64)  
+        npes_pp = npes/2
+      CASE (65:256)
         npes_pp = npes/4
       CASE (257:1024)
         npes_pp = npes/7
       CASE DEFAULT
-        npes_pp = npes/2
+        npes_pp = npes/12
 
     END SELECT
 
