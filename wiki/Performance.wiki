@@ -29,7 +29,6 @@ The table below gives some performance figures for program p121 (3D small strain
 
 {{{
 * Memory fault reported by the system.
-** No output and no error message. Suspected memory fault, but not reported by the system.
 }}}
 
 = p126 =
@@ -53,5 +52,5 @@ The table below gives some performance figures for program p126 (direct numerica
 ||256{{{*}}}||3072||-||-||-||-||-||-||
 
 {{{
-*Segmentation fault
+* Memory fault reported by the system.
 }}}
