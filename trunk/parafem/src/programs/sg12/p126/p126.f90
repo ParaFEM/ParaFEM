@@ -147,6 +147,8 @@ PROGRAM p126
  CALL calc_npes_pp(npes,npes_pp)
  CALL make_ggl(npes_pp,npes,g_g_pp)
 
+ DEALLOCATE(g_g_pp)
+ 
  timest(4) = elap_time()
 
  nres = 481
@@ -467,6 +469,8 @@ PROGRAM p126
 
  END DO iterations
  
+ DEALLOCATE(rt_pp,r_pp,u_pp,b_pp,diag_pp,xold_pp,y_pp,y1_pp,store_pp)
+
  timest(11) = elap_time()
  
 !------------------------------------------------------------------------------
