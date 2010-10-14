@@ -1,6 +1,5 @@
 #summary p126 control file data format.
 #sidebar TOC
-<wiki:toc max_depth="2" />
 
 == p126.dat ==
 
