@@ -17,9 +17,9 @@ The table below gives some performance figures for program p121 (3D small strain
 12,059,800 equations
 }}}
 
-|| Number of cores || Time (s) in solver || Speed up || Efficiency || Total time (s) || Speed up || Efficiency ||
-||384||66||-||-||252||-||-||
-||768||-||-||-||-||-||-||
+|| Number of processors || Number of cores || Time (s) in solver || Speed up || Efficiency || Total time (s) || Speed up || Efficiency ||
+||32||384||66||-||-||252||-||-||
+||64||768||-||-||-||-||-||-||
 
 = p126 =
 
@@ -33,6 +33,6 @@ The table below gives some performance figures for program p126 (direct numerica
 12,792,398 equations
 }}}
 
-|| Number of cores || Time (s) in solver || Speed up || Efficiency || Total time (s) || Speed up || Efficiency ||
-||384||3119||-||-||3200||-||-||
-||768||1987||-||-||2052||-||-||
+|| Number of processors || Number of cores || Time (s) in solver || Speed up || Efficiency || Total time (s) || Speed up || Efficiency ||
+||32||384||3119||-||-||3200||-||-||
+||64||768||1987||-||-||2052||-||-||
