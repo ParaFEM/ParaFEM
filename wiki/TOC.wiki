@@ -8,4 +8,5 @@
   * [TestProblems Simple Test Problems]
   * [ParaFEMViewerManual Visualization Tool]
  * [Contribute Contribute to ParaFEM]
+ * [Performance Performance]
  * [Publications Publications]
