@@ -12,6 +12,7 @@ MODULE STEERING
   !*    
   !*    REARRANGE              Modifies REST array
   !*    FIND_G                 Finds g from node numbers and restraints "rest"
+  !*    FIND_NO                Forms vector of loaded equations NO
   !*    ABAQUS2SG              Swaps node order from Abaqus to S&G convention
   !*
   !*  AUTHOR
@@ -243,6 +244,108 @@ MODULE STEERING
     END DO
     
   END SUBROUTINE g_t_g_ns
+
+!---------------------------------------------------------------------------
+!---------------------------------------------------------------------------
+!---------------------------------------------------------------------------
+
+  SUBROUTINE FIND_NO(NODE,REST,SENSE,NO)
+
+    !/****f* structure_dof/find_no
+    !*  NAME
+    !*    SUBROUTINE: find_no
+    !*  SYNOPSIS
+    !*    Usage:      CALL find_no(node,rest,sense,no)
+    !*  FUNCTION
+    !*    Forms vector of loaded equations NO from vector of loaded nodes NODE
+    !*    using freedom information stored in REST.  Will work for serial and
+    !*    parallel programs.
+    !*  INPUTS
+    !*    It is assumed that the node numbers in both NODE and REST are arranged
+    !*    in ascending order.
+    !*  AUTHOR
+    !*    Lee Margetts
+    !*  CREATION DATE
+    !*    25.08.2009
+    !*  COPYRIGHT
+    !*    (c) University of Manchester 2009-2010
+    !******
+    !*  Needs fully testing, for all the cases.
+    !*/
+
+    IMPLICIT NONE
+    INTEGER,INTENT(IN)    :: node(:)
+    INTEGER,INTENT(IN)    :: rest(:,:)
+    INTEGER,INTENT(IN)    :: sense(:)
+    INTEGER,INTENT(OUT)   :: no(:)
+    INTEGER               :: i,j,k          ! simple counters
+    INTEGER               :: nrf            ! number of restrained freedoms
+    INTEGER               :: method = 0     ! for case arguments
+    INTEGER               :: fixed_freedoms ! number of fixed_freedoms
+    INTEGER               :: nodof          ! number of degrees of freedom
+    INTEGER               :: nr             ! number of restrained nodes
+  
+    
+    fixed_freedoms = UBOUND(node,1)
+    nodof          = UBOUND(rest,2) - 1
+    nr             = UBOUND(rest,1)
+    
+    IF(node(fixed_freedoms) < rest(1,1)) method = 1
+    IF(node(1) > rest(nr,1))             method = 2
+
+    SELECT CASE (method)
+    
+    CASE(1)
+    
+      DO i = 1, fixed_freedoms
+        no(i) = ((node(i) - 1) * nodof) + sense(i)
+      END DO
+    
+    CASE(2)
+      
+      nrf = 0
+      
+      DO i = 1,nr
+        DO j = 1,nodof
+          IF(rest(i,j+1) == 0) nrf = nrf + 1
+        END DO
+      END DO
+      
+      DO i = 1,fixed_freedoms
+        no(i) = ((node(i) - 1) * nodof) + sense(i) - nrf
+      END DO
+      
+    CASE default
+    
+      DO i = 1,fixed_freedoms
+     
+        nrf = 0 
+      
+        DO j = 1,nr
+          IF(rest(j,1) < node(i) ) THEN
+            DO k = 1,nodof
+              IF(rest(j,k+1) == 0) nrf = nrf + 1
+            END DO
+          ELSE IF (rest(j,1) == node(i)) THEN
+            DO k = 1,sense(i) - 1
+              IF(rest(j,k+1) == 0) nrf = nrf + 1
+            END DO
+          ELSE IF(rest(j,1) > node(i)) THEN
+            EXIT
+          END IF
+        END DO
+        
+        no(i) = ((node(i) - 1) * nodof) + sense(i) - nrf
+        
+      END DO
+      
+    END SELECT
+    
+    PRINT*, "NO =", no
+    
+    RETURN
+  
+  END SUBROUTINE FIND_NO
   
 !------------------------------------------------------------------------------
 !------------------------------------------------------------------------------
