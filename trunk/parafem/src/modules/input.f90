@@ -15,6 +15,7 @@ MODULE INPUT
   !*    READ_G_NUM_PP          Reads the element nodal steering array
   !*    READ_LOADS             Reads nodal forces
   !*    READ_LOADS_NS          Reads lid velocities for p126
+  !*    READ_FIXED             Reads fixed freedoms for displacement control
   !*    READ_REST              Reads the restraints
   !*    READ_P121              Reads the control data for program p121
   !*    READ_P126              Reads the control data for program p126
@@ -453,6 +454,92 @@ MODULE INPUT
   RETURN
 
   END SUBROUTINE READ_LOADS_NS
+
+!---------------------------------------------------------------------------
+!---------------------------------------------------------------------------
+!---------------------------------------------------------------------------
+
+  SUBROUTINE READ_FIXED(fname,numpe,node,sense,valf)
+
+    !/****f* input/read_fixed
+    !*  NAME
+    !*    SUBROUTINE: read_fixed
+    !*  SYNOPSIS
+    !*    Usage:      CALL read_fixed(fname,numpe,node,sense,valf)
+    !*  FUNCTION
+    !*    Master process reads the global array of nodes with fixed degrees
+    !*    of freedom, the fixed degrees of freedom and the value.
+    !*    Master process broadcasts to slave processes.
+    !*
+    !*  INPUTS
+    !*    The following arguments have the INTENT(IN) attribute:
+    !*
+    !*    job_name               : Character
+    !*                           : File name to read
+    !*
+    !*    numpe                  : Integer
+    !*                           : Process number
+    !*
+    !*    The following arguments have the INTENT(OUT) attribute:
+    !*
+    !*    sense(fixed_freedoms)  : Integer
+    !*                           : Degree of freedom fixed
+    !*
+    !*    node(fixed_freedoms)   : Integer
+    !*                           : Node fixed
+    !*
+    !*    valf(fixed_freedoms)   : Real
+    !*                           : Value fixed
+    !*  AUTHOR
+    !*    Lee Margetts
+    !*  CREATION DATE
+    !*    25.10.2010
+    !*  COPYRIGHT
+    !*    (c) University of Manchester 2007-2010
+    !******
+    !*  Place remarks that should not be included in the documentation here.
+    !*
+    !*  The method is based on reading a global array, although it's not a
+    !*  worry because the nodes with boundary conditions are a small
+    !*  proportion of the whole mesh.
+    !*
+    !*  Variable names need to be changed to those used in Smith & Griffiths
+    !*/
+
+    IMPLICIT NONE
+
+    CHARACTER(LEN=50),INTENT(IN)  :: fname
+    INTEGER,INTENT(IN)            :: numpe
+    INTEGER,INTENT(OUT)           :: sense(:), node(:)
+    REAL(iwp),INTENT(OUT)         :: valf(:)
+    INTEGER                       :: i, fixed_freedoms, ier
+ 
+    !----------------------------------------------------------------------
+    ! 1. Master process reads the data
+    !----------------------------------------------------------------------
+
+    fixed_freedoms = UBOUND(sense,1)
+
+    IF(numpe==1)THEN
+      fname = job_name(1:INDEX(job_name, " ")-1) // ".fix"
+      OPEN(10,FILE=fname,STATUS='OLD',ACTION='READ')
+      DO i = 1,fixed_freedoms
+        READ(10,*)node(i),sense(i),valf(i)
+      END DO
+      CLOSE(10)
+    END IF
+
+    !----------------------------------------------------------------------
+    ! 2. Master process broadcasts the data to slave processes
+    !----------------------------------------------------------------------
+   
+    CALL MPI_BCAST(node,fixed_freedoms,MPI_INTEGER,0,MPI_COMM_WORLD,ier)
+    CALL MPI_BCAST(sense,fixed_freedoms,MPI_INTEGER,0,MPI_COMM_WORLD,ier)
+    CALL MPI_BCAST(valf,fixed_freedoms,MPI_REAL8,0,MPI_COMM_WORLD,ier)
+
+    RETURN
+
+  END SUBROUTINE READ_FIXED
   
 !---------------------------------------------------------------------------
 !---------------------------------------------------------------------------
