@@ -459,13 +459,13 @@ MODULE INPUT
 !---------------------------------------------------------------------------
 !---------------------------------------------------------------------------
 
-  SUBROUTINE READ_FIXED(fname,numpe,node,sense,valf)
+  SUBROUTINE READ_FIXED(job_name,numpe,node,sense,valf)
 
     !/****f* input/read_fixed
     !*  NAME
     !*    SUBROUTINE: read_fixed
     !*  SYNOPSIS
-    !*    Usage:      CALL read_fixed(fname,numpe,node,sense,valf)
+    !*    Usage:      CALL read_fixed(job_name,numpe,node,sense,valf)
     !*  FUNCTION
     !*    Master process reads the global array of nodes with fixed degrees
     !*    of freedom, the fixed degrees of freedom and the value.
@@ -508,7 +508,8 @@ MODULE INPUT
 
     IMPLICIT NONE
 
-    CHARACTER(LEN=50),INTENT(IN)  :: fname
+    CHARACTER(LEN=50), INTENT(IN) :: job_name
+    CHARACTER(LEN=50)             :: fname  
     INTEGER,INTENT(IN)            :: numpe
     INTEGER,INTENT(OUT)           :: sense(:), node(:)
     REAL(iwp),INTENT(OUT)         :: valf(:)
@@ -613,15 +614,16 @@ MODULE INPUT
 !------------------------------------------------------------------------------
 !------------------------------------------------------------------------------
 
-  SUBROUTINE READ_P121(job_name,numpe,e,element,limit,loaded_nodes,mesh,nels, &
-                       nip,nn,nod,nr,tol,v)
+  SUBROUTINE READ_P121(job_name,numpe,e,element,fixed_freedoms,limit,        &
+                       loaded_nodes,mesh,nels,nip,nn,nod,nr,tol,v)
 
   !/****f* input/read_p121
   !*  NAME
   !*    SUBROUTINE: read_p121
   !*  SYNOPSIS
-  !*    Usage:      CALL read_p121(job_name,numpe,e,element,limit,             &
-  !*                               loaded_nodesmesh,nels,nip,nn,nod,nr,tol,v
+  !*    Usage:      CALL read_p121(job_name,numpe,e,element,fixed_freedoms,
+  !*                               limit,loaded_nodes,mesh,nels,nip,nn,nod,nr,
+  !*                               tol,v)
   !*  FUNCTION
   !*    Master processor reads the general data for the problem and broadcasts 
   !*    it to the slave processors.
@@ -642,6 +644,9 @@ MODULE INPUT
   !*    element                : Character
   !*                           : Element type
   !*                           : Values: 'hexahedron' or 'tetrahedron'
+  !*
+  !*    fixed_freedoms         : Integer
+  !*                           : Number of fixed displacements
   !*
   !*    limit                  : Integer
   !*                           : Maximum number of PCG iterations allowed
@@ -691,14 +696,14 @@ MODULE INPUT
   CHARACTER(LEN=15), INTENT(INOUT) :: element
   INTEGER, INTENT(IN)              :: numpe
   INTEGER, INTENT(INOUT)           :: nels,nn,nr,nod,nip,loaded_nodes
-  INTEGER, INTENT(INOUT)           :: limit,mesh 
+  INTEGER, INTENT(INOUT)           :: limit,mesh,fixed_freedoms 
   REAL(iwp), INTENT(INOUT)         :: e,v,tol
 
 !------------------------------------------------------------------------------
 ! 1. Local variables
 !------------------------------------------------------------------------------
 
-  INTEGER                          :: bufsize,ier,integer_store(8)
+  INTEGER                          :: bufsize,ier,integer_store(9)
   REAL(iwp)                        :: real_store(3)
   CHARACTER(LEN=50)                :: fname
   
@@ -709,8 +714,8 @@ MODULE INPUT
   IF (numpe==1) THEN
     fname = job_name(1:INDEX(job_name, " ") -1) // ".dat"
     OPEN(10,FILE=fname,STATUS='OLD',ACTION='READ')
-    READ(10,*) element,mesh,nels,nn,nr,nip,nod,loaded_nodes,e,v,              &
-               tol,limit
+    READ(10,*) element,mesh,nels,nn,nr,nip,nod,loaded_nodes,fixed_freedoms,  &
+               e,v,tol,limit
     CLOSE(10)
    
     integer_store      = 0
@@ -722,7 +727,8 @@ MODULE INPUT
     integer_store(5)   = nip
     integer_store(6)   = nod
     integer_store(7)   = loaded_nodes
-    integer_store(8)   = limit
+    integer_store(8)   = fixed_freedoms
+    integer_store(9)   = limit
 
     real_store         = 0.0_iwp
 
@@ -736,7 +742,7 @@ MODULE INPUT
 ! 3. Master processor broadcasts the temporary arrays to the slave processors
 !------------------------------------------------------------------------------
 
-  bufsize = 8
+  bufsize = 9
   CALL MPI_BCAST(integer_store,bufsize,MPI_INTEGER,0,MPI_COMM_WORLD,ier)
 
   bufsize = 3
@@ -751,19 +757,29 @@ MODULE INPUT
 
   IF (numpe/=1) THEN
 
-    mesh         = integer_store(1)
-    nels         = integer_store(2)
-    nn           = integer_store(3)
-    nr           = integer_store(4)
-    nip          = integer_store(5)
-    nod          = integer_store(6)
-    loaded_nodes = integer_store(7)
-    limit        = integer_store(8)
+    mesh            = integer_store(1)
+    nels            = integer_store(2)
+    nn              = integer_store(3)
+    nr              = integer_store(4)
+    nip             = integer_store(5)
+    nod             = integer_store(6)
+    loaded_nodes    = integer_store(7)
+    fixed_freedoms  = integer_store(8)
+    limit           = integer_store(9)
 
-    e            = real_store(1)
-    v            = real_store(2)
-    tol          = real_store(3)
+    e               = real_store(1)
+    v               = real_store(2)
+    tol             = real_store(3)
 
+  END IF
+
+  IF(fixed_freedoms .AND. loaded_nodes > 0) THEN
+    PRINT *
+    PRINT *, "Error - model has", fixed_freedoms, " fixed freedoms and"
+    PRINT *, loaded_nodes, " loaded nodes"
+    PRINT *, "Mixed displacement and load control not supported"
+    PRINT *
+    CALL shutdown()
   END IF
 
   RETURN
