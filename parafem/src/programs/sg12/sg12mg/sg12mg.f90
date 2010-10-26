@@ -141,6 +141,7 @@ PROGRAM sg12mg
           (nxe+1)*(nze+1)*nye
 
   loaded_freedoms = 3*nle*nle + 4*nle + 1
+  fixed_freedoms  = 0
 
 !------------------------------------------------------------------------------
 ! 7.2 Allocate dynamic arrays
@@ -233,7 +234,7 @@ PROGRAM sg12mg
 
   WRITE(14,'(A)') "hexahedron"
   WRITE(14,'(A)') "2"              ! Abaqus node numbering scheme
-  WRITE(14,'(6I9)') nels, nn, nr, nip, nod, loaded_freedoms
+  WRITE(14,'(7I9)') nels, nn, nr, nip, nod, loaded_freedoms, fixed_freedoms
   WRITE(14,'(3E12.4,I8)') e, v, tol, limit
 
   CLOSE(14)
