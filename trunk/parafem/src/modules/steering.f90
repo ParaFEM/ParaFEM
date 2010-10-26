@@ -354,7 +354,7 @@ MODULE STEERING
     SUBROUTINE REINDEX_FIXED_NODES (ieq_start,no,no_local_temp,num_no,  &
                                     no_index_start,neq_pp)
   
-      !/****f* structure_dof/reindex_fixed_nodes
+      !/****f* steering/reindex_fixed_nodes
       !*  NAME
       !*    SUBROUTINE: reindex_fixed_nodes
       !*  SYNOPSIS
@@ -395,7 +395,7 @@ MODULE STEERING
       !*  CREATION DATE
       !*    24.04.2002
       !*  COPYRIGHT
-      !*    (c) University of Manchester
+      !*    (c) University of Manchester 2002-2010
       !******
       !*  Note: This looks more like REINDEX_FIXED_EQUATIONS. Rename?
       !*
