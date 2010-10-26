@@ -114,6 +114,7 @@ MODULE OUTPUT
     WRITE(11,'(A,I12)')    "Number of nodes that were restrained:       ",nr
     WRITE(11,'(A,I12)')    "Number of equations solved:                 ",neq
     WRITE(11,'(A,E12.4)')  "Total load applied:                         ",tload
+    WRITE(11,'(A,I12)')    "Number of PCG iterations:                   ",iters
 
 !------------------------------------------------------------------------------
 ! 3. Output timing data

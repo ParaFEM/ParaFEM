@@ -1,6 +1,7 @@
 PROGRAM p121         
 !------------------------------------------------------------------------------ 
 !      Program 12.1 three dimensional analysis of an elastic solid
+!                   load control or displacement control
 !------------------------------------------------------------------------------ 
                                  
   USE precision     ; USE global_variables ; USE mp_interface
@@ -18,12 +19,14 @@ PROGRAM p121
  ! neq,ntot are now global variables - not declared
 
   INTEGER,PARAMETER     :: nodof=3,ndim=3,nst=6
-  INTEGER               :: loaded_nodes,iel,i,iters,limit
+  INTEGER               :: loaded_nodes,fixed_freedoms,iel,i,j,k,iters,limit
   INTEGER               :: nn,nr,nip,nod,nels,ndof,npes_pp
   INTEGER               :: node_end,node_start,nodes_pp
   INTEGER               :: argc,iargc,meshgen
+  INTEGER               :: fixed_freedoms_pp,fixed_freedoms_start
   REAL(iwp)             :: e,v,det,tol,up,alpha,beta,tload
   REAL(iwp),PARAMETER   :: zero = 0.0_iwp
+  REAL(iwp),PARAMETER   :: penalty = 1.0e20_iwp
   CHARACTER(LEN=15)     :: element
   CHARACTER(LEN=50)     :: program_name='p121'
   CHARACTER(LEN=50)     :: fname,job_name,label
@@ -39,7 +42,9 @@ PROGRAM p121
   REAL(iwp),ALLOCATABLE :: diag_precon_pp(:),p_pp(:),r_pp(:),x_pp(:),xnew_pp(:)
   REAL(iwp),ALLOCATABLE :: u_pp(:),pmul_pp(:,:),utemp_pp(:,:),d_pp(:),timest(:)
   REAL(iwp),ALLOCATABLE :: diag_precon_tmp(:,:),eld_pp(:,:),tensor_pp(:,:,:)
+  REAL(iwp),ALLOCATABLE :: valf(:),store_pp(:)
   INTEGER,  ALLOCATABLE :: rest(:,:),g_num_pp(:,:),g_g_pp(:,:),node(:)
+  INTEGER,  ALLOCATABLE :: no(:),no_pp(:),no_pp_temp(:),sense(:)
 
 !------------------------------------------------------------------------------
 ! 3. Read job_name from the command line. 
@@ -55,8 +60,8 @@ PROGRAM p121
   IF (argc /= 1) CALL job_name_error(numpe,program_name)
   CALL GETARG(1, job_name) 
 
-  CALL read_p121(job_name,numpe,e,element,limit,loaded_nodes,meshgen,nels,nip,&
-                 nn,nod,nr,tol,v)
+  CALL read_p121(job_name,numpe,e,element,fixed_freedoms,limit,loaded_nodes, &
+                 meshgen,nels,nip,nn,nod,nr,tol,v)
 
   CALL calc_nels_pp(nels)
 
@@ -98,7 +103,8 @@ PROGRAM p121
   g_g_pp = 0
 
   elements_1: DO iel = 1, nels_pp
-    CALL find_g3(g_num_pp(:,iel),g_g_pp(:,iel),rest)
+    ! CALL find_g3(g_num_pp(:,iel),g_g_pp(:,iel),rest)
+    CALL find_g(g_num_pp(:,iel),g_g_pp(:,iel),rest)
   END DO elements_1
 
   neq = 0
@@ -180,25 +186,51 @@ PROGRAM p121
   timest(7) = elap_time()
 
 !------------------------------------------------------------------------------
-! 10. Get starting r_pp
+! 10. Read in fixed nodal displacements and assign to equations
+!------------------------------------------------------------------------------
+
+  IF(fixed_freedoms > 0) THEN
+
+    ALLOCATE(node(fixed_freedoms),no(fixed_freedoms),valf(fixed_freedoms),    &
+             no_pp_temp(fixed_freedoms),sense(fixed_freedoms))
+
+    node = 0 ; no = 0 ; no_pp_temp = 0 ; sense = 0 ; valf = zero
+
+    CALL read_fixed(job_name,numpe,node,sense,valf)
+    CALL find_no(node,rest,sense,no)
+    CALL reindex_fixed_nodes(ieq_start,no,no_pp_temp,fixed_freedoms_pp,       &
+                             fixed_freedoms_start,neq_pp)
+
+    ALLOCATE(no_pp(fixed_freedoms_pp),store_pp(fixed_freedoms_pp))
+
+    no_pp    = 0
+    store_pp = 0
+    no_pp    = no_pp_temp(1:fixed_freedoms_pp)
+
+    DEALLOCATE(node,no,sense,no_pp_temp)
+
+  END IF
+
+!------------------------------------------------------------------------------
+! 11. Read in loaded nodes and get starting r_pp
 !------------------------------------------------------------------------------
  
   IF(loaded_nodes > 0) THEN
 
-
-    ALLOCATE(node(loaded_nodes))
-    ALLOCATE(val(ndim,loaded_nodes))
+    ALLOCATE(node(loaded_nodes),val(ndim,loaded_nodes))
     
-    val    = zero
-    node   = 0
+    val  = zero ; node = 0
 
     CALL read_loads(job_name,numpe,node,val)
     CALL load(g_g_pp,g_num_pp,node,val,r_pp(1:))
 
     tload = SUM_P(r_pp(1:))
 
-    DEALLOCATE(node)
-    DEALLOCATE(val)
+    DEALLOCATE(node,val)
+
+  ELSE
+
+    tload = zero
 
   END IF
   
@@ -206,26 +238,61 @@ PROGRAM p121
   
   timest(8) = elap_time()
 
+!------------------------------------------------------------------------------
+! 12. Invert the preconditioner.
+!     If there are fixed freedoms, first apply a penalty
+!------------------------------------------------------------------------------
+
+  IF(fixed_freedoms_pp > 0) THEN
+    DO i = 1, fixed_freedoms_pp
+       j                 = no_pp(i) - ieq_start + 1
+       diag_precon_pp(j) = diag_precon_pp(j) + penalty
+       store_pp(i)       = diag_precon_pp(j)
+    END DO
+  END IF
+
   diag_precon_pp = 1._iwp/diag_precon_pp
-  d_pp           = diag_precon_pp*r_pp
-  p_pp           = d_pp
 
 !------------------------------------------------------------------------------
-! 11. Preconditioned conjugate gradient iterations
+! 13. Initiallize preconditioned conjugate gradient
+!------------------------------------------------------------------------------
+
+  IF(fixed_freedoms_pp > 0) THEN
+    DO i = 1,fixed_freedoms_pp
+       j       = no_pp(i) - ieq_start + 1
+       k       = fixed_freedoms_start + i - 1
+       r_pp(j) = store_pp(i) * valf(k)
+    END DO
+  END IF
+
+  d_pp  = diag_precon_pp*r_pp
+  p_pp  = d_pp
+  x_pp  = zero
+
+!------------------------------------------------------------------------------
+! 14. Preconditioned conjugate gradient iterations
 !------------------------------------------------------------------------------
 
   iters = 0
 
   iterations: DO 
-    iters   = iters + 1
-    u_pp    = zero
-    pmul_pp = zero
+    iters    = iters + 1
+    u_pp     = zero
+    pmul_pp  = zero
+    utemp_pp = zero
 
     CALL gather(p_pp,pmul_pp)
     elements_5: DO iel=1,nels_pp
       utemp_pp(:,iel) = MATMUL(storkm_pp(:,:,iel),pmul_pp(:,iel))
     END DO elements_5
     CALL scatter(u_pp,utemp_pp)
+
+    IF(fixed_freedoms_pp > 0) THEN
+      DO i = 1, fixed_freedoms_pp
+        j       = no_pp(i) - ieq_start + 1
+        u_pp(j) = p_pp(j) * store_pp(i)
+      END DO
+    END IF
 
     up      = DOT_PRODUCT_P(r_pp,d_pp)
     alpha   = up/DOT_PRODUCT_P(p_pp,u_pp)
@@ -237,6 +304,7 @@ PROGRAM p121
 
     CALL checon_par(xnew_pp,tol,converged,x_pp)    
     IF(converged.OR.iters==limit)EXIT
+
   END DO iterations
 
   DEALLOCATE(p_pp,r_pp,x_pp,u_pp,d_pp,diag_precon_pp,storkm_pp,pmul_pp) 
@@ -244,7 +312,7 @@ PROGRAM p121
   timest(9) = elap_time()
 
 !------------------------------------------------------------------------------
-! 12. Recover stresses at centroidal gauss point
+! 15. Recover stresses at centroidal gauss point
 !------------------------------------------------------------------------------
 
   ALLOCATE(tensor_pp(nst,nip,nels_pp))
@@ -270,7 +338,7 @@ PROGRAM p121
   timest(10) = elap_time()
 
 !------------------------------------------------------------------------------
-! 13. Output results
+! 16. Output results
 !------------------------------------------------------------------------------
 
   CALL calc_nodes_pp(nn,npes,numpe,node_end,node_start,nodes_pp)
@@ -295,7 +363,7 @@ PROGRAM p121
   timest(11) = elap_time()
    
 !------------------------------------------------------------------------------
-! 14. Output performance data
+! 17. Output performance data
 !------------------------------------------------------------------------------
 
   CALL WRITE_P121(iters,job_name,neq,nn,npes,nr,numpe,timest,tload)
