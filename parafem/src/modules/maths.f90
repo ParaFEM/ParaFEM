@@ -534,6 +534,241 @@ MODULE MATHS
     RETURN
   
   END FUNCTION DETERMINANT
+
+!---------------------------------------------------------------------
+!---------------------------------------------------------------------
+!---------------------------------------------------------------------
+
+  SUBROUTINE PRINCIPALSTRESS3D(sigma,principal)
+
+    !/****f* maths/principalstress3D
+    !*  NAME
+    !*    SUBROUTINE: principalstress3D
+    !*  SYNOPSIS
+    !*    Usage:      CALL principalstress3D(sigma,principal)
+    !*  FUNCTION
+    !*    Compute principal stresses in 3D
+    !*    
+    !*  INPUTS
+    !*    The following arguments have the INTENT(IN) attribute:
+    !*
+    !*    sigma(nst)            : Real
+    !*                          : Stress tensor (Voigt notation)
+    !*
+    !*    The following arguments have the INTENT(OUT) attribute:
+    !*
+    !*    principal(ndim)       : Real
+    !*                          : Principal stresses
+    !*  AUTHOR
+    !*    Francisco Calvo
+    !*    Lee Margetts
+    !*  CREATION DATE
+    !*    10.09.2007
+    !*  COPYRIGHT
+    !*    (c) University of Manchester 2007-2010
+   !******
+    !*  Place remarks that should not be included in the documentation here.
+    !*
+    !*/
+
+    IMPLICIT NONE
+
+    REAL(iwp), INTENT(IN)  :: sigma(:)
+    REAL(iwp), INTENT(OUT) :: principal(:)
+    INTEGER :: i
+    REAL(iwp) :: bd(6), pi23, thrd, tol, al, b1, b2, b3, c1, c2,c3
+      
+    pi23 = 2.0943951023931955_iwp
+    thrd = 0.3333333333333333_iwp
+    tol  = 1.0e-12_iwp
+
+    b1 = (sigma(1) + sigma(2) + sigma(3))*thrd
+
+    DO i = 1,6
+      bd(i) = sigma(i)
+    END DO
+
+    DO i = 1,3
+      bd(i) = bd(i) - b1
+    END DO
+
+    c1 = bd(4)*bd(4)
+    c2 = bd(5)*bd(5)
+    c3 = bd(6)*bd(6)
+    b2 = 0.5d0*(bd(1)*bd(1)+bd(2)*bd(2)+bd(3)*bd(3))+ c1 + c2 + c3
+    IF(b2.le.tol*b1*b1) THEN
+      principal(1) = b1
+      principal(2) = b1
+      principal(3) = b1
+    ELSE
+      b3 = bd(1)*bd(2)*bd(3)+(bd(4)+bd(4))*bd(5)*bd(6) +        &
+           bd(1)*(c1-c2) + bd(2)*(c1-c3)
+      c1 = 2.d0*SQRT(b2*thrd)
+      c2 = 4.d0*b3
+      c3 = c1*c1*c1
+      al = ATAN2(SQRT(ABS(c3*c3-c2*c2)),c2)*thrd
+      principal(1) = b1 + c1*COS(al)
+      principal(2) = b1 + c1*COS(al-pi23)
+      principal(3) = b1 + c1*COS(al+pi23)
+    END IF
+
+  END SUBROUTINE PRINCIPALSTRESS3D
+
+!---------------------------------------------------------------------------
+!---------------------------------------------------------------------------
+!---------------------------------------------------------------------------
+
+  SUBROUTINE NODAL_PROJECTION(npes,nn,nels_pp,g_num_pp,nod,numvar,nodes_pp, &
+                node_start,node_end,shape_integral,stress_integral,stressnodes)
+
+    !/****f* stress/nodal_projection
+    !*  NAME
+    !*    SUBROUTINE: nodal_projection
+    !*  SYNOPSIS
+    !*    Usage:      CALL nodal_projection(npes,nn,nels_pp,g_num_pp,nod, &
+    !*                            numvar,nodes_pp,node_start,node_end,    &
+    !*                            shape_integral,stress_integral,stressnodes)
+    !*  FUNCTION
+    !*    Project a variable (i.e. stress) from Gauss points to nodes
+    !*    
+    !*  INPUTS
+    !*    The following arguments have the INTENT(IN) attribute:
+    !*
+    !*    nels_pp               : Integer
+    !*                          : Number of elements per processor
+    !*
+    !*    nn                    : Integer
+    !*                          : Total number of nodes
+    !*
+    !*    nod                   : Integer
+    !*                          : Number of nodes per element
+    !*
+    !*    node_end              : Integer
+    !*                          : Last node stored in the process
+    !*
+    !*    node_start            : Integer
+    !*                          : First node stored in the process
+    !*
+    !*    nodes_pp              : Integer
+    !*                          : Number of nodes assigned to the process
+    !*
+    !*    npes                  : Integer
+    !*                          : Number of processes
+    !*
+    !*    numvar                : Integer
+    !*                          : Number of components of the variable
+    !*                            (1-scalar, 3-vector, 6-tensor)
+    !*
+    !*    g_num_pp(nod,nels_pp) : Integer
+    !*                          : Elements connectivity
+    !*
+    !*    shape_integral(nod,nels_pp) : Real
+    !*                                : Integral of shape functions in the
+    !*                                  element
+    !*
+    !*    stress_integral(nod*numvar,nels_pp) : Real
+    !*                                        : Integral of the variable (i.e.
+    !*                                          stress) in the element
+    !*
+    !*    The following arguments have the INTENT(OUT) attribute:
+    !*
+    !*    stressnodes(nodes_pp*numvar) : Real
+    !*                                 : Nodal value after projection
+    !*  AUTHOR
+    !*    Francisco Calvo
+    !*  CREATION DATE
+    !*    10.11.2007
+    !*  COPYRIGHT
+    !*    (c) University of Manchester 2007-2010
+    !******
+    !*  Place remarks that should not be included in the documentation here.
+    !*
+    !*/
+
+    IMPLICIT NONE
+
+    INTEGER,   INTENT(IN)  :: nels_pp, nn, nod, node_end, node_start, &
+                              nodes_pp, npes, numvar, g_num_pp(:,:)
+    REAL(iwp), INTENT(IN)  :: shape_integral(:,:), stress_integral(:,:)
+    REAL(iwp), INTENT(OUT) :: stressnodes(:)
+    INTEGER :: i, j, k, iel, startNode, endNode, idx1, idx2, idx3, bufsize, &
+               size_scalar, size_vector, size_scalar_max, size_vector_max, ier
+    REAL(iwp), ALLOCATABLE :: all_assembly_shape(:), local_assembly_shape(:), &
+                              local_assembly_stress(:)
+
+    !-----------------------------------------------------------------------
+    ! 1. Allocate internal arrays
+    !-----------------------------------------------------------------------
+
+    size_scalar_max =  nodes_pp+1
+    size_vector_max = (nodes_pp+1)*numvar
+    ALLOCATE(all_assembly_shape(size_scalar_max))
+    ALLOCATE(local_assembly_shape(size_scalar_max))
+    ALLOCATE(local_assembly_stress(size_vector_max))
+
+    !-----------------------------------------------------------------------
+    ! 2. Every process (first loop) sends the range of nodes assigned to that
+    !    process. The other processes check whether the elements contain nodes
+    !    in that range for the contribution. The contributions are summed up
+    !    (assembled) and the process collects the results
+    !-----------------------------------------------------------------------
+
+    bufsize = 1
+
+    DO i = 1,npes
+      startNode = node_start
+      endNode   = node_end
+      CALL MPI_BCAST(startNode,bufsize,MPI_INTEGER,i-1,MPI_COMM_WORLD,ier)
+      CALL MPI_BCAST(endNode,bufsize,MPI_INTEGER,i-1,MPI_COMM_WORLD,ier)
+
+      size_scalar = nodes_pp
+      size_vector = nodes_pp*numvar
+      CALL MPI_BCAST(size_scalar,bufsize,MPI_INTEGER,i-1,MPI_COMM_WORLD,ier)
+      CALL MPI_BCAST(size_vector,bufsize,MPI_INTEGER,i-1,MPI_COMM_WORLD,ier)
+
+      local_assembly_stress = 0._iwp
+      local_assembly_shape  = 0._iwp
+
+      DO iel = 1,nels_pp
+        DO j = 1,nod
+          IF (g_num_pp(j,iel)>=startNode .and. g_num_pp(j,iel)<=endNode) THEN
+            idx1 = (g_num_pp(j,iel)-startNode)*numvar
+            idx2 = (j-1)*numvar
+            idx3 = g_num_pp(j,iel)-startNode
+            DO k = 1,numvar
+              local_assembly_stress(idx1+k) = local_assembly_stress(idx1+k) + &
+                                              stress_integral(idx2+k,iel)
+            END DO
+            local_assembly_shape(idx3+1)  = local_assembly_shape(idx3+1)  + &
+                                            shape_integral(j,iel)
+          END IF
+        END DO
+      END DO
+
+      CALL MPI_REDUCE(local_assembly_shape, all_assembly_shape, size_scalar, &
+                      MPI_REAL8, MPI_SUM, i-1, MPI_COMM_WORLD, ier)
+      CALL MPI_REDUCE(local_assembly_stress, stressnodes, size_vector ,  &
+                      MPI_REAL8, MPI_SUM, i-1, MPI_COMM_WORLD, ier)
+    END DO
+
+    !-----------------------------------------------------------------------
+    ! 3. Compute the projected nodal value (i. e. stress)
+    !-----------------------------------------------------------------------
+
+    DO i = 1,nodes_pp
+      idx1 = (i-1)*numvar
+      DO j = 1,numvar
+        stressnodes(idx1+j) = stressnodes(idx1+j)/all_assembly_shape(i)
+      END DO
+    END DO
+
+    !-----------------------------------------------------------------------
+    ! 4. Deallocate internal arrays
+    !-----------------------------------------------------------------------
+
+    DEALLOCATE(all_assembly_shape,local_assembly_shape,local_assembly_stress)
+      
+  END SUBROUTINE NODAL_PROJECTION
   
 !---------------------------------------------------------------------------
 !---------------------------------------------------------------------------
