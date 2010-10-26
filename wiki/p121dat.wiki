@@ -8,7 +8,7 @@ A typical p121.dat file has the following format:
 {{{
 element
 mesh
-nels nn nr nip nod loaded_nodes
+nels nn nr nip nod loaded_nodes fixed_freedoms
 e v tol limit
 }}}
 
@@ -20,6 +20,7 @@ e v tol limit
 ||{{{nip}}} || Integer || Number of integration points.||
 ||{{{nod}}} || Integer || Number of nodes per element.||
 ||{{{loaded_nodes}}} || Integer || Number of nodes with externally applied loads.||
+||{{{fixed_freedoms}}} || Integer || Number of freedoms with fixed displacements.||
 ||{{{e}}} || Real || Young's modulus.||
 ||{{{v}}} || Real || Poisson's ratio.||
 ||{{{tol}}} || Real || Convergence tolerance for PCG.||
@@ -30,6 +31,6 @@ A real example follows:
 {{{
 hexahedron
 2
-2560 12465 225 8 20 17
+2560 12465 225 8 20 17 0
 100000. .3 1.e-5 5000
 }}}
