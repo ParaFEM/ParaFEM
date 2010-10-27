@@ -29,50 +29,45 @@ MODULE OUTPUT
 
   CONTAINS
 
-!---------------------------------------------------------------------------
-!---------------------------------------------------------------------------
-!---------------------------------------------------------------------------
+!------------------------------------------------------------------------------
+!------------------------------------------------------------------------------
+!------------------------------------------------------------------------------
 
-  SUBROUTINE WRITE_P121(iters,job_name,neq,nn,npes,nr,numpe,timest,tload)
+  SUBROUTINE WRITE_P121(fixed_freedoms,iters,job_name,loaded_nodes,neq,nn,    &
+                        npes,nr,numpe,timest,tload)
 
   !/****f* output/write_p121
   !*  NAME
   !*    SUBROUTINE: write_p121
   !*  SYNOPSIS
-  !*    Usage:      CALL write_p121(iters,job_name,neq,nn,npes,nr,numpe,      &
-  !*                                timest,tload)
+  !*    Usage:      CALL write_p121(fixed_freedoms,iters,job_name,loaded_nodes,&
+  !*                                neq,nn,npes,nr,numpe,timest,tload)
   !*  FUNCTION
   !*    Master processor writes out brief details about the problem and 
   !*    some performance data
   !*  INPUTS
-  !*    The following arguments have the INTENT(IN) attribute:
+  !*    The following scalar integers have the INTENT(IN) attribute:
   !*
-  !*    iters                  : Integer
-  !*                           : Number of PCG iterations taken to solve problem
+  !*    fixed_freedoms         : Number of fixed displacements
+  !*    iters                  : Number of PCG iterations taken to solve problem
+  !*    loaded_nodes           : Number of loaded_nodes
+  !*    neq                    : Total number of equations in the mesh
+  !*    nn                     : Number of nodes in the mesh
+  !*    npes                   : Number of processors used in the simulations
+  !*    nr                     : Number of restrained nodes in the mesh
+  !*    numpe                  : Processor number
   !*
-  !*    job_name               : Character
-  !*                           : Job name used to name output file
+  !*    The following scalar real has the INTENT(IN) attribute:
   !*
-  !*    neq                    : Integer
-  !*                           : Total number of equations in the mesh
+  !*    tload                  : Total applied load
   !*
-  !*    nn                     : Integer
-  !*                           : Number of nodes in the mesh
+  !*    The following scalar character has the INTENT(IN) attribute:
   !*
-  !*    npes                   : Integer
-  !*                           : Number of processors used in the simulations
+  !*    job_name               : Job name used to name output file
   !*
-  !*    nr                     : Integer
-  !*                           : Number of restrained nodes in the mesh
+  !*    The following dynamic real array has the INTENT(IN) attribute:
   !*
-  !*    numpe                  : Integer
-  !*                           : Processor number
-  !*
-  !*    timest(:)              : Real array
-  !*                           : Holds timing information
-  !*
-  !*    tload                  : Real
-  !*                           : Total applied load
+  !*    timest(:)              : Holds timing information
   !*
   !*  AUTHOR
   !*    Lee Margetts
@@ -91,6 +86,7 @@ MODULE OUTPUT
 
   CHARACTER(LEN=50), INTENT(IN)  :: job_name
   INTEGER, INTENT(IN)            :: numpe,npes,nn,nr,neq,iters
+  INTEGER, INTENT(IN)            :: fixed_freedoms,loaded_nodes
   REAL(iwp), INTENT(IN)          :: timest(:),tload
 
 !------------------------------------------------------------------------------
@@ -109,51 +105,59 @@ MODULE OUTPUT
 ! 2. Write basic details about the problem
 !------------------------------------------------------------------------------
 
-    WRITE(11,'(A,I12)')    "Number of processors used:                  ",npes 
-    WRITE(11,'(A,I12)')    "Number of nodes in the mesh:                ",nn
-    WRITE(11,'(A,I12)')    "Number of nodes that were restrained:       ",nr
-    WRITE(11,'(A,I12)')    "Number of equations solved:                 ",neq
-    WRITE(11,'(A,E12.4)')  "Total load applied:                         ",tload
-    WRITE(11,'(A,I12)')    "Number of PCG iterations:                   ",iters
+    WRITE(11,'(/A)')   "PROGRAM SECTION EXECUTION TIMES                 "     
+ 
+    WRITE(11,'(A,I12)')    "Number of processors used                   ",npes 
+    WRITE(11,'(A,I12)')    "Number of nodes in the mesh                 ",nn
+    WRITE(11,'(A,I12)')    "Number of nodes that were restrained        ",nr
+    WRITE(11,'(A,I12)')    "Number of equations solved                  ",neq
+    WRITE(11,'(A,I12)')    "Number of PCG iterations                    ",iters
+    IF(loaded_nodes > 0) THEN
+      WRITE(11,'(A,I12)')    "Number of loaded nodes                      ",   &
+                              loaded_nodes 
+      WRITE(11,'(A,E12.4)')  "Total load applied                          ",   &
+                              tload
+    END IF
+    IF(fixed_freedoms > 0) THEN
+      WRITE(11,'(A,I12)')    "Number of fixed displacements               ",   &
+                              fixed_freedoms 
+    END IF
 
 !------------------------------------------------------------------------------
 ! 3. Output timing data
 !------------------------------------------------------------------------------
 
-    WRITE(11,'(/3A)')   "Program section execution times                  ",  &
-                        "Seconds  ", "%Total    "
+    WRITE(11,'(/3A)')   "PROGRAM SECTION EXECUTION TIMES                  ",  &
+                        "SECONDS  ", "%TOTAL    "
     WRITE(11,'(A,F12.6,F8.2)') "Setup                                       ",&
                            timest(2)-timest(1),                               &
-                           ((timest(2)-timest(1))/(timest(11)-timest(1)))*100  
+                           ((timest(2)-timest(1))/(timest(10)-timest(1)))*100  
     WRITE(11,'(A,F12.6,F8.2)') "Compute steering array and neq              ",&
                            timest(3)-timest(2),                               &
-                          ((timest(3)-timest(2))/(timest(11)-timest(1)))*100  
+                          ((timest(3)-timest(2))/(timest(10)-timest(1)))*100  
     WRITE(11,'(A,F12.6,F8.2)') "Compute interprocessor communication tables ",&
                            timest(4)-timest(3),                               &
-                          ((timest(4)-timest(3))/(timest(11)-timest(1)))*100  
+                          ((timest(4)-timest(3))/(timest(10)-timest(1)))*100  
     WRITE(11,'(A,F12.6,F8.2)') "Allocate neq_pp arrays                      ",&
                            timest(5)-timest(4),                               &
-                          ((timest(5)-timest(4))/(timest(11)-timest(1)))*100  
+                          ((timest(5)-timest(4))/(timest(10)-timest(1)))*100  
     WRITE(11,'(A,F12.6,F8.2)') "Compute element stiffness matrices          ",&
                             timest(6)-timest(5),                              &
-                          ((timest(6)-timest(5))/(timest(11)-timest(1)))*100  
+                          ((timest(6)-timest(5))/(timest(10)-timest(1)))*100  
     WRITE(11,'(A,F12.6,F8.2)') "Build the preconditioner                    ",&
                            timest(7)-timest(6),                               &
-                          ((timest(7)-timest(6))/(timest(11)-timest(1)))*100  
+                          ((timest(7)-timest(6))/(timest(10)-timest(1)))*100  
     WRITE(11,'(A,F12.6,F8.2)') "Get starting r                              ",&
                            timest(8)-timest(7),                               &
-                          ((timest(8)-timest(7))/(timest(11)-timest(1)))*100  
+                          ((timest(8)-timest(7))/(timest(10)-timest(1)))*100  
     WRITE(11,'(A,F12.6,F8.2)') "Solve equations                             ",&
                            timest(9)-timest(8),                               &
-                           ((timest(9)-timest(8))/(timest(11)-timest(1)))*100  
-    WRITE(11,'(A,F12.6,F8.2)') "Recover stresses                            ",&
-                           timest(10)-timest(9),                              &
-                          ((timest(10)-timest(9))/(timest(11)-timest(1)))*100  
+                           ((timest(9)-timest(8))/(timest(10)-timest(1)))*100  
     WRITE(11,'(A,F12.6,F8.2)') "Output results                              ",&
-                           timest(11)-timest(10),                             &
-                          ((timest(11)-timest(10))/(timest(11)-timest(1)))*100  
-    WRITE(11,'(A,F12.6,A)')  "Total execution time                        ",  &
-                          timest(11)-timest(1),"  100.00"
+                           timest(10)-timest(9),                              &
+                          ((timest(10)-timest(9))/(timest(10)-timest(1)))*100  
+    WRITE(11,'(A,F12.6,A/)')  "Total execution time                        ",  &
+                          timest(10)-timest(1),"  100.00"
     CLOSE(11)
     
   END IF
