@@ -99,6 +99,8 @@ MODULE PCG
   converged = .true.
   converged = ((maxdiff/maxloads)<=tol)
   oldlds    = loads
+
+  PRINT *, "MAXDIFF/MAXLOADS = ", maxdiff/maxloads
  
   RETURN
 
