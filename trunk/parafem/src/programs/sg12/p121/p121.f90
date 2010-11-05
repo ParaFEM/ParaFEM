@@ -356,10 +356,11 @@ PROGRAM p121
     DO i = 1,nip
       CALL shape_der(der,points,i)
       jac   = MATMUL(der,g_coord_pp(:,:,iel))
+      det   = DETERMINANT(jac) 
       CALL invert(jac)
       deriv = MATMUL(jac,der)
       CALL beemat(deriv,bee)
-      eps   = MATMUL(bee,eld_pp(:,1))
+      eps   = MATMUL(bee,eld_pp(:,iel))
       sigma = MATMUL(dee,eps)
       CALL PRINCIPALSTRESS3D(sigma,principal)
       utemp_pp(:,iel) = utemp_pp(:,iel) +                                    &
