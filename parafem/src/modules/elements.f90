@@ -232,12 +232,12 @@ MODULE ELEMENTS
         xi    = points(i,1)
         eta   = points(i,2)
         zeta  = points(i,3)
-        etam  = 1.-eta 
-        xim   = 1.-xi  
-        zetam = 1.-zeta
-        etap  = eta+1. 
-        xip   = xi+1. 
-        zetap = zeta+1.
+        etam  = one  - eta 
+        xim   = one  - xi  
+        zetam = one  - zeta
+        etap  = eta  + one 
+        xip   = xi   + one 
+        zetap = zeta + one
          
         SELECT CASE(nod)
         
@@ -246,7 +246,7 @@ MODULE ELEMENTS
           fun(1)  = xi   
           fun(2)  = eta 
           fun(3)  = zeta 
-          fun(4)  = 1.-fun(1)-fun(2)-fun(3)
+          fun(4)  = one - fun(1) - fun(2) - fun(3)
           
           CASE(8)
         
@@ -361,9 +361,9 @@ MODULE ELEMENTS
     INTEGER, INTENT(IN)   :: i
     REAL(iwp),INTENT(IN)  :: points(:,:)
     REAL(iwp),INTENT(OUT) :: der(:,:)
-    REAL(iwp) :: eta,xi,zeta,xi0,eta0,zeta0,etam,etap,xim,xip,c1,c2,c3 ! local variables
+    REAL(iwp) :: eta,xi,zeta,xi0,eta0,zeta0,etam,etap,xim,xip,c1,c2,c3 
     REAL(iwp) :: t1,t2,t3,t4,t5,t6,t7,t8,t9 ,x2p1,x2m1,e2p1,e2m1,zetam,zetap 
-    REAL(iwp) :: one=1.0_iwp, two=2.0_iwp, d4=4.0_iwp, d8=8.0_iwp
+    REAL(iwp) :: one=1.0_iwp, two=2.0_iwp, d4=4.0_iwp, d8=8.0_iwp, zero=0.0_iwp
     INTEGER   :: xii(20), etai(20), zetai(20) ,l,ndim , nod   ! local variables
     
     ndim = UBOUND(der , 1)
@@ -576,24 +576,24 @@ MODULE ELEMENTS
       xi     = points(i,1)
       eta    = points(i,2)
       zeta   = points(i,3)
-      etam   = 1.-eta 
-      xim    = 1.-xi
-      zetam  = 1.-zeta
-      etap   = eta+1. 
-      xip    = xi+1. 
-      zetap  = zeta+1.
+      etam   = one  - eta 
+      xim    = one  - xi
+      zetam  = one  - zeta
+      etap   = eta  + one 
+      xip    = xi   + one 
+      zetap  = zeta + one
       
       SELECT CASE (nod)
        
         CASE(4)
         
-        der(1:3,1:4) = .0
-        der(1,1)     =  1.
-        der(2,2)     =  1.  
-        der(3,3)     =  1.
-        der(1,4)     = -1. 
-        der(2,4)     = -1. 
-        der(3,4)     = -1.
+        der(1:3,1:4) =  zero
+        der(1,1)     =  one
+        der(2,2)     =  one
+        der(3,3)     =  one
+        der(1,4)     = -1.0_iwp
+        der(2,4)     = -1.0_iwp 
+        der(3,4)     = -1.0_iwp
         
         CASE(8)
         
@@ -785,7 +785,7 @@ MODULE ELEMENTS
     INTEGER :: k, l, m, n, ih, nod
     REAL(iwp) :: x, y, z
 
-    bee = 0.
+    bee = 0.0_iwp
     nod = UBOUND(deriv,2)
     ih  = UBOUND(bee,1)
 
@@ -873,11 +873,11 @@ MODULE ELEMENTS
     INTEGER                 :: nip 
     REAL(iwp)               :: root3, r15 , w(3),v(9),b,c
     
-    root3 = 1./sqrt(3.)
-    r15   = .2*sqrt(15.) 
+    root3 = 1.0_iwp/sqrt(3.0_iwp)
+    r15   = 0.2_iwp*sqrt(15.0_iwp) 
     nip   = UBOUND( s , 1 ) 
-    w     = (/5./9.,8./9.,5./9./)
-    v     = (/5./9.*w,8./9.*w,5./9.*w/)
+    w     = (/5.0_iwp/9.0_iwp,8.0_iwp/9.0_iwp,5.0_iwp/9.0_iwp/)
+    v     = (/5.0_iwp/9.0_iwp*w,8.0_iwp/9.0_iwp*w,5.0_iwp/9.0_iwp*w/)
         
     SELECT CASE (element)
     
@@ -1158,11 +1158,11 @@ MODULE ELEMENTS
         
         CASE(1)          ! for tetrahedra weights multiplied by 1/6
         
-        s(1,1)  = .25 
-        s(1,2)  = .25 
-        s(1,3)  = .25 
+        s(1,1)  = 0.25_iwp 
+        s(1,2)  = 0.25_iwp 
+        s(1,3)  = 0.25_iwp 
         
-        wt(1)   = 1./6.
+        wt(1)   = 1.0_iwp/6.0_iwp
                 
         CASE(4)
         

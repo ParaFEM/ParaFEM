@@ -579,7 +579,7 @@ MODULE MATHS
     REAL(iwp) :: bd(6), pi23, thrd, tol, al, b1, b2, b3, c1, c2,c3
       
     pi23 = 2.0943951023931955_iwp
-    thrd = 0.3333333333333333_iwp
+    thrd = 1.0_iwp/3.0_iwp
     tol  = 1.0e-12_iwp
 
     b1 = (sigma(1) + sigma(2) + sigma(3))*thrd
@@ -595,7 +595,7 @@ MODULE MATHS
     c1 = bd(4)*bd(4)
     c2 = bd(5)*bd(5)
     c3 = bd(6)*bd(6)
-    b2 = 0.5d0*(bd(1)*bd(1)+bd(2)*bd(2)+bd(3)*bd(3))+ c1 + c2 + c3
+    b2 = 0.5_iwp*(bd(1)*bd(1)+bd(2)*bd(2)+bd(3)*bd(3))+ c1 + c2 + c3
     IF(b2.le.tol*b1*b1) THEN
       principal(1) = b1
       principal(2) = b1
@@ -603,8 +603,8 @@ MODULE MATHS
     ELSE
       b3 = bd(1)*bd(2)*bd(3)+(bd(4)+bd(4))*bd(5)*bd(6) +        &
            bd(1)*(c1-c2) + bd(2)*(c1-c3)
-      c1 = 2.d0*SQRT(b2*thrd)
-      c2 = 4.d0*b3
+      c1 = 2.0_iwp*SQRT(b2*thrd)
+      c2 = 4.0_iwp*b3
       c3 = c1*c1*c1
       al = ATAN2(SQRT(ABS(c3*c3-c2*c2)),c2)*thrd
       principal(1) = b1 + c1*COS(al)
@@ -726,8 +726,8 @@ MODULE MATHS
       CALL MPI_BCAST(size_scalar,bufsize,MPI_INTEGER,i-1,MPI_COMM_WORLD,ier)
       CALL MPI_BCAST(size_vector,bufsize,MPI_INTEGER,i-1,MPI_COMM_WORLD,ier)
 
-      local_assembly_stress = 0._iwp
-      local_assembly_shape  = 0._iwp
+      local_assembly_stress = 0.0_iwp
+      local_assembly_shape  = 0.0_iwp
 
       DO iel = 1,nels_pp
         DO j = 1,nod
