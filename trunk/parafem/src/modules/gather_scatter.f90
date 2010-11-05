@@ -1351,7 +1351,7 @@ MODULE GATHER_SCATTER
       sizee = nodes_pp*numvar
       CALL MPI_BCAST(sizee,bufsize,MPI_INTEGER,i-1,MPI_COMM_WORLD,ier)
 
-      temp = 0.0
+      temp = 0.0_iwp
       itemp = 0
 
       DO iel = 1,nels_pp
@@ -1395,7 +1395,7 @@ MODULE GATHER_SCATTER
   END SUBROUTINE SCATTER_NODES
   
 !------------------------------------------------------------------------------
-!------------------------------------------------------------------------------  
+!------------------------------------------------------------------------------ 
 !------------------------------------------------------------------------------
 
   SUBROUTINE SCATTER_NODES_NS(npes,nn,nels_pp,g_num_pp,nod,numvar,nodes_pp,   &
