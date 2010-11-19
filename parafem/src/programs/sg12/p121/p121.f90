@@ -7,8 +7,7 @@ PROGRAM p121
   USE precision     ; USE global_variables ; USE mp_interface
   USE input         ; USE output           ; USE loading
   USE timing        ; USE maths            ; USE gather_scatter
-  USE partition     ; USE elements         ; USE steering
-  USE pcg
+  USE partition     ; USE elements         ; USE steering        ; USE pcg
   
   IMPLICIT NONE
 
