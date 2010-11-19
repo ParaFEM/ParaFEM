@@ -20,6 +20,7 @@ MODULE ELEMENTS
   !*  AUTHOR
   !*    I.M. Smith
   !*    D.V. Griffiths
+  !*    L. Margetts
   !*  COPYRIGHT
   !*    2004-2010 University of Manchester
   !******
@@ -65,6 +66,7 @@ MODULE ELEMENTS
     !*  AUTHOR
     !*    I.M. Smith
     !*    D.V. Griffiths
+    !*    L. Margetts
     !*  COPYRIGHT
     !*    (c) University of Manchester 2004-2010
     !******
@@ -250,9 +252,10 @@ MODULE ELEMENTS
           
           CASE(8)
         
-          fun = (/.125*xim*etam*zetam,.125*xim*etam*zetap,.125*xip*etam*zetap,&
-                  .125*xip*etam*zetam,.125*xim*etap*zetam,.125*xim*etap*zetap,&
-                  .125*xip*etap*zetap,.125*xip*etap*zetam/)
+          fun = (/0.125_iwp*xim*etam*zetam,0.125_iwp*xim*etam*zetap,          &
+                  0.125_iwp*xip*etam*zetap,0.125_iwp*xip*etam*zetam,          &
+                  0.125_iwp*xim*etap*zetam,0.125_iwp*xim*etap*zetap,          &
+                  0.125_iwp*xip*etap*zetap,0.125_iwp*xip*etap*zetam/)
           
           CASE(14) !type 6 element
   
@@ -349,6 +352,7 @@ MODULE ELEMENTS
     !*  AUTHOR
     !*    I.M. Smith
     !*    D.V. Griffiths
+    !*    L. Margetts
     !*  COPYRIGHT
     !*    (c) University of Manchester 2004-2010
     !******
@@ -597,31 +601,31 @@ MODULE ELEMENTS
         
         CASE(8)
         
-        der(1,1) = -.125*etam*zetam    
-        der(1,2) = -.125*etam*zetap
-        der(1,3) =  .125*etam*zetap     
-        der(1,4) =  .125*etam*zetam
-        der(1,5) = -.125*etap*zetam    
-        der(1,6) = -.125*etap*zetap
-        der(1,7) =  .125*etap*zetap     
-        der(1,8) =  .125*etap*zetam
-        der(2,1) = -.125*xim*zetam     
-        der(2,2) = -.125*xim*zetap
-        der(2,3) = -.125*xip*zetap     
-        der(2,4) = -.125*xip*zetam
-        der(2,5) =  .125*xim*zetam      
-        der(2,6) =  .125*xim*zetap
-        der(2,7) =  .125*xip*zetap      
-        der(2,8) =  .125*xip*zetam
-        der(3,1) = -.125*xim*etam      
-        der(3,2) =  .125*xim*etam
-        der(3,3) =  .125*xip*etam       
-        der(3,4) = -.125*xip*etam
-        der(3,5) = -.125*xim*etap     
-        der(3,6) =  .125*xim*etap
-        der(3,7) =  .125*xip*etap       
-        der(3,8) = -.125*xip*etap 
-        
+        der(1,1) = -0.125_iwp*etam*zetam    
+        der(1,2) = -0.125_iwp*etam*zetap
+        der(1,3) =  0.125_iwp*etam*zetap     
+        der(1,4) =  0.125_iwp*etam*zetam
+        der(1,5) = -0.125_iwp*etap*zetam    
+        der(1,6) = -0.125_iwp*etap*zetap
+        der(1,7) =  0.125_iwp*etap*zetap     
+        der(1,8) =  0.125_iwp*etap*zetam
+        der(2,1) = -0.125_iwp*xim*zetam     
+        der(2,2) = -0.125_iwp*xim*zetap
+        der(2,3) = -0.125_iwp*xip*zetap     
+        der(2,4) = -0.125_iwp*xip*zetam
+        der(2,5) =  0.125_iwp*xim*zetam      
+        der(2,6) =  0.125_iwp*xim*zetap
+        der(2,7) =  0.125_iwp*xip*zetap      
+        der(2,8) =  0.125_iwp*xip*zetam
+        der(3,1) = -0.125_iwp*xim*etam      
+        der(3,2) =  0.125_iwp*xim*etam
+        der(3,3) =  0.125_iwp*xip*etam       
+        der(3,4) = -0.125_iwp*xip*etam
+        der(3,5) = -0.125_iwp*xim*etap     
+        der(3,6) =  0.125_iwp*xim*etap
+        der(3,7) =  0.125_iwp*xip*etap       
+        der(3,8) = -0.125_iwp*xip*etap 
+
         CASE(14) ! type 6 element
        
         der(1,1)  =  (two*xi*eta+two*xi*zeta+d4*xi+eta*zeta+eta+zeta)*          &
@@ -770,6 +774,7 @@ MODULE ELEMENTS
     !*  AUTHOR
     !*    I.M. Smith
     !*    D.V. Griffiths
+    !*    L. Margetts
     !*  COPYRIGHT
     !*    (c) University of Manchester 2004-2010
     !******
@@ -782,8 +787,8 @@ MODULE ELEMENTS
 
     REAL(iwp), INTENT(IN)  :: deriv(:,:)
     REAL(iwp), INTENT(OUT) :: bee(:,:)
-    INTEGER :: k, l, m, n, ih, nod
-    REAL(iwp) :: x, y, z
+    INTEGER                :: k, l, m, n, ih, nod
+    REAL(iwp)              :: x, y, z
 
     bee = 0.0_iwp
     nod = UBOUND(deriv,2)
@@ -859,6 +864,7 @@ MODULE ELEMENTS
     !*  AUTHOR
     !*    I.M. Smith
     !*    D.V. Griffiths
+    !*    L. Margetts
     !*  COPYRIGHT
     !*    (c) University of Manchester 2004-2010
     !******
@@ -1226,8 +1232,8 @@ MODULE ELEMENTS
         
         CASE(1)
         
-        s(1,1) = .0
-        wt(1)  = 8.
+        s(1,1) = 0.0_iwp
+        wt(1)  = 8.0_iwp
         
         CASE(8)   
             
@@ -1256,7 +1262,7 @@ MODULE ELEMENTS
         s(8,2) = -root3
         s(8,3) = -root3
        
-        wt     = 1.0                                                
+        wt     = 1.0_iwp                                                
               
         CASE(14)
             

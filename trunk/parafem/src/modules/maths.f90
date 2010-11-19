@@ -575,12 +575,16 @@ MODULE MATHS
 
     REAL(iwp), INTENT(IN)  :: sigma(:)
     REAL(iwp), INTENT(OUT) :: principal(:)
-    INTEGER :: i
-    REAL(iwp) :: bd(6), pi23, thrd, tol, al, b1, b2, b3, c1, c2,c3
-      
-    pi23 = 2.0943951023931955_iwp
-    thrd = 1.0_iwp/3.0_iwp
-    tol  = 1.0e-12_iwp
+    INTEGER                :: i
+    REAL(iwp)              :: bd(6), pi, pi23, thrd, tol
+    REAL(iwp)              :: al, b1, b2, b3, c1, c2,c3
+
+    pi        = 4.0_iwp * ATAN(1.0_iwp)  
+    pi23      = (pi/3.0_iwp) * 2.0_iwp
+    thrd      = 1.0_iwp/3.0_iwp
+    tol       = 1.0e-12_iwp
+    bd        = 0.0_iwp
+    principal = 0.0_iwp
 
     b1 = (sigma(1) + sigma(2) + sigma(3))*thrd
 
@@ -695,6 +699,7 @@ MODULE MATHS
                size_scalar, size_vector, size_scalar_max, size_vector_max, ier
     REAL(iwp), ALLOCATABLE :: all_assembly_shape(:), local_assembly_shape(:), &
                               local_assembly_stress(:)
+    REAL(iwp), PARAMETER   :: zero = 0.0_iwp
 
     !-----------------------------------------------------------------------
     ! 1. Allocate internal arrays
@@ -705,6 +710,10 @@ MODULE MATHS
     ALLOCATE(all_assembly_shape(size_scalar_max))
     ALLOCATE(local_assembly_shape(size_scalar_max))
     ALLOCATE(local_assembly_stress(size_vector_max))
+
+
+    all_assembly_shape = zero
+    stressnodes        = zero
 
     !-----------------------------------------------------------------------
     ! 2. Every process (first loop) sends the range of nodes assigned to that
