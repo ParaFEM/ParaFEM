@@ -10,7 +10,7 @@ LDFLAGS= -L$(lib) -lParaFEM -lblas
 
 .SUFFIXES: .o .f90
 
-all: d2off
+all: d2off bnd2dis mat2numpe rdfaces upvw2dis
 default: all
 
 
@@ -20,11 +20,49 @@ d2off: d2off.o
 d2off.o: d2off.f90
 	$(FC) d2off.f90 $(FFLAGS)
 
+bnd2dis: bnd2dis.o
+	$(FC) bnd2dis.o -o bnd2dis $(LDFLAGS)
+
+bnd2dis.o: bnd2dis.f90
+	$(FC) bnd2dis.f90 $(FFLAGS)
+
+mat2numpe: mat2numpe.o
+	$(FC) mat2numpe.o -o mat2numpe $(LDFLAGS)
+
+mat2numpe.o: mat2numpe.f90
+	$(FC) mat2numpe.f90 $(FFLAGS)
+
+rdfaces: rdfaces.o
+	$(FC) rdfaces.o -o rdfaces $(LDFLAGS)
+
+rdfaces.o: rdfaces.f90
+	$(FC) rdfaces.f90 $(FFLAGS)
+
+upvw2dis: upvw2dis.o
+	$(FC) upvw2dis.o -o upvw2dis $(LDFLAGS)
+
+upvw2dis.o: upvw2dis.f90
+	$(FC) upvw2dis.f90 $(FFLAGS)
+
 clean:
 	rm -f *.o
 
 execlean:
 	rm -f d2off
+	rm -f bnd2dis
+	rm -f mat2numpe
+	rm -f rdfaces
+	rm -f upvw2dis
 
 relink: d2off
+relink: bnd2dis
+relink: mat2numpe
+relink: rdfaces
+relink: upvw2dis
 
+install:
+	mv d2off $(HOME)/bin
+	mv bnd2dis $(HOME)/bin
+	mv mat2numpe $(HOME)/bin
+	mv rdfaces $(HOME)/bin
+	mv upvw2dis $(HOME)/bin
