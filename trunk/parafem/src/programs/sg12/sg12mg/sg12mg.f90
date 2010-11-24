@@ -22,55 +22,22 @@ PROGRAM sg12mg
 ! 1. Declare variables used in the main program
 !------------------------------------------------------------------------------
 
-  INTEGER                :: nr
-  INTEGER                :: nn
-  INTEGER                :: nels
-  INTEGER                :: nle
-  INTEGER                :: nxe
-  INTEGER                :: nye
-  INTEGER                :: nze 
-  INTEGER                :: nod 
-  INTEGER                :: ndim
-  INTEGER                :: nodof
-  INTEGER                :: nip
-  INTEGER                :: nmodes
-  INTEGER                :: lalfa
-  INTEGER                :: leig
-  INTEGER                :: lx
-  INTEGER                :: lz
-  INTEGER                :: i, j
-  INTEGER                :: iel
-  INTEGER                :: argc
-  INTEGER                :: cjits
+  INTEGER                :: nr,nn,nels,nle,nxe,nye,nze
+  INTEGER                :: nod,ndim,nodof,nip 
+  INTEGER                :: nmodes,lalfa,leig,lx,lz
+  INTEGER                :: i,j,iel,iargc,argc
+  INTEGER                :: cjits,limit,maxitr
   INTEGER                :: ell
-  INTEGER                :: fixed_nodes
-  INTEGER                :: iargc
-  INTEGER                :: limit
-  INTEGER                :: loaded_freedoms
-  INTEGER                :: fixed_freedoms
-  INTEGER                :: nev
-  INTEGER                :: ncv
-  INTEGER                :: maxitr
+  INTEGER                :: fixed_nodes,fixed_freedoms,loaded_freedoms
+  INTEGER                :: nev,ncv
   INTEGER                :: meshgen
-  REAL(iwp)              :: aa
-  REAL(iwp)              :: bb 
-  REAL(iwp)              :: cc  
+  REAL(iwp)              :: aa,bb,cc
   REAL(iwp)              :: cjtol  
-  REAL(iwp)              :: rho   
-  REAL(iwp)              :: e 
-  REAL(iwp)              :: v  
-  REAL(iwp)              :: visc
-  REAL(iwp)              :: el  
-  REAL(iwp)              :: er  
-  REAL(iwp)              :: acc  
-  REAL(iwp)              :: kappa  
-  REAL(iwp)              :: penalty  
-  REAL(iwp)              :: tol 
-  REAL(iwp)              :: x0 
+  REAL(iwp)              :: rho,visc,e,v   
+  REAL(iwp)              :: el,er,acc  
+  REAL(iwp)              :: kappa,penalty,tol,x0  
   CHARACTER(LEN=15)      :: element
-  CHARACTER(LEN=50)      :: program_name
-  CHARACTER(LEN=50)      :: job_name
-  CHARACTER(LEN=50)      :: fname
+  CHARACTER(LEN=50)      :: program_name,job_name,fname,problem_type
   CHARACTER(LEN=1)       :: bmat
   CHARACTER(LEN=2)       :: which
 
@@ -78,13 +45,8 @@ PROGRAM sg12mg
 ! 2. Declare dynamic arrays
 !------------------------------------------------------------------------------   
 
-  INTEGER, ALLOCATABLE   :: g_num(:,:)
-  INTEGER, ALLOCATABLE   :: rest(:,:)
-  INTEGER, ALLOCATABLE   :: nf(:,:)
-  INTEGER, ALLOCATABLE   :: no(:)
-  REAL(iwp), ALLOCATABLE :: g_coord(:,:)
-  REAL(iwp), ALLOCATABLE :: coord(:,:)
-  REAL(iwp), ALLOCATABLE :: val(:)
+  INTEGER, ALLOCATABLE   :: g_num(:,:),rest(:,:),nf(:,:),no(:)
+  REAL(iwp), ALLOCATABLE :: g_coord(:,:),coord(:,:),val(:)
 
 !------------------------------------------------------------------------------
 ! 3. Read job_name from the command line
@@ -111,33 +73,38 @@ PROGRAM sg12mg
   OPEN (10, file=fname, status='old', action='read')
 
   READ(10,*) program_name
-  
+
+!------------------------------------------------------------------------------
 !------------------------------------------------------------------------------
 ! 6. Select program using the SELECT CASE CONSTRUCT
+!------------------------------------------------------------------------------
 !------------------------------------------------------------------------------
 
   SELECT CASE(program_name)
 
 !------------------------------------------------------------------------------
 ! 7. Program p121
+!    
+!    problem_type can have the value 'ed4' or 'boussinesq'
 !------------------------------------------------------------------------------
 
   CASE('p121')
 
+  READ(10,*) problem_type
   READ(10,*) nels, nxe, nze, nip
   READ(10,*) aa, bb, cc, e, v
   READ(10,*) tol, limit
 
   nye   = nels/nxe/nze
-  nr    = ((2*nxe+1)*(nze+1)+(nxe+1)*nze)*2 +                                &
-          ((2*nye-1)*nze+(nye-1)*nze)*2     +                                &
-          (2*nye-1)*(nxe+1)                 +                                &
+  nr    = ((2*nxe+1)*(nze+1)+(nxe+1)*nze)*2 +                                 &
+          ((2*nye-1)*nze+(nye-1)*nze)*2     +                                 &
+          (2*nye-1)*(nxe+1)                 +                                 &
           (nye-1)*nxe
   nle   = nxe/5
   ndim  = 3
   nodof = 3
   nod   = 20
-  nn    = (((2*nxe+1)*(nze+1))+((nxe+1)*nze))*(nye+1) +                      &
+  nn    = (((2*nxe+1)*(nze+1))+((nxe+1)*nze))*(nye+1) +                       &
           (nxe+1)*(nze+1)*nye
 
   loaded_freedoms = 3*nle*nle + 4*nle + 1
@@ -147,19 +114,11 @@ PROGRAM sg12mg
 ! 7.2 Allocate dynamic arrays
 !------------------------------------------------------------------------------
 
-  ALLOCATE(coord(nod,ndim))
-  ALLOCATE(g_coord(ndim,nn))
-  ALLOCATE(g_num(nod,nels))
-  ALLOCATE(rest(nr,nodof+1))
-  ALLOCATE(val(loaded_freedoms))
-  ALLOCATE(no(loaded_freedoms))
+  ALLOCATE(coord(nod,ndim),g_coord(ndim,nn),g_num(nod,nels),rest(nr,nodof+1)  &
+           val(loaded_freedoms),no(loaded_freedoms))
   
-  coord    = 0.0_iwp
-  g_coord  = 0.0_iwp
-  g_num    = 0
-  rest     = 0
-  val      = 0.0_iwp
-  no       = 0
+  coord    = 0.0_iwp ; g_coord = 0.0_iwp ;   val = 0.0_iwp
+  g_num    = 0       ; rest    = 0       ;   no  = 0
 
 !------------------------------------------------------------------------------
 ! 7.3 Find nodal coordinates and element steering array
@@ -216,13 +175,23 @@ PROGRAM sg12mg
   fname = job_name(1:INDEX(job_name, " ")-1) // ".lds" 
   OPEN(13,FILE=fname,STATUS='REPLACE',ACTION='WRITE')
 
-  CALL load_p121(no,val,nle,nxe,nze)
-  val = -val * aa * bb / 12._iwp
- 
-  DO i = 1, loaded_freedoms
-    WRITE(13,'(I10,2A,3E12.4)') no(i), "  0.0000E+00  ", "0.0000E+00", val(i) 
-  END DO
-
+  IF(problem_type == 'ed4') THEN
+    CALL load_p121(no,val,nle,nxe,nze)
+    val = -val * aa * bb / 12._iwp
+    DO i = 1, loaded_freedoms
+      WRITE(13,'(I10,2A,3E12.4)') no(i), "  0.0000E+00  ", "0.0000E+00", val(i) 
+    END DO
+  ELSE IF (problem_type == 'boussinesq') THEN
+    no  = 3
+    val = 1.0_iwp
+    DO i = 1, loaded_freedoms
+      WRITE(13,'(I10,2A,3E12.4)') no(i), "  0.0000E+00  ", "0.0000E+00", val(i) 
+    END DO
+  ELSE
+    PRINT *, "Problem type: ", problem_type, " not recognised.               &&
+              & No values written to .lds"
+  END IF
+  
   CLOSE(13)
 
 !------------------------------------------------------------------------------
