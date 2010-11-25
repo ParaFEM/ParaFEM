@@ -207,7 +207,7 @@ PROGRAM p121
     ALLOCATE(no_pp(fixed_freedoms_pp),store_pp(fixed_freedoms_pp))
 
     no_pp    = 0
-    store_pp = 0
+    store_pp = zero
     no_pp    = no_pp_temp(1:fixed_freedoms_pp)
 
     DEALLOCATE(node,no,sense,no_pp_temp)
@@ -387,7 +387,7 @@ PROGRAM p121
 !------------------------------------------------------------------------------
 ! 16a. Displacements
 !------------------------------------------------------------------------------
-
+  PRINT *, "DISPLACEMENTS"
   ALLOCATE(disp_pp(nodes_pp*ndim))
   disp_pp = zero
 
@@ -404,7 +404,7 @@ PROGRAM p121
 !------------------------------------------------------------------------------
 ! 16b. Stress
 !------------------------------------------------------------------------------
-
+  PRINT *, "STRESS"
   label = "*STRESS"
 
   CALL nodal_projection(npes,nn,nels_pp,g_num_pp,nod,nst,nodes_pp,            &
@@ -421,7 +421,7 @@ PROGRAM p121
 !------------------------------------------------------------------------------
 ! 16c. Principal stress
 !------------------------------------------------------------------------------
-
+  PRINT *, "PRINCIPAL STRESS"
   label = "*PRINCIPAL STRESS"
   
   CALL nodal_projection(npes,nn,nels_pp,g_num_pp,nod,nodof,nodes_pp,          &
@@ -438,7 +438,7 @@ PROGRAM p121
 ! 16d. Von Mises stress (rho_v)
 !      rho_v = sqrt( ( (rho1-rho2)^2 + (rho2-rho3)^2 + (rho1-rho3)^2 ) / 2 )
 !------------------------------------------------------------------------------
-
+  PRINT *, "MISES STRESS"
   label = "*MISES STRESS"
   
   DO i = 1,nodes_pp
@@ -462,7 +462,7 @@ PROGRAM p121
 !------------------------------------------------------------------------------
 ! 16e. Reactions
 !------------------------------------------------------------------------------
-  
+  PRINT *, "NODAL REACTIONS" 
   label = "*NODAL REACTIONS"
   CALL scatter_nodes(npes,nn,nels_pp,g_num_pp,nod,nodof,nodes_pp,             &
                      node_start,node_end,utemp_pp,reacnodes_pp,0)

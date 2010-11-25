@@ -91,30 +91,52 @@ PROGRAM sg12mg
   CASE('p121')
 
   READ(10,*) problem_type
-  READ(10,*) nels, nxe, nze, nip
+  READ(10,*) nels, nxe, nze, nod, nip
   READ(10,*) aa, bb, cc, e, v
   READ(10,*) tol, limit
 
   nye   = nels/nxe/nze
-  nr    = ((2*nxe+1)*(nze+1)+(nxe+1)*nze)*2 +                                 &
-          ((2*nye-1)*nze+(nye-1)*nze)*2     +                                 &
-          (2*nye-1)*(nxe+1)                 +                                 &
-          (nye-1)*nxe
-  nle   = nxe/5
+
+  IF(nod == 20) THEN
+    nr    = ((2*nxe+1)*(nze+1)+(nxe+1)*nze)*2 +                               &
+            ((2*nye-1)*nze+(nye-1)*nze)*2     +                               &
+            (2*nye-1)*(nxe+1)                 +                               &
+            (nye-1)*nxe
+  ELSE IF(nod == 8) THEN
+    nr    = ((nxe+1)*(nze+1))*2 + ((nye-1)*(nze+1))*2 + ((nxe-1)*(nze-1)) 
+  ELSE
+    PRINT *, "Wrong number of nodes for sg12mg. Nod = ", nod
+  END IF
+
+
   ndim  = 3
   nodof = 3
-  nod   = 20
-  nn    = (((2*nxe+1)*(nze+1))+((nxe+1)*nze))*(nye+1) +                       &
-          (nxe+1)*(nze+1)*nye
 
-  loaded_freedoms = 3*nle*nle + 4*nle + 1
-  fixed_freedoms  = 0
+  IF(nod == 20) THEN
+    nn    = (((2*nxe+1)*(nze+1))+((nxe+1)*nze))*(nye+1) +                     &
+            (nxe+1)*(nze+1)*nye
+  ELSE IF(nod == 8) THEN
+    nn    = (nxe+1)*(nye+1)*(nze+1)
+  ELSE
+    PRINT *, "Wrong number of nodes for sg12mg. Nod = ", nod
+  END IF
+
+  IF(problem_type == 'ed4') THEN
+    nle             = nxe/5
+    loaded_freedoms = 3*nle*nle + 4*nle + 1
+    fixed_freedoms  = 0
+  ELSE IF(problem_type == 'boussinesq') THEN
+    loaded_freedoms = 1
+    fixed_freedoms  = 0
+  ELSE
+    PRINT *, "Problem type: ",problem_type," not recognised."
+  END IF
 
 !------------------------------------------------------------------------------
 ! 7.2 Allocate dynamic arrays
 !------------------------------------------------------------------------------
 
-  ALLOCATE(coord(nod,ndim),g_coord(ndim,nn),g_num(nod,nels),rest(nr,nodof+1)  &
+  ALLOCATE(coord(nod,ndim),g_coord(ndim,nn),g_num(nod,nels),rest(nr,nodof+1), &
            val(loaded_freedoms),no(loaded_freedoms))
   
   coord    = 0.0_iwp ; g_coord = 0.0_iwp ;   val = 0.0_iwp
@@ -125,10 +147,19 @@ PROGRAM sg12mg
 !     Write to file using Abaqus node numbering convention 
 !------------------------------------------------------------------------------
 
-  DO iel = 1, nels
-    CALL geometry_20bxz(iel,nxe,nze,aa,bb,cc,coord,g_num(:,iel))
-    g_coord(:,g_num(:,iel)) = TRANSPOSE(coord)
-  END DO
+  IF(nod == 20) THEN
+    DO iel = 1, nels
+      CALL geometry_20bxz(iel,nxe,nze,aa,bb,cc,coord,g_num(:,iel))
+      g_coord(:,g_num(:,iel)) = TRANSPOSE(coord)
+    END DO
+  ELSE IF(nod == 8) THEN
+    DO iel = 1, nels
+      CALL geometry_8bxz(iel,nxe,nze,aa,bb,cc,coord,g_num(:,iel))
+      g_coord(:,g_num(:,iel)) = TRANSPOSE(coord)
+    END DO
+  ELSE
+    PRINT *, "Wrong number of nodes for sg12mg. Nod = ", nod
+  END IF
 
   fname = job_name(1:INDEX(job_name, " ")-1) // ".d" 
   OPEN(11,FILE=fname,STATUS='REPLACE',ACTION='WRITE')
@@ -141,15 +172,29 @@ PROGRAM sg12mg
   END DO
 
   WRITE(11,'(A)') "*ELEMENTS"
-  DO iel = 1, nels
-    WRITE(11,'(I12,A,20I12,A)') iel, " 3 20 1 ", g_num(3,iel),g_num(5,iel),   &
-                                 g_num(7,iel),g_num(1,iel),g_num(15,iel),     &
-                                 g_num(17,iel),g_num(19,iel),g_num(13,iel),   &
-                                 g_num(4,iel),g_num(6,iel),g_num(8,iel),      &
-                                 g_num(2,iel),g_num(16,iel),g_num(18,iel),    &
-                                 g_num(20,iel),g_num(14,iel),g_num(10,iel),   &
-                                 g_num(11,iel),g_num(12,iel),g_num(9,iel)," 1 "
-  END DO
+  
+  IF(nod == 20) THEN
+    DO iel = 1, nels
+      WRITE(11,'(I12,A,20I12,A)') iel, " 3 20 1 ", g_num(3,iel),g_num(5,iel),  &
+                                   g_num(7,iel),g_num(1,iel),g_num(15,iel),    &
+                                   g_num(17,iel),g_num(19,iel),g_num(13,iel),  &
+                                   g_num(4,iel),g_num(6,iel),g_num(8,iel),     &
+                                   g_num(2,iel),g_num(16,iel),g_num(18,iel),   &
+                                   g_num(20,iel),g_num(14,iel),g_num(10,iel),  &
+                                   g_num(11,iel),g_num(12,iel),g_num(9,iel)," 1"
+    END DO
+  ELSE IF(nod == 8) THEN
+    DO iel = 1, nels
+!     WRITE(11,'(I12,A,8I12,A)') iel, " 3 8 1 ", g_num(1,iel),g_num(4,iel),    &
+!                                  g_num(8,iel),g_num(5,iel),g_num(2,iel),     &
+!                                  g_num(3,iel),g_num(7,iel),g_num(6,iel)," 1"
+      WRITE(11,'(I12,A,8I12,A)') iel, " 3 8 1 ", g_num(2,iel),g_num(1,iel),    &
+                                   g_num(4,iel),g_num(3,iel),g_num(6,iel),     &
+                                   g_num(5,iel),g_num(8,iel),g_num(7,iel)," 1"
+    END DO
+  ELSE
+    PRINT *, "Wrong number of nodes for sg12mg. Nod = ", nod
+  END IF
 
   CLOSE(11)
 
@@ -160,8 +205,14 @@ PROGRAM sg12mg
   fname = job_name(1:INDEX(job_name, " ")-1) // ".bnd" 
   OPEN(12,FILE=fname,STATUS='REPLACE',ACTION='WRITE')
 
-  CALL cube_bc20(rest,nxe,nye,nze)
- 
+  IF(nod == 20) THEN
+    CALL cube_bc20(rest,nxe,nye,nze)
+  ELSE IF(nod == 8) THEN
+    CALL cube_bc8(rest,nxe,nye,nze)
+  ELSE
+    PRINT *, "Wrong number of nodes for sg12mg. Nod = ", nod
+  END IF
+
   DO i = 1, nr
     WRITE(12,'(I8,3I6)') rest(i,:) 
   END DO
@@ -182,14 +233,14 @@ PROGRAM sg12mg
       WRITE(13,'(I10,2A,3E12.4)') no(i), "  0.0000E+00  ", "0.0000E+00", val(i) 
     END DO
   ELSE IF (problem_type == 'boussinesq') THEN
-    no  = 3
-    val = 1.0_iwp
+    no  = 1
+    val = -1.0_iwp
     DO i = 1, loaded_freedoms
       WRITE(13,'(I10,2A,3E12.4)') no(i), "  0.0000E+00  ", "0.0000E+00", val(i) 
     END DO
   ELSE
     PRINT *, "Problem type: ", problem_type, " not recognised.               &&
-              & No values written to .lds"
+              No values written to .lds"
   END IF
   
   CLOSE(13)
@@ -202,7 +253,8 @@ PROGRAM sg12mg
   OPEN(14,FILE=fname,STATUS='REPLACE',ACTION='WRITE')
 
   WRITE(14,'(A)') "hexahedron"
-  WRITE(14,'(A)') "2"              ! Abaqus node numbering scheme
+! WRITE(14,'(A)') "2"              ! Abaqus node numbering scheme
+  WRITE(14,'(A)') "1"              ! Smith and Griffiths node numbering scheme
   WRITE(14,'(7I9)') nels, nn, nr, nip, nod, loaded_freedoms, fixed_freedoms
   WRITE(14,'(3E12.4,I8)') e, v, tol, limit
 
