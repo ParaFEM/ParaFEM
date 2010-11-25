@@ -26,6 +26,9 @@ MODULE GEOMETRY
    !*    CUBE_BC20              Boundary conditions for simple 20-node element
    !*                           cuboid  
    !*
+   !*    CUBE_BC8               Boundary conditions for simple 8-node element
+   !*                           cuboid  
+   !*
    !*    BOX_BC8                Boundary conditions for simple 8-node element
    !*                           box
    !*
@@ -486,6 +489,72 @@ MODULE GEOMETRY
   END DO
 
   END SUBROUTINE cube_bc20
+
+!---------------------------------------------------------------------------
+!---------------------------------------------------------------------------
+!---------------------------------------------------------------------------
+
+  SUBROUTINE cube_bc8(rest,nxe,nye,nze)
+
+   !/****f* geometry/cube_bc8
+   !*  NAME
+   !*    SUBROUTINE: cube_bc8
+   !*  SYNOPSIS
+   !*    Usage:      CALL cube_bc8(rest,nxe,nye,nze)
+   !*  FUNCTION
+   !*    Boundary conditions for simple 8-node element cuboid  
+   !*  INPUTS
+   !*  OUTPUTS
+   !*  AUTHOR
+   !*    L. Margetts 
+   !******
+   !*/       
+  
+  IMPLICIT NONE
+  
+  INTEGER,INTENT(IN)  :: nxe,nye,nze
+  INTEGER,INTENT(OUT) :: rest(:,:)
+  INTEGER             :: i,j,k,l,m,n,face,face1,face2,count
+
+  face  = (nxe+1)*(nze+1)
+  m     = 2*nxe + 2
+  n     = (nxe+1)*nze
+  count = 0
+
+  DO i = 0 , nye 
+     DO j = i*face+1,i*face+face
+        k = j - i*face
+         IF(i==0 .OR. i==nye) THEN
+          IF((k+m-1)/m*m==(k+m-1) .AND. k<=n ) THEN
+            count=count+1; rest(count,1)= j; rest(count,2:)=(/0,0,1/) ; CYCLE 
+          ELSE IF((k+nxe+1)/m*m==(k+nxe+1) .AND. k<=n ) THEN
+            count=count+1; rest(count,1)= j; rest(count,2:)=(/0,0,1/) ; CYCLE 
+          ELSE IF((k+nxe)/m*m==(k+nxe) .AND. k<=n ) THEN
+            count=count+1; rest(count,1)= j; rest(count,2:)=(/0,0,1/) ; CYCLE
+          ELSE IF(k/m*m==k .AND. k<=n) THEN
+            count=count+1; rest(count,1)= j; rest(count,2:)=(/0,0,1/) ; CYCLE
+          ELSE IF (k<=n) THEN
+            count=count+1; rest(count,1)= j; rest(count,2:)=(/1,0,1/) ; CYCLE
+          ELSE IF (k>n) THEN
+            count = count + 1 ; rest(count,1) = j; rest(count,2:) = (/0,0,0/)   
+          END IF
+         ELSE
+          IF((k+m-1)/m*m==(k+m-1) .AND. k<=n ) THEN
+            count=count+1; rest(count,1)= j; rest(count,2:)=(/0,1,1/) ; CYCLE 
+          ELSE IF((k+nxe+1)/m*m==(k+nxe+1) .AND. k<=n ) THEN
+            count=count+1; rest(count,1)= j; rest(count,2:)=(/0,1,1/) ; CYCLE 
+          ELSE IF((k+nxe)/m*m==(k+nxe) .AND. k<=n ) THEN
+            count=count+1; rest(count,1)= j; rest(count,2:)=(/0,1,1/) ; CYCLE
+          ELSE IF(k/m*m==k .AND. k<=n) THEN
+            count=count+1; rest(count,1)= j; rest(count,2:)=(/0,1,1/) ; CYCLE
+          ELSE IF (k>n) THEN
+            count = count + 1 ; rest(count,1) = j; rest(count,2:) = (/0,0,0/)   
+          END IF
+         END IF
+     END DO
+  END DO
+
+  END SUBROUTINE cube_bc8
 
 !---------------------------------------------------------------------------
 !---------------------------------------------------------------------------

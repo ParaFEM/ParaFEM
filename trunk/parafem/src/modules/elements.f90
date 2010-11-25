@@ -1232,8 +1232,8 @@ MODULE ELEMENTS
         
         CASE(1)
         
-        s(1,1) = 0.0_iwp
-        wt(1)  = 8.0_iwp
+        s(1,1:3) = 0.0_iwp
+        wt(1)    = 8.0_iwp
         
         CASE(8)   
             
@@ -1468,11 +1468,12 @@ MODULE ELEMENTS
     !*/
 
     IMPLICIT NONE
-    INTEGER,PARAMETER::iwp=SELECTED_REAL_KIND(15)
-    REAL(iwp),INTENT(IN)::e,v
-    REAL(iwp),INTENT(OUT)::dee(:,:)
-    REAL(iwp)::v1,v2,c,vv,zero=0.0_iwp,pt5=0.5_iwp,one=1.0_iwp,two=2.0_iwp
-    INTEGER::i,ih
+    INTEGER,PARAMETER     :: iwp=SELECTED_REAL_KIND(15)
+    REAL(iwp),INTENT(IN)  :: e,v
+    REAL(iwp),INTENT(OUT) :: dee(:,:)
+    REAL(iwp)             :: v1,v2,c,vv,zero=0.0_iwp,pt5=0.5_iwp
+    REAL(iwp)             :: one=1.0_iwp,two=2.0_iwp
+    INTEGER               :: i,ih
     
     dee = zero  
     ih  = UBOUND(dee,1)
