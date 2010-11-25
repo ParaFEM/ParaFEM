@@ -26,5 +26,10 @@ clean:
 execlean:
 	rm -f sg12mg
 
+install:
+	rm -f *.o
+	rm -f *.mod
+	mv sg12mg $(HOME)/parafem/bin
+
 relink: sg12mg
 
