@@ -57,7 +57,6 @@ MODULE INPUT
   !*    21 May 2008
   !*  COPYRIGHT
   !*    (c) University of Manchester 2007-2010
-  !*        Available under commercial licence
   !******
   !* The algorithm needs to be improved to make best use of the available
   !* memory resources. Perhaps there could be a switch for problem size.
@@ -201,18 +200,173 @@ MODULE INPUT
 !------------------------------------------------------------------------------
 !------------------------------------------------------------------------------
     
+  SUBROUTINE READ_G_NUM_PP2(job_name,iel_start,nn,npes,numpe,g_num_pp)
+
+  !/****f* input/read_g_num_pp2
+  !*  NAME
+  !*    SUBROUTINE: read_g_num_pp2
+  !*  SYNOPSIS
+  !*    Usage:      CALL read_g_num_pp2(job_name,iel_start,nn,npes,numpe,     &
+  !*                                    g_num_pp)
+  !*  FUNCTION
+  !*    Master process reads the global array of elements and broadcasts
+  !*    to slave processes.
+  !*    Processes record only its local part of elements.
+  !*  INPUTS
+  !*    The following arguments have the INTENT(IN) attribute:
+  !*
+  !*    job_name              : Character
+  !*                          : Used to create file name to read
+  !*
+  !*    iel_start             : Integer
+  !*                          : First element number in a process
+  !*
+  !*    nn                    : Integer
+  !*                          : Total number of nodes 
+  !*
+  !*    npes                  : Integer
+  !*                          : Total number of processors
+  !*
+  !*    numpe                 : Integer
+  !*                          : Process number
+  !*
+  !*    The following arguments have the INTENT(OUT) attribute:
+  !*
+  !*    g_num_pp(nod,nels_pp) : Integer
+  !*                          : Elements connectivity
+  !*
+  !*  AUTHOR
+  !*    L. Margetts
+  !*  COPYRIGHT
+  !*    (c) University of Manchester 2007-2010
+  !******
+  !*  Place remarks that should not be included in the documentation here.
+  !*
+  !*  This method avoids the allocation of a global array.
+  !*  Delete READ_G_NUM_PP and replace it with this subroutine once its 
+  !*  stability has been demonstrated.
+  !*
+  !*/
+
+  IMPLICIT NONE
+
+  CHARACTER(LEN=50), INTENT(IN) :: job_name
+  CHARACTER(LEN=50)             :: header
+  CHARACTER(LEN=50)             :: fname
+  INTEGER, INTENT(IN)           :: iel_start, nels, nn, numpe
+  INTEGER, INTENT(INOUT)        :: g_num_pp(:,:)
+  INTEGER                       :: nod, nels_pp, iel, i, k
+  INTEGER                       :: bufsize, ielpe, ier, ndim=3
+  INTEGER, ALLOCATABLE          :: g_num(:,:),localCount(:),readCount(:)
+  REAL(iwp), ALLOCATABLE        :: dummy(:)
+
+!------------------------------------------------------------------------------
+! 1. Initiallize variables
+!------------------------------------------------------------------------------
+
+  nod       = UBOUND(g_num_pp,1)
+  nels_pp   = UBOUND(g_num_pp,2)
+
+
+!------------------------------------------------------------------------------
+! 2. Find READSTEPS, the number of steps in which the read will be carried
+!    out and READCOUNT, the size of each read.
+!------------------------------------------------------------------------------
+
+  ALLOCATE(readCount(npes))
+  ALLOCATE(localCount(npes))
+  
+  readCount         = 0
+  localCount        = 0
+  readSteps         = npes
+  localCount(numpe) = nels_pp
+
+  CALL MPI_ALLREDUCE(readCount,localCount,npes,MPI_INTEGER,MPI_SUM,           &
+                     MPI_COMM_WORLD,ier) 
+  
+!------------------------------------------------------------------------------
+! 3. Allocate the array g_num into which the steering array for each processor
+!    is to be read
+!------------------------------------------------------------------------------
+
+  max_nels_pp = MAX(readCount(:))
+  
+  ALLOCATE(g_num(nod,max_nels_pp),dummy(ndim))
+  
+  g_num = 0             ! different value for each processor
+  dummy = 0.0_iwp
+
+!------------------------------------------------------------------------------
+! 4. Master processor opens the data file and advances to the start of the 
+!    element steering array
+!------------------------------------------------------------------------------
+
+  IF (numpe==1) THEN
+    fname     = job_name(1:INDEX(job_name, " ")-1) // ".d"
+    OPEN(10,FILE=fname,STATUS='OLD',ACTION='READ')
+    READ(10,*)   header  !header
+    READ(10,*)   header  !header
+    DO i = 1,nn   !read nodes until reaching the elements
+      READ(10,*) k, dummy(:)
+    END DO
+    READ(10,*)   header !keyword element
+  END IF
+
+!------------------------------------------------------------------------------
+! 5. Go around READSTEPS loop, read data, and send to appropriate processor
+!------------------------------------------------------------------------------
+  
+  count = 0
+  
+  DO i=1,npes
+    IF(i == 1) THEN  ! local data
+      IF(numpe == 1) THEN
+        DO iel = 1,nels_pp
+          READ(10,*)k,k,k,k,g_num_pp(:,iel),k
+        END DO
+      END IF
+    ELSE
+      bufsize = readCount(i)*nod
+      IF(numpe == 1) THEN
+        DO iel = count+1,count+readCount(i)
+          READ(10,*)k,k,k,k,g_num(:,iel),k
+        END DO
+        CALL MPI_SEND(g_num(1:readCount(i)),bufsize,MPI_INTEGER,0,i-1,       &
+                      MPI_COMM_WORLD,status,ier)
+      END IF
+      IF(numpe == i) CALL MPI_RECV(g_num_pp,bufsize,MPI_INTEGER,i-1,0,       &
+                                   MPI_COMM_WORLD,status,ier)
+    END IF
+    count = count + readCount(i)
+  END DO
+  
+!------------------------------------------------------------------------------
+! 6. Deallocate global arrays
+!------------------------------------------------------------------------------
+
+  DEALLOCATE(g_num,readCount,localCount)
+ 
+  RETURN
+
+  END SUBROUTINE READ_G_NUM_PP2
+
+!------------------------------------------------------------------------------
+!------------------------------------------------------------------------------
+!------------------------------------------------------------------------------
+    
   SUBROUTINE READ_G_NUM_PP(job_name,iel_start,nels,nn,numpe,g_num_pp)
 
   !/****f* input/read_g_num_pp
   !*  NAME
   !*    SUBROUTINE: read_g_num_pp
   !*  SYNOPSIS
-  !*    Usage:      CALL read_g_num_pp(job_name,iel_start,nels,nn,numpe,      &
-  !*                                   g_num_pp)
+  !*    Usage:      CALL read_g_num_pp(job_name,iel_start,nels,nn,numpe,
+  !*                                   g_num_pp) 
   !*  FUNCTION
-  !*    Master process reads the global array of elements and broadcasts
-  !*    to slave processes.
-  !*    Processes record only its local part of elements.
+  !*    The master processor reads sections of the global steering array and 
+  !*    sends these to the slave processors. A loop over number of processors
+  !*    NPES means that each slave processor is dealt with sequentially and
+  !*    a global array of size NELS is not required.  
   !*  INPUTS
   !*    The following arguments have the INTENT(IN) attribute:
   !*
@@ -241,14 +395,11 @@ MODULE INPUT
   !*  COPYRIGHT
   !*    (c) University of Manchester 2007-2010
   !******
-  !*  Place remarks that should not be included in the documentation here.
-  !*
   !*  The method based on building global arrays.
   !*  
   !*  An improvement would be to avoid allocating the global array
   !*
   !*  Can copy the method in subroutine READ_G_COORD_PP
-  !*
   !*/
 
   IMPLICIT NONE
@@ -321,7 +472,7 @@ MODULE INPUT
   RETURN
 
   END SUBROUTINE READ_G_NUM_PP
-        
+                
 !---------------------------------------------------------------------------
 !---------------------------------------------------------------------------
 !---------------------------------------------------------------------------
