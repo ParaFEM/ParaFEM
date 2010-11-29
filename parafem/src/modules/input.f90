@@ -253,10 +253,12 @@ MODULE INPUT
   CHARACTER(LEN=50), INTENT(IN) :: job_name
   CHARACTER(LEN=50)             :: header
   CHARACTER(LEN=50)             :: fname
-  INTEGER, INTENT(IN)           :: iel_start, nels, nn, numpe
+  INTEGER, INTENT(IN)           :: iel_start, nn, npes, numpe
   INTEGER, INTENT(INOUT)        :: g_num_pp(:,:)
   INTEGER                       :: nod, nels_pp, iel, i, k
   INTEGER                       :: bufsize, ielpe, ier, ndim=3
+  INTEGER                       :: readSteps,max_nels_pp
+  INTEGER                       :: status(MPI_STATUS_SIZE)
   INTEGER, ALLOCATABLE          :: g_num(:,:),localCount(:),readCount(:)
   REAL(iwp), ALLOCATABLE        :: dummy(:)
 
@@ -266,7 +268,6 @@ MODULE INPUT
 
   nod       = UBOUND(g_num_pp,1)
   nels_pp   = UBOUND(g_num_pp,2)
-
 
 !------------------------------------------------------------------------------
 ! 2. Find READSTEPS, the number of steps in which the read will be carried
@@ -281,15 +282,15 @@ MODULE INPUT
   readSteps         = npes
   localCount(numpe) = nels_pp
 
-  CALL MPI_ALLREDUCE(readCount,localCount,npes,MPI_INTEGER,MPI_SUM,           &
+  CALL MPI_ALLREDUCE(localCount,readCount,npes,MPI_INTEGER,MPI_SUM,           &
                      MPI_COMM_WORLD,ier) 
-  
+ 
 !------------------------------------------------------------------------------
 ! 3. Allocate the array g_num into which the steering array for each processor
 !    is to be read
 !------------------------------------------------------------------------------
 
-  max_nels_pp = MAX(readCount(:))
+  max_nels_pp = MAXVAL(readCount,1)
   
   ALLOCATE(g_num(nod,max_nels_pp),dummy(ndim))
   
@@ -310,39 +311,39 @@ MODULE INPUT
       READ(10,*) k, dummy(:)
     END DO
     READ(10,*)   header !keyword element
+    PRINT *, "HEADER =", header
   END IF
 
 !------------------------------------------------------------------------------
 ! 5. Go around READSTEPS loop, read data, and send to appropriate processor
 !------------------------------------------------------------------------------
-  
-  count = 0
-  
+
   DO i=1,npes
     IF(i == 1) THEN  ! local data
       IF(numpe == 1) THEN
-        DO iel = 1,nels_pp
+        DO iel = 1,readCount(i)
           READ(10,*)k,k,k,k,g_num_pp(:,iel),k
         END DO
       END IF
     ELSE
       bufsize = readCount(i)*nod
       IF(numpe == 1) THEN
-        DO iel = count+1,count+readCount(i)
+        DO iel = 1,readCount(i)
           READ(10,*)k,k,k,k,g_num(:,iel),k
         END DO
-        CALL MPI_SEND(g_num(1:readCount(i)),bufsize,MPI_INTEGER,0,i-1,       &
+        CALL MPI_SEND(g_num(:,1:readCount(i)),bufsize,MPI_INTEGER,i-1,i,     &
                       MPI_COMM_WORLD,status,ier)
       END IF
-      IF(numpe == i) CALL MPI_RECV(g_num_pp,bufsize,MPI_INTEGER,i-1,0,       &
+      IF(numpe == i) CALL MPI_RECV(g_num_pp,bufsize,MPI_INTEGER,0,i,         &
                                    MPI_COMM_WORLD,status,ier)
     END IF
-    count = count + readCount(i)
   END DO
   
 !------------------------------------------------------------------------------
-! 6. Deallocate global arrays
+! 6. Close file and deallocate global arrays
 !------------------------------------------------------------------------------
+
+  IF(numpe==1) CLOSE(10)
 
   DEALLOCATE(g_num,readCount,localCount)
  

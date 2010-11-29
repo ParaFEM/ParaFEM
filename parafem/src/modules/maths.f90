@@ -415,7 +415,7 @@ MODULE MATHS
 
     IMPLICIT NONE
  
-    REAL(iwp),INTENT(IN OUT):: matrix(:,:)
+    REAL(iwp),INTENT(INOUT) :: matrix(:,:)
     REAL(iwp)               :: det,j11,j12,j13,j21,j22,j23,j31,j32,j33,con
     INTEGER                 :: ndim,i,k
  

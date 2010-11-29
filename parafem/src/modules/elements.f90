@@ -58,7 +58,7 @@ MODULE ELEMENTS
     !*                       : Gauss points coordinates at the reference 
     !*                         element
     !*
-    !*    The following arguments have the INTENT(OUT) attribute:
+    !*    The following argument has the INTENT(INOUT) attribute:
     !*
     !*    fun(nod)           : Real
     !*                       : Value of the shape functions at a 
@@ -76,16 +76,17 @@ MODULE ELEMENTS
     
     IMPLICIT NONE
     
-    INTEGER, INTENT(IN)   :: i
-    REAL(iwp),INTENT(IN)  :: points(:,:)
-    REAL(iwp),INTENT(OUT) :: fun(:)
-    REAL(iwp)             :: eta,xi,etam,etap,xim,xip,zetam,zetap,c1,c2,c3     
-    REAL(iwp)             :: t1,t2,t3,t4,t5,t6,t7,t8,t9,one=1.0_iwp,two=2.0_iwp
-    REAL(iwp)             :: zeta,xi0,eta0,zeta0,d8=8.0_iwp
-    INTEGER               :: xii(20),etai(20),zetai(20),l,ndim,nod
+    INTEGER, INTENT(IN)     :: i
+    REAL(iwp),INTENT(IN)    :: points(:,:)
+    REAL(iwp),INTENT(INOUT) :: fun(:)
+    REAL(iwp)               :: eta,xi,etam,etap,xim,xip,zetam,zetap,c1,c2,c3    
+    REAL(iwp),PARAMETER     :: one=1.0_iwp,two=2.0_iwp,d8=8.0_iwp
+    REAL(iwp)               :: t1,t2,t3,t4,t5,t6,t7,t8,t9
+    REAL(iwp)               :: zeta,xi0,eta0,zeta0
+    INTEGER                 :: xii(20),etai(20),zetai(20),l,ndim,nod
     
-    ndim = UBOUND(points , 2 )
-    nod  = UBOUND(fun , 1 )  
+    ndim = UBOUND(points,2)
+    nod  = UBOUND(fun,1)  
     
     SELECT CASE (ndim)
       
@@ -344,7 +345,7 @@ MODULE ELEMENTS
     !*                         element
     !*
     !*  OUTPUTS
-    !*    The following arguments have the INTENT(OUT) attribute:
+    !*    The following argument has the INTENT(INOUT) attribute:
     !*
     !*    der(ndim,nod)      : Real
     !*                       : Derivatives of the shape functions at a 
@@ -362,13 +363,16 @@ MODULE ELEMENTS
     
     IMPLICIT NONE
     
-    INTEGER, INTENT(IN)   :: i
-    REAL(iwp),INTENT(IN)  :: points(:,:)
-    REAL(iwp),INTENT(OUT) :: der(:,:)
-    REAL(iwp) :: eta,xi,zeta,xi0,eta0,zeta0,etam,etap,xim,xip,c1,c2,c3 
-    REAL(iwp) :: t1,t2,t3,t4,t5,t6,t7,t8,t9 ,x2p1,x2m1,e2p1,e2m1,zetam,zetap 
-    REAL(iwp) :: one=1.0_iwp, two=2.0_iwp, d4=4.0_iwp, d8=8.0_iwp, zero=0.0_iwp
-    INTEGER   :: xii(20), etai(20), zetai(20) ,l,ndim , nod   ! local variables
+    INTEGER, INTENT(IN)     :: i
+    REAL(iwp),INTENT(IN)    :: points(:,:)
+    REAL(iwp),INTENT(INOUT) :: der(:,:)
+    REAL(iwp)               :: eta,xi,zeta,xi0,eta0,zeta0 
+    REAL(iwp)               :: etam,etap,xim,xip,c1,c2,c3 
+    REAL(iwp)               :: x2p1,x2m1,e2p1,e2m1,zetam,zetap 
+    REAL(iwp)               :: t1,t2,t3,t4,t5,t6,t7,t8,t9 
+    REAL(iwp),PARAMETER     :: one=1.0_iwp,two=2.0_iwp,d4=4.0_iwp
+    REAL(iwp),PARAMETER     :: d8=8.0_iwp, zero=0.0_iwp
+    INTEGER                 :: xii(20),etai(20),zetai(20),l,ndim,nod
     
     ndim = UBOUND(der , 1)
     nod  = UBOUND(der , 2)
@@ -765,7 +769,7 @@ MODULE ELEMENTS
     !*                        : Shape function derivatives in the undeformed
     !*                          mesh at a Gauss point
     !*
-    !*    The following arguments have the INTENT(OUT) attribute:
+    !*    The following argument has the INTENT(INOUT) attribute:
     !*
     !*    bee(nst,ndof)       : Real
     !*                        : Shape function derivatives in the undeformed
@@ -785,10 +789,10 @@ MODULE ELEMENTS
 
     IMPLICIT NONE
 
-    REAL(iwp), INTENT(IN)  :: deriv(:,:)
-    REAL(iwp), INTENT(OUT) :: bee(:,:)
-    INTEGER                :: k, l, m, n, ih, nod
-    REAL(iwp)              :: x, y, z
+    REAL(iwp), INTENT(IN)    :: deriv(:,:)
+    REAL(iwp), INTENT(INOUT) :: bee(:,:)
+    INTEGER                  :: k,l,m,n,ih,nod
+    REAL(iwp)                :: x,y,z
 
     bee = 0.0_iwp
     nod = UBOUND(deriv,2)
@@ -853,7 +857,7 @@ MODULE ELEMENTS
     !*                        : Element type
     !*                          
     !*	OUTPUTS
-    !*    The following arguments have the INTENT(OUT) attribute:
+    !*    The following arguments have the INTENT(INOUT) attribute:
     !*
     !*    s(:,:)              : Real
     !*                        : Local coordinates of the integrating points
@@ -874,14 +878,15 @@ MODULE ELEMENTS
     
     IMPLICIT NONE
     
-    REAL(iwp),INTENT(OUT)   :: s(:,:),wt(:)
+    REAL(iwp),INTENT(INOUT) :: s(:,:),wt(:)
     CHARACTER(*),INTENT(IN) :: element
     INTEGER                 :: nip 
     REAL(iwp)               :: root3, r15 , w(3),v(9),b,c
     
     root3 = 1.0_iwp/sqrt(3.0_iwp)
     r15   = 0.2_iwp*sqrt(15.0_iwp) 
-    nip   = UBOUND( s , 1 ) 
+    nip   = UBOUND(s,1) 
+
     w     = (/5.0_iwp/9.0_iwp,8.0_iwp/9.0_iwp,5.0_iwp/9.0_iwp/)
     v     = (/5.0_iwp/9.0_iwp*w,8.0_iwp/9.0_iwp*w,5.0_iwp/9.0_iwp*w/)
         
@@ -1389,7 +1394,7 @@ MODULE ELEMENTS
     !*                        : Number of degrees of freedom per element
     !*                          
     !*	OUTPUTS
-    !*    The following arguments have the INTENT(OUT) attribute:
+    !*    The following arguments have the INTENT(INOUT) attribute:
     !*
     !*    ecm(:,:)            : Real
     !*                        : Element consistent mass matrix
@@ -1406,11 +1411,11 @@ MODULE ELEMENTS
 
     IMPLICIT NONE
     
-    REAL(iwp),INTENT(IN)  :: fun(:)
-    REAL(iwp),INTENT(OUT) :: ecm(:,:)
-    REAL(iwp)             :: nt(ndof,nodof),tn(nodof,ndof)
-    INTEGER,INTENT(IN)    :: nodof,ndof
-    INTEGER               :: nod,i,j
+    REAL(iwp),INTENT(IN)    :: fun(:)
+    REAL(iwp),INTENT(INOUT) :: ecm(:,:)
+    REAL(iwp)               :: nt(ndof,nodof),tn(nodof,ndof)
+    INTEGER,INTENT(IN)      :: nodof,ndof
+    INTEGER                 :: nod,i,j
     
     nod = ndof/nodof
     nt  = .0
@@ -1454,7 +1459,7 @@ MODULE ELEMENTS
     !*    v                         : Real
     !*                              : Poisson's ratio
     !*
-    !*    The following argument has the INTENT(OUT) attribute:
+    !*    The following argument has the INTENT(INOUT) attribute:
     !*
     !*    dee(nst,nst)              : Real
     !*                              : Material matrix for linear elasticity
@@ -1468,12 +1473,13 @@ MODULE ELEMENTS
     !*/
 
     IMPLICIT NONE
-    INTEGER,PARAMETER     :: iwp=SELECTED_REAL_KIND(15)
-    REAL(iwp),INTENT(IN)  :: e,v
-    REAL(iwp),INTENT(OUT) :: dee(:,:)
-    REAL(iwp)             :: v1,v2,c,vv,zero=0.0_iwp,pt5=0.5_iwp
-    REAL(iwp)             :: one=1.0_iwp,two=2.0_iwp
-    INTEGER               :: i,ih
+    INTEGER,PARAMETER       :: iwp=SELECTED_REAL_KIND(15)
+    REAL(iwp),INTENT(IN)    :: e,v
+    REAL(iwp),INTENT(INOUT) :: dee(:,:)
+    REAL(iwp)               :: v1,v2,c,vv
+    REAL(iwp),PARAMETER     :: zero=0.0_iwp,pt5=0.5_iwp
+    REAL(iwp),PARAMETER     :: one=1.0_iwp,two=2.0_iwp
+    INTEGER                 :: i,ih
     
     dee = zero  
     ih  = UBOUND(dee,1)

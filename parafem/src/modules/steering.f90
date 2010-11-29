@@ -531,14 +531,6 @@ MODULE STEERING
         g_num(6,iel)  = temp(8)
         g_num(7,iel)  = temp(7)
         g_num(8,iel)  = temp(3)
-!       g_num(1,iel)  = temp(5)
-!       g_num(2,iel)  = temp(1)
-!       g_num(3,iel)  = temp(2)
-!       g_num(4,iel)  = temp(6)
-!       g_num(5,iel)  = temp(8)
-!       g_num(6,iel)  = temp(4)
-!       g_num(7,iel)  = temp(3)
-!       g_num(8,iel)  = temp(7)
       END DO
      
       DEALLOCATE(temp)
