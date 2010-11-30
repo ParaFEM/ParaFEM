@@ -42,7 +42,7 @@ PROGRAM p121
   REAL(iwp),ALLOCATABLE :: u_pp(:),pmul_pp(:,:),utemp_pp(:,:),d_pp(:),timest(:)
   REAL(iwp),ALLOCATABLE :: diag_precon_tmp(:,:),eld_pp(:,:),tensor_pp(:,:,:)
   REAL(iwp),ALLOCATABLE :: valf(:),store_pp(:)
-  REAL(iwp),ALLOCATABLE :: fun(:),xnewnodes_pp(:),shape_integral_pp(:,:)
+  REAL(iwp),ALLOCATABLE :: fun(:),shape_integral_pp(:,:)
   REAL(iwp),ALLOCATABLE :: stress_integral_pp(:,:),stressnodes_pp(:)
   REAL(iwp),ALLOCATABLE :: principal_integral_pp(:,:),princinodes_pp(:)
   REAL(iwp),ALLOCATABLE :: principal(:),reacnodes_pp(:)  
@@ -79,7 +79,8 @@ PROGRAM p121
   g_coord_pp= zero
   rest      = 0
 
-  CALL read_g_num_pp(job_name,iel_start,nels,nn,numpe,g_num_pp)
+  CALL read_g_num_pp2(job_name,iel_start,nn,npes,numpe,g_num_pp)
+! CALL read_g_num_pp(job_name,iel_start,nels,nn,numpe,g_num_pp)
   IF(meshgen == 2) CALL abaqus2sg(element,g_num_pp)
   CALL read_g_coord_pp(job_name,g_num_pp,nn,npes,numpe,g_coord_pp)
   CALL read_rest(job_name,numpe,rest)
@@ -89,7 +90,7 @@ PROGRAM p121
 !------------------------------------------------------------------------------
 
   ALLOCATE(points(nip,ndim),dee(nst,nst),jac(ndim,ndim),principal(ndim),      &
-           der(ndim,nod),deriv(ndim,nod),eld_pp(ntot,nels_pp),bee(nst,ntot),  &
+           der(ndim,nod),deriv(ndim,nod),bee(nst,ntot),                       &
            storkm_pp(ntot,ntot,nels_pp),eld(ntot),eps(nst),sigma(nst),        &
            pmul_pp(ntot,nels_pp),utemp_pp(ntot,nels_pp),                      &
            weights(nip),g_g_pp(ntot,nels_pp),fun(nod))
@@ -106,8 +107,8 @@ PROGRAM p121
   g_g_pp = 0
 
   elements_1: DO iel = 1, nels_pp
-    ! CALL find_g3(g_num_pp(:,iel),g_g_pp(:,iel),rest)
-    CALL find_g(g_num_pp(:,iel),g_g_pp(:,iel),rest)
+    CALL find_g3(g_num_pp(:,iel),g_g_pp(:,iel),rest)
+!   CALL find_g(g_num_pp(:,iel),g_g_pp(:,iel),rest)
   END DO elements_1
 
   neq = 0
@@ -131,10 +132,11 @@ PROGRAM p121
  
   timest(4) = elap_time()
 
+  CALL MPI_BARRIER(MPI_COMM_WORLD,ier)
 !------------------------------------------------------------------------------
 ! 7. Allocate arrays dimensioned by neq_pp 
 !------------------------------------------------------------------------------
-
+  
   ALLOCATE(p_pp(neq_pp),r_pp(neq_pp),x_pp(neq_pp),xnew_pp(neq_pp),            &
            u_pp(neq_pp),d_pp(neq_pp),diag_precon_pp(neq_pp))
 
@@ -151,7 +153,6 @@ PROGRAM p121
   CALL sample(element,points,weights)
  
   storkm_pp       = zero
-  diag_precon_tmp = zero
  
   elements_3: DO iel=1,nels_pp
     gauss_pts_1: DO i=1,nip
@@ -213,6 +214,8 @@ PROGRAM p121
     DEALLOCATE(node,no,sense,no_pp_temp)
 
   END IF
+
+  DEALLOCATE(rest)
 
 !------------------------------------------------------------------------------
 ! 11. Read in loaded nodes and get starting r_pp
@@ -318,6 +321,8 @@ PROGRAM p121
 ! 15. Print out displacements, stress, principal stress and reactions
 !------------------------------------------------------------------------------
 
+  CALL calc_nodes_pp(nn,npes,numpe,node_end,node_start,nodes_pp)
+  
   IF(numpe==1) THEN
     fname = job_name(1:INDEX(job_name, " ")-1)//".dis"
     OPEN(24, file=fname, status='replace', action='write')
@@ -331,10 +336,32 @@ PROGRAM p121
     OPEN(28, file=fname, status='replace', action='write')
   END IF
 
-  CALL calc_nodes_pp(nn,npes,numpe,node_end,node_start,nodes_pp)
-  CALL gather(xnew_pp(1:),eld_pp)
+!------------------------------------------------------------------------------
+! 16a. Displacements
+!------------------------------------------------------------------------------
 
-  ALLOCATE(xnewnodes_pp(nodes_pp*nodof))
+  ALLOCATE(eld_pp(ntot,nels_pp)) 
+  eld_pp = zero
+  CALL gather(xnew_pp(1:),eld_pp)
+  DEALLOCATE(xnew_pp)
+
+  ALLOCATE(disp_pp(nodes_pp*ndim))
+  disp_pp = zero
+
+  label   = "*DISPLACEMENT"
+
+  CALL scatter_nodes(npes,nn,nels_pp,g_num_pp,nod,ndim,nodes_pp,              &
+                     node_start,node_end,eld_pp,disp_pp,1)
+  CALL write_nodal_variable(label,24,1,nodes_pp,npes,numpe,ndim,disp_pp)
+
+  DEALLOCATE(disp_pp)
+
+  IF(numpe==1) CLOSE(24)
+
+!------------------------------------------------------------------------------
+! 16b. Stresses
+!------------------------------------------------------------------------------
+
   ALLOCATE(shape_integral_pp(nod,nels_pp))
   ALLOCATE(stress_integral_pp(nod*nst,nels_pp))
   ALLOCATE(stressnodes_pp(nodes_pp*nst))
@@ -342,7 +369,6 @@ PROGRAM p121
   ALLOCATE(princinodes_pp(nodes_pp*nodof))
   ALLOCATE(reacnodes_pp(nodes_pp*nodof))
   
-  xnewnodes_pp          = zero
   shape_integral_pp     = zero
   stress_integral_pp    = zero
   stressnodes_pp        = zero
@@ -385,26 +411,9 @@ PROGRAM p121
   END DO !elements
     
 !------------------------------------------------------------------------------
-! 16a. Displacements
+! 16c. Stress
 !------------------------------------------------------------------------------
-  PRINT *, "DISPLACEMENTS"
-  ALLOCATE(disp_pp(nodes_pp*ndim))
-  disp_pp = zero
 
-  label   = "*DISPLACEMENT"
-
-  CALL scatter_nodes(npes,nn,nels_pp,g_num_pp,nod,ndim,nodes_pp,              &
-                     node_start,node_end,eld_pp,disp_pp,1)
-  CALL write_nodal_variable(label,24,1,nodes_pp,npes,numpe,ndim,disp_pp)
-
-  DEALLOCATE(disp_pp)
-
-  IF(numpe==1) CLOSE(24)
-
-!------------------------------------------------------------------------------
-! 16b. Stress
-!------------------------------------------------------------------------------
-  PRINT *, "STRESS"
   label = "*STRESS"
 
   CALL nodal_projection(npes,nn,nels_pp,g_num_pp,nod,nst,nodes_pp,            &
@@ -417,11 +426,10 @@ PROGRAM p121
 
   IF(numpe==1) CLOSE(25)
 
-
 !------------------------------------------------------------------------------
-! 16c. Principal stress
+! 16d. Principal stress
 !------------------------------------------------------------------------------
-  PRINT *, "PRINCIPAL STRESS"
+  
   label = "*PRINCIPAL STRESS"
   
   CALL nodal_projection(npes,nn,nels_pp,g_num_pp,nod,nodof,nodes_pp,          &
@@ -435,10 +443,10 @@ PROGRAM p121
   IF(numpe==1) CLOSE(26)
 
 !------------------------------------------------------------------------------
-! 16d. Von Mises stress (rho_v)
+! 16e. Von Mises stress (rho_v)
 !      rho_v = sqrt( ( (rho1-rho2)^2 + (rho2-rho3)^2 + (rho1-rho3)^2 ) / 2 )
 !------------------------------------------------------------------------------
-  PRINT *, "MISES STRESS"
+  
   label = "*MISES STRESS"
   
   DO i = 1,nodes_pp
@@ -460,9 +468,9 @@ PROGRAM p121
   IF(numpe==1) CLOSE(27)
 
 !------------------------------------------------------------------------------
-! 16e. Reactions
+! 16f. Reactions
 !------------------------------------------------------------------------------
-  PRINT *, "NODAL REACTIONS" 
+
   label = "*NODAL REACTIONS"
   CALL scatter_nodes(npes,nn,nels_pp,g_num_pp,nod,nodof,nodes_pp,             &
                      node_start,node_end,utemp_pp,reacnodes_pp,0)

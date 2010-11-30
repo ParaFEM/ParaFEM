@@ -44,8 +44,7 @@ PROGRAM sg12mg
 !------------------------------------------------------------------------------
 ! 2. Declare dynamic arrays
 !------------------------------------------------------------------------------   
-
-  INTEGER, ALLOCATABLE   :: g_num(:,:),rest(:,:),nf(:,:),no(:)
+  INTEGER, ALLOCATABLE   :: g_num(:,:),rest(:,:),nf(:,:),no(:),num(:)
   REAL(iwp), ALLOCATABLE :: g_coord(:,:),coord(:,:),val(:)
 
 !------------------------------------------------------------------------------
@@ -137,10 +136,10 @@ PROGRAM sg12mg
 !------------------------------------------------------------------------------
 
   ALLOCATE(coord(nod,ndim),g_coord(ndim,nn),g_num(nod,nels),rest(nr,nodof+1), &
-           val(loaded_freedoms),no(loaded_freedoms))
+           val(loaded_freedoms),no(loaded_freedoms),num(nod))
   
   coord    = 0.0_iwp ; g_coord = 0.0_iwp ;   val = 0.0_iwp
-  g_num    = 0       ; rest    = 0       ;   no  = 0
+  g_num    = 0       ; rest    = 0       ;   no  = 0       ; num = 0
 
 !------------------------------------------------------------------------------
 ! 7.3 Find nodal coordinates and element steering array
@@ -168,7 +167,7 @@ PROGRAM sg12mg
   WRITE(11,'(A)') "*NODES"
 
   DO i = 1, nn
-    WRITE(11,'(I12,3F12.4)') i, g_coord(:,i)
+    WRITE(11,'(I12,3E14.6)') i, g_coord(:,i)
   END DO
 
   WRITE(11,'(A)') "*ELEMENTS"
@@ -185,12 +184,9 @@ PROGRAM sg12mg
     END DO
   ELSE IF(nod == 8) THEN
     DO iel = 1, nels
-!     WRITE(11,'(I12,A,8I12,A)') iel, " 3 8 1 ", g_num(1,iel),g_num(4,iel),    &
-!                                  g_num(8,iel),g_num(5,iel),g_num(2,iel),     &
-!                                  g_num(3,iel),g_num(7,iel),g_num(6,iel)," 1"
-      WRITE(11,'(I12,A,8I12,A)') iel, " 3 8 1 ", g_num(2,iel),g_num(1,iel),    &
-                                   g_num(4,iel),g_num(3,iel),g_num(6,iel),     &
-                                   g_num(5,iel),g_num(8,iel),g_num(7,iel)," 1"
+      WRITE(11,'(I12,A,8I12,A)') iel, " 3 8 1 ", g_num(1,iel),g_num(4,iel),    &
+                                   g_num(8,iel),g_num(5,iel),g_num(2,iel),     &
+                                   g_num(3,iel),g_num(7,iel),g_num(6,iel)," 1"
     END DO
   ELSE
     PRINT *, "Wrong number of nodes for sg12mg. Nod = ", nod
@@ -201,7 +197,7 @@ PROGRAM sg12mg
 !------------------------------------------------------------------------------
 ! 7.4 Boundary conditions
 !------------------------------------------------------------------------------
-
+  
   fname = job_name(1:INDEX(job_name, " ")-1) // ".bnd" 
   OPEN(12,FILE=fname,STATUS='REPLACE',ACTION='WRITE')
 
@@ -230,13 +226,15 @@ PROGRAM sg12mg
     CALL load_p121(no,val,nle,nxe,nze)
     val = -val * aa * bb / 12._iwp
     DO i = 1, loaded_freedoms
-      WRITE(13,'(I10,2A,3E12.4)') no(i), "  0.0000E+00  ", "0.0000E+00", val(i) 
+      WRITE(13,'(I10,2A,3E16.8)') no(i),"  0.00000000E+00  ","0.00000000E+00", &
+                                  val(i) 
     END DO
   ELSE IF (problem_type == 'boussinesq') THEN
     no  = 1
     val = -1.0_iwp
     DO i = 1, loaded_freedoms
-      WRITE(13,'(I10,2A,3E12.4)') no(i), "  0.0000E+00  ", "0.0000E+00", val(i) 
+      WRITE(13,'(I10,2A,3E16.8)') no(i),"  0.00000000E+00  ","0.00000000E+00", &
+                                  val(i) 
     END DO
   ELSE
     PRINT *, "Problem type: ", problem_type, " not recognised.               &&
@@ -252,9 +250,8 @@ PROGRAM sg12mg
   fname = job_name(1:INDEX(job_name, " ")-1) // ".dat" 
   OPEN(14,FILE=fname,STATUS='REPLACE',ACTION='WRITE')
 
-  WRITE(14,'(A)') "hexahedron"
-! WRITE(14,'(A)') "2"              ! Abaqus node numbering scheme
-  WRITE(14,'(A)') "1"              ! Smith and Griffiths node numbering scheme
+  WRITE(14,'(A)') "'hexahedron'"
+  WRITE(14,'(A)') "2"              ! Abaqus node numbering scheme
   WRITE(14,'(7I9)') nels, nn, nr, nip, nod, loaded_freedoms, fixed_freedoms
   WRITE(14,'(3E12.4,I8)') e, v, tol, limit
 
