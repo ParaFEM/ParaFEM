@@ -181,11 +181,11 @@ MODULE LOADING
   DO  i = 1,4*nle+1,2   ! front face
     no(count) = i
     IF(i==1.OR.i==4*nle+1) THEN
-     val(count) = -1.
+     val(count) = -1._iwp
     ELSE IF (mod(i+1,4)==0) THEN
-     val(count) = 4.
+     val(count) = 4._iwp
     ELSE
-     val(count) = -2.
+     val(count) = -2._iwp
     END IF
     count = count + 1
   END DO
@@ -195,9 +195,9 @@ MODULE LOADING
     DO i = 1 , 3*nle + 1 , 3
       no(count) = i + f1 + j*(f2 + f3) + 1
       IF(i==1.OR.i==3*nle+1) THEN
-        val(count) = 4.
+        val(count) = 4._iwp
       ELSE
-        val(count) = 8.
+        val(count) = 8._iwp
       END IF
       count = count + 1
     END DO
@@ -206,19 +206,19 @@ MODULE LOADING
       no(count) = i + f1 +(j+1) * f2 + j * f3  + 1
       IF(j/=nle-1) THEN
         IF(i==1.OR.i==6*nle+1) THEN
-          val(count) = -2.
+          val(count) = -2._iwp
         ELSE IF (mod(i,2)==0) THEN
-          val(count) = 8.
+          val(count) = 8._iwp
         ELSE
-          val(count) = -4.
+          val(count) = -4._iwp
         END IF
       ELSE
         IF(i==1.OR.i==6*nle+1) THEN
-          val(count) = -1.
+          val(count) = -1._iwp
         ELSE IF (mod(i,2)==0) THEN
-          val(count) = 4.
+          val(count) = 4._iwp
         ELSE
-          val(count) = -2.
+          val(count) = -2._iwp
         END IF
       END IF
       count = count + 1
@@ -326,11 +326,11 @@ MODULE LOADING
   DO  i = 1,2*nle+1   ! front face
     node(count) = i
     IF(i==1.OR.i==2*nle+1) THEN
-     val(count) = -1.
+     val(count) = -1._iwp
     ELSE IF (mod(i,2)==0) THEN
-     val(count) = 4.
+     val(count) = 4._iwp
     ELSE
-     val(count) = -2.
+     val(count) = -2._iwp
     END IF
     count = count + 1
   END DO
@@ -340,9 +340,9 @@ MODULE LOADING
     DO i = 1 , nle + 1
       node(count) = i + f1 + j*(f1 + f2)
       IF(i==1.OR.i==nle+1) THEN
-        val(count) = 4.
+        val(count) = 4._iwp
       ELSE
-        val(count) = 8.
+        val(count) = 8._iwp
       END IF
       count = count + 1
     END DO
@@ -351,19 +351,19 @@ MODULE LOADING
       node(count) = i + f1 +(j+1) * f2 + j * f1
       IF(j/=nle-1) THEN
         IF(i==1.OR.i==2*nle+1) THEN
-          val(count) = -1.
+          val(count) = -1._iwp
         ELSE IF (mod(i,2)==0) THEN
-          val(count) = 8.
+          val(count) = 8._iwp
         ELSE
-          val(count) = -4.
+          val(count) = -4._iwp
         END IF
       ELSE
         IF(i==1.OR.i==2*nle+1) THEN
-          val(count) = -1.
+          val(count) = -1._iwp
         ELSE IF (mod(i,2)==0) THEN
-          val(count) = 4.
+          val(count) = 4._iwp
         ELSE
-          val(count) = -2.
+          val(count) = -2._iwp
         END IF
       END IF
       count = count + 1
