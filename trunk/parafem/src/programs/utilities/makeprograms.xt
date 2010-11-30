@@ -10,7 +10,7 @@ LDFLAGS= -L$(lib) -lParaFEM -lblas
 
 .SUFFIXES: .o .f90
 
-all: d2off bnd2dis mat2numpe rdfaces upvw2dis
+all: d2off bnd2dis mat2numpe rdfaces upvw2dis testbc
 default: all
 
 
@@ -44,6 +44,12 @@ upvw2dis: upvw2dis.o
 upvw2dis.o: upvw2dis.f90
 	$(FC) upvw2dis.f90 $(FFLAGS)
 
+testbc: testbc.o
+	$(FC) testbc.o -o testbc $(LDFLAGS)
+
+testbc.o: testbc.f90
+	$(FC) testbc.f90 $(FFLAGS)
+
 clean:
 	rm -f *.o
 
@@ -53,12 +59,14 @@ execlean:
 	rm -f mat2numpe
 	rm -f rdfaces
 	rm -f upvw2dis
+	rm -f testbc
 
 relink: d2off
 relink: bnd2dis
 relink: mat2numpe
 relink: rdfaces
 relink: upvw2dis
+relink: testbc
 
 install:
 	mv d2off $(HOME)/bin
@@ -66,3 +74,4 @@ install:
 	mv mat2numpe $(HOME)/bin
 	mv rdfaces $(HOME)/bin
 	mv upvw2dis $(HOME)/bin
+	mv testbc $(HOME)/bin

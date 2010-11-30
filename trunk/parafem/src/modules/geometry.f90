@@ -210,11 +210,11 @@ MODULE GEOMETRY
 
     IMPLICIT NONE
     
-    INTEGER,  INTENT(IN)  :: iel,nxe,nze
-    REAL(iwp),INTENT(IN)  :: aa,bb,cc
-    REAL(iwp),INTENT(OUT) :: coord(:,:)
-    INTEGER,  INTENT(OUT) :: num(:)
-    INTEGER               :: fac1,fac2,ip,iq,is,iplane
+    INTEGER,  INTENT(IN)    :: iel,nxe,nze
+    REAL(iwp),INTENT(IN)    :: aa,bb,cc
+    REAL(iwp),INTENT(INOUT) :: coord(:,:)
+    INTEGER,  INTENT(INOUT) :: num(:)
+    INTEGER                 :: fac1,fac2,ip,iq,is,iplane
     
     iq     = (iel-1)/(nxe*nze)+1
     iplane = iel-(iq-1)*nxe*nze
