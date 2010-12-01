@@ -351,7 +351,7 @@ MODULE LOADING
       node(count) = i + f1 +(j+1) * f2 + j * f1
       IF(j/=nle-1) THEN
         IF(i==1.OR.i==2*nle+1) THEN
-          val(count) = -1._iwp
+          val(count) = -2._iwp
         ELSE IF (mod(i,2)==0) THEN
           val(count) = 8._iwp
         ELSE
