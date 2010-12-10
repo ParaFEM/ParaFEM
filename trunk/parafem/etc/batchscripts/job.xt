@@ -1,0 +1,8 @@
+#PBS -A <my_account>
+#PBS -N ParaFEM
+#PBS -l mppwidth=8
+#PBS -l mppnppn=4
+#PBS -l walltime=00:19:59
+#PBS -j oe
+cd /work/<my_project>/<my_project>/<my_directory>
+aprun -n 8 -N 4 ./<my_program> <argument>
