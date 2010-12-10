@@ -29,7 +29,7 @@ execlean:
 install:
 	rm -f *.o
 	rm -f *.mod
-	mv sg12mg $(HOME)/parafem/bin
+	mv sg12mg ../../../../bin
 
 relink: sg12mg
 
