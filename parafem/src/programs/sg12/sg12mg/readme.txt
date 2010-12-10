@@ -20,6 +20,7 @@
   o The following error message is given with the PGF90 compiler if you include 
     the file extension in the <job_name>.
     
+    ie. sg12mg ed4-small-c3d8.mg is incorrect
     
     " PGFIO-F-209/OPEN/unit=10/'OLD' specified for file which does not exist.
       File name = ed4-small-c3d8.mg.mg                              
