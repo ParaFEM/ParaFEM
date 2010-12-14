@@ -223,7 +223,7 @@ PROGRAM sg12mg
   OPEN(13,FILE=fname,STATUS='REPLACE',ACTION='WRITE')
 
   IF(problem_type == 'ed4') THEN
-    CALL load_p121(no,val,nle,nxe,nze)
+    CALL load_p121(nle,nod,nxe,nze, no,val)
     val = -val * aa * bb / 12._iwp
     DO i = 1, loaded_freedoms
       WRITE(13,'(I10,2A,3E16.8)') no(i),"  0.00000000E+00  ","0.00000000E+00", &

@@ -290,34 +290,59 @@ MODULE LOADING
 !------------------------------------------------------------------------------
 !------------------------------------------------------------------------------
 
-  SUBROUTINE load_p121(node,val,nle,nxe,nze)
+  SUBROUTINE load_p121(nle,nod,nxe,nze,node,val)
 
   !/****f* loading/load_p121
   !*  NAME
   !*    SUBROUTINE load_p121
+  !*  SYNOPSIS
+  !*    Usage:     CALL load_p121(nle,nod,nxe,nze,node,val)
   !*  FUNCTION
   !*    Returns loaded nodes NODE and values VAL from number of elements in
-  !*    x and z and number of loaded elements along a side of a square
+  !*    x and z and number of loaded elements along a side of a square.
+  !*    Works with 8 node and 20 node hexahedra.
   !*  INPUTS
-  !*    CALL load_p121(node,val, nle,nxe,nze)
-  !*    
-  !*    NODE       : Integer. 
-  !*    VAL        : Real. 
-  !*    NLE        : Integer. 
-  !*    NXE        : Integer.
-  !*    NZE        : Integer.
+  !*    The following scalar integers have the INTENT(IN) attribute:
+  !*
+  !*    NLE        : Number of loaded elements (side of square)
+  !*    NOD        : Number of nodes per element 
+  !*    NXE        : Number of elements in the x-direction
+  !*    NZE        : Number of elements in the y-direction
+  !* 
+  !*    The following dynamic integer array has the INTENT(INOUT) attribute:
+  !* 
+  !*    NODE       : Freedoms to be loaded/fixed 
+  !*
+  !*    The following dynamic real array has the INTENT(INOUT) attribute:
+  !*
+  !*    VAL        : Prescribed load/displacement values 
   !*  AUTHOR
-  !*    Smith and Griffiths, 4th Edition
+  !*    I.M. Smith
+  !*    L. Margetts
+  !*  COPYRIGHT
+  !*    University of Manchester, 2004-2010
   !****
   !*/ 
 
   IMPLICIT NONE
   
-  INTEGER,INTENT(IN)    :: nxe,nze,nle
-  INTEGER,INTENT(OUT)   :: node(:)
-  REAL(iwp),INTENT(OUT) :: val(:)  
-  INTEGER               :: f1,f2,f3,count,i,j
-  
+  INTEGER,INTENT(IN)      :: nle,nod,nxe,nze
+  INTEGER,INTENT(INOUT)   :: node(:)
+  REAL(iwp),INTENT(INOUT) :: val(:)  
+  INTEGER                 :: f1,f2,f3,count,i,j
+ 
+!------------------------------------------------------------------------------
+! 1. Select 8 node or 20 node mesh
+!------------------------------------------------------------------------------
+ 
+  SELECT CASE(nod)
+
+!------------------------------------------------------------------------------
+! 2. Mesh comprises 20 node bricks
+!------------------------------------------------------------------------------
+
+  CASE(20)
+
   f1 = ((2*nxe+1)*(nze+1)+(nxe+1)*nze)
   f2 = (nxe+1)*(nze+1)
 
@@ -370,6 +395,28 @@ MODULE LOADING
     END DO
  
   END DO
+
+!------------------------------------------------------------------------------
+! 3. Mesh comprises 8 node bricks
+!------------------------------------------------------------------------------
+
+  CASE(8)
+
+  PRINT *, "8 node hexahedral elements not supported in load_p121"
+
+!------------------------------------------------------------------------------
+! 4. Default case returns error if nod /= 8 or 20
+!------------------------------------------------------------------------------
+   
+  CASE DEFAULT
+
+  PRINT *
+  PRINT *, "Wrong value for nod in subroutine load_p121"
+  PRINT *, "  Accepted values are 8 and 20"
+  PRINT *, "  Actual value passed to subroutine was ", nod
+  PRINT *
+
+  END SELECT
  
   END SUBROUTINE load_p121
   
