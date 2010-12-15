@@ -402,35 +402,34 @@ MODULE LOADING
 
   CASE(8)
 
-  f1 = 2*nxe*nze
-  f2 = (3*nxe+1)*nze
+  f1 = (nxe+1)*(nze+1)
 
   count = 1
 
-  DO i = 1,2*nle+1,2
+  DO i = 1,nle+1
     node(count) = i
-    IF(i==1 .OR. i==2*nle+1) THEN
-      val(count) = -10._iwp
+    IF(i==1 .OR. i==nle+1) THEN
+      val(count) = -6.25_iwp
     ELSE
-      val(count) = -20._iwp
+      val(count) = -12.5_iwp
     END IF
     count = count + 1
   END DO
 
   DO j = 0,nle-1
-    DO i = 1,3*nle+1,3
-      node(count) = i + f1 + (j+1) * f2 + 1
+    DO i = 1,nle+1
+      node(count) = i + (j+1) * f1
       IF(j/=nle-1) THEN
-        IF(i==1 .OR. i==3*nle+1) THEN
-          val(count) = -20._iwp
+        IF(i==1 .OR. i==nle+1) THEN
+          val(count) = -12.5_iwp
         ELSE
-          val(count) = -40._iwp
+          val(count) = -25._iwp
         END IF
       ELSE
-        IF(i==1 .OR. i==3*nle+1) THEN
-          val(count) = -10._iwp
+        IF(i==1 .OR. i==nle+1) THEN
+          val(count) = -6.25_iwp
         ELSE
-          val(count) = -20._iwp
+          val(count) = -12.5_iwp
         END IF
       END IF
       count = count + 1
