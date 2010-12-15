@@ -74,191 +74,303 @@ PROGRAM sg12mg
   READ(10,*) program_name
 
 !------------------------------------------------------------------------------
-!------------------------------------------------------------------------------
-! 6. Select program using the SELECT CASE CONSTRUCT
-!------------------------------------------------------------------------------
+! 5. Select program using the SELECT CASE CONSTRUCT
 !------------------------------------------------------------------------------
 
   SELECT CASE(program_name)
 
 !------------------------------------------------------------------------------
+!------------------------------------------------------------------------------
 ! 7. Program p121
 !    
 !    problem_type can have the value 'ed4' or 'boussinesq'
 !------------------------------------------------------------------------------
+!------------------------------------------------------------------------------
 
   CASE('p121')
 
-  READ(10,*) problem_type
-  READ(10,*) nels, nxe, nze, nod, nip
-  READ(10,*) aa, bb, cc, e, v
-  READ(10,*) tol, limit
+    READ(10,*) problem_type
+    READ(10,*) nels, nxe, nze, nod, nip
+    READ(10,*) aa, bb, cc, e, v
+    READ(10,*) tol, limit
 
-  nye   = nels/nxe/nze
-
-  IF(nod == 20) THEN
-    nr    = ((2*nxe+1)*(nze+1)+(nxe+1)*nze)*2 +                               &
-            ((2*nye-1)*nze+(nye-1)*nze)*2     +                               &
-            (2*nye-1)*(nxe+1)                 +                               &
-            (nye-1)*nxe
-  ELSE IF(nod == 8) THEN
-    nr    = ((nxe+1)*(nze+1))*2 + ((nye-1)*(nze+1))*2 + ((nxe-1)*(nze-1)) 
-  ELSE
-    PRINT *, "Wrong number of nodes for sg12mg. Nod = ", nod
-  END IF
-
-
-  ndim  = 3
-  nodof = 3
-
-  IF(nod == 20) THEN
-    nn    = (((2*nxe+1)*(nze+1))+((nxe+1)*nze))*(nye+1) +                     &
-            (nxe+1)*(nze+1)*nye
-  ELSE IF(nod == 8) THEN
-    nn    = (nxe+1)*(nye+1)*(nze+1)
-  ELSE
-    PRINT *, "Wrong number of nodes for sg12mg. Nod = ", nod
-  END IF
-
-  IF(problem_type == 'ed4') THEN
-    nle             = nxe/5
-    loaded_freedoms = 3*nle*nle + 4*nle + 1
-    fixed_freedoms  = 0
-  ELSE IF(problem_type == 'boussinesq') THEN
-    loaded_freedoms = 1
-    fixed_freedoms  = 0
-  ELSE
-    PRINT *, "Problem type: ",problem_type," not recognised."
-  END IF
+    nye   = nels/nxe/nze
 
 !------------------------------------------------------------------------------
-! 7.2 Allocate dynamic arrays
+! 7.1 Select 8 node or 20 node hexahedra
 !------------------------------------------------------------------------------
 
-  ALLOCATE(coord(nod,ndim),g_coord(ndim,nn),g_num(nod,nels),rest(nr,nodof+1), &
-           val(loaded_freedoms),no(loaded_freedoms),num(nod))
-  
-  coord    = 0.0_iwp ; g_coord = 0.0_iwp ;   val = 0.0_iwp
-  g_num    = 0       ; rest    = 0       ;   no  = 0       ; num = 0
-
+    SELECT CASE(nod)
+   
 !------------------------------------------------------------------------------
-! 7.3 Find nodal coordinates and element steering array
-!     Write to file using Abaqus node numbering convention 
-!------------------------------------------------------------------------------
-
-  IF(nod == 20) THEN
-    DO iel = 1, nels
-      CALL geometry_20bxz(iel,nxe,nze,aa,bb,cc,coord,g_num(:,iel))
-      g_coord(:,g_num(:,iel)) = TRANSPOSE(coord)
-    END DO
-  ELSE IF(nod == 8) THEN
-    DO iel = 1, nels
-      CALL geometry_8bxz(iel,nxe,nze,aa,bb,cc,coord,g_num(:,iel))
-      g_coord(:,g_num(:,iel)) = TRANSPOSE(coord)
-    END DO
-  ELSE
-    PRINT *, "Wrong number of nodes for sg12mg. Nod = ", nod
-  END IF
-
-  fname = job_name(1:INDEX(job_name, " ")-1) // ".d" 
-  OPEN(11,FILE=fname,STATUS='REPLACE',ACTION='WRITE')
-  
-  WRITE(11,'(A)') "*THREE_DIMENSIONAL"
-  WRITE(11,'(A)') "*NODES"
-
-  DO i = 1, nn
-    WRITE(11,'(I12,3E14.6)') i, g_coord(:,i)
-  END DO
-
-  WRITE(11,'(A)') "*ELEMENTS"
-  
-  IF(nod == 20) THEN
-    DO iel = 1, nels
-      WRITE(11,'(I12,A,20I12,A)') iel, " 3 20 1 ", g_num(3,iel),g_num(5,iel),  &
-                                   g_num(7,iel),g_num(1,iel),g_num(15,iel),    &
-                                   g_num(17,iel),g_num(19,iel),g_num(13,iel),  &
-                                   g_num(4,iel),g_num(6,iel),g_num(8,iel),     &
-                                   g_num(2,iel),g_num(16,iel),g_num(18,iel),   &
-                                   g_num(20,iel),g_num(14,iel),g_num(10,iel),  &
-                                   g_num(11,iel),g_num(12,iel),g_num(9,iel)," 1"
-    END DO
-  ELSE IF(nod == 8) THEN
-    DO iel = 1, nels
-      WRITE(11,'(I12,A,8I12,A)') iel, " 3 8 1 ", g_num(1,iel),g_num(4,iel),    &
-                                   g_num(8,iel),g_num(5,iel),g_num(2,iel),     &
-                                   g_num(3,iel),g_num(7,iel),g_num(6,iel)," 1"
-    END DO
-  ELSE
-    PRINT *, "Wrong number of nodes for sg12mg. Nod = ", nod
-  END IF
-
-  CLOSE(11)
-
-!------------------------------------------------------------------------------
-! 7.4 Boundary conditions
+! 7.2 Create input deck for 20 node hexahedra
 !------------------------------------------------------------------------------
   
-  fname = job_name(1:INDEX(job_name, " ")-1) // ".bnd" 
-  OPEN(12,FILE=fname,STATUS='REPLACE',ACTION='WRITE')
-
-  IF(nod == 20) THEN
-    CALL cube_bc20(rest,nxe,nye,nze)
-  ELSE IF(nod == 8) THEN
-    CALL cube_bc8(rest,nxe,nye,nze)
-  ELSE
-    PRINT *, "Wrong number of nodes for sg12mg. Nod = ", nod
-  END IF
-
-  DO i = 1, nr
-    WRITE(12,'(I8,3I6)') rest(i,:) 
-  END DO
-
-  CLOSE(12)
-
-!------------------------------------------------------------------------------
-! 7.5 Loading conditions
-!------------------------------------------------------------------------------
-
-  fname = job_name(1:INDEX(job_name, " ")-1) // ".lds" 
-  OPEN(13,FILE=fname,STATUS='REPLACE',ACTION='WRITE')
-
-  IF(problem_type == 'ed4') THEN
-    CALL load_p121(nle,nod,nxe,nze, no,val)
-    val = -val * aa * bb / 12._iwp
-    DO i = 1, loaded_freedoms
-      WRITE(13,'(I10,2A,3E16.8)') no(i),"  0.00000000E+00  ","0.00000000E+00", &
-                                  val(i) 
-    END DO
-  ELSE IF (problem_type == 'boussinesq') THEN
-    no  = 1
-    val = -1.0_iwp
-    DO i = 1, loaded_freedoms
-      WRITE(13,'(I10,2A,3E16.8)') no(i),"  0.00000000E+00  ","0.00000000E+00", &
-                                  val(i) 
-    END DO
-  ELSE
-    PRINT *, "Problem type: ", problem_type, " not recognised.               &&
-              No values written to .lds"
-  END IF
+    CASE(20)
+    
+      nr    = ((2*nxe+1)*(nze+1)+(nxe+1)*nze)*2 +                           &
+              ((2*nye-1)*nze+(nye-1)*nze)*2+(2*nye-1)*(nxe+1)+(nye-1)*nxe
+      ndim  = 3
+      nodof = 3
+      nn    = (((2*nxe+1)*(nze+1))+((nxe+1)*nze))*(nye+1)+(nxe+1)*(nze+1)*nye
+      
+      IF(problem_type == 'ed4') THEN
+        nle             = nxe/5
+        loaded_freedoms = 3*nle*nle + 4*nle + 1
+        fixed_freedoms  = 0
+      ELSE IF(problem_type == 'boussinesq') THEN
+        loaded_freedoms = 1
+        fixed_freedoms  = 0
+      ELSE
+        PRINT *, "Problem type: ",problem_type," not recognised."
+      END IF
   
-  CLOSE(13)
+!------------------------------------------------------------------------------
+! 7.21 Allocate dynamic arrays
+!------------------------------------------------------------------------------
+  
+      ALLOCATE(coord(nod,ndim),g_coord(ndim,nn),g_num(nod,nels),              &
+               rest(nr,nodof+1),val(loaded_freedoms),no(loaded_freedoms),     &
+               num(nod))
+    
+      coord    = 0.0_iwp ; g_coord = 0.0_iwp ;   val = 0.0_iwp
+      g_num    = 0       ; rest    = 0       ;   no  = 0       ; num = 0
+  
+!------------------------------------------------------------------------------
+! 7.22 Find nodal coordinates and element steering array
+!      Write to file using Abaqus node numbering convention 
+!------------------------------------------------------------------------------
+  
+     DO iel = 1, nels
+       CALL geometry_20bxz(iel,nxe,nze,aa,bb,cc,coord,g_num(:,iel))
+       g_coord(:,g_num(:,iel)) = TRANSPOSE(coord)
+     END DO
+  
+     fname = job_name(1:INDEX(job_name, " ")-1) // ".d" 
+     OPEN(11,FILE=fname,STATUS='REPLACE',ACTION='WRITE')
+    
+     WRITE(11,'(A)') "*THREE_DIMENSIONAL"
+     WRITE(11,'(A)') "*NODES"
+  
+     DO i = 1, nn
+       WRITE(11,'(I12,3E14.6)') i, g_coord(:,i)
+     END DO
+  
+     WRITE(11,'(A)') "*ELEMENTS"
+    
+     DO iel = 1, nels
+       WRITE(11,'(I12,A,20I12,A)')iel," 3 20 1 ",g_num(3,iel),g_num(5,iel),   &
+                                  g_num(7,iel),g_num(1,iel),g_num(15,iel),    &
+                                  g_num(17,iel),g_num(19,iel),g_num(13,iel),  &
+                                  g_num(4,iel),g_num(6,iel),g_num(8,iel),     &
+                                  g_num(2,iel),g_num(16,iel),g_num(18,iel),   &
+                                  g_num(20,iel),g_num(14,iel),g_num(10,iel),  &
+                                  g_num(11,iel),g_num(12,iel),g_num(9,iel),   &
+                                  " 1"
+     END DO
+  
+     CLOSE(11)
+  
+!------------------------------------------------------------------------------
+! 7.23 Boundary conditions
+!------------------------------------------------------------------------------
+    
+     fname = job_name(1:INDEX(job_name, " ")-1) // ".bnd" 
+     OPEN(12,FILE=fname,STATUS='REPLACE',ACTION='WRITE')
+  
+     CALL cube_bc20(rest,nxe,nye,nze)
+  
+     DO i = 1, nr
+       WRITE(12,'(I8,3I6)') rest(i,:) 
+     END DO
+  
+     CLOSE(12)
+  
+!------------------------------------------------------------------------------
+! 7.24 Loading conditions
+!------------------------------------------------------------------------------
+  
+     fname = job_name(1:INDEX(job_name, " ")-1) // ".lds" 
+     OPEN(13,FILE=fname,STATUS='REPLACE',ACTION='WRITE')
+  
+     IF(problem_type == 'ed4') THEN
+       CALL load_p121(nle,nod,nxe,nze, no,val)
+       val = -val * aa * bb / 12._iwp
+       DO i = 1, loaded_freedoms
+         WRITE(13,'(I10,2A,3E16.8)') no(i),"  0.00000000E+00  ",              &
+                                    "0.00000000E+00",val(i) 
+       END DO
+     ELSE IF (problem_type == 'boussinesq') THEN
+       no  = 1
+       val = -1.0_iwp
+       DO i = 1, loaded_freedoms
+         WRITE(13,'(I10,2A,3E16.8)') no(i),"  0.00000000E+00  ",              &
+                                    "0.00000000E+00",val(i) 
+       END DO
+     ELSE
+       PRINT *, "Problem type: ", problem_type, " not recognised.            &&
+                 No values written to .lds"
+     END IF
+    
+     CLOSE(13)
+  
+!------------------------------------------------------------------------------
+! 7.25 New control data
+!------------------------------------------------------------------------------
+  
+     fname = job_name(1:INDEX(job_name, " ")-1) // ".dat" 
+     OPEN(14,FILE=fname,STATUS='REPLACE',ACTION='WRITE')
+  
+     WRITE(14,'(A)') "'hexahedron'"
+     WRITE(14,'(A)') "2"              ! Abaqus node numbering scheme
+     WRITE(14,'(7I9)') nels, nn, nr, nip, nod, loaded_freedoms, fixed_freedoms
+     WRITE(14,'(3E12.4,I8)') e, v, tol, limit
+  
+     CLOSE(14)
 
 !------------------------------------------------------------------------------
-! 7.6 New control data
+! 7.3 Create input deck for 8 node hexahedra
+!------------------------------------------------------------------------------
+    
+   CASE(8)
+  
+     nr    = ((nxe+1)*(nze+1))*2 + ((nye-1)*(nze+1))*2 + ((nxe-1)*(nze-1)) 
+     ndim  = 3
+     nodof = 3
+     nn    = (nxe+1)*(nye+1)*(nze+1)
+    
+     IF(problem_type == 'ed4') THEN
+       nle             = nxe/5
+       loaded_freedoms = (nle+1)*(nle+1)
+       fixed_freedoms  = 0
+     ELSE IF(problem_type == 'boussinesq') THEN
+       loaded_freedoms = 1
+       fixed_freedoms  = 0
+     ELSE
+       PRINT *, "Problem type: ",problem_type," not recognised."
+     END IF
+
+!------------------------------------------------------------------------------
+! 7.31 Allocate dynamic arrays
 !------------------------------------------------------------------------------
 
-  fname = job_name(1:INDEX(job_name, " ")-1) // ".dat" 
-  OPEN(14,FILE=fname,STATUS='REPLACE',ACTION='WRITE')
+     ALLOCATE(coord(nod,ndim),g_coord(ndim,nn),g_num(nod,nels),               &
+              rest(nr,nodof+1),val(loaded_freedoms),no(loaded_freedoms),      &
+              num(nod))
+    
+     coord    = 0.0_iwp ; g_coord = 0.0_iwp ;   val = 0.0_iwp
+     g_num    = 0       ; rest    = 0       ;   no  = 0       ; num = 0
 
-  WRITE(14,'(A)') "'hexahedron'"
-  WRITE(14,'(A)') "2"              ! Abaqus node numbering scheme
-  WRITE(14,'(7I9)') nels, nn, nr, nip, nod, loaded_freedoms, fixed_freedoms
-  WRITE(14,'(3E12.4,I8)') e, v, tol, limit
+!------------------------------------------------------------------------------
+! 7.32 Find nodal coordinates and element steering array
+!      Write to file using Abaqus node numbering convention 
+!------------------------------------------------------------------------------
 
-  CLOSE(14)
+     DO iel = 1, nels
+       CALL geometry_8bxz(iel,nxe,nze,aa,bb,cc,coord,g_num(:,iel))
+       g_coord(:,g_num(:,iel)) = TRANSPOSE(coord)
+     END DO
+    
+     fname = job_name(1:INDEX(job_name, " ")-1) // ".d" 
+     OPEN(11,FILE=fname,STATUS='REPLACE',ACTION='WRITE')
+    
+     WRITE(11,'(A)') "*THREE_DIMENSIONAL"
+     WRITE(11,'(A)') "*NODES"
+  
+     DO i = 1, nn
+       WRITE(11,'(I12,3E14.6)') i, g_coord(:,i)
+     END DO
+  
+     WRITE(11,'(A)') "*ELEMENTS"
+    
+     DO iel = 1, nels
+       WRITE(11,'(I12,A,8I12,A)') iel, " 3 8 1 ", g_num(1,iel),g_num(4,iel),  &
+                                    g_num(8,iel),g_num(5,iel),g_num(2,iel),   &
+                                    g_num(3,iel),g_num(7,iel),g_num(6,iel),   &
+                                    " 1"
+     END DO
+    
+     CLOSE(11)
 
+!------------------------------------------------------------------------------
+! 7.33 Boundary conditions
+!------------------------------------------------------------------------------
+  
+     fname = job_name(1:INDEX(job_name, " ")-1) // ".bnd" 
+     OPEN(12,FILE=fname,STATUS='REPLACE',ACTION='WRITE')
+  
+     CALL cube_bc8(rest,nxe,nye,nze)
+  
+     DO i = 1, nr
+       WRITE(12,'(I8,3I6)') rest(i,:) 
+     END DO
+  
+     CLOSE(12)
+
+!------------------------------------------------------------------------------
+! 7.34 Loading conditions
+!------------------------------------------------------------------------------
+
+     fname = job_name(1:INDEX(job_name, " ")-1) // ".lds" 
+     OPEN(13,FILE=fname,STATUS='REPLACE',ACTION='WRITE')
+  
+     IF(problem_type == 'ed4') THEN
+       CALL load_p121(nle,nod,nxe,nze, no,val)
+       val = -val * aa * bb 
+       DO i = 1, loaded_freedoms
+         WRITE(13,'(I10,2A,3E16.8)') no(i),                                   &
+                                    "  0.00000000E+00  ","0.00000000E+00",    &
+                                     val(i) 
+       END DO
+     ELSE IF (problem_type == 'boussinesq') THEN
+       no  = 1
+       val = -1.0_iwp
+       DO i = 1, loaded_freedoms
+         WRITE(13,'(I10,2A,3E16.8)') no(i),                                   &
+                                    "  0.00000000E+00  ","0.00000000E+00",    &
+                                     val(i) 
+       END DO
+     ELSE
+       PRINT *, "Problem type: ", problem_type, " not recognised.            &&
+                 No values written to .lds"
+     END IF
+    
+     CLOSE(13)
+
+!------------------------------------------------------------------------------
+! 7.35 New control data
+!------------------------------------------------------------------------------
+
+     fname = job_name(1:INDEX(job_name, " ")-1) // ".dat" 
+     OPEN(14,FILE=fname,STATUS='REPLACE',ACTION='WRITE')
+  
+     WRITE(14,'(A)') "'hexahedron'"
+     WRITE(14,'(A)') "2"              ! Abaqus node numbering scheme
+     WRITE(14,'(7I9)') nels, nn, nr, nip, nod, loaded_freedoms, fixed_freedoms
+     WRITE(14,'(3E12.4,I8)') e, v, tol, limit
+
+     CLOSE(14)
+
+!------------------------------------------------------------------------------
+! 7.4 Default case and error message
+!------------------------------------------------------------------------------
+  
+    
+   CASE DEFAULT
+  
+     PRINT *
+     PRINT *, "Wrong value given in variable NOD"
+     PRINT *, "  Accepted values are 8 and 20"
+     PRINT *, "  Here NOD = ", nod
+     PRINT *
+      
+   END SELECT
+  
+
+!------------------------------------------------------------------------------  
 !------------------------------------------------------------------------------
 ! 8. Program p122
+!------------------------------------------------------------------------------
 !------------------------------------------------------------------------------
 
   CASE('p122')
