@@ -402,7 +402,40 @@ MODULE LOADING
 
   CASE(8)
 
-  PRINT *, "8 node hexahedral elements not supported in load_p121"
+  f1 = 2*nxe*nze
+  f2 = (3*nxe+1)*nze
+
+  count = 1
+
+  DO i = 1,2*nle+1,2
+    node(count) = i
+    IF(i==1 .OR. i==2*nle+1) THEN
+      val(count) = -10._iwp
+    ELSE
+      val(count) = -20._iwp
+    END IF
+    count = count + 1
+  END DO
+
+  DO j = 0,nle-1
+    DO i = 1,3*nle+1,3
+      node(count) = i + f1 + (j+1) * f2 + 1
+      IF(j/=nle-1) THEN
+        IF(i==1 .OR. i==3*nle+1) THEN
+          val(count) = -20._iwp
+        ELSE
+          val(count) = -40._iwp
+        END IF
+      ELSE
+        IF(i==1 .OR. i==3*nle+1) THEN
+          val(count) = -10._iwp
+        ELSE
+          val(count) = -20._iwp
+        END IF
+      END IF
+      count = count + 1
+    END DO
+  END DO
 
 !------------------------------------------------------------------------------
 ! 4. Default case returns error if nod /= 8 or 20
