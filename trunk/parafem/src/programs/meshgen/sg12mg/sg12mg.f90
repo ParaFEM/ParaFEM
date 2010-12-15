@@ -195,7 +195,7 @@ PROGRAM sg12mg
   
      IF(problem_type == 'ed4') THEN
        CALL load_p121(nle,nod,nxe,nze, no,val)
-       val = -val * aa * bb / 12._iwp
+       val = -val * aa * bb * (25._iwp / 12._iwp)
        DO i = 1, loaded_freedoms
          WRITE(13,'(I10,2A,3E16.8)') no(i),"  0.00000000E+00  ",              &
                                     "0.00000000E+00",val(i) 
@@ -316,7 +316,7 @@ PROGRAM sg12mg
   
      IF(problem_type == 'ed4') THEN
        CALL load_p121(nle,nod,nxe,nze, no,val)
-       val = -val * aa * bb 
+       val = val * aa * bb 
        DO i = 1, loaded_freedoms
          WRITE(13,'(I10,2A,3E16.8)') no(i),                                   &
                                     "  0.00000000E+00  ","0.00000000E+00",    &
