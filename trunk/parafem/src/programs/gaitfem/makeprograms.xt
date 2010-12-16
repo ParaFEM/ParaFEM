@@ -1,0 +1,31 @@
+module    = ../../../../include
+lib       = ../../../../lib
+
+FC=ftn
+
+#  Flags
+#FFLAGS= -c -I$(module) -V -g -Mbounds -traceback
+FFLAGS= -c -I$(module) -V -fastsse -Mlarge_arrays
+
+LDFLAGS= -L$(lib) -lParaFEM -lblas
+
+.SUFFIXES: .o .f90
+
+all: gaitfem
+default: all
+
+
+gaitfem: gaitfem.o
+	$(FC) gaitfem.o -o gaitfem $(LDFLAGS)
+
+gaitfem.o: gaitfem.f90
+	$(FC) gaitfem.f90 $(FFLAGS)
+
+clean:
+	rm -f *.o
+
+execlean:
+	rm -f gaitfem
+
+relink: gaitfem
+
