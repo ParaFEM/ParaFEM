@@ -1,5 +1,5 @@
-module    = ../../../../include
-lib       = ../../../../lib
+module    = ../../../include
+lib       = ../../../lib
 
 FC=ftn
 
@@ -7,7 +7,7 @@ FC=ftn
 #FFLAGS= -c -I$(module) -V -g -Mbounds -traceback
 FFLAGS= -c -I$(module) -V -fastsse -Mlarge_arrays
 
-LDFLAGS= -L$(lib) -lParaFEM -lblas
+LDFLAGS= -L$(lib) -lParaFEM_serial -lblas
 
 .SUFFIXES: .o .f90
 

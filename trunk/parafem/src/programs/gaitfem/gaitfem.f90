@@ -132,7 +132,6 @@ PROGRAM gaitfem
  
   timest(4) = elap_time()
 
-  CALL MPI_BARRIER(MPI_COMM_WORLD,ier)
 !------------------------------------------------------------------------------
 ! 7. Allocate arrays dimensioned by neq_pp 
 !------------------------------------------------------------------------------
