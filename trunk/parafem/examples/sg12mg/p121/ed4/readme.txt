@@ -10,8 +10,9 @@ input deck for program p121.
      Will create an input deck for the problem described in Chapter 12 of
      Smith and Griffiths "Programming the Finite Element Method".
      
-     The command:
-     
+     The commands:
+    
+       $chmod +x run-all-ed4.sh 
        $source ./run-all-ed4.sh
      
      Will create all the input decks available in this directory.
