@@ -6,7 +6,7 @@ FC=ftn
 #  Flags
 FFLAGS= -c -I$(module) -V -fastsse -Mlarge_arrays
 
-LDFLAGS= -L$(lib) -lParaFEM -lblas
+LDFLAGS= -L$(lib) -lParaFEM_mpi -lblas
 
 .SUFFIXES: .o .f90
 

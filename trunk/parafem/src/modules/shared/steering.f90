@@ -26,7 +26,6 @@ MODULE STEERING
   !*/
 
   USE precision
-  USE mp_interface
 
   CONTAINS
 
@@ -542,7 +541,7 @@ MODULE STEERING
         PRINT*, "Program aborting"
         PRINT*
 
-        CALL shutdown()
+        STOP
  
       END SELECT
     
@@ -571,7 +570,7 @@ MODULE STEERING
         PRINT*, "Program aborting"
         PRINT*
         
-        CALL shutdown()
+        STOP
 
       END SELECT
     
@@ -582,8 +581,8 @@ MODULE STEERING
       PRINT*, "Program aborting"
       PRINT*
      
-      CALL shutdown()
-    
+      STOP
+ 
     END SELECT
     
     RETURN

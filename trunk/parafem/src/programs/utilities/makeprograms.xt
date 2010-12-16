@@ -1,12 +1,13 @@
 module    = ../../../include
 lib       = ../../../lib
+bin       = ../../../bin
 
 FC=ftn
 
 #  Flags
-FFLAGS= -c -I$(module) -V -fast
+FFLAGS= -c -I$(module) -V -fastsse -Mlarge_arrays
 
-LDFLAGS= -L$(lib) -lParaFEM -lblas
+LDFLAGS= -L$(lib) -lParaFEM_mpi -lblas
 
 .SUFFIXES: .o .f90
 
@@ -69,9 +70,9 @@ relink: upvw2dis
 relink: testbc
 
 install:
-	mv d2off $(HOME)/bin
-	mv bnd2dis $(HOME)/bin
-	mv mat2numpe $(HOME)/bin
-	mv rdfaces $(HOME)/bin
-	mv upvw2dis $(HOME)/bin
-	mv testbc $(HOME)/bin
+	mv d2off     $(bin)
+	mv bnd2dis   $(bin)
+	mv mat2numpe $(bin)
+	mv rdfaces   $(bin)
+	mv upvw2dis  $(bin)
+	mv testbc    $(bin)
