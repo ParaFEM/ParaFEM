@@ -4,14 +4,16 @@ FC = ftn
 FFLAGS= -fastsse -Mlarge_arrays 
 #FFLAGS= -g -Mbounds -traceback
 
-objs = precision.o global_variables.o mp_interface.o input.o output.o         \
-       maths.o gather_scatter.o pcg.o partition.o steering.o elements.o       \
-       loading.o timing.o plasticity.o geometry.o fluid.o bicg.o                                          
+shared = precision.o global_variables.o partition.o steering.o elements.o      \
+         timing.o plasticity.o geometry.o fluid.o                                          
+
+mpi    = mp_interface.o input.o output.o maths.o gather_scatter.o pcg.o        \
+         loading.o bicg.o                                          
 
 .SUFFIXES: .f90 .o
 
-lib: $(objs)
-	ar -r libParaFEM.a $(objs)
+lib: $/shared/(shared) $/mpi/(mpi)
+	ar -r libParaFEM.a $/shared/(shared) $/mpi/(mpi)
 
 .f90.o:
 	$(FC) -c $(FFLAGS) $*.f90
@@ -21,6 +23,8 @@ clean:
 	rm *.o *.mod
 
 install:
-	rm *.o
-	mv *.mod ../../include
+	rm /shared/*.o
+	rm /mpi/*.o	
+	mv /shared/*.mod ../../include
+	mv /mpi/*.mod ../../include
 	mv *.a ../../lib
