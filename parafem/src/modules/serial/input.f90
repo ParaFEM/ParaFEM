@@ -198,18 +198,21 @@ MODULE INPUT
 
   fname     = job_name(1:INDEX(job_name, " ")-1) // ".d"
   OPEN(10,FILE=fname,STATUS='OLD',ACTION='READ')
+
   READ(10,*)   !header
   READ(10,*)   !header
-  DO i = 1,nn  !read nodes until reaching the elements
-    READ(10,*) k, dummy(:)
+
+  DO i = 1,nn 
+    READ(10,*) !read nodes until reaching the elements 
   END DO
+
   READ(10,*)   !keyword
 
 !------------------------------------------------------------------------------
 ! 3. Read element steering array
 !------------------------------------------------------------------------------
 
-  DO iel = 1,nels
+  DO iel = 1,nels_pp
     READ(10,*)k,k,k,k,g_num_pp(:,iel),k
   END DO
         
