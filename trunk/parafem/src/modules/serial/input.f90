@@ -7,20 +7,16 @@ MODULE INPUT
   !*    Usage:      USE input
   !*  FUNCTION
   !*    Contains subroutines that handle input data. These subroutines are 
-  !*    parallel and require MPI.
+  !*    serial. Parallel versions are also available in /src/module/mpi
   !*    
   !*    Subroutine             Purpose
   !*
   !*    READ_G_COORD_PP        Reads the global coordinates
   !*    READ_G_NUM_PP          Reads the element nodal steering array
   !*    READ_LOADS             Reads nodal forces
-  !*    READ_LOADS_NS          Reads lid velocities for p126
   !*    READ_FIXED             Reads fixed freedoms for displacement control
   !*    READ_REST              Reads the restraints
   !*    READ_P121              Reads the control data for program p121
-  !*    READ_P126              Reads the control data for program p126
-  !*    READ_P128AR            Reads the control data for program p128ar
-  !*    READ_P129              Reads the control data for program p129
   !*  AUTHOR
   !*    L. Margetts
   !*  COPYRIGHT
@@ -58,14 +54,7 @@ MODULE INPUT
   !*  COPYRIGHT
   !*    (c) University of Manchester 2007-2010
   !******
-  !* The algorithm needs to be improved to make best use of the available
-  !* memory resources. Perhaps there could be a switch for problem size.
-  !* When the problem is smaller than a certain threshold, we could just
-  !* read and distribute the global array. 
-  !*
-  !* As this subroutine repeatedly goes around an elements and nodes 
-  !* loop, it is going to do a lot of unnecessary work. Expect this routine
-  !* to be very time consuming. It will benefit from optimisation.
+  !*  Place remarks that should not be included in the documentation here.
   !*/
 
   IMPLICIT NONE
