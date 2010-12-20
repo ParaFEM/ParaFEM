@@ -70,7 +70,7 @@ The table below gives some performance figures for program prog83 (3D elasticity
 
 || Number of processors || Number of cores || Time (s) in solver || Speed up || Efficiency || Total time (s) || Speed up || Efficiency ||
 ||-||-||-||-||-||-||-||-||
-||-||-||-||-||-||-||-||-||
+||16||64||171||-||-||194||-||-||
 ||-||-||-||-||-||-||-||-||
 ||-||-||-||-||-||-||-||-||
 ||-||-||-||-||-||-||-||-||
