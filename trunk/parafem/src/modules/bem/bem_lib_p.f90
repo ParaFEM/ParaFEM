@@ -1,31 +1,10 @@
 MODULE bem_lib_p
 !    Parallel library for elasticity problems
 !    Ndof replaced by N_dof to avoid any conflict with global variables
-USE precision;  USE global_variables1; IMPLICIT NONE
+USE precision;  USE global_variables; IMPLICIT NONE
 REAL(iwp):: Pi= 3.14159265359_iwp
 CONTAINS
 
-  SUBROUTINE form_s(GG,ell,kappa,omega,Gamma,s)
-  ! forms the s vector in bicgstab(l)
-  real(iwp),intent(in)::GG(:,:),kappa; integer,intent(in)::ell
-  real(iwp),intent(out)::omega,Gamma(:),s(:)
-  real(iwp)::HH(ell-1,ell-1),Gamma0(ell+1),p(ell-1),q(ell-1),  &
-        Gamma1(ell+1),NGamma0,NGamma1,cosine
-            HH= -GG(2:ell,2:ell); HH = inverse(HH)    
-            p = MATMUL(HH,GG(2:ell,1))  ;   q = MATMUL(HH,GG(2:ell,ell+1))
-            Gamma0(1) = 1.0_iwp; Gamma0(ell+1) = .0_iwp; Gamma0(2:ell) = p
-            Gamma1(1) = .0_iwp; Gamma1(ell+1) = 1.0_iwp; Gamma1(2:ell) = q
-            NGamma0   = DOT_PRODUCT(Gamma0,matmul(GG,Gamma0))
-            NGamma1   = DOT_PRODUCT(Gamma1,matmul(GG,Gamma1))
-            omega     = DOT_PRODUCT(Gamma0,matmul(GG,Gamma1))
-            cosine = ABS(omega)/SQRT(ABS(NGamma0*NGamma1)); omega=omega/NGamma1
-            if(cosine<kappa) omega = (kappa/cosine) * omega
-            Gamma = Gamma0 - omega * Gamma1
-            s(1:ell) = Gamma(2:ell+1)       ;  s(ell+1) = .0_iwp
-  return
-  END SUBROUTINE form_s
-
- 
 REAL(iwp) FUNCTION norm(x)
 ! L2 norm of vector x
 IMPLICIT NONE
