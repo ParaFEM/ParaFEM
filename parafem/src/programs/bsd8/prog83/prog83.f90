@@ -3,8 +3,8 @@ PROGRAM PARALLEL_BEM
 !     General purpose BEM program for solving elasticity problems 
 !     This version parallel with bicgstab(l)
 !------------------------------------------------------
-USE bem_lib_p; USE precision; USE timing; USE utility; USE mp_module
-USE global_variables1; USE gather_scatter6
+USE bem_lib_p; USE precision; USE global_variables; USE mp_interface ; USE timing; USE maths
+USE gather_scatter ; USE bicg
 IMPLICIT NONE  !  Ndof changed to N_dof,Maxe is nels
 INTEGER, ALLOCATABLE :: Inci(:,:)  !  Element Incidences
 INTEGER, ALLOCATABLE :: BCode(:,:), NCode(:) !  Element BC´s
@@ -23,7 +23,7 @@ CHARACTER (LEN=80) :: Title
 INTEGER :: Cdim,m,n,Nodel,Nel,N_dof,Toa,N_tot
 INTEGER :: Nreg,Ltyp,Nodes,Maxe,Ndofe,Ndofs               
 INTEGER :: nod,nd,i,j,k,l,DoF,Pos,Isym,nsym,nsy
-INTEGER :: its,iters,ell
+INTEGER :: its,iters,ell,nels,ielpe
 REAL(iwp),ALLOCATABLE    :: Fac(:)     !  Factors for symmetry
 REAL(iwp),ALLOCATABLE    :: Elres_te(:),Elres_ue(:)   
 INTEGER,ALLOCATABLE :: Incie(:)   !  Incidences for one element
@@ -31,7 +31,10 @@ INTEGER,ALLOCATABLE :: Ldeste(:),g(:)  !  Destination vector 1 elem
 REAL(iwp) :: Con,E,ny,Scat,Scad,tol,kappa,alpha,beta,rho,gama,       &
              omega,norm_r,r0_norm,error,one=1._iwp,zero=.0_iwp
 LOGICAL:: converged
-REAL(iwp),ALLOCATABLE::s(:),GG(:,:),Gamma(:),rt(:),y(:),y1(:),r(:,:),uu(:,:)
+REAL(iwp),ALLOCATABLE::s(:),GG(:,:),Gamma(:),rt(:),y(:),y1(:),r(:,:),uu(:,:), &
+                       timest(:)
+ALLOCATE(timest(20))
+timest = 0.0_iwp
 timest(1) = elap_time(); CALL find_pe_procs(numpe,npes)
 !-----------------------------------------------------
 !   Read job information
@@ -62,7 +65,8 @@ CALL Destination(Isym,Ndest,Ldest,xP,Inci,Ndofs,nodes,N_dof,Nodel,nels)
 !---------------------------------------------------------------------
 !     Determine global Boundary code vector
 !---------------------------------------------------------------------
-ALLOCATE(NCode(Ndofs))   ; CALL calc_nels_pp   ! elements per processor
+ALLOCATE(NCode(Ndofs))   
+CALL calc_nels_pp(nels)   ! elements per processor
 IF(numpe==1) WRITE(12,*) "Elements on first processor ",nels_pp
 NCode=0
 DoF_o_System: &
