@@ -4,7 +4,7 @@ PROGRAM PARALLEL_BEM
 !     This version parallel with bicgstab(l)
 !------------------------------------------------------
 USE bem_lib_p; USE precision; USE timing; USE maths; USE mp_interface
-USE global_variables; USE gather_scatter
+USE global_variables; USE gather_scatter; USE bicg
 IMPLICIT NONE  !  Ndof changed to N_dof,Maxe is nels
 INTEGER, ALLOCATABLE :: Inci(:,:)  !  Element Incidences
 INTEGER, ALLOCATABLE :: BCode(:,:), NCode(:) !  Element BC´s
@@ -43,7 +43,7 @@ OPEN (UNIT=11,FILE='job.dat',FORM='FORMATTED',ACTION='READ') !  Input
 OPEN (UNIT=21,FILE='coord.dat',FORM='FORMATTED',ACTION='READ') !  Input
 OPEN (UNIT=31,FILE='plane.dat',FORM='FORMATTED',ACTION='READ') !  Input
 OPEN (UNIT=41,FILE='load.dat',FORM='FORMATTED',ACTION='READ') !  Input
-IF(numpe==1)OPEN(UNIT=12,FILE='c_2.res',FORM='FORMATTED',ACTION='WRITE')!O/P
+IF(numpe==1)OPEN(UNIT=12,FILE='prog83.res',FORM='FORMATTED',ACTION='WRITE')!O/P
 IF(numpe==1) WRITE(12,*) "This job ran on ",npes," processors"
 Call Jobin(Title,Cdim,N_dof,Toa,Nreg,Ltyp,Con,E,ny,&
            Isym,nodel,nodes,nels)
@@ -65,7 +65,8 @@ CALL Destination(Isym,Ndest,Ldest,xP,Inci,Ndofs,nodes,N_dof,Nodel,nels)
 !---------------------------------------------------------------------
 !     Determine global Boundary code vector
 !---------------------------------------------------------------------
-ALLOCATE(NCode(Ndofs))   ; CALL calc_nels_pp   ! elements per processor
+ALLOCATE(NCode(Ndofs))   
+CALL calc_nels_pp(nels)   ! elements per processor
 IF(numpe==1) WRITE(12,*) "Elements on first processor ",nels_pp
 NCode=0
 DoF_o_System: &
@@ -259,8 +260,8 @@ DO nel=1,nels , nels - 1
    D_o_F1  
    Elres_u(nel,:)= Elres_u(nel,:) * Scad
    Elres_t(nel,:)= Elres_t(nel,:) / Scat
-   WRITE(12,'(24F12.5)') (Elres_u(nel,m), m=1,Ndofe)
-   WRITE(12,'(24F12.5)') (Elres_t(nel,m), m=1,Ndofe)
+   IF(numpe==1) WRITE(12,'(24F12.5)') (Elres_u(nel,m), m=1,Ndofe)
+   IF(numpe==1) WRITE(12,'(24F12.5)') (Elres_t(nel,m), m=1,Ndofe)
 END DO &
 Elements_5
 IF(numpe==1) WRITE(12,*) "This analysis took ", elap_time() - timest(1)
