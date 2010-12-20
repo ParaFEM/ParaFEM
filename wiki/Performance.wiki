@@ -55,3 +55,23 @@ The table below gives some performance figures for program p126 (direct numerica
 {{{
 * Memory fault reported by the system.
 }}}
+
+= prog83 =
+
+== HECToR Phase 2a ==
+
+The table below gives some performance figures for program prog83 (3D elasticity problem using the boundary element method) using HECToR Phase 2a. Basic data about the problem are listed as follows:
+
+{{{
+9600 elements
+9602 nodes 
+28800 equations
+}}}
+
+|| Number of processors || Number of cores || Time (s) in solver || Speed up || Efficiency || Total time (s) || Speed up || Efficiency ||
+||-||-||-||-||-||-||-||-||
+||-||-||-||-||-||-||-||-||
+||-||-||-||-||-||-||-||-||
+||-||-||-||-||-||-||-||-||
+||-||-||-||-||-||-||-||-||
+||-||-||-||-||-||-||-||-||
