@@ -3,8 +3,8 @@ PROGRAM PARALLEL_BEM
 !     General purpose BEM program for solving elasticity problems 
 !     This version parallel with bicgstab(l)
 !------------------------------------------------------
-USE bem_lib_p; USE precision; USE global_variables; USE mp_interface ; USE timing; USE maths
-USE gather_scatter ; USE bicg
+USE bem_lib_p; USE precision; USE timing; USE maths; USE mp_interface
+USE global_variables; USE gather_scatter
 IMPLICIT NONE  !  Ndof changed to N_dof,Maxe is nels
 INTEGER, ALLOCATABLE :: Inci(:,:)  !  Element Incidences
 INTEGER, ALLOCATABLE :: BCode(:,:), NCode(:) !  Element BC´s
@@ -31,10 +31,10 @@ INTEGER,ALLOCATABLE :: Ldeste(:),g(:)  !  Destination vector 1 elem
 REAL(iwp) :: Con,E,ny,Scat,Scad,tol,kappa,alpha,beta,rho,gama,       &
              omega,norm_r,r0_norm,error,one=1._iwp,zero=.0_iwp
 LOGICAL:: converged
-REAL(iwp),ALLOCATABLE::s(:),GG(:,:),Gamma(:),rt(:),y(:),y1(:),r(:,:),uu(:,:), &
-                       timest(:)
+REAL(iwp),ALLOCATABLE::s(:),GG(:,:),Gamma(:),rt(:),y(:),y1(:),r(:,:),&
+                       uu(:,:),timest(:)
 ALLOCATE(timest(20))
-timest = 0.0_iwp
+timest=0.0_iwp
 timest(1) = elap_time(); CALL find_pe_procs(numpe,npes)
 !-----------------------------------------------------
 !   Read job information
@@ -65,8 +65,7 @@ CALL Destination(Isym,Ndest,Ldest,xP,Inci,Ndofs,nodes,N_dof,Nodel,nels)
 !---------------------------------------------------------------------
 !     Determine global Boundary code vector
 !---------------------------------------------------------------------
-ALLOCATE(NCode(Ndofs))   
-CALL calc_nels_pp(nels)   ! elements per processor
+ALLOCATE(NCode(Ndofs))   ; CALL calc_nels_pp   ! elements per processor
 IF(numpe==1) WRITE(12,*) "Elements on first processor ",nels_pp
 NCode=0
 DoF_o_System: &
