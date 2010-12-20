@@ -4,14 +4,17 @@ FC = ftn
 FFLAGS= -fastsse -Mlarge_arrays 
 #FFLAGS= -g -Mbounds -traceback
 
-bem    = bem_lib_p.o
+bem    = bem_lib.o
+
+share  = precision.o
 
 .SUFFIXES: .f90 .o
 
-lib: $(PWD)/bem/$(bem)
+lib: $(PWD)/shared/$(share) $(PWD)/bem/$(bem)
 	ar -r libBEM.a $(bem)
 
 .f90.o:
+	$(FC) -c $(FFLAGS) $(PWD)/shared/precision.f90
 	$(FC) -c $(FFLAGS) $(PWD)/bem/bem_lib.f90
 	
 clean:
