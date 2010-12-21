@@ -447,7 +447,8 @@ do footcount=1, footlayers*2, 2
 end do
 
 else
-  WRITE(*,*)'Generating an indenter is only available for 20-node elements at this time. No elements have been generated above the "soil."'
+  WRITE(*,*)'Generating an indenter is only available for 20-node elements &
+ at this time. No elements have been generated above the soil.'
 end if     
    end if
 
