@@ -60,7 +60,7 @@ The table below gives some performance figures for program p126 (direct numerica
 
 == HECToR Phase 2a ==
 
-The table below gives some performance figures for program prog83 (3D elasticity problem using the boundary element method) using HECToR Phase 2a. Basic data about the problem are listed before each table.
+The tables below give performance figures for program prog83 using HECToR Phase 2a, for different sizes of problem. Program prog83 solves a 3D elasticity problem using the boundary element method. Basic data regarding problem size are listed before each table.
 
 {{{
 600 elements
