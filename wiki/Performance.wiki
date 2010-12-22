@@ -69,7 +69,7 @@ The tables below give performance figures for program prog83 using HECToR Phase 
 }}}
 
 || Number of processors || Number of cores || Time (s) in solver || Speed up || Efficiency || Total time (s) || Speed up || Efficiency ||
-||1||1||2.3||-||-||5.8||-||-||
+||1||1||2.4||-||-||5.7||-||-||
 ||1||2||1.2||-||-||2.8||-||-||
 ||1||4||0.7||-||-||1.9||-||-||
 ||2||8||0.4||-||-||1.9||-||-||
