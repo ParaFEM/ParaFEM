@@ -7,27 +7,16 @@
 
     Usage: sg12mg <job_name>
   
-           eg. sg12mg ed4-small-c3d8
-           
+           e.g., sg12mg ed4-small-c3d8
+           e.g., sg12mg ed4-small-c3d8.mg           
   NOTES 
 
   o The program has not yet been finished
   o By default, the element node ordering follows the Abaqus convention
+  o The program will accept a job name with or without the .mg file extension, however the
+    file name itself must still include the extension.
 
-
-  POSSIBLE ERROR MESSAGES
-  
-  o The following error message is given with the PGF90 compiler if you include 
-    the file extension in the <job_name>.
-    
-    ie. sg12mg ed4-small-c3d8.mg is incorrect
-    
-    " PGFIO-F-209/OPEN/unit=10/'OLD' specified for file which does not exist.
-      File name = ed4-small-c3d8.mg.mg                              
-      In source file sg12mg.f90, at line number 72 "
-  
-  
   AUTHOR
 
   lee.margetts@manchester.ac.uk
-
+  louise.lever@manchester.ac.uk

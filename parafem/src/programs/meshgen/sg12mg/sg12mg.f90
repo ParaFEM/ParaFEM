@@ -68,6 +68,9 @@ PROGRAM sg12mg
 ! 4. Read control data
 !------------------------------------------------------------------------------
 
+  IF (INDEX(job_name,".mg") /= 0) THEN
+    job_name = job_name(1:INDEX(job_name,".mg")-1)
+  END IF
   fname = job_name(1:INDEX(job_name," ")-1) // ".mg"
   OPEN (10, file=fname, status='old', action='read')
 
