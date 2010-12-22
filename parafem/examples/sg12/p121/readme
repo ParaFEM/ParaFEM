@@ -1,9 +1,1 @@
-p121.tar.gz contains an example input deck to use with program p121 in ParaFEM.
-
-To unzip, type:
-
-$gunzip p121.tar.gz
-
-To extract the files from the archive, type:
-
-$tar xvf p121.tar
+The files ed4-tiny-c3d20.{bnd,d,dat,lds} comprise an example input deck to use with program p121 in ParaFEM.
