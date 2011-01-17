@@ -1,9 +1,8 @@
 PROGRAM General_purpose_BEM
-!------------------------------------------------------
-!     General purpose BEM program
-!     for solving elasticity and potential problems
-!     This version iterative equation solution by BiCGStab(l) 
-!------------------------------------------------------
+!------------------------------------------------------------------------------
+!  General purpose BEM program for solving elasticity and potential problems
+!  This version uses iterative equation solution by BiCGStab(l) in serial
+!------------------------------------------------------------------------------
 USE bem_lib      !  contains precision
 IMPLICIT NONE      !  Ndof changed to N_dof
 INTEGER, ALLOCATABLE :: Inci(:,:)  !  Element Incidences

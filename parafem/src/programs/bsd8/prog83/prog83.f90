@@ -1,8 +1,9 @@
 PROGRAM PARALLEL_BEM
-!------------------------------------------------------
-!     General purpose BEM program for solving elasticity problems 
-!     This version parallel with bicgstab(l)
-!------------------------------------------------------
+!------------------------------------------------------------------------------
+!  General purpose BEM program for solving elasticity problems 
+!  This version is parallel and uses BiCGSTAB(l). It must be linked to an
+!  MPI library.
+!------------------------------------------------------------------------------
 USE bem_lib_p; USE precision; USE timing; USE maths; USE mp_interface
 USE global_variables; USE gather_scatter; USE bicg
 IMPLICIT NONE  !  Ndof changed to N_dof,Maxe is nels
