@@ -1,8 +1,8 @@
 PROGRAM EBE_BEM
-!------------------------------------------------------
-!     General purpose BEM program for solving elasticity problems 
-!     This version EBE with bicgstab(l)
-!------------------------------------------------------
+!------------------------------------------------------------------------------
+!  General purpose BEM program for solving elasticity problems 
+!  This version uses EBE with BiCGSTAB(l) in serial
+!------------------------------------------------------------------------------
 USE bem_lib        ;    IMPLICIT NONE  ! N_dof replaces Ndof
 INTEGER, ALLOCATABLE :: Inci(:,:)  !  Element Incidences
 INTEGER, ALLOCATABLE :: BCode(:,:), NCode(:) !  Element BC´s
