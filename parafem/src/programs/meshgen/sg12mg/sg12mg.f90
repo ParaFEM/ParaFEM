@@ -212,7 +212,7 @@ PROGRAM sg12mg
        END DO
      ELSE
        PRINT *, "Problem type: ", problem_type, " not recognised.            &&
-                 No values written to .lds"
+                & No values written to .lds"
      END IF
     
      CLOSE(13)
@@ -335,7 +335,7 @@ PROGRAM sg12mg
        END DO
      ELSE
        PRINT *, "Problem type: ", problem_type, " not recognised.            &&
-                 No values written to .lds"
+                & No values written to .lds"
      END IF
     
      CLOSE(13)
