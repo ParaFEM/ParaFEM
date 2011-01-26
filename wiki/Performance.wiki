@@ -47,7 +47,7 @@ The table below gives some performance figures for program p121 (3D small strain
 ||32||64||250||-||-||382||-||-||
 ||64||128||124||-||-||253||-||-||
 ||128||256||66||-||-||196||-||-||
-||256||512||-||-||-||-||-||-||
+||256||512||38||-||-||168||-||-||
 
 {{{
 Job failed with no error message
