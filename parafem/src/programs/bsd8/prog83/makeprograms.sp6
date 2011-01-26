@@ -1,13 +1,12 @@
 module    = ../../../../include
 lib       = ../../../../lib
 
-FC=ftn
+FC=mpxlf90_r
 
 #  Flags
-#FFLAGS= -c -I$(module) -V -g -Mbounds -traceback
-FFLAGS= -c -I$(module) -V -fastsse -Mlarge_arrays
+FFLAGS= -c -I$(module) -O2
 
-LDFLAGS= -L$(lib) -lParaFEM_mpi -L$(lib) -lBEM_mpi -lblas
+LDFLAGS= -L$(lib) -lParaFEM_mpi -L$(lib) -lBEM_mpi
 
 .SUFFIXES: .o .f90
 
