@@ -513,7 +513,7 @@ MODULE INPUT
              e,v,tol,limit
   CLOSE(10)
    
-  IF(fixed_freedoms .AND. loaded_nodes > 0) THEN
+  IF(fixed_freedoms > 0 .AND. loaded_nodes > 0) THEN
     PRINT *
     PRINT *, "Error - model has", fixed_freedoms, " fixed freedoms and"
     PRINT *, loaded_nodes, " loaded nodes"

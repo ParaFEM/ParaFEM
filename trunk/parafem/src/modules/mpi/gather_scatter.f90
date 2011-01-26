@@ -1002,7 +1002,7 @@ MODULE GATHER_SCATTER
         pesget(ii) = i
         getpes(i) = ii
         WRITE(details,'("No. of elements of PE ",I4," required by PE ",I4,     &
-                        ": ",I8)') i, numpe, lenget(i)
+                       & ": ",I8)') i, numpe, lenget(i)
       END IF
     END DO DO_find_data_outer
 
@@ -1038,7 +1038,7 @@ MODULE GATHER_SCATTER
         pesget(ii) = i
         getpes(i) = ii
         WRITE(details,'("No. of elements of PE ",I4," required by PE ",I4,    &
-                        ": ",I8)') i, numpe, lenget(i)
+                       & ": ",I8)') i, numpe, lenget(i)
       END IF
     END IF
 
@@ -1055,7 +1055,7 @@ MODULE GATHER_SCATTER
       rem_loc = 0
     ENDIF
     WRITE(*,'("PE: ",I4," Accesses - remote, local, remote/local: ",2I6,F8.2, &
-              " From ",I6, " PEs")') numpe, rem_acc, loc_acc, rem_loc,numpesget
+              & " From ",I6, " PEs")') numpe, rem_acc, loc_acc, rem_loc,numpesget
     CALL MPI_REDUCE(rem_loc,sum_rem_loc,1,MPI_REAL8,MPI_SUM,      &
             npes-1,MPI_COMM_WORLD,ier)
     IF(ier .NE. MPI_SUCCESS) THEN
@@ -1208,7 +1208,7 @@ MODULE GATHER_SCATTER
 
     DO i = 1,numpesput
       WRITE(details,'("Number of elements of PE ",I4," required by PE ",      &
-                      I4,": ",I8)') numpe, pesput(i), lenput(pesput(i))
+                     & I4,": ",I8)') numpe, pesput(i), lenput(pesput(i))
     END DO
     WRITE(details,'("PE: ", I4," Number of PEs to send data to: ", I4)')      &
         numpe, numpesput
