@@ -127,7 +127,7 @@ The tables below give performance figures for program prog83 using CINECA's IBM 
 ||2||4||0.3||-||-||1.4||-||-||
 ||4||8||0.3||-||-||1.1||-||-||
 ||8||16||0.15||-||-||0.7||-||-||
-
+||16||32||0.14||-||-||0.67||-||-||
 {{{
 9600 elements
 9602 nodes 
