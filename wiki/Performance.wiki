@@ -141,6 +141,7 @@ The tables below give performance figures for program prog83 using CINECA's IBM 
 ||32||64||33||-||-||62||-||-||
 ||64||128||17||-||-||37||-||-||
 ||128||256||9||-||-||24||-||-||
+||256||512||5||-||-||18||-||-||
 
 {{{
 * Job failed with no error message
