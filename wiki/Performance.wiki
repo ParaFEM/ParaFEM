@@ -125,7 +125,7 @@ The tables below give performance figures for program prog83 using CINECA's IBM 
 || Number of processors || Number of cores || Time (s) in solver || Speed up || Efficiency || Total time (s) || Speed up || Efficiency ||
 ||1||2||0.6||-||-||2.1||-||-||
 ||2||4||0.3||-||-||1.4||-||-||
-||4||8||-||-||-||-||-||-||
+||4||8||0.3||-||-||1.1||-||-||
 
 {{{
 9600 elements
