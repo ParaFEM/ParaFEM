@@ -128,6 +128,7 @@ The tables below give performance figures for program prog83 using CINECA's IBM 
 ||4||8||0.3||-||-||1.1||-||-||
 ||8||16||0.15||-||-||0.7||-||-||
 ||16||32||0.14||-||-||0.67||-||-||
+
 {{{
 9600 elements
 9602 nodes 
@@ -135,4 +136,12 @@ The tables below give performance figures for program prog83 using CINECA's IBM 
 }}}
 
 || Number of processors || Number of cores || Time (s) in solver || Speed up || Efficiency || Total time (s) || Speed up || Efficiency ||
-||-||-||-||-||-||-||-||-||
+||32||64||33||-||-||62||-||-||
+
+Note: Initial runs did not complete and there were no error messages. The fix was to add the following command to the loadleveller batch script:
+
+{{{
+#@ resources = ConsumableMemory(3400MB)
+}}}
+
+This specifies the memory required per core, thus ensuring dedicated access to the memory on the node(s) used.
