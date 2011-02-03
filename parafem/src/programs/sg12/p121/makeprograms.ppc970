@@ -1,0 +1,31 @@
+module    = ../../../../include
+lib       = ../../../../lib
+
+FC=mpxlf90
+
+#  Flags
+FFLAGS= -c -I$(module) -O3 -qstrict -qtune=ppc970 -qarch=ppc970 \
+	-qcache=auto -q64
+
+LDFLAGS= -L$(lib) -lParaFEM_mpi
+
+.SUFFIXES: .o .f90
+
+all: p121
+default: all
+
+
+p121: p121.o
+	$(FC) p121.o -o p121 $(LDFLAGS)
+
+p121.o: p121.f90
+	$(FC) p121.f90 $(FFLAGS)
+
+clean:
+	rm -f *.o
+
+execlean:
+	rm -f p121
+
+relink: p121
+
