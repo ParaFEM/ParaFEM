@@ -1,0 +1,42 @@
+FC = xlf90
+
+#  Flags
+FFLAGS= -O3 -qstrict -qtune=ppc970 -qarch=ppc970 -qcache=auto -q64 
+
+#  Path
+rootdir = $(realpath .)
+
+ 
+share  = precision.o global_variables.o partition.o steering.o elements.o      \
+         timing.o plasticity.o geometry.o fluid.o
+
+serial = mp_interface.o input.o
+
+## serial   = mp_interface.o input.o output.o maths.o gather_scatter.o pcg.o  \
+        loading.o bicg.o                                          
+
+.SUFFIXES: .f90 .o
+
+lib: $(PWD)/shared/$(share) $(PWD)/serial/$(serial)
+	ar -r libParaFEM_serial.a $(share) $(serial)
+
+.f90.o:
+	$(FC) -c $(FFLAGS) $(PWD)/shared/precision.f90
+	$(FC) -c $(FFLAGS) $(PWD)/shared/global_variables.f90
+	$(FC) -c $(FFLAGS) $(PWD)/shared/partition.f90
+	$(FC) -c $(FFLAGS) $(PWD)/shared/steering.f90
+	$(FC) -c $(FFLAGS) $(PWD)/shared/elements.f90
+	$(FC) -c $(FFLAGS) $(PWD)/shared/timing.f90
+	$(FC) -c $(FFLAGS) $(PWD)/shared/plasticity.f90
+	$(FC) -c $(FFLAGS) $(PWD)/shared/geometry.f90
+	$(FC) -c $(FFLAGS) $(PWD)/shared/fluid.f90
+	$(FC) -c $(FFLAGS) $(PWD)/serial/mp_interface.f90
+	$(FC) -c $(FFLAGS) $(PWD)/serial/input.f90
+
+clean:
+	rm *.o *.mod
+
+install:
+	rm *.o
+	mv *.mod ../../include
+	mv *.a ../../lib
