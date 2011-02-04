@@ -147,15 +147,16 @@ This specifies the memory required per core, thus ensuring dedicated access to t
 
 = Direct Numerical Solution of the Navier Stokes Equations =
 
-== HECToR Phase 2b ==
 
-The table below gives some performance figures for program p126 (direct numerical solution of the Navier Stokes equations) using HECToR Phase 2b. Basic data about the problem are listed as follows:
+The table below gives some performance figures for program p126 (direct numerical solution of the Navier Stokes equations). Basic data about the problem are listed as follows:
 
 {{{
 1,000,000 elements 
 4,090,601 nodes
 12,792,398 equations
 }}}
+
+== HECToR Phase 2b ==
 
 || Number of processors || Number of cores || Time (s) in solver || Speed up || Efficiency || Total time (s) || Speed up || Efficiency ||
 ||8||96||12932||-||-||13011||-||-||
@@ -168,3 +169,8 @@ The table below gives some performance figures for program p126 (direct numerica
 {{{
 * Memory fault reported by the system.
 }}}
+
+== Mare Nostrum IBM PowerPC 970MP ==
+
+|| Number of processors || Number of cores || Time (s) in solver || Speed up || Efficiency || Total time (s) || Speed up || Efficiency ||
+||512||1024||-||-||-||-||-||-||
