@@ -5,7 +5,9 @@
 
 This page presents some basic performance data for the programs supplied with ParaFEM.
 
-= p121 =
+----
+
+= 3D Small Strain Elasticity using the Finite Element Method =
 
 The tables below give some performance figures for program p121 (3D small strain elasticity) using various systems. Basic data about the problem are listed as follows:
 
@@ -60,31 +62,9 @@ The tables below give some performance figures for program p121 (3D small strain
 * This job used 1 core on 8 compute nodes. This was so that the program could reserve sufficient memory to run. The notional cost of the job was 32 cores, even though only 8 cores were used for execution.
 }}}
 
-= p126 =
+----
 
-== HECToR Phase 2b ==
-
-The table below gives some performance figures for program p126 (direct numerical solution of the Navier Stokes equations) using HECToR Phase 2b. Basic data about the problem are listed as follows:
-
-{{{
-1,000,000 elements 
-4,090,601 nodes
-12,792,398 equations
-}}}
-
-|| Number of processors || Number of cores || Time (s) in solver || Speed up || Efficiency || Total time (s) || Speed up || Efficiency ||
-||8||96||12932||-||-||13011||-||-||
-||16||192||6040||-||-||6109||-||-||
-||32||384||3119||-||-||3200||-||-||
-||64||768||1987||-||-||2052||-||-||
-||128||1536||1259||-||-||1321||-||-||
-||256{{{*}}}||3072||-||-||-||-||-||-||
-
-{{{
-* Memory fault reported by the system.
-}}}
-
-= prog83 =
+= 3D Small Strain Elasticity using the Boundary Element Method =
 
 == HECToR Phase 2a ==
 
@@ -162,3 +142,29 @@ Note: Initial runs for this problem size did not complete and there were no erro
 }}}
 
 This specifies the memory required per core, thus ensuring dedicated access to the memory on the node(s) used.
+
+----
+
+= Direct Numerical Solution of the Navier Stokes Equations =
+
+== HECToR Phase 2b ==
+
+The table below gives some performance figures for program p126 (direct numerical solution of the Navier Stokes equations) using HECToR Phase 2b. Basic data about the problem are listed as follows:
+
+{{{
+1,000,000 elements 
+4,090,601 nodes
+12,792,398 equations
+}}}
+
+|| Number of processors || Number of cores || Time (s) in solver || Speed up || Efficiency || Total time (s) || Speed up || Efficiency ||
+||8||96||12932||-||-||13011||-||-||
+||16||192||6040||-||-||6109||-||-||
+||32||384||3119||-||-||3200||-||-||
+||64||768||1987||-||-||2052||-||-||
+||128||1536||1259||-||-||1321||-||-||
+||256{{{*}}}||3072||-||-||-||-||-||-||
+
+{{{
+* Memory fault reported by the system.
+}}}
