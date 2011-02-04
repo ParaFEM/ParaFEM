@@ -53,6 +53,19 @@ The table below gives some performance figures for program p121 (3D small strain
 * Job failed with no error message
 }}}
 
+== MareNostrum IBM PPC970 ==
+
+The table below gives some performance figures for program p121 (3D small strain elasticity) using the IBM PowerPC at Barcelona Supercomputing Center. Basic data about the problem are listed as follows:
+
+{{{
+1,000,000 elements 
+4,090,601 nodes
+12,059,800 equations
+}}}
+
+|| Number of processors || Number of cores || Time (s) in solver || Speed up || Efficiency || Total time (s) || Speed up || Efficiency ||
+||8||16||-||-||-||-||-||-||
+
 = p126 =
 
 == HECToR Phase 2b ==
