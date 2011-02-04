@@ -7,15 +7,15 @@ This page presents some basic performance data for the programs supplied with Pa
 
 = p121 =
 
-== HECToR Phase 2b ==
-
-The table below gives some performance figures for program p121 (3D small strain elasticity) using HECToR Phase 2b. Basic data about the problem are listed as follows:
+The tables below give some performance figures for program p121 (3D small strain elasticity) using various systems. Basic data about the problem are listed as follows:
 
 {{{
 1,000,000 elements 
 4,090,601 nodes
 12,059,800 equations
 }}}
+
+== HECToR Phase 2b ==
 
 || Number of processors || Number of cores || Time (s) in solver || Speed up || Efficiency || Total time (s) || Speed up || Efficiency ||
 ||12{{{*}}}||12||-||-||-||-||-||-||
@@ -34,14 +34,6 @@ The table below gives some performance figures for program p121 (3D small strain
 
 == CINECA IBM SP6 ==
 
-The table below gives some performance figures for program p121 (3D small strain elasticity) using the IBM SP6 at CINECA. Basic data about the problem are listed as follows:
-
-{{{
-1,000,000 elements 
-4,090,601 nodes
-12,059,800 equations
-}}}
-
 || Number of processors || Number of cores || Time (s) in solver || Speed up || Efficiency || Total time (s) || Speed up || Efficiency ||
 ||16||32{{{*}}}||-||-||-||-||-||-||
 ||32||64||250||-||-||382||-||-||
@@ -54,14 +46,6 @@ The table below gives some performance figures for program p121 (3D small strain
 }}}
 
 == Mare Nostrum IBM PowerPC 970MP ==
-
-The table below gives some performance figures for program p121 (3D small strain elasticity) using the IBM PowerPC 970MP at Barcelona Supercomputing Center. Basic data about the problem are listed as follows:
-
-{{{
-1,000,000 elements 
-4,090,601 nodes
-12,059,800 equations
-}}}
 
 || Number of processors || Number of cores || Time (s) in solver || Speed up || Efficiency || Total time (s) || Speed up || Efficiency ||
 ||8||16||-||-||-||-||-||-||
