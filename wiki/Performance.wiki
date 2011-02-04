@@ -54,6 +54,7 @@ The tables below give some performance figures for program p121 (3D small strain
 ||32||64||638||-||-||813||-||-||
 ||64||128||326||-||-||500||-||-||
 ||128||256||209||-||-||378||-||-||
+||256||512||187||-||-||386||-||-||
 
 {{{
 * This job used 1 core on 8 compute nodes. This was so that the program could reserve sufficient memory to run. The notional cost of the job was 32 cores, even though only 8 cores were used for execution.
