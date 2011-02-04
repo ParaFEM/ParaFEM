@@ -53,9 +53,9 @@ The table below gives some performance figures for program p121 (3D small strain
 * Job failed with no error message
 }}}
 
-== MareNostrum IBM PPC970 ==
+== Mare Nostrum IBM PowerPC 970MP ==
 
-The table below gives some performance figures for program p121 (3D small strain elasticity) using the IBM PowerPC at Barcelona Supercomputing Center. Basic data about the problem are listed as follows:
+The table below gives some performance figures for program p121 (3D small strain elasticity) using the IBM PowerPC 970MP at Barcelona Supercomputing Center. Basic data about the problem are listed as follows:
 
 {{{
 1,000,000 elements 
