@@ -173,5 +173,5 @@ The table below gives some performance figures for program p126 (direct numerica
 == Mare Nostrum IBM PowerPC 970MP ==
 
 || Number of processors || Number of cores || Time (s) in solver || Speed up || Efficiency || Total time (s) || Speed up || Efficiency ||
-||512||1024||-||-||-||-||-||-||
+||128||256||15734||-||-||15964||-||-||
 ||256||512||5007||-||-||5112||-||-||
