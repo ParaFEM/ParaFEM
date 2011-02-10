@@ -9,9 +9,10 @@
 
 To apply for an account, please see the following [http://www.hector.ac.uk/howcan/admin/ webpage].
 
-= Logging In =
+= Common Commands =
 
- * In a shell type: {{{$ssh <username>@phase2b.hector.ac.uk}}}
+ * Login: {{{$ssh <username>@phase2b.hector.ac.uk}}}
+ * Change password: {{{$passwd}}}
 
 = Submitting Jobs to the Batch Queue =
 
