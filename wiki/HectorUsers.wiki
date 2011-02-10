@@ -5,6 +5,11 @@
 
 [http://www.hector.ac.uk HECToR] is the UK's National HPC Service. This page contains some pointers for ParaFEM users who wish to run the code on HECToR.
 
+= Getting an Account =
+
+= Logging In =
+
+ * In a shell type: {{{$ssh <username>@phase2b.hector.ac.uk}}}
 
 = Submitting Jobs to the Batch Queue =
 
