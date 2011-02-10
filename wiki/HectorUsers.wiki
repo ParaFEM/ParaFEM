@@ -7,6 +7,8 @@
 
 = Getting an Account =
 
+To apply for an account, please see the following [[http://www.hector.ac.uk/howcan/admin/|webpage]].
+
 = Logging In =
 
  * In a shell type: {{{$ssh <username>@phase2b.hector.ac.uk}}}
