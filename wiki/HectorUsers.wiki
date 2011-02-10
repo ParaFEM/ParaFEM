@@ -7,7 +7,7 @@
 
 = Getting an Account =
 
-To apply for an account, please see the following [[http://www.hector.ac.uk/howcan/admin/|webpage]].
+To apply for an account, please see the following [http://www.hector.ac.uk/howcan/admin/ webpage].
 
 = Logging In =
 
