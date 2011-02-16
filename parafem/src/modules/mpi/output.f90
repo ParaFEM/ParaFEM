@@ -15,6 +15,7 @@ MODULE OUTPUT
   !*    WRITE_P129             Writes out basic program data and timing info
   !*    WRITE_NODAL_VARIABLE   Writes out results computed at the nodes
   !*    JOB_NAME_ERROR         Writes error message if job_name is missing
+  !*    GETFILENUMBER          Returns the next file number
   !*  AUTHOR
   !*    L. Margetts
   !*  COPYRIGHT
@@ -779,6 +780,82 @@ MODULE OUTPUT
  STOP
  
  END SUBROUTINE job_name_error
+ 
+!------------------------------------------------------------------------------
+!------------------------------------------------------------------------------
+!------------------------------------------------------------------------------ 
+
+  SUBROUTINE getFileNumber(fileNumber,count)
+ 
+  !/****f* output/getFileNumber
+  !*  NAME
+  !*    SUBROUTINE: getFileNumber
+  !*  SYNOPSIS
+  !*    Usage:      CALL getFileNumber(fileNumber,count)
+  !*  FUNCTION
+  !*    Returns file number.
+  !*  AUTHOR
+  !*    L. Margetts
+  !*  COPYRIGHT
+  !*    (c) University of Manchester 2007-2011
+  !******
+  !*  Place remarks that should not be included in the documentation here.
+  !*/
+
+  IMPLICIT NONE
+ 
+  INTEGER, INTENT(IN)         :: count
+  INTEGER                     :: fileIndexLength
+  INTEGER                     :: maxCount
+  CHARACTER(*), INTENT(INOUT) :: fileNumber
+        
+  IF(count <    10 )                     fileIndexLength = 1
+  IF(count >     9 .and. count <    100) fileIndexLength = 2
+  IF(count >    99 .and. count <   1000) fileIndexLength = 3
+  IF(count >   999 .and. count <  10000) fileIndexLength = 4
+  IF(count >  9999 .and. count < 100000) fileIndexLength = 5 
+  IF(count > 99999 .and. count < 999999) fileIndexLength = 6
+
+  SELECT CASE (fileIndexLength)
+
+    CASE(1)
+
+    WRITE (fileNumber,"(I1)") count 
+  
+    CASE(2)
+
+    WRITE (fileNumber,"(I2)") count
+
+    CASE(3)
+
+    WRITE (fileNumber,"(I3)") count
+       
+    CASE(4)
+
+    WRITE (fileNumber,"(I4)") count
+
+    CASE(5)
+
+    WRITE (fileNumber,"(I5)") count
+        
+    CASE(6)
+
+    WRITE (fileNumber,"(I6)") count
+
+    CASE DEFAULT
+
+    PRINT *, " "
+    PRINT *, "[Main] Warning"
+    PRINT *, "[Main] Too many files"
+    PRINT *, "[Main] File number 999,999 has been overwritten with new data"
+    PRINT *, " "
+       
+    maxCount = 999999
+    WRITE (fileNumber,"(I6)") maxCount
+
+  END SELECT
+
+  END SUBROUTINE getFileNumber
  
 !------------------------------------------------------------------------------
 !------------------------------------------------------------------------------
