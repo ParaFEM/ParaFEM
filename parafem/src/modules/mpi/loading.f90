@@ -12,6 +12,7 @@ MODULE LOADING
   !*    Subroutine             Purpose
   !*
   !*    LOAD                   Creates the distributed applied loads vector
+  !*    ADAPTIVESTEPSIZE       Modifies step size in nonlinear analyses
   !*  AUTHOR
   !*    L. Margetts
   !*    I.M. Smith
@@ -451,5 +452,81 @@ MODULE LOADING
   END SELECT
  
   END SUBROUTINE load_p121
+
+!---------------------------------------------------------------------------
+!---------------------------------------------------------------------------
+!---------------------------------------------------------------------------
+
+  SUBROUTINE adaptiveStepSize(increments,factor,count,low,high)
+
+  !/****f* rtfeLoads/adaptiveStepSize
+  !*  NAME
+  !*    SUBROUTINE adaptiveStepSize
+  !*  FUNCTION
+  !*  INPUTS
+  !*    CALL adaptiveStepSize(increments,factor,count,high,low)
+  !*    
+  !*    INCREMENTS : Integer. Number of loading increments, modifies value in 
+  !*                 main program if divergence is occurring. 
+  !*    FACTOR     : Real. Factor which when multiplied by the load value in 
+  !*                 the main program gives the incremental load to be applied 
+  !*                 in that iteration.
+  !*    COUNT      : Integer. Number of iterations required for the previous 
+  !*                 load increment. Modifies value in main program.
+  !*    HIGH       : Integer.
+  !*    LOW        : Integer.
+  !*  AUTHOR
+  !*    Lee Margetts
+  !*  CREATION DATE
+  !*    23.12.2007
+  !****
+  !*/ 
+  IMPLICIT none 
+  
+  INTEGER,INTENT(INOUT)    :: increments
+  INTEGER                  :: oldIncrements
+  INTEGER,INTENT(INOUT)    :: count
+  INTEGER,INTENT(IN)       :: high  
+  INTEGER,INTENT(IN)       :: low
+  INTEGER                  :: remainder   !- permits whole number division
+  
+  REAL(iwp),INTENT(INOUT)  :: factor
+  REAL(iwp)                :: a           !- oldIncrements as a REAL
+  REAL(iwp)                :: b           !- increments as a REAL
+
+!------------------------------------------------------------------------------
+! (1) If count is low and there are 2 or more increments remaining, increase 
+!     the increment size by a factor of roughly 2 (taking into account that    
+!     the remaining increments may not be divisible by exactly 2)
+!------------------------------------------------------------------------------
+
+  IF(count < low .and. increments >= 2) THEN
+
+    ! Work out how many new increments to apply
+    
+    oldIncrements = increments
+    remainder     = MOD(oldIncrements,2)
+    increments    = ((oldIncrements - remainder) / 2) + remainder
+    
+    ! Work out new factor
+    
+    a             = REAL(oldIncrements)
+    b             = REAL(increments)
+    factor        = factor * REAL(a/b)
+    
+  END IF
+
+!------------------------------------------------------------------------------
+! (2) If count is high, reduce the increment size by a factor of 4 and restart
+!     Note: restart not implemented
+!------------------------------------------------------------------------------
+  
+  IF(count >= high) THEN
+    increments = increments * 4
+    factor     = factor     * 0.25_iwp
+  END IF
+  
+  RETURN
+  END SUBROUTINE adaptiveStepSize
   
 END MODULE LOADING
