@@ -5,25 +5,11 @@
 !      displacement control, load control, adaptive increment sizes
 !------------------------------------------------------------------------------
 
- USE precision
- USE maths_serial
- USE small_deformations
- USE elements
- USE decomposition
- USE structure_dof
- USE timing
- USE plasticity
- USE loading
-
- USE use_parallel
- USE start_finish
- USE input_output
- USE krylov_methods
- USE maths_parallel
- USE stress
- USE global_variables 
- USE gather_scatter
- USE others_parallel
+ USE precision ; USE global_variables ; USE mp_interface
+ USE input     ; USE output           ; USE loading
+ USE timing    ; USE maths            ; USE gather_scatter
+ USE partition ; USE elements         ; USE steering
+ USE pcg       ; USE plasticity
 
  IMPLICIT NONE
 
@@ -81,7 +67,6 @@
  REAL(iwp)            :: tinc,tplas,maxDisp
  REAL(iwp)            :: factor                ! load increment size
  REAL(iwp)            :: fractionApplied       ! fraction of total load
- !REAL(iwp)            :: timest                ! snapshot time  //already declared in timings
  REAL(iwp)            :: tolerance             ! convergence test
  REAL(iwp)            :: bdyld_l2n             ! l2 norm of bdylds_pp
  REAL(iwp)            :: ddyld_l2n             ! l2 norm of ddylds_pp
@@ -102,29 +87,28 @@
 ! 2. Declare dynamic arrays
 !------------------------------------------------------------------------------
 
- REAL(iwp),ALLOCATABLE ::loads_pp(:),points(:,:),bdylds_pp(:)
- REAL(iwp),ALLOCATABLE ::pmul_pp(:,:),dee(:,:),jac(:,:),weights(:)
- REAL(iwp),ALLOCATABLE ::oldis_pp(:),der(:,:),deriv(:,:),bee(:,:),km(:,:)
- REAL(iwp),ALLOCATABLE ::eld(:),eps(:),sigma(:),bload(:),eload(:),elso(:)
- REAL(iwp),ALLOCATABLE ::ddylds_pp(:),dl(:,:),dl_old(:,:),dload(:)
- REAL(iwp),ALLOCATABLE ::stressv(:),qinc(:),store_pp(:),dtemp_pp(:,:)
- REAL(iwp),ALLOCATABLE ::p_pp(:),x_pp(:),xnew_pp(:),u_pp(:),utemp_pp(:,:)
- REAL(iwp),ALLOCATABLE ::d_pp(:),diag_precon_tmp(:,:)
- REAL(iwp),ALLOCATABLE ::vmfl(:),caflow(:),dsigma(:),ress(:),rmat(:,:)
- REAL(iwp),ALLOCATABLE ::acat(:,:),acatc(:,:),qmat(:,:),qinva(:),daatd(:,:)
- REAL(iwp),ALLOCATABLE ::vmflq(:),vmfla(:),qinvr(:),vmtemp(:,:),temp(:,:)
- REAL(iwp),ALLOCATABLE :: disp_pp(:,:)
- REAL(iwp),ALLOCATABLE :: xnewel_pp(:,:)
- REAL(iwp),ALLOCATABLE :: xnewnodes_pp(:),fext_pp(:)
- REAL(iwp),ALLOCATABLE ::storkm_pp(:,:,:), storkm_pp_old(:,:,:)
- REAL(iwp),ALLOCATABLE ::tensor_pp(:,:,:), tensor_pp_old(:,:,:)
- REAL(iwp),ALLOCATABLE ::totd_pp(:), totd_pp_old(:)
- REAL(iwp),ALLOCATABLE ::diag_precon_pp(:), diag_precon_pp_old(:)
- REAL(iwp),ALLOCATABLE ::prop(:,:)          ! element properties matrix
- REAL(iwp),ALLOCATABLE ::loadNodeValue(:,:) ! nodal values of applied forces
- REAL(iwp),ALLOCATABLE ::loadEqnValue_pp(:) ! eqn values of applied forces
- REAL(iwp),ALLOCATABLE :: p_g_co_pp(:,:,:)  ! nodal coordinates
- REAL(iwp),ALLOCATABLE :: val(:)            ! prescribed load/disp values
+ REAL(iwp),ALLOCATABLE :: loads_pp(:),points(:,:),bdylds_pp(:)
+ REAL(iwp),ALLOCATABLE :: pmul_pp(:,:),dee(:,:),jac(:,:),weights(:)
+ REAL(iwp),ALLOCATABLE :: oldis_pp(:),der(:,:),deriv(:,:),bee(:,:),km(:,:)
+ REAL(iwp),ALLOCATABLE :: eld(:),eps(:),sigma(:),bload(:),eload(:),elso(:)
+ REAL(iwp),ALLOCATABLE :: ddylds_pp(:),dl(:,:),dl_old(:,:),dload(:)
+ REAL(iwp),ALLOCATABLE :: stressv(:),qinc(:),store_pp(:),dtemp_pp(:,:)
+ REAL(iwp),ALLOCATABLE :: p_pp(:),x_pp(:),xnew_pp(:),u_pp(:),utemp_pp(:,:)
+ REAL(iwp),ALLOCATABLE :: d_pp(:),diag_precon_tmp(:,:)
+ REAL(iwp),ALLOCATABLE :: vmfl(:),caflow(:),dsigma(:),ress(:),rmat(:,:)
+ REAL(iwp),ALLOCATABLE :: acat(:,:),acatc(:,:),qmat(:,:),qinva(:),daatd(:,:)
+ REAL(iwp),ALLOCATABLE :: vmflq(:),vmfla(:),qinvr(:),vmtemp(:,:),temp(:,:)
+ REAL(iwp),ALLOCATABLE :: disp_pp(:,:),xnewel_pp(:,:)
+ REAL(iwp),ALLOCATABLE :: xnewnodes_pp(:),fext_pp(:),timest(:)
+ REAL(iwp),ALLOCATABLE :: storkm_pp(:,:,:), storkm_pp_old(:,:,:)
+ REAL(iwp),ALLOCATABLE :: tensor_pp(:,:,:), tensor_pp_old(:,:,:)
+ REAL(iwp),ALLOCATABLE :: totd_pp(:), totd_pp_old(:)
+ REAL(iwp),ALLOCATABLE :: diag_precon_pp(:), diag_precon_pp_old(:)
+ REAL(iwp),ALLOCATABLE :: prop(:,:)          ! element properties matrix
+ REAL(iwp),ALLOCATABLE :: loadNodeValue(:,:) ! nodal values of applied forces
+ REAL(iwp),ALLOCATABLE :: loadEqnValue_pp(:) ! eqn values of applied forces
+ REAL(iwp),ALLOCATABLE :: g_coord_pp(:,:,:)  ! nodal coordinates
+ REAL(iwp),ALLOCATABLE :: val(:)             ! prescribed load/disp values
 
  INTEGER, ALLOCATABLE  :: g_g_pp(:,:)
  INTEGER, ALLOCATABLE  :: g_num_pp(:,:)
@@ -154,7 +138,7 @@
 ! 4. Start timer and initialize MPI
 !------------------------------------------------------------------------------
 
-  timest = elap_time()
+  timest(1) = elap_time()
   CALL find_pe_procs(numpe,npes)
 
   CALL MPI_BARRIER(MPI_COMM_WORLD,ier) !- Barrier inserted for debugging
@@ -231,20 +215,20 @@
 ! CALL readall_nels_pp_fname(fname)
 
   ALLOCATE(g_num_pp(nod, nels_pp)) 
-  ALLOCATE(p_g_co_pp(nod,ndim,nels_pp)) 
+  ALLOCATE(g_coord_pp(nod,ndim,nels_pp)) 
   ALLOCATE(prop(nprops,np_types))
   ALLOCATE(etype_pp(nels_pp))
   ALLOCATE(rest(nr,nodof+1))
 
-  g_num_pp  = 0
-  p_g_co_pp = zero
-  prop      = zero
-  etype_pp  = 0
-  rest      = 0
+  g_num_pp   = 0
+  g_coord_pp = zero
+  prop       = zero
+  etype_pp   = 0
+  rest       = 0
 
   fname     = job_name(1:INDEX(job_name, " ")-1) // ".d"
-  CALL read_elements(fname,iel_start,nels,nn,numpe,g_num_pp)
-  CALL read_p_g_co_pp(fname,g_num_pp,nn,npes,numpe,p_g_co_pp)
+  CALL read_g_num_pp(job_name,iel_start,nels,nn,numpe,g_num_pp)
+  CALL read_g_coord_pp(job_name,g_num_pp,nn,npes,numpe,g_coord_pp)
   CALL readall_materialID_pp(etype_pp,fname,nn,ndim,nels,nod,iel_start,        &
                              numpe,npes)
 
@@ -360,7 +344,7 @@
  
   IF(numpe==1) THEN
     WRITE(11,'(A,F10.4/)')  "Time after setup:                         ",     &
-                             elap_time( ) - timest
+                             elap_time( ) - timest(1)
     WRITE(11,'(2A)')    "------------------------------------------",         &
                         "----------"
     WRITE(11,'(2A)')    "                   ANALYSIS DATA          ",         &
@@ -388,7 +372,7 @@
 
               gauss_pts_1: DO i =1 , nip    
                 CALL shape_der (der,points,i)
-                jac   = MATMUL(der,p_g_co_pp(:,:,iel))
+                jac   = MATMUL(der,g_coord_pp(:,:,iel))
                 det   = determinant(jac)
                 CALL invert(jac)
                 deriv = MATMUL(jac,der)
@@ -629,7 +613,7 @@
       WRITE(11,'(A)')     "Analysis terminated by program"
       WRITE(11,'(A)')     "Try reducing the applied load "
       WRITE(11,'(A,E12.4)') "This analysis took:                     ",       &
-                             elap_time( ) - timest
+                             elap_time( ) - timest(1)
       WRITE(11,'(2A)')    "----------------------------------------",         &
                           "------------"
       WRITE(11,'(/A)') "If running the same analysis again, reduce the "
@@ -803,7 +787,7 @@
        gauss_points_2 : DO i = 1 , nip
           elso    = zero
           CALL shape_der(der,points,i)
-          jac     = MATMUL(der,p_g_co_pp(:,:,iel))
+          jac     = MATMUL(der,g_coord_pp(:,:,iel))
           det     = determinant(jac)
           CALL invert(jac)
           deriv   = MATMUL(jac,der)
@@ -1116,7 +1100,7 @@
         END IF
 
         WRITE(11,'(A,E12.4)') "This analysis took:                     ",   &
-                               elap_time( ) - timest
+                               elap_time( ) - timest(1)
         WRITE(11,'(2A)')      "----------------------------------------",     &
                               "------------"
         WRITE(11,'(2A/)')     "----------------------------------------",      &
