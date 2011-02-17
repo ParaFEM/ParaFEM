@@ -8,7 +8,7 @@ PROGRAM sg12mg
 !*  AUTHOR
 !*    Lee Margetts
 !*  COPYRIGHT
-!*    (c) University of Manchester 2007-2010
+!*    (c) University of Manchester 2007-2011
 !****
 !*/
 
@@ -184,7 +184,7 @@ PROGRAM sg12mg
      CALL cube_bc20(rest,nxe,nye,nze)
   
      DO i = 1, nr
-       WRITE(12,'(I8,3I6)') rest(i,:) 
+       WRITE(12,'(I12,3I2)') rest(i,:) 
      END DO
   
      CLOSE(12)
@@ -200,14 +200,14 @@ PROGRAM sg12mg
        CALL load_p121(nle,nod,nxe,nze, no,val)
        val = -val * aa * bb * (25._iwp / 12._iwp)
        DO i = 1, loaded_freedoms
-         WRITE(13,'(I10,2A,3E16.8)') no(i),"  0.00000000E+00  ",              &
+         WRITE(13,'(I12,2A,3E16.8)') no(i),"  0.00000000E+00  ",              &
                                     "0.00000000E+00",val(i) 
        END DO
      ELSE IF (problem_type == 'boussinesq') THEN
        no  = 1
        val = -1.0_iwp
        DO i = 1, loaded_freedoms
-         WRITE(13,'(I10,2A,3E16.8)') no(i),"  0.00000000E+00  ",              &
+         WRITE(13,'(I12,2A,3E16.8)') no(i),"  0.00000000E+00  ",              &
                                     "0.00000000E+00",val(i) 
        END DO
      ELSE
@@ -226,8 +226,8 @@ PROGRAM sg12mg
   
      WRITE(14,'(A)') "'hexahedron'"
      WRITE(14,'(A)') "2"              ! Abaqus node numbering scheme
-     WRITE(14,'(7I9)') nels, nn, nr, nip, nod, loaded_freedoms, fixed_freedoms
-     WRITE(14,'(3E12.4,I8)') e, v, tol, limit
+     WRITE(14,'(3I12,2I5,2I9)')nels,nn,nr,nip,nod,loaded_freedoms,fixed_freedoms
+     WRITE(14,'(3E12.4,I8)') e,v,tol,limit
   
      CLOSE(14)
 

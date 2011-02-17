@@ -226,17 +226,18 @@
   etype_pp   = 0
   rest       = 0
 
-  fname     = job_name(1:INDEX(job_name, " ")-1) // ".d"
   CALL read_g_num_pp(job_name,iel_start,nels,nn,numpe,g_num_pp)
   CALL read_g_coord_pp(job_name,g_num_pp,nn,npes,numpe,g_coord_pp)
+  CALL read_rest(job_name,numpe,rest)
+
+  fname     = job_name(1:INDEX(job_name, " ")-1) // ".d"
   CALL readall_materialID_pp(etype_pp,fname,nn,ndim,nels,nod,iel_start,        &
                              numpe,npes)
 
   fname     = job_name(1:INDEX(job_name, " ")-1) // ".mat"
   CALL readall_materialValue(prop,fname,numpe,npes)
 
-  fname     = job_name(1:INDEX(job_name, " ")-1) // ".bnd"
-  CALL readall_restraints_fname(fname, rest, numpe, npes)
+  CALL read_rest(job_name,numpe,rest)
 
   ! I/O error capture
   ! Will only work on master processor. Needs implementing properly
@@ -509,10 +510,9 @@
     loadNodeValue = zero
     loadNodeNum   = 0
 
-    CALL readall_loads_fname(fname_loads,loadNodeNum,loadNodeValue,            &
-                             numpe,npes)
+    CALL read_loads(job_name,numpe,loadNodeNum,loadNodeValue)
 
-    CALL load_2(g_g_pp,g_num_pp,loadNodeNum,loadNodeValue,fext_pp(1:))
+    CALL load(g_g_pp,g_num_pp,loadNodeNum,loadNodeValue,fext_pp(1:))
 
     tload = SUM_P(fext_pp(1:))
     IF(numpe==1) THEN
@@ -731,7 +731,7 @@
 
        cj_converged = .TRUE.
        
-       CALL checon_par94(xnew_pp,x_pp,cjtol,cj_converged,neq_pp)
+       CALL checon_par(xnew_pp,cjtol,cj_converged,x_pp)
        
        IF(cj_converged) EXIT
        IF(cjiters==cjits) THEN
@@ -1032,10 +1032,10 @@
       text         = "*DISPLACEMENT"
 
       CALL gather(totd_pp(1:),xnewel_pp)
-      CALL scatter_allnodes(npes,nn,nels_pp,g_num_pp,nod,ndim,nodes_pp, &
-                            node_start,node_end,xnewel_pp,xnewnodes_pp,1)
-      CALL write_allnodes(24,text,xnewnodes_pp,nodes_pp,ndim,npes,numpe,      &
-                          outputIncrement)
+      CALL scatter_nodes(npes,nn,nels_pp,g_num_pp,nod,ndim,nodes_pp,          &
+                         node_start,node_end,xnewel_pp,xnewnodes_pp,1)
+      CALL write_nodal_variable(text,24,outputIncrement,nodes_pp,npes,numpe,  &
+                                ndim,xnewnodes_pp)
 
       DEALLOCATE(xnewel_pp)
       DEALLOCATE(xnewnodes_pp)
