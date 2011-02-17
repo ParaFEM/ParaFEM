@@ -74,10 +74,6 @@ The tables below give some performance figures for program p121 (3D small strain
 ||64||512||-||-||-||-||-||-||
 ||64||768||-||-||-||-||-||-||
 
-{{{
-* Memory fault reported by the system.
-}}}
-
 ----
 
 = 3D Small Strain Elasticity using the Boundary Element Method =
