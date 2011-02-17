@@ -172,13 +172,13 @@
     OPEN (11, file=fname_results, status='replace', action='write')
   END IF
 
-  CALL bcast_inputdata_palaeofem(numpe,npes,nels,nn,nr,nip,plasitersMax,       &
-                                 plasitersMin,loadIncrementMax,cjits,          &
-                                 plastol,cjtol,fftol,ltol,np_types,numSteps)
+  CALL bcast_inputdata_p1211(numpe,npes,nels,nn,nr,nip,plasitersMax,           &
+                             plasitersMin,loadIncrementMax,cjits,              &
+                             plastol,cjtol,fftol,ltol,np_types,numSteps)
     
-  CALL check_inputdata_palaeofem(numpe,npes,nels,nn,nr,nip,plasitersMax,       &
-                                 plasitersMin,loadIncrementMax,cjits,          &
-                                 plastol,cjtol,fftol,ltol,np_types,numSteps)
+  CALL check_inputdata_p1211(numpe,npes,nels,nn,nr,nip,plasitersMax,           &
+                             plasitersMin,loadIncrementMax,cjits,              &
+                             plastol,cjtol,fftol,ltol,np_types,numSteps)
 
   ntot     = nod * nodof
 
@@ -231,11 +231,11 @@
   CALL read_rest(job_name,numpe,rest)
 
   fname     = job_name(1:INDEX(job_name, " ")-1) // ".d"
-  CALL readall_materialID_pp(etype_pp,fname,nn,ndim,nels,nod,iel_start,        &
-                             numpe,npes)
+  CALL read_materialID_pp(etype_pp,fname,nn,ndim,nels,nod,iel_start,          &
+                          numpe,npes)
 
   fname     = job_name(1:INDEX(job_name, " ")-1) // ".mat"
-  CALL readall_materialValue(prop,fname,numpe,npes)
+  CALL read_materialValue(prop,fname,numpe,npes)
 
   CALL read_rest(job_name,numpe,rest)
 
