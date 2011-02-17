@@ -17,14 +17,18 @@ MODULE INPUT
   !*    READ_LOADS_NS          Reads lid velocities for p126
   !*    READ_FIXED             Reads fixed freedoms for displacement control
   !*    READ_REST              Reads the restraints
+  !*    READ_MATERIALID_PP     Reads the material ID for each element
+  !*    READ_MATERIALVALUE     Reads property values for each material ID
   !*    READ_P121              Reads the control data for program p121
   !*    READ_P126              Reads the control data for program p126
   !*    READ_P128AR            Reads the control data for program p128ar
   !*    READ_P129              Reads the control data for program p129
+  !*    BCAST_INPUTDATA_P1211  Reads the control data for program ed5/p1211
+  !*    CHECK_INPUTDATA_P1211  Checks the control data for program ed5/p1211
   !*  AUTHOR
   !*    L. Margetts
   !*  COPYRIGHT
-  !*    2004-2010 University of Manchester
+  !*    2004-2011 University of Manchester
   !******
   !*  Place remarks that should not be included in the documentation here.
   !*
@@ -761,6 +765,107 @@ MODULE INPUT
 
   RETURN
   END SUBROUTINE READ_REST
+
+!------------------------------------------------------------------------------
+!------------------------------------------------------------------------------
+!------------------------------------------------------------------------------
+  
+  SUBROUTINE READ_MATERIALID_PP(MATERIALID_PP,FNAME,NN,NDIM,NELS,  &
+                                NOD,IEL_START,NUMPE,NPES)
+                                   
+    !Master process reads the global array from a single file and 
+    !sends a copy to each slave. (I/O method 1: refer to notes)
+    !Each processor records only each correspondent part of the elements
+    !The strategy is to send all the data to all the processors, and then
+    !each processor records only what it is interested in
+
+    IMPLICIT NONE
+    CHARACTER(LEN=50), INTENT(in) :: fname
+    INTEGER                  :: i,k,iel,bufsize,ier,ielpe
+    INTEGER,INTENT(IN)       :: numpe,npes,iel_start,ndim,nn,nels,nod
+    INTEGER,INTENT(INOUT)    :: materialID_pp(:)  !- local material IDs
+    INTEGER,ALLOCATABLE      :: num(:)            !- node numbers
+    INTEGER,ALLOCATABLE      :: materialID(:)     !- global material IDs
+    REAL(iwp),ALLOCATABLE    :: coord(:)          !- coord
+    CHARACTER(LEN=40)        :: keyword
+
+    ALLOCATE(materialID(nels))
+    ALLOCATE(coord(ndim))
+    ALLOCATE(num(nod))
+
+    IF(numpe==1)THEN
+
+     OPEN(21,FILE=fname, STATUS='OLD', ACTION='READ')
+
+     READ(21,*) keyword  !the headers of the file  (rubbish)
+     READ(21,*) keyword  !the headers of the file  (rubbish)
+
+!    the nodes are read, but nothing is done, just we wait until arriving
+!    to the elements
+
+     DO i = 1,nn 
+      READ(21,*) k,coord(:)
+     END DO
+
+     READ(21,*) keyword  !here we read the word "elements"
+
+     DO iel = 1,nels
+       READ(21,*)k,k,k,k,num(:),materialID(iel)
+     END DO
+
+     CLOSE(21)
+    END IF
+    
+    bufsize       = nels
+    CALL MPI_BCAST(materialID,bufsize,MPI_INTEGER,0,MPI_COMM_WORLD,ier)
+
+    materialID_pp = 0 
+    ielpe         = iel_start
+
+    DO iel = 1,ubound(materialID_pp,1)
+      materialID_pp(iel) = materialID(ielpe) 
+      ielpe              = ielpe + 1
+    END DO
+   
+    DEALLOCATE(materialID)
+    DEALLOCATE(num)
+    DEALLOCATE(coord)
+   
+    RETURN
+
+  END SUBROUTINE READ_MATERIALID_PP
+  
+!------------------------------------------------------------------------------
+!------------------------------------------------------------------------------
+!------------------------------------------------------------------------------
+
+  SUBROUTINE READ_MATERIALVALUE(MATERIALVALUES,FNAME,NUMPE,NPES)
+
+    !Master process reads the global array from a single file and 
+    !sends a copy to each slave. (I/O method 1: refer to notes)
+    !k is the material number in the file, it is read and discarded
+
+    IMPLICIT NONE
+    CHARACTER(LEN=50), INTENT(in) :: fname
+    INTEGER                  :: i,k,nmats,bufsize,ier,ielpe
+    INTEGER,INTENT(IN)       :: numpe,npes
+    REAL(iwp),INTENT(INOUT)  :: materialValues(:,:)
+
+    IF(numpe==1)THEN
+     OPEN(21,FILE=fname, STATUS='OLD', ACTION='READ')
+     READ(21,*) nmats
+     DO i = 1,nmats
+       READ(21,*)k, materialValues(:,i)
+     END DO
+     CLOSE(21)
+    END IF
+    
+    bufsize       = ubound(materialValues,1)*ubound(materialValues,2)
+    CALL MPI_BCAST(materialValues,bufsize,MPI_REAL8,0,MPI_COMM_WORLD,ier)
+   
+    RETURN
+
+  END SUBROUTINE READ_MATERIALVALUE
 
 !------------------------------------------------------------------------------
 !------------------------------------------------------------------------------
@@ -1606,4 +1711,187 @@ MODULE INPUT
 !------------------------------------------------------------------------------
 !------------------------------------------------------------------------------
 
+    SUBROUTINE BCAST_INPUTDATA_P1211(numpe,npes,nels,nn,nr,nip,               &
+                                     plasitersMax,plasitersMin,               &
+                                     loadIncrementsMax,                       &
+                                     cjits,plastol,cjtol,fftol,ltol,          &
+                                     numMaterials,numSteps)
+
+    !Transfers input data from DAT file to all slave processors
+
+    IMPLICIT NONE
+    INTEGER,INTENT(INOUT)   :: numpe,npes,nels,nn,nr,nip
+    INTEGER,INTENT(INOUT)   :: plasitersMax,plasitersMin,                     &
+                               loadIncrementsMax,cjits,numMaterials,numSteps
+    INTEGER                 :: bufsizer,position,bufsize,bufdecl,recbufsize,ier
+!   INTEGER, PARAMETER      :: ilength=4, rlength=8
+    INTEGER, PARAMETER      :: ilength=8, rlength=8
+    INTEGER, ALLOCATABLE    :: tempbuf(:)
+    REAL(IWP),INTENT(INOUT) :: plastol,cjtol,fftol,ltol
+
+    bufsizer=10*ilength + 4*rlength
+
+!   CALL MPI_BCAST(bufsizer,1,MPI_INTEGER,npes-1,MPI_COMM_WORLD,ier)
+    CALL MPI_BCAST(bufsizer,1,MPI_INTEGER,0,MPI_COMM_WORLD,ier)
+
+    bufdecl=bufsizer/4
+    allocate(tempbuf(bufdecl))
+
+!   IF(numpe==npes)THEN
+    IF(numpe==1)THEN
+      position = 0
+      CALL MPI_PACK(nels,1,MPI_INTEGER,tempbuf,bufsizer,position,            &
+                    MPI_COMM_WORLD,ier)
+      CALL MPI_PACK(nn,1,MPI_INTEGER,tempbuf,bufsizer,position,              &
+                    MPI_COMM_WORLD,ier)
+      CALL MPI_PACK(nr,1,MPI_INTEGER,tempbuf,bufsizer,position,              &
+                    MPI_COMM_WORLD,ier)
+      CALL MPI_PACK(nip,1,MPI_INTEGER,tempbuf,bufsizer,position,             &
+                    MPI_COMM_WORLD,ier)
+      CALL MPI_PACK(numMaterials,1,MPI_INTEGER,tempbuf,bufsizer,position,    &
+                    MPI_COMM_WORLD,ier)
+      CALL MPI_PACK(numSteps,1,MPI_INTEGER,tempbuf,bufsizer,position,        &
+                    MPI_COMM_WORLD,ier)
+      CALL MPI_PACK(plasitersMax,1,MPI_INTEGER,tempbuf,bufsizer,position,    &
+                    MPI_COMM_WORLD,ier)
+      CALL MPI_PACK(plasitersMin,1,MPI_INTEGER,tempbuf,bufsizer,position,    &
+                    MPI_COMM_WORLD,ier)
+      CALL MPI_PACK(loadIncrementsMax,1,MPI_INTEGER,tempbuf,bufsizer,        &
+                    position,MPI_COMM_WORLD,ier)
+      CALL MPI_PACK(cjits,1,MPI_INTEGER,tempbuf,bufsizer,position,           &
+                    MPI_COMM_WORLD,ier)
+      CALL MPI_PACK(plastol,1,MPI_REAL8,tempbuf,bufsizer,position,           &
+                    MPI_COMM_WORLD,ier)
+      CALL MPI_PACK(cjtol,1,MPI_REAL8,tempbuf,bufsizer,position,             &
+                    MPI_COMM_WORLD,ier)
+      CALL MPI_PACK(fftol,1,MPI_REAL8,tempbuf,bufsizer,position,             &
+                    MPI_COMM_WORLD,ier)
+      CALL MPI_PACK(ltol,1,MPI_REAL8,tempbuf,bufsizer,position,              &
+                    MPI_COMM_WORLD,ier)
+    END IF
+
+!   CALL MPI_BCAST(tempbuf,bufsizer,MPI_BYTE,npes-1,MPI_COMM_WORLD,ier)
+    CALL MPI_BCAST(tempbuf,bufsizer,MPI_BYTE,0,MPI_COMM_WORLD,ier)
+
+!   IF(numpe/=npes)THEN
+    IF(numpe/=1)THEN
+      position = 0
+      CALL MPI_UNPACK(tempbuf,bufsizer,position,nels,1,MPI_INTEGER,          &
+                      MPI_COMM_WORLD,ier) 
+      CALL MPI_UNPACK(tempbuf,bufsizer,position,nn,1,MPI_INTEGER,            &
+                      MPI_COMM_WORLD,ier) 
+      CALL MPI_UNPACK(tempbuf,bufsizer,position,nr,1,MPI_INTEGER,            &
+                      MPI_COMM_WORLD,ier) 
+      CALL MPI_UNPACK(tempbuf,bufsizer,position,nip,1,MPI_INTEGER,           &
+                      MPI_COMM_WORLD,ier) 
+      CALL MPI_UNPACK(tempbuf,bufsizer,position,numMaterials,1,MPI_INTEGER,  &
+                      MPI_COMM_WORLD,ier) 
+      CALL MPI_UNPACK(tempbuf,bufsizer,position,numSteps,1,MPI_INTEGER,      &
+                      MPI_COMM_WORLD,ier) 
+      CALL MPI_UNPACK(tempbuf,bufsizer,position,plasitersMax,1,MPI_INTEGER,  & 
+                      MPI_COMM_WORLD,ier) 
+      CALL MPI_UNPACK(tempbuf,bufsizer,position,plasitersMin,1,MPI_INTEGER,  & 
+                      MPI_COMM_WORLD,ier) 
+      CALL MPI_UNPACK(tempbuf,bufsizer,position,loadIncrementsMax,1,         &
+                      MPI_INTEGER,MPI_COMM_WORLD,ier) 
+      CALL MPI_UNPACK(tempbuf,bufsizer,position,cjits,1,MPI_INTEGER,         &
+                      MPI_COMM_WORLD,ier) 
+      CALL MPI_UNPACK(tempbuf,bufsizer,position,plastol,1,MPI_REAL8,         &
+                      MPI_COMM_WORLD,ier) 
+      CALL MPI_UNPACK(tempbuf,bufsizer,position,cjtol,1,MPI_REAL8,           &
+                      MPI_COMM_WORLD,ier) 
+      CALL MPI_UNPACK(tempbuf,bufsizer,position,fftol,1,MPI_REAL8,           &
+                      MPI_COMM_WORLD,ier) 
+      CALL MPI_UNPACK(tempbuf,bufsizer,position,ltol,1,MPI_REAL8,            &
+                      MPI_COMM_WORLD,ier) 
+    END IF
+
+    RETURN
+    END SUBROUTINE BCAST_INPUTDATA_P1211
+
+!------------------------------------------------------------------------------
+!------------------------------------------------------------------------------
+!------------------------------------------------------------------------------
+
+    SUBROUTINE CHECK_INPUTDATA_P1211(numpe,npes,nels,nn,nr,nip,               &
+                                     plasitersMax,plasitersMin,               &
+                                     loadIncrementMax,                        &
+                                     cjits,plastol,cjtol,fftol,ltol,          &
+                                     numMaterials,numSteps)
+
+    ! Checks input data from DAT file on master processor only
+
+    IMPLICIT NONE
+    
+    INTEGER,INTENT(IN)   :: numpe,npes,nels,nn,nr,nip
+    INTEGER,INTENT(IN)   :: plasitersMax,plasitersMin,                        &
+                            loadIncrementMax,cjits,numMaterials,numSteps
+    REAL(IWP),INTENT(IN) :: plastol,cjtol,fftol,ltol
+
+!------------------------------------------------------------------------------
+! 1. I/O trap. Not enough NELS for the available processors
+!------------------------------------------------------------------------------
+
+    IF(nels < npes) THEN
+      IF(numpe == 1) THEN
+        WRITE(11,'(/2A)')   "------------------------------------------",     &
+                            "----------"
+        WRITE(11,'(A)')     "Program has detected a fatal error"
+        WRITE(11,'(/A)')    "  The number of elements NELS must be greater"
+        WRITE(11,'(A/)')    "  than the number of processors NPES"
+        WRITE(11,'(A)')     "Analysis aborted"
+        WRITE(11,'(2A/)')   "------------------------------------------",     &
+                            "----------"
+      END IF
+      CALL shutdown()
+    END IF
+
+!------------------------------------------------------------------------------
+! 2. Master processor echos the input data.
+!------------------------------------------------------------------------------
+
+    IF(numpe==1) THEN
+            
+      WRITE(11,'(/2A)')   "------------------------------------------",         &
+                          "----------"
+      WRITE(11,'(2A)')    "                     MODEL DATA           ",         &
+                          "          "
+      WRITE(11,'(2A/)')   "------------------------------------------",         &
+                          "----------"
+      WRITE(11,'(A,I10)') "Number of processors:                     ", npes
+      WRITE(11,'(A,I10)') "Number of elements:                       ", nels
+      WRITE(11,'(A,I10)') "Number of nodes:                          ", nn
+      WRITE(11,'(A,I10)') "Number of restrained nodes:               ", nr
+      WRITE(11,'(A,I10)') "Number of materials:                      ",         &
+                           numMaterials
+      WRITE(11,'(A,I10)') "Number of load steps:                     ", numSteps
+      WRITE(11,'(A,I10)') "Upper limit on number of load increments: ",         &
+                           loadIncrementMax 
+      WRITE(11,'(A,I10)') "Lower limit of plastic iters per load inc:",         &
+                           plasitersMin
+      WRITE(11,'(A,I10)') "Upper limit of plastic iters per load inc:",         &
+                           plasitersMax
+    END IF 
+
+!------------------------------------------------------------------------------
+! 3. I/O trap for plasiters limits
+!------------------------------------------------------------------------------
+    
+    IF(plasitersMin == plasitersMax .OR. plasitersMin > plasitersMax) THEN
+      IF(numpe == 1) THEN
+        WRITE(11,'(/2A)')   "------------------------------------------",       &
+                            "----------"
+        WRITE(11,'(A)')     "Program has detected a fatal error"
+        WRITE(11,'(/A)')    "  Input variable PLASITERSMAX"
+        WRITE(11,'(A/)')    "  must be greater than PLASITERSMIN"
+        WRITE(11,'(A)')     "Analysis aborted"
+        WRITE(11,'(2A/)')   "------------------------------------------",       &
+                            "----------"
+      END IF
+      CALL shutdown()
+    END IF
+
+    RETURN
+    END SUBROUTINE CHECK_INPUTDATA_P1211
+    
 END MODULE INPUT
