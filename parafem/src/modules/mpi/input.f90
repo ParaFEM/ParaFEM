@@ -242,7 +242,7 @@ MODULE INPUT
   !*  AUTHOR
   !*    L. Margetts
   !*  COPYRIGHT
-  !*    (c) University of Manchester 2007-2010
+  !*    (c) University of Manchester 2007-2011
   !******
   !*  Place remarks that should not be included in the documentation here.
   !*
@@ -255,7 +255,6 @@ MODULE INPUT
   IMPLICIT NONE
 
   CHARACTER(LEN=50), INTENT(IN) :: job_name
-  CHARACTER(LEN=50)             :: header
   CHARACTER(LEN=50)             :: fname
   INTEGER, INTENT(IN)           :: iel_start, nn, npes, numpe
   INTEGER, INTENT(INOUT)        :: g_num_pp(:,:)
@@ -264,7 +263,6 @@ MODULE INPUT
   INTEGER                       :: readSteps,max_nels_pp
   INTEGER                       :: status(MPI_STATUS_SIZE)
   INTEGER, ALLOCATABLE          :: g_num(:,:),localCount(:),readCount(:)
-  REAL(iwp), ALLOCATABLE        :: dummy(:)
 
 !------------------------------------------------------------------------------
 ! 1. Initiallize variables
@@ -296,10 +294,9 @@ MODULE INPUT
 
   max_nels_pp = MAXVAL(readCount,1)
   
-  ALLOCATE(g_num(nod,max_nels_pp),dummy(ndim))
+  ALLOCATE(g_num(nod,max_nels_pp))
   
   g_num = 0             ! different value for each processor
-  dummy = 0.0_iwp
 
 !------------------------------------------------------------------------------
 ! 4. Master processor opens the data file and advances to the start of the 
@@ -309,13 +306,12 @@ MODULE INPUT
   IF (numpe==1) THEN
     fname     = job_name(1:INDEX(job_name, " ")-1) // ".d"
     OPEN(10,FILE=fname,STATUS='OLD',ACTION='READ')
-    READ(10,*)   header  !header
-    READ(10,*)   header  !header
-    DO i = 1,nn   !read nodes until reaching the elements
-      READ(10,*) k, dummy(:)
+    READ(10,*)   !header
+    READ(10,*)   !header
+    DO i = 1,nn  
+      READ(10,*) !skip nodes until reaching the elements
     END DO
-    READ(10,*)   header !keyword element
-    PRINT *, "HEADER =", header
+    READ(10,*)   !header
   END IF
 
 !------------------------------------------------------------------------------
