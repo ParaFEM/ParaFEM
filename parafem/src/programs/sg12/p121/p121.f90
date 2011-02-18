@@ -79,11 +79,21 @@ PROGRAM p121
   g_coord_pp= zero
   rest      = 0
 
+  timest(2) = elap_time()
+  
   CALL read_g_num_pp2(job_name,iel_start,nn,npes,numpe,g_num_pp)
+  timest(3) = elap_time()
+
 ! CALL read_g_num_pp(job_name,iel_start,nels,nn,numpe,g_num_pp)
+
   IF(meshgen == 2) CALL abaqus2sg(element,g_num_pp)
+  timest(4) = elap_time()
+
   CALL read_g_coord_pp(job_name,g_num_pp,nn,npes,numpe,g_coord_pp)
+  timest(5) = elap_time()
+
   CALL read_rest(job_name,numpe,rest)
+  timest(6) = elap_time()
     
 !------------------------------------------------------------------------------
 ! 4. Allocate dynamic arrays used in main program
@@ -94,8 +104,6 @@ PROGRAM p121
            storkm_pp(ntot,ntot,nels_pp),eld(ntot),eps(nst),sigma(nst),        &
            pmul_pp(ntot,nels_pp),utemp_pp(ntot,nels_pp),                      &
            weights(nip),g_g_pp(ntot,nels_pp),fun(nod))
-
-  timest(2) = elap_time()
 
 !------------------------------------------------------------------------------
 ! 5. Loop the elements to find the steering array and the number of equations
@@ -120,7 +128,7 @@ PROGRAM p121
 
   neq = MAX_INTEGER_P(neq)
  
-  timest(3) = elap_time()
+  timest(7) = elap_time()
 
 !------------------------------------------------------------------------------
 ! 6. Create interprocessor communication tables
@@ -130,7 +138,7 @@ PROGRAM p121
   CALL calc_npes_pp(npes,npes_pp)
   CALL make_ggl(npes_pp,npes,g_g_pp)
  
-  timest(4) = elap_time()
+  timest(8) = elap_time()
 
   CALL MPI_BARRIER(MPI_COMM_WORLD,ier)
 !------------------------------------------------------------------------------
@@ -143,7 +151,7 @@ PROGRAM p121
   p_pp    = zero  ;  r_pp = zero  ;  x_pp = zero
   xnew_pp = zero  ;  u_pp = zero  ;  d_pp = zero  ; diag_precon_pp = zero
 
-  timest(5) = elap_time()
+  timest(9) = elap_time()
 
 !------------------------------------------------------------------------------
 ! 8. Element stiffness integration and storage
@@ -168,7 +176,7 @@ PROGRAM p121
     END DO gauss_pts_1
   END DO elements_3
   
-  timest(6) = elap_time()
+  timest(10) = elap_time()
 
 !------------------------------------------------------------------------------
 ! 9. Build the diagonal preconditioner
@@ -187,7 +195,7 @@ PROGRAM p121
 
   DEALLOCATE(diag_precon_tmp)
 
-  timest(7) = elap_time()
+  timest(11) = elap_time()
 
 !------------------------------------------------------------------------------
 ! 10. Read in fixed nodal displacements and assign to equations
@@ -242,7 +250,7 @@ PROGRAM p121
   
   DEALLOCATE(g_g_pp)
   
-  timest(8) = elap_time()
+  timest(12) = elap_time()
 
 !------------------------------------------------------------------------------
 ! 12. Invert the preconditioner.
@@ -315,7 +323,7 @@ PROGRAM p121
 
   DEALLOCATE(p_pp,r_pp,x_pp,u_pp,d_pp,diag_precon_pp,storkm_pp,pmul_pp) 
   
-  timest(9) = elap_time()
+  timest(13) = elap_time()
 
 !------------------------------------------------------------------------------
 ! 15. Print out displacements, stress, principal stress and reactions
@@ -480,7 +488,7 @@ PROGRAM p121
 
   IF(numpe==1) CLOSE(28)
 
-  timest(10) = elap_time()
+  timest(14) = elap_time()
    
 !------------------------------------------------------------------------------
 ! 17. Output performance data
