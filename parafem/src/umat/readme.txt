@@ -14,6 +14,8 @@ UMAT code that is compatible with the ParaFEM library will be in the folder:
 
   /parafem/src/umat/parafem
 
+The naming convention for ParaFEM compatible UMATs is "pf-<name>.f"
+
 AUTHOR
 
 louise.lever@manchester.ac.uk
