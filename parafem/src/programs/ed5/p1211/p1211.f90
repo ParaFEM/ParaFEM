@@ -138,6 +138,7 @@
 ! 4. Start timer and initialize MPI
 !------------------------------------------------------------------------------
 
+  ALLOCATE(timest(20))
   timest(1) = elap_time()
   CALL find_pe_procs(numpe,npes)
 
