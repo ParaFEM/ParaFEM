@@ -7,7 +7,7 @@
   * [Input Data Formats]
   * [TestProblems Simple Test Problems]
   * [ParaFEMViewerManual Visualization Tool]
-  * [UMATs UMAT Interface]
+  * [UMATs UMATs]
  * [Contribute Contribute to ParaFEM]
  * [Performance Performance]
  * [Publications Publications]
