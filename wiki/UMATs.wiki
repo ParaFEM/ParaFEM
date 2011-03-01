@@ -2,7 +2,7 @@
 
 = Introduction =
 
-NAG Ltd have provided funding to develop an interface for user materials. Once implemented, this will expand the range of material types available for use with ParaFEM. The funding is provided by NAG Ltd on behalf of EPSRC as part of HECToR's distributed computational engineering and science support mechanism (HECToR dCSE). For convenience, we have adopted the UMAT interface defined by Abaqus. For further details, please see the following [http://www.parafem.org.uk/index.php?option=com_content&view=article&id=42:microstructurally-faithful-modelling-of-materials&catid=22:materials-science&Itemid=57 project entry] on the main [http://www.parafem.org.uk main ParaFEM website].
+NAG Ltd have provided funding to develop an interface for user materials. Once implemented, this will expand the range of material types available for use with ParaFEM. The funding is provided by NAG Ltd on behalf of EPSRC as part of HECToR's distributed computational engineering and science support mechanism (HECToR dCSE). For convenience, we have adopted the UMAT interface defined by Abaqus. For further details, please see the following [http://www.parafem.org.uk/index.php?option=com_content&view=article&id=42:microstructurally-faithful-modelling-of-materials&catid=22:materials-science&Itemid=57 project entry] on the [http://www.parafem.org.uk main ParaFEM website].
 
 
 = Abaqus UMAT Interface =
