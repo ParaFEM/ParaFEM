@@ -20,7 +20,7 @@ The arguments to the Abaqus subroutine are as follows:
 
 ||*Variable Name*||*S&G Equivalent*||*Type*||*Meaning*||
 ||{{{STRESS(NTENS)}}}||{{{sigma}}}||Real array||Stress terms||
-||{{{STATEV(NSTATV)}}}||{{{-}}}||-||Solution-dependent state variables||
+||{{{STATEV(NSTATV)}}}||{{{-}}}||Real array||Solution-dependent state variables||
 ||{{{DDSDDE(NTENS,NTENS)}}}||{{{dee}}}||Real array||Stress-strain matrix||
 ||{{{SSE}}}||{{{-}}}||Scalar real||Elastic strain energy||
 ||{{{SPD}}}||{{{-}}}||Scalar real||Plastic dissipation||
@@ -28,7 +28,7 @@ The arguments to the Abaqus subroutine are as follows:
 ||{{{RPL}}}||{{{-}}}||Scalar real||Volumetric heat generation||
 ||{{{DDSDDT(NTENS)}}}||{{{-}}}||Real array||Variation of the stress increments with respect to the temperature||
 ||{{{DRPLDE(NTENS)}}}||{{{-}}}||Real array||Variation of RPL with respect to the strain increments||
-||{{{DRPLDT(NTENS)}}}||{{{-}}}||-||Variation of RPL with respect to the temperature||
+||{{{DRPLDT(NTENS)}}}||{{{-}}}||Real array||Variation of RPL with respect to the temperature||
 ||{{{STRAN(NTENS)}}}||{{{-}}}||Real array||Total strain increment||
 ||{{{DSTRAN(NTENS)}}}||{{{-}}}||Real array||Mechanical strain increment ||
 ||{{{TIME(1)}}}||{{{-}}}||Real array||Step time at beginning of increment||
@@ -47,7 +47,7 @@ The arguments to the Abaqus subroutine are as follows:
 ||{{{NPROPS}}}||{{{nprops}}}||Scalar integer||Number of material properties||
 ||{{{COORDS()}}}||{{{points}}}||Real array||Integrating point coordinates||
 ||{{{DROT(3,3)}}}||{{{-}}}||Real array||Rotation increment matrix||
-||{{{PNEWDT}}}||{{{-}}}||-||-||
+||{{{PNEWDT}}}||{{{-}}}||Scalar real||Ratio of suggested new time increment to the time increment being used||
 ||{{{CELENT}}}||{{{-}}}||Scalar real||Characteristic element length||
 ||{{{DFGRD0(3,3)}}}||{{{-}}}||Real array||Deformation gradient at beginning of increment||
 ||{{{DFGRD1(3,3)}}}||{{{-}}}||Real array||Deformation gradient at end of increment||
