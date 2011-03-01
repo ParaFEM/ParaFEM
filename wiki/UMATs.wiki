@@ -1,4 +1,5 @@
 #summary Documentation for User Material Subroutines (UMATs).
+#sidebar TOC
 
 = Introduction =
 
