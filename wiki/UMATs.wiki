@@ -38,7 +38,7 @@ The arguments to the Abaqus subroutine are as follows:
 ||{{{DTEMP}}}||{{{-}}}||Scalar real||Increment of temperature||
 ||{{{PREDEF()}}}||{{{-}}}||Real array||Interpolated values of predefined field variables||
 ||{{{DPRED()}}}||{{{-}}}||Real array||Array of increments of predefined field variables||
-||{{{CMNAME}}}||{{{-}}}||Scalar character||User-defined material name (Avoid ABQ as leading string||
+||{{{CMNAME}}}||{{{-}}}||Scalar character||User-defined material name (Avoid ABQ as leading string)||
 ||{{{NDI}}}||{{{-}}}||Scalar integer||Number of direct stress components||
 ||{{{NSHR}}}||{{{-}}}||Scalar integer||Number of engineering shear stress components||
 ||{{{NTENS}}}||{{{nst}}}||Scalar integer||Size of the stress or strain component array (NDI + NSHR)||
@@ -57,3 +57,5 @@ The arguments to the Abaqus subroutine are as follows:
 ||{{{KSPT}}}||{{{-}}}||Scalar integer||Section point number in current layer||
 ||{{{KSTEP}}}||{{{iy}}}||Scalar integer||Step number||
 ||{{{KINC}}}||{{{iters}}}||Scalar integer||Increment number||
+
+Further details can be found [http://abaqusdoc.ucalgary.ca/v6.9/books/sub/default.htm here].
