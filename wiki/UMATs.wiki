@@ -45,7 +45,7 @@ The arguments to the Abaqus subroutine are as follows:
 ||{{{NSTATV}}}||{{{-}}}||Scalar integer||Number of solution-dependent state variables||
 ||{{{PROPS(NPROPS)}}}||{{{prop}}}||Real array||Material properties||
 ||{{{NPROPS}}}||{{{nprops}}}||Scalar integer||Number of material properties||
-||{{{COORDS()}}}||{{{gc}}}||Real array||Integrating point coordinates||
+||{{{COORDS()}}}||{{{points}}}||Real array||Integrating point coordinates||
 ||{{{DROT(3,3)}}}||{{{-}}}||Real array||Rotation increment matrix||
 ||{{{PNEWDT}}}||{{{-}}}||-||-||
 ||{{{CELENT}}}||{{{-}}}||Scalar real||Characteristic element length||
