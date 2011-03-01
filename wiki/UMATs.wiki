@@ -19,6 +19,10 @@ The arguments to the Abaqus subroutine are as follows:
 }}}
 
 ||*Variable Name*||*S&G Equivalent*||*Type*||*Meaning*||
-||{{{STRESS}}}||{{{sigma}}}||Real array||stress terms||
+||{{{STRESS}}}||{{{sigma}}}||Real array||Stress terms||
 ||{{{STATEV}}}||{{{-}}}||-||-||
-||{{{DDSDDE}}}||{{{dee}}}||Real array||stress-strain matrix||
+||{{{DDSDDE}}}||{{{dee}}}||Real array||Stress-strain matrix||
+||{{{SSE}}}||{{{-}}}||-||-||
+||{{{SPD}}}||{{{-}}}||-||-||
+||{{{SCD}}}||{{{-}}}||-||-||
+||{{{RPL}}}||{{{-}}}||-||-||
