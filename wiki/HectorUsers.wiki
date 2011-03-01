@@ -23,3 +23,47 @@ To apply for an account, please see the following [http://www.hector.ac.uk/howca
  * To submit the job, type _$qsub run.xt4_
  * To check the status of the job in the queue, type _$qstat_
  * For further information about the batch queues and batch scripts, consult the user documentation on the HECToR webpages. 
+
+= Known Issue on HECToR Phase2b =
+
+If the job fails and you get output similar to the below, execute the following commands:
+
+ * {{{$make -f makemodules.xt clean}}} for the library 
+ * {{{$make -f makeprograms.xt clean}}} for the program
+ * {{{$module add xtpe-mc12}}}
+
+Then rebuild the library and program.
+
+{{{
+ PE:             1  Scatter error: recbufsize:             9 
+  /= lenput(pe_number):             0
+ PE:             4  Scatter error: recbufsize:        -32766 
+  /= lenput(pe_number):             0
+ PE:             7  Scatter error: recbufsize:        -32766 
+  /= lenput(pe_number):             0
+ PE:             5  Scatter error: recbufsize:        -32766 
+ PE:             6  Scatter error: recbufsize:        -32766 
+FORTRAN STOP
+FORTRAN STOP
+FORTRAN STOP
+  /= lenput(pe_number):             0
+  pe_number:             2  i:             1
+  /= lenput(pe_number):             0
+  pe_number:             4  i:             1
+ source:             1  tag:             2
+  pe_number:             3  i:             1
+ Temp probe. recbufsize:             0  source:             0  tag:  
+ source:             3  tag:             4
+ source:             2  tag:             3
+ Temp probe. recbufsize:             0  source:             0  tag:  
+            0
+            0
+ Temp probe. recbufsize:             0  source:             0  tag:  
+            0
+FORTRAN STOP
+FORTRAN STOP
+FORTRAN STOP
+}}}
+
+
+
