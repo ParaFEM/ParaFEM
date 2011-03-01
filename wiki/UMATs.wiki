@@ -17,3 +17,8 @@ The arguments to the Abaqus subroutine are as follows:
 3 NDI,NSHR,NTENS,NSTATV,PROPS,NPROPS,COORDS,DROT,PNEWDT,
 4 CELENT,DFGRD0,DFGRD1,NOEL,NPT,LAYER,KSPT,KSTEP,KINC)
 }}}
+
+||*Variable Name*||*S&G Equivalent*||*Type*||*Meaning*||
+||{{{STRESS}}}||{{{sigma}}}||Real array||stress terms||
+||{{{STATEV}}}||{{{-}}}||-||-||
+||{{{DDSDDE}}}||{{{dee}}}||Real array||stress-strain matrix||
