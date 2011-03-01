@@ -26,10 +26,10 @@ To apply for an account, please see the following [http://www.hector.ac.uk/howca
 
 = Known Issue on HECToR Phase2b =
 
-If the job fails and you get output similar to the below, execute the following commands:
+If the job fails and you get output similar to the below, make clean the library and program, then load the module specific to the XE6 architecture:
 
- * {{{$make -f makemodules.xt clean}}} for the library 
- * {{{$make -f makeprograms.xt clean}}} for the program
+ * {{{$make -f makemodules.xt clean}}}   
+ * {{{$make -f makeprograms.xt clean}}} 
  * {{{$module add xtpe-mc12}}}
 
 Then rebuild the library and program.
@@ -64,6 +64,4 @@ FORTRAN STOP
 FORTRAN STOP
 FORTRAN STOP
 }}}
-
-
 
