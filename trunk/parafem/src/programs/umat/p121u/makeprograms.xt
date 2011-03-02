@@ -7,7 +7,7 @@ FC=ftn
 #FFLAGS= -c -I$(module) -V -g -Mbounds -traceback
 FFLAGS= -c -I$(module) -V -fastsse -Mlarge_arrays
 
-LDFLAGS= -L$(lib) -lParaFEM -lblas
+LDFLAGS= -L$(lib) -lParaFEM_mpi -lblas
 
 .SUFFIXES: .o .f90
 
@@ -16,7 +16,7 @@ default: all
 
 
 p121u: p121u.o
-	$(FC) p121u.o -o p121u $(LDFLAGS)
+	$(FC) p121u.o pf-elastic.o -o p121u $(LDFLAGS)
 
 p121u.o: p121u.f90
 	$(FC) p121u.f90 $(FFLAGS)

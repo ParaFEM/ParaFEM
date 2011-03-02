@@ -32,6 +32,19 @@ PROGRAM p121u
   CHARACTER(LEN=50)     :: fname,job_name,label
   LOGICAL               :: converged = .false.
 
+!------------------------------------------------------------------------------ 
+! 1a. Declare variables used in the UMAT
+!
+!     ntens == nst
+!     noel  == iel
+!
+!------------------------------------------------------------------------------
+
+  INTEGER,PARAMETER     :: ndi=3,nprops=2
+  INTEGER               :: nshr,nstatv,npt,layer,kspt,kstep,kinc
+  REAL(iwp)             :: sse,spd,scd,rpl,dtime,temp,dtemp,pnewdt,celent
+  CHARACTER(LEN=80)     :: cmname
+
 !------------------------------------------------------------------------------
 ! 2. Declare dynamic arrays
 !------------------------------------------------------------------------------
@@ -49,6 +62,19 @@ PROGRAM p121u
   REAL(iwp),ALLOCATABLE :: principal(:),reacnodes_pp(:)  
   INTEGER,  ALLOCATABLE :: rest(:,:),g_num_pp(:,:),g_g_pp(:,:),node(:)
   INTEGER,  ALLOCATABLE :: no(:),no_pp(:),no_pp_temp(:),sense(:)
+
+!------------------------------------------------------------------------------
+! 2a. Declare dynamic arrays required by UMAT
+!
+!     stress(ntens)       == sigma(nst)
+!     ddsdde(ntens,ntens) == dee(nst,nst)
+!     dstran(ntens)       == eps(nst)
+!     coords()            == points()
+!------------------------------------------------------------------------------
+  
+  REAL(iwp),ALLOCATABLE :: statev(:),ddsddt(:),drplde(:),drpldt(:)
+  REAL(iwp),ALLOCATABLE :: stran(:),time(:),predef(:),dpred(:),props(:)
+  REAL(iwp),ALLOCATABLE :: drot(:,:),dfgrd0(:,:),dfgrd1(:,:)
 
 !------------------------------------------------------------------------------
 ! 3. Read job_name from the command line. 
@@ -80,11 +106,21 @@ PROGRAM p121u
   g_coord_pp= zero
   rest      = 0
 
+  timest(2) = elap_time()
+
   CALL read_g_num_pp2(job_name,iel_start,nn,npes,numpe,g_num_pp)
+  timest(3) = elap_time()
+
 ! CALL read_g_num_pp(job_name,iel_start,nels,nn,numpe,g_num_pp)
+
   IF(meshgen == 2) CALL abaqus2sg(element,g_num_pp)
+  timest(4) = elap_time()
+
   CALL read_g_coord_pp(job_name,g_num_pp,nn,npes,numpe,g_coord_pp)
+  timest(5) = elap_time()
+
   CALL read_rest(job_name,numpe,rest)
+  timest(6) = elap_time()
     
 !------------------------------------------------------------------------------
 ! 4. Allocate dynamic arrays used in main program
@@ -96,7 +132,15 @@ PROGRAM p121u
            pmul_pp(ntot,nels_pp),utemp_pp(ntot,nels_pp),                      &
            weights(nip),g_g_pp(ntot,nels_pp),fun(nod))
 
-  timest(2) = elap_time()
+!------------------------------------------------------------------------------
+! 4a. Allocate dynamic arrays used in the UMAT
+!------------------------------------------------------------------------------
+
+  ALLOCATE(props(nprops))
+
+  props     = zero
+  props(1)  = e
+  props(2)  = v
 
 !------------------------------------------------------------------------------
 ! 5. Loop the elements to find the steering array and the number of equations
@@ -121,7 +165,7 @@ PROGRAM p121u
 
   neq = MAX_INTEGER_P(neq)
  
-  timest(3) = elap_time()
+  timest(7) = elap_time()
 
 !------------------------------------------------------------------------------
 ! 6. Create interprocessor communication tables
@@ -131,7 +175,7 @@ PROGRAM p121u
   CALL calc_npes_pp(npes,npes_pp)
   CALL make_ggl(npes_pp,npes,g_g_pp)
  
-  timest(4) = elap_time()
+  timest(8) = elap_time()
 
   CALL MPI_BARRIER(MPI_COMM_WORLD,ier)
 !------------------------------------------------------------------------------
@@ -144,14 +188,23 @@ PROGRAM p121u
   p_pp    = zero  ;  r_pp = zero  ;  x_pp = zero
   xnew_pp = zero  ;  u_pp = zero  ;  d_pp = zero  ; diag_precon_pp = zero
 
-  timest(5) = elap_time()
+  timest(9) = elap_time()
 
 !------------------------------------------------------------------------------
 ! 8. Element stiffness integration and storage
+!
+!    Note that the DEEMAT and UMAT subroutines are currently outside the loop
+!    elements_3. This is only correct when all the elements are of the same
+!    type and have the same material properties.
 !------------------------------------------------------------------------------
 
-  CALL deemat(e,v,dee)
   CALL sample(element,points,weights)
+! CALL deemat(e,v,dee)
+  dee = zero
+  CALL umat(sigma,statev,dee,sse,spd,scd,rpl,ddsddt,drplde,drpldt,stran,      &
+            eps,time,dtime,temp,dtemp,predef,dpred,cmname,ndi,nshr,           &
+            nst,nstatv,props,nprops,points,drot,pnewdt,celent,dfgrd0,dfgrd1,  &
+            iel,npt,layer,kspt,kstep,kinc)
  
   storkm_pp       = zero
  
@@ -169,7 +222,7 @@ PROGRAM p121u
     END DO gauss_pts_1
   END DO elements_3
   
-  timest(6) = elap_time()
+  timest(10) = elap_time()
 
 !------------------------------------------------------------------------------
 ! 9. Build the diagonal preconditioner
@@ -188,7 +241,7 @@ PROGRAM p121u
 
   DEALLOCATE(diag_precon_tmp)
 
-  timest(7) = elap_time()
+  timest(11) = elap_time()
 
 !------------------------------------------------------------------------------
 ! 10. Read in fixed nodal displacements and assign to equations
@@ -243,7 +296,7 @@ PROGRAM p121u
   
   DEALLOCATE(g_g_pp)
   
-  timest(8) = elap_time()
+  timest(12) = elap_time()
 
 !------------------------------------------------------------------------------
 ! 12. Invert the preconditioner.
@@ -316,7 +369,7 @@ PROGRAM p121u
 
   DEALLOCATE(p_pp,r_pp,x_pp,u_pp,d_pp,diag_precon_pp,storkm_pp,pmul_pp) 
   
-  timest(9) = elap_time()
+  timest(13) = elap_time()
 
 !------------------------------------------------------------------------------
 ! 15. Print out displacements, stress, principal stress and reactions
@@ -377,6 +430,8 @@ PROGRAM p121u
   princinodes_pp        = zero
   reacnodes_pp          = zero
   utemp_pp              = zero
+  dee                   = zero
+  sigma                 = zero
 
   DO iel = 1,nels_pp
     DO i = 1,nip
@@ -387,9 +442,15 @@ PROGRAM p121u
       deriv = MATMUL(jac,der)
       CALL beemat(deriv,bee)
       eps   = MATMUL(bee,eld_pp(:,iel))
-      sigma = MATMUL(dee,eps)
+!     sigma = MATMUL(dee,eps) ! umat replaces this line
+      dee   = zero
+      sigma = zero
+      CALL umat(sigma,statev,dee,sse,spd,scd,rpl,ddsddt,drplde,drpldt,stran,  &
+                eps,time,dtime,temp,dtemp,predef,dpred,cmname,ndi,nshr,       &
+                nst,nstatv,props,nprops,points,drot,pnewdt,celent,dfgrd0,     &
+                dfgrd1,iel,npt,layer,kspt,kstep,kinc)
       CALL PRINCIPALSTRESS3D(sigma,principal)
-      utemp_pp(:,iel) = utemp_pp(:,iel) +                                    &
+      utemp_pp(:,iel) = utemp_pp(:,iel) +                                     &
                         MATMUL(TRANSPOSE(bee),sigma)*det*weights(i)
 
       CALL shape_fun(fun,points,i)
@@ -481,7 +542,7 @@ PROGRAM p121u
 
   IF(numpe==1) CLOSE(28)
 
-  timest(10) = elap_time()
+  timest(14) = elap_time()
    
 !------------------------------------------------------------------------------
 ! 17. Output performance data
