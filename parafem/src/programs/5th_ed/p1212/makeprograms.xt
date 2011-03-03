@@ -10,21 +10,21 @@ LDFLAGS= -L$(lib) -lParaFEM -lblas -larpack_XT4
 
 .SUFFIXES: .o .f90
 
-all: p128arg
+all: p1212
 default: all
 
 
-p128arg: p128arg.o
-	$(FC) p128arg.o -o p128arg $(LDFLAGS)
+p1212: p1212.o
+	$(FC) p1212.o -o p1212 $(LDFLAGS)
 
-p128arg.o: p128arg.f90
-	$(FC) p128arg.f90 $(FFLAGS)
+p1212.o: p1212.f90
+	$(FC) p1212.f90 $(FFLAGS)
 
 clean:
 	rm -f *.o
 
 execlean:
-	rm -f p128arg
+	rm -f p1212
 
-relink: p128arg
+relink: p1212
 
