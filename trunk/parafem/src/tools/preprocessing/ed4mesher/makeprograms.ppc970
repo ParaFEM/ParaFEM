@@ -1,0 +1,36 @@
+module    = ../../../../include
+lib       = ../../../../lib
+
+FC=mpif90
+
+#  Flags
+FFLAGS= -c -I$(module) -O3 -qstrict -qtune=ppc970 -qarch=ppc970 \
+	-qcache=auto -q64
+
+LDFLAGS= -L$(lib) -lParaFEM_mpi
+
+.SUFFIXES: .o .f90
+
+all: sg12mg
+default: all
+
+
+sg12mg: sg12mg.o
+	$(FC) sg12mg.o -o sg12mg $(LDFLAGS)
+
+sg12mg.o: sg12mg.f90
+	$(FC) sg12mg.f90 $(FFLAGS)
+
+clean:
+	rm -f *.o
+
+execlean:
+	rm -f sg12mg
+
+install:
+	rm -f *.o
+	rm -f *.mod
+	mv sg12mg ../../../../bin
+
+relink: sg12mg
+
