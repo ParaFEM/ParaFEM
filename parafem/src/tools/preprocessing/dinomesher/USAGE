@@ -1,0 +1,48 @@
+***USAGE***
+
+Included is a sample input file where parameters are provided as follows:
+elSize: the size (in m) of the smallest elements (all dense elements are cubic)
+
+denseResX: The number of elements for the dense patch in the X direction.
+
+denseResZ: As above for the Z direction
+
+--the above two variables must be consistent with the dimensions of the PPM file--
+
+lightRes:  Number of elements to pad out after the dense patch
+
+scaleFact: the scaling factor to use.  Setting this to '1' will cause all elements in the mesh to be the same size.
+
+nodes_per_el: number of nodes per element, 8 or 20.  Note that 8 is extremely limited (see README)
+
+layers: number of layers of elements
+
+layerThickness: y dimension of elements (try to keep close to elSize)
+
+scaleFactY: scaling factor for depth
+
+shallow_Layers: number of layers which will ignore scaling factor (so you can have, for instance, 5 layers all 1 cm deep, then subsequent layers will obey the scaling algorithm.
+
+footLayers: number of layers for the indenter to be made of (doesn't really need to be more than 1).
+
+footThickness: again, try and keep in line with elSize
+
+random: not implemented yet, keep as 0
+
+Cu, e, and v: shear strength, youngs modulous, and poisson ratio of the soil.  indenter (if used) will be 1000x Cu and e, and 0.49 for v
+
+vari: not implemented yet, keep as 0
+
+loadType:  force (2) or displacement (1)
+
+stepStages: number of loading stages (currently only 1 is supported)
+
+mass: load to be applied (in my case this was mass of the animal)
+
+stepFiles: list the PPM files to use to generate an indenter (again, only one supported at this time).
+
+smooth: set to '1' to implement a smoothing algorithm so the indenter doesn't look like lego.  DO NOT USE!  causes instability.
+
+incs: number of increments (i.e. to load then unload, set to '2')...
+Then have 1 -1 (full load, reverse load).
+
