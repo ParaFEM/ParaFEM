@@ -199,13 +199,17 @@ PROGRAM p121u
 !------------------------------------------------------------------------------
 
   CALL sample(element,points,weights)
-! CALL deemat(e,v,dee)
+
+!  dee = zero
+!  CALL deemat(e,v,dee)
+  
+
   dee = zero
   CALL umat(sigma,statev,dee,sse,spd,scd,rpl,ddsddt,drplde,drpldt,stran,      &
             eps,time,dtime,temp,dtemp,predef,dpred,cmname,ndi,nshr,           &
             nst,nstatv,props,nprops,points,drot,pnewdt,celent,dfgrd0,dfgrd1,  &
             iel,npt,layer,kspt,kstep,kinc)
- 
+
   storkm_pp       = zero
  
   elements_3: DO iel=1,nels_pp

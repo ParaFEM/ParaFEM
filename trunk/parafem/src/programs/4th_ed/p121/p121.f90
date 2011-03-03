@@ -157,7 +157,13 @@ PROGRAM p121
 ! 8. Element stiffness integration and storage
 !------------------------------------------------------------------------------
 
+  dee = zero
   CALL deemat(e,v,dee)
+
+  DO i = 1, nst
+    PRINT *, dee(:,i)
+  END DO
+
   CALL sample(element,points,weights)
  
   storkm_pp       = zero
