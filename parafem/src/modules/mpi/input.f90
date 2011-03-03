@@ -21,7 +21,7 @@ MODULE INPUT
   !*    READ_MATERIALVALUE     Reads property values for each material ID
   !*    READ_P121              Reads the control data for program p121
   !*    READ_P126              Reads the control data for program p126
-  !*    READ_P128AR            Reads the control data for program p128ar
+  !*    READ_P1212             Reads the control data for program p1212
   !*    READ_P129              Reads the control data for program p129
   !*    BCAST_INPUTDATA_P1211  Reads the control data for program ed5/p1211
   !*    CHECK_INPUTDATA_P1211  Checks the control data for program ed5/p1211
@@ -1220,14 +1220,14 @@ MODULE INPUT
 !------------------------------------------------------------------------------
 !------------------------------------------------------------------------------
 
-  SUBROUTINE READ_P128ar(job_name,numpe,bmat,e,element,maxitr,mesh,ncv,nels,  &
+  SUBROUTINE READ_P1212(job_name,numpe,bmat,e,element,maxitr,mesh,ncv,nels,   &
                          nev,nip,nn,nod,nr,rho,tol,v,which)
 
-  !/****f* input/read_p128ar
+  !/****f* input/read_p1212
   !*  NAME
-  !*    SUBROUTINE: read_p128ar
+  !*    SUBROUTINE: read_p1212
   !*  SYNOPSIS
-  !*    Usage:      CALL read_p128ar(job_name,numpe,bmat,e,element,maxitr,    &
+  !*    Usage:      CALL read_p1212(job_name,numpe,bmat,e,element,maxitr,     &
   !*                                 mesh,ncv,nels,nev,nip,nn,nod,nr,rho,tol, &
   !*                                 v,which) 
   !*  FUNCTION
@@ -1275,7 +1275,7 @@ MODULE INPUT
   !*  CREATION DATE
   !*    05.07.2010
   !*  COPYRIGHT
-  !*    (c) University of Manchester 2010
+  !*    (c) University of Manchester 2010-2011
   !******
   !*  Place remarks that should not be included in the documentation here.
   !*  Need to add some error traps
@@ -1377,7 +1377,7 @@ MODULE INPUT
   END IF
 
   RETURN
-  END SUBROUTINE READ_P128ar
+  END SUBROUTINE READ_P1212
 
 !------------------------------------------------------------------------------
 !------------------------------------------------------------------------------

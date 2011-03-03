@@ -26,7 +26,7 @@ PROGRAM p1212
   REAL(iwp)             :: rho,e,nu,det,sigma,tol
   REAL(iwp),PARAMETER   :: zero = 0.0_iwp , one = 1.0_iwp  
   CHARACTER (LEN=15)    :: element
-  CHARACTER(LEN=50)     :: program_name='p128ar' 
+  CHARACTER(LEN=50)     :: program_name='p1212' 
   CHARACTER(LEN=50)     :: fname
   CHARACTER(LEN=50)     :: job_name
   CHARACTER(LEN=50)     :: label
@@ -76,7 +76,7 @@ PROGRAM p1212
 !    data to all slave processors
 !------------------------------------------------------------------------------
 
- CALL read_p128ar(job_name,numpe,bmat,e,element,maxitr,meshgen,ncv,nels,nev,  &
+ CALL read_p1212(job_name,numpe,bmat,e,element,maxitr,meshgen,ncv,nels,nev,  &
                   nip,nn,nod,nr,rho,tol,nu,which)
  
 !------------------------------------------------------------------------------
