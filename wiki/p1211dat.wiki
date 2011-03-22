@@ -1,13 +1,13 @@
-#summary One-sentence summary of this page.
+#summary p1211 control file data format.
+#sidebar TOC
 
-= Introduction =
+==p1211.dat==
 
-Add your content here.
+A typical p1211.dat file has the following format:
 
-
-= Details =
-
-Add your content here.  Format your content with:
-  * Text in *bold* or _italic_
-  * Headings, paragraphs, and lists
-  * Automatic links to other wiki pages
+{{{
+element
+mesh
+nels nn nr nip nod loaded_nodes fixed_freedoms
+e v tol limit
+}}}
