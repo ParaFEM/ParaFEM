@@ -23,9 +23,9 @@ cjtol fftol ltol np_types numSteps
 ||{{{plasitersMax}}} || Integer || Number of plastic iterations at which the adaptive load stepping algorithm reduces step size.||
 ||{{{plasitersMin}}} || Integer || Number of plastic iterations at which the adaptive load stepping algorithm increases step size.||
 ||{{{LoadIncrementMax}}} || Integer || Upper limit for number of load increments.||
-||{{{cjits}}} || Real || Young's modulus.||
-||{{{plastol}}} || Real || Poisson's ratio.||
-||{{{cjtol}}} || Real || Convergence tolerance for PCG.||
+||{{{cjits}}} || Integer || Conjugate gradient iteration ceiling.||
+||{{{plastol}}} || Real || Plastic iteration tolerance.||
+||{{{cjtol}}} || Real || Conjugate gradient iteration tolerance.||
 ||{{{fftol}}} || Real || Tolerance on yield function.||
 ||{{{ltol}}} || Real || Tolerance on the sum of the body loads.||
 ||{{{np_types}}} || Integer || Number of different property types.||
@@ -34,8 +34,5 @@ cjtol fftol ltol np_types numSteps
 A real example follows:
 
 {{{
-hexahedron
-2
-2560 12465 225 8 20 17 0
-100000. .3 1.e-5 5000
+
 }}}
