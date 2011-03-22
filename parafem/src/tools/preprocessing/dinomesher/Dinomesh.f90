@@ -1,12 +1,13 @@
-!PROGRAM MESHGENv5
+!PROGRAM MESHGENv6
 
 !   ----------------------------------------------------------
-!   MeshGen5.F90    2/6/10
+!   MeshGen6.F90    22/3/11
 !   Re-write of MeshGen for generating input data to PalaeoFEM
 !	Generates a cuboid mesh with 2.5D foot/indenter on the
 !	surface.
 !   No error checking implemented yet
 !	Changes: Comments standardised for ParaFEM
+!   Update 22/3/11 : Now uses Abaqus/FEAR node ordering
 !   ----------------------------------------------------------
 
   IMPLICIT NONE
@@ -779,13 +780,13 @@ if(nodes_per_el.eq.20)then
        do x=1, resolutionX
           if(el20(x,y,z)%id.ne.0)then
              write(10,*) el20(x,y,z)%id, ' 3 ', ' 20 ', ' 1 ', el20(x,y,z)%node1%id, &
-                  el20(x,y,z)%node2%id, el20(x,y,z)%node3%id, el20(x,y,z)%node4%id, &
-                  el20(x,y,z)%node5%id, el20(x,y,z)%node6%id, el20(x,y,z)%node7%id, &
-                  el20(x,y,z)%node8%id, el20(x,y,z)%node9%id, el20(x,y,z)%node10%id, &
-                  el20(x,y,z)%node11%id, el20(x,y,z)%node12%id, el20(x,y,z)%node13%id, &
-                  el20(x,y,z)%node14%id, el20(x,y,z)%node15%id, el20(x,y,z)%node16%id, &
-                  el20(x,y,z)%node17%id, el20(x,y,z)%node18%id, el20(x,y,z)%node19%id, &
-                  el20(x,y,z)%node20%id, y
+                  el20(x,y,z)%node7%id, el20(x,y,z)%node19%id, el20(x,y,z)%node13%id, &
+                  el20(x,y,z)%node3%id, el20(x,y,z)%node5%id, el20(x,y,z)%node17%id, &
+                  el20(x,y,z)%node15%id, el20(x,y,z)%node8%id, el20(x,y,z)%node12%id, &
+                  el20(x,y,z)%node20%id, el20(x,y,z)%node9%id, el20(x,y,z)%node4%id, &
+                  el20(x,y,z)%node11%id, el20(x,y,z)%node16%id, el20(x,y,z)%node10%id, &
+                  el20(x,y,z)%node2%id, el20(x,y,z)%node6%id, el20(x,y,z)%node18%id, &
+                  el20(x,y,z)%node14%id, y
           end if
        end do
     end do
@@ -797,13 +798,13 @@ if(nodes_per_el.eq.20)then
     do z=1, resolutionZ
        if(el20(x,ce,z)%id.ne.0)then
           write(10,*) el20(x,ce,z)%id, ' 3 ', ' 20 ', ' 1 ', el20(x,ce,z)%node1%id, &
-               el20(x,ce,z)%node2%id, el20(x,ce,z)%node3%id, el20(x,ce,z)%node4%id, &
-               el20(x,ce,z)%node5%id, el20(x,ce,z)%node6%id, el20(x,ce,z)%node7%id, &
-               el20(x,ce,z)%node8%id, el20(x,ce,z)%node9%id, el20(x,ce,z)%node10%id, &
-               el20(x,ce,z)%node11%id, el20(x,ce,z)%node12%id, el20(x,ce,z)%node13%id, &
-               el20(x,ce,z)%node14%id, el20(x,ce,z)%node15%id, el20(x,ce,z)%node16%id, &
-               el20(x,ce,z)%node17%id, el20(x,ce,z)%node18%id, el20(x,ce,z)%node19%id, &
-               el20(x,ce,z)%node20%id, y
+               el20(x,ce,z)%node7%id, el20(x,ce,z)%node19%id, el20(x,ce,z)%node13%id, &
+               el20(x,ce,z)%node3%id, el20(x,ce,z)%node5%id, el20(x,ce,z)%node17%id, &
+               el20(x,ce,z)%node15%id, el20(x,ce,z)%node8%id, el20(x,ce,z)%node12%id, &
+               el20(x,ce,z)%node20%id, el20(x,ce,z)%node9%id, el20(x,ce,z)%node4%id, &
+               el20(x,ce,z)%node11%id, el20(x,ce,z)%node16%id, el20(x,ce,z)%node10%id, &
+               el20(x,ce,z)%node2%id, el20(x,ce,z)%node6%id, el20(x,ce,z)%node18%id, &
+               el20(x,ce,z)%node14%id, y
        end if
     end do
  end do
@@ -848,7 +849,7 @@ end if
 
   call writemat(footThickness, layers, cu, e, v)
 
-
+if(loadType.eq.2)then
 !-------------------------------------------------!
 !8. Write *.lds (currently only vertical)	  !
 !   Generates loading conditions in ParaFEM format!
@@ -923,19 +924,103 @@ else
 WRITE(*,*)'load conditions are only generated for 20-node element meshes currently. No load file has been created.'
 end if
 
+!-------------------------------------------------!
+!8b. Write *.fix file (currently only vertical)	  !
+!   Generates fixed conditions in ParaFEM format  !
+!   Stubs included for non-vertical loading       !
+!   Only Available for 20-node elements		  !
+!-------------------------------------------------!
+else
+
+if(nodes_per_el.eq.20)then
+  loadperel = mass
+
+
+  do z=1, resolutionZ
+     do x=1, resolutionX
+        if(el20(x,allonum,z)%id.ne.0)then
+           !nodes(x*2-1,-1,z*2-1)%loadx
+           nodes(x*2-1,allonod,z*2-1)%loady	= loadperel
+           !nodes(x*2-1,-1,z*2-1)%loadz
+
+           !nodes(x*2,-1,z*2-1)%loadx
+           nodes(x*2,allonod,z*2-1)%loady	= loadperel
+           !nodes(x*2,-1,z*2-1)%loadz
+
+           !nodes(x*2+1,-1,z*2-1)%loadx
+           nodes(x*2+1,allonod,z*2-1)%loady	= loadperel
+           !nodes(x*2+1,-1,z*2-1)%loadz
+
+           !nodes(x*2-1,-1,z*2)%loadx
+           nodes(x*2-1,allonod,z*2)%loady	= loadperel
+           !nodes(x*2-1,-1,z*2)%loadz
+
+           !nodes(x*2+1,-1,z*2)%loadx
+           nodes(x*2+1,allonod,z*2)%loady	= loadperel
+           !nodes(x*2+1,-1,z*2)%loadz
+
+           !nodes(x*2-1,-1,z*2+1)%loadx
+           nodes(x*2-1,allonod,z*2+1)%loady	= loadperel
+           !nodes(x*2-1,-1,z*2+1)%loadz
+
+           !nodes(x*2,-1,z*2+1)%loadx
+           nodes(x*2,allonod,z*2+1)%loady	= loadperel
+           !nodes(x*2,-1,z*2+1)%loadz
+
+           !nodes(x*2+1,-1,z*2+1)%loadx
+           nodes(x*2+1,allonod,z*2+1)%loady	= loadperel
+           !nodes(x*2+1,-1,z*2+1)%loadz
+        end if
+     end do
+  end do
+
+
+  do c=1, num_incs
+
+  WRITE(ldsname, '(A5,I1,A4)') "dino_", c, ".fix"
+  
+  open(13,file=ldsname)
+  num_loads = 0
+  do z=1, resolutionZ*2+1
+     do x=1, resolutionX*2+1
+        if(nodes(x,allonod,z)%id.ne.0)then
+          if(nodes(x,allonod,z)%loady.ne.0)then
+           WRITE(13,*)nodes(x,allonod,z)%id, increments(c)*nodes(x,allonod,z)%loadx, increments(c)*nodes(x,allonod,z)%loady, &
+           				increments(c)*nodes(x,allonod,z)%loadz
+           num_loads = num_loads+1
+          end if
+        end if
+     end do
+  end do
+  close(13)
+  end do
+
+else
+WRITE(*,*)'fixed conditions are only generated for 20-node element meshes currently. No fixed file has been created.'
+end if
+end if
+
 !-----------------!
 !9.  Write *.dat  !
 !-----------------!
   open(14,file='dino.dat')
+  WRITE(14,*) "'hexahedron'"
+  WRITE(14,*) '2'
   WRITE(14,*) num_elements-1, num_nodes-1, rigid_nodes, '8'
   WRITE(14,*) '12 3 50 15000'
   WRITE(14,*) '1.e-6 1.e-7 -1.e-6 1.e-5'
   WRITE(14,*) layers, num_incs
+if(loadType.eq.2)then
   do c = 1, num_incs
   WRITE(14,*) '0'
   WRITE(14,*) num_loads
   end do
-
+else
+  do c = 1, num_incs
+  WRITE(14,*) num_loads
+  WRITE(14,*) '0'
+  end do
+end if
 
 !------------------!
 !  end of program: !
