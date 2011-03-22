@@ -8,7 +8,9 @@ A typical p1211.dat file has the following format:
 {{{
 element
 mesh
-nels nn nr nip nod loaded_nodes fixed_freedoms
+nels nn nr nip 
+plasitersMax plasitersMin LoadIncrementMax cjits plastol
+nod loaded_nodes fixed_freedoms
 e v tol limit
 }}}
 
