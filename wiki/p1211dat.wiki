@@ -26,9 +26,9 @@ cjtol fftol ltol np_types numSteps
 ||{{{cjits}}} || Real || Young's modulus.||
 ||{{{plastol}}} || Real || Poisson's ratio.||
 ||{{{cjtol}}} || Real || Convergence tolerance for PCG.||
-||{{{fftol}}} || Integer || Iteration ceiling for PCG.||
-||{{{ltol}}} || Integer || Iteration ceiling for PCG.||
-||{{{np_types}}} || Integer || Iteration ceiling for PCG.||
+||{{{fftol}}} || Real || Tolerance on yield function.||
+||{{{ltol}}} || Real || Tolerance on the sum of the body loads.||
+||{{{np_types}}} || Integer || Number of different property types.||
 ||{{{numSteps}}} || Integer || Number of load steps.||
 
 A real example follows:
