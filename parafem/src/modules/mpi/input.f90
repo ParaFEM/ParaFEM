@@ -1707,8 +1707,8 @@ MODULE INPUT
 !------------------------------------------------------------------------------
 !------------------------------------------------------------------------------
 
-    SUBROUTINE BCAST_INPUTDATA_P1211(numpe,npes,nels,nn,nr,nip,               &
-                                     plasitersMax,plasitersMin,               &
+    SUBROUTINE BCAST_INPUTDATA_P1211(numpe,npes,element,meshgen,nels,nn,nr,   &
+                                     nip,plasitersMax,plasitersMin,           &
                                      loadIncrementsMax,                       &
                                      cjits,plastol,cjtol,fftol,ltol,          &
                                      numMaterials,numSteps)
@@ -1716,16 +1716,19 @@ MODULE INPUT
     !Transfers input data from DAT file to all slave processors
 
     IMPLICIT NONE
-    INTEGER,INTENT(INOUT)   :: numpe,npes,nels,nn,nr,nip
-    INTEGER,INTENT(INOUT)   :: plasitersMax,plasitersMin,                     &
-                               loadIncrementsMax,cjits,numMaterials,numSteps
-    INTEGER                 :: bufsizer,position,bufsize,bufdecl,recbufsize,ier
-!   INTEGER, PARAMETER      :: ilength=4, rlength=8
-    INTEGER, PARAMETER      :: ilength=8, rlength=8
-    INTEGER, ALLOCATABLE    :: tempbuf(:)
-    REAL(IWP),INTENT(INOUT) :: plastol,cjtol,fftol,ltol
+    INTEGER,INTENT(INOUT)           :: numpe,npes,nels,nn,nr,nip
+    INTEGER,INTENT(INOUT)           :: plasitersMax,plasitersMin,             &
+                                       loadIncrementsMax,cjits,numMaterials,  &
+                                       numSteps,meshgen
+    INTEGER                         :: bufsizer,position,bufsize
+    INTEGER                         :: bufdecl,recbufsize,ier
+!   INTEGER, PARAMETER              :: ilength=4, rlength=8
+    INTEGER, PARAMETER              :: ilength=8, rlength=8
+    INTEGER, ALLOCATABLE            :: tempbuf(:)
+    REAL(IWP),INTENT(INOUT)         :: plastol,cjtol,fftol,ltol
+    CHARACTER(LEN=15),INTENT(INOUT) :: element
 
-    bufsizer=10*ilength + 4*rlength
+    bufsizer=11*ilength + 4*rlength
 
 !   CALL MPI_BCAST(bufsizer,1,MPI_INTEGER,npes-1,MPI_COMM_WORLD,ier)
     CALL MPI_BCAST(bufsizer,1,MPI_INTEGER,0,MPI_COMM_WORLD,ier)
@@ -1736,6 +1739,8 @@ MODULE INPUT
 !   IF(numpe==npes)THEN
     IF(numpe==1)THEN
       position = 0
+      CALL MPI_PACK(meshgen,1,MPI_INTEGER,tempbuf,bufsizer,position,         &
+                    MPI_COMM_WORLD,ier)
       CALL MPI_PACK(nels,1,MPI_INTEGER,tempbuf,bufsizer,position,            &
                     MPI_COMM_WORLD,ier)
       CALL MPI_PACK(nn,1,MPI_INTEGER,tempbuf,bufsizer,position,              &
@@ -1772,6 +1777,8 @@ MODULE INPUT
 !   IF(numpe/=npes)THEN
     IF(numpe/=1)THEN
       position = 0
+      CALL MPI_UNPACK(tempbuf,bufsizer,position,meshgen,1,MPI_INTEGER,       &
+                      MPI_COMM_WORLD,ier) 
       CALL MPI_UNPACK(tempbuf,bufsizer,position,nels,1,MPI_INTEGER,          &
                       MPI_COMM_WORLD,ier) 
       CALL MPI_UNPACK(tempbuf,bufsizer,position,nn,1,MPI_INTEGER,            &
@@ -1802,6 +1809,9 @@ MODULE INPUT
                       MPI_COMM_WORLD,ier) 
     END IF
 
+    bufsizer = 15
+    CALL MPI_BCAST(element,bufsizer,MPI_CHARACTER,0,MPI_COMM_WORLD,ier)
+
     RETURN
     END SUBROUTINE BCAST_INPUTDATA_P1211
 
@@ -1809,8 +1819,8 @@ MODULE INPUT
 !------------------------------------------------------------------------------
 !------------------------------------------------------------------------------
 
-    SUBROUTINE CHECK_INPUTDATA_P1211(numpe,npes,nels,nn,nr,nip,               &
-                                     plasitersMax,plasitersMin,               &
+    SUBROUTINE CHECK_INPUTDATA_P1211(numpe,npes,element,meshgen,nels,nn,nr,   &
+                                     nip,plasitersMax,plasitersMin,           &
                                      loadIncrementMax,                        &
                                      cjits,plastol,cjtol,fftol,ltol,          &
                                      numMaterials,numSteps)
@@ -1819,10 +1829,12 @@ MODULE INPUT
 
     IMPLICIT NONE
     
-    INTEGER,INTENT(IN)   :: numpe,npes,nels,nn,nr,nip
-    INTEGER,INTENT(IN)   :: plasitersMax,plasitersMin,                        &
-                            loadIncrementMax,cjits,numMaterials,numSteps
-    REAL(IWP),INTENT(IN) :: plastol,cjtol,fftol,ltol
+    INTEGER,INTENT(IN)           :: numpe,npes,meshgen,nels,nn,nr,nip
+    INTEGER,INTENT(IN)           :: plasitersMax,plasitersMin,                &
+                                    loadIncrementMax,cjits,numMaterials,      &
+                                    numSteps
+    REAL(IWP),INTENT(IN)         :: plastol,cjtol,fftol,ltol
+    CHARACTER(LEN=15),INTENT(IN) :: element
 
 !------------------------------------------------------------------------------
 ! 1. I/O trap. Not enough NELS for the available processors

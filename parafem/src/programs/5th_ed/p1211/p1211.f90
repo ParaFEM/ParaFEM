@@ -24,7 +24,7 @@
  INTEGER, PARAMETER   :: nprops=3              ! no of material properties 
  INTEGER, PARAMETER   :: nod=20                ! no of nodes per element 
 
- INTEGER              :: argc,iargc            ! command line
+ INTEGER              :: argc,iargc,meshgen
  INTEGER              :: cjiters
  INTEGER              :: cjits
  INTEGER              :: cjtot
@@ -71,8 +71,8 @@
  REAL(iwp)            :: bdyld_l2n             ! l2 norm of bdylds_pp
  REAL(iwp)            :: ddyld_l2n             ! l2 norm of ddylds_pp
 
- CHARACTER(LEN=50)    :: program_name='PalaeoFEM'
- CHARACTER(LEN=15)    :: element='hexahedron'
+ CHARACTER(LEN=50)    :: program_name='p1211'
+ CHARACTER(LEN=15)    :: element
  CHARACTER(LEN=50)    :: fname
  CHARACTER(LEN=50)    :: fname_dat
  CHARACTER(LEN=50)    :: fname_loads
@@ -167,19 +167,20 @@
 
   IF(numpe==1) THEN
     OPEN (10, file=fname_dat, status='old', action='read')
-    READ (10,*) nels,nn,nr,nip,                                                &
+    READ (10,*) element,meshgen,                                               &
+                nels,nn,nr,nip,                                                &
                 plasitersMax,plasitersMin,loadIncrementMax,cjits,plastol,      &
                 cjtol,fftol,ltol,np_types,numSteps
     OPEN (11, file=fname_results, status='replace', action='write')
   END IF
 
-  CALL bcast_inputdata_p1211(numpe,npes,nels,nn,nr,nip,plasitersMax,           &
-                             plasitersMin,loadIncrementMax,cjits,              &
-                             plastol,cjtol,fftol,ltol,np_types,numSteps)
+  CALL bcast_inputdata_p1211(numpe,npes,element,meshgen,nels,nn,nr,nip,        &
+                             plasitersMax,plasitersMin,loadIncrementMax,       &
+                             cjits,plastol,cjtol,fftol,ltol,np_types,numSteps)
     
-  CALL check_inputdata_p1211(numpe,npes,nels,nn,nr,nip,plasitersMax,           &
-                             plasitersMin,loadIncrementMax,cjits,              &
-                             plastol,cjtol,fftol,ltol,np_types,numSteps)
+  CALL check_inputdata_p1211(numpe,npes,element,meshgen,nels,nn,nr,nip,        &
+                             plasitersMax,plasitersMin,loadIncrementMax,       &
+                             cjits,plastol,cjtol,fftol,ltol,np_types,numSteps)
 
   ntot     = nod * nodof
 
@@ -227,7 +228,11 @@
   etype_pp   = 0
   rest       = 0
 
-  CALL read_g_num_pp(job_name,iel_start,nels,nn,numpe,g_num_pp)
+! CALL read_g_num_pp(job_name,iel_start,nels,nn,numpe,g_num_pp)
+  CALL read_g_num_pp2(job_name,iel_start,nn,npes,numpe,g_num_pp)
+
+  IF(meshgen == 2) CALL abaqus2sg(element,g_num_pp)
+
   CALL read_g_coord_pp(job_name,g_num_pp,nn,npes,numpe,g_coord_pp)
   CALL read_rest(job_name,numpe,rest)
 
@@ -503,7 +508,8 @@
     CALL getFileNumber(step,ii)
  
     fname_loads = job_name(1:INDEX(job_name, " ")-1) // "_" //                 &
-                  step(1:INDEX(step, " ")-1)  // ".lds"
+!                 step(1:INDEX(step, " ")-1)  // ".lds"
+                  step(1:INDEX(step, " ")-1)
 
     ALLOCATE(loadNodeNum(loaded_nodes))
     ALLOCATE(loadNodeValue(ndim,loaded_nodes))
@@ -511,7 +517,7 @@
     loadNodeValue = zero
     loadNodeNum   = 0
 
-    CALL read_loads(job_name,numpe,loadNodeNum,loadNodeValue)
+    CALL read_loads(fname_loads,numpe,loadNodeNum,loadNodeValue)
 
     CALL load(g_g_pp,g_num_pp,loadNodeNum,loadNodeValue,fext_pp(1:))
 
