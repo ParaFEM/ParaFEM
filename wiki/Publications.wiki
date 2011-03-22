@@ -19,6 +19,12 @@ Published: 2004
 }}}
 
 == Journals ==
+{{{
+The ' Goldilocks ' effect : preservation bias in vertebrate track assemblages The ‘ Goldilocks ’ effect : preservation bias in vertebrate track assemblages
+Author(s) Falkingham, PL, Bates, KT, Margetts, L and Manning, PL
+Source: Journal of the Royal Society: Interface
+Published: 2011
+}}}
 
 {{{
 Reduced numerical solution times for combined boundary-initial value problems using parallel computing
@@ -64,9 +70,37 @@ Source: Physics of The Earth and Planetary Interiors Volume: 157 Issue 1-2 Pages
 
 == Conferences ==
 {{{
+Muddying the water: track features typical of limb kinematics formed through normal substrate deformation, as shown by finite element analysis experimentation
+Author(s): Falkingham, PL; Margetts, L; Manning, PL
+Source: Journal of Vertebrate Paleontology, SVP Abstracts Book Pages: 87A
+Published: 2010
+}}}
+
+{{{
+Diversity in fossil vertebrate track assemblages: Preservational bias due to sediment consistency and mass
+Author(s): Falkingham, PL
+Source: Journal of Vertebrate Paleontology, SVP Abstracts Book Pages: 93A
+Published: 2009
+}}}
+
+{{{
+Using finite element analysis to aid interpretation of dinosaur tracks
+Author(s): Falkingham, PL; Margetts, L; Manning, PL
+Source: Journal of Vertebrate Paleontology, Volume: 28(3), Pages: 76A
+Published: 2008
+}}}
+
+{{{
 Parallelising the boundary element method using ParaFEM
 Author(s): Smith, IM; Margetts, L; Beer, G; et al.
 Source: Numerical Models In Geomechanics: NUMOG X Pages: 177-181 Published: 2007 
+}}}
+
+{{{
+Finite element analysis of dinosaur tracks
+Author(s): Falkingham, PL; Manning, PL; Margetts, L.
+Source: Journal of Vertebrate Paleontology, Volume: 27(3), Pages: 73A
+Published: 2007
 }}}
 
 {{{
