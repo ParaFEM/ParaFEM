@@ -23,8 +23,7 @@
  * Type: make -f makemodules.xt install (moves the .mod files to ~/parafem/include and the .a file to ~/parafem/lib)
 
 == Rebuilding the ParaFEM Library After an Update ==
- * Change directory to ~/parafem/src/modules and select the library
- you wish to build.
+ * Change directory to ~/parafem/src/modules and select the library you wish to build.
  * Type: {{{make -f makempi.xt clean}}} (removes old files)
  * Type: {{{make -f makempi.xt}}} (builds new library)
  * Type: {{{make -f makempi.xt install}}} (installs new library)
