@@ -8,6 +8,7 @@
  * ParaFEM uses the _subversion_ version control system (svn). Follow the instructions under the [http://code.google.com/p/parafem/source/checkout Source] tab. 
  * You may also need to see how to use svn on your local supercomputer or cluster. 
  * On HECToR (UK National HPC Facility), svn needs to be loaded. To do this type _$module load svn_ at the command prompt.
+ * To update an existing installation, use the command {{{$svn update}}} instead of {{{$svn checkout}}}
 
 == Download a Linux release version ==
  * Under the [http://code.google.com/p/parafem/downloads/list Download] tab, click to download the latest source code archive (ParaFEM_r25.tar.gz).
