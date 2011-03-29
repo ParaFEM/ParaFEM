@@ -4,13 +4,16 @@
 <wiki:toc max_depth="2" />
 
 = ParaFEM =
-== Checkout the latest version of source code ==
+
+At the moment, you can either checkout the latest version of source code directly from the repository _or_ download a release version. Chose which method you wish to use and follow the instructions (A) or (B) below.
+
+== (A) Checkout the latest version of source code ==
  * ParaFEM uses the _subversion_ version control system (svn). Follow the instructions under the [http://code.google.com/p/parafem/source/checkout Source] tab. 
  * You may also need to see how to use {{{svn}}} on your local supercomputer or cluster. 
  * On HECToR (UK National HPC Facility), svn needs to be loaded. To do this type _{{{module load svn}}}_ at the command prompt.
  * To update an existing installation, use the command {{{svn update}}} instead of {{{svn checkout}}}
 
-== Download a Linux release version ==
+== (B) Download a Linux release version ==
  * Under the [http://code.google.com/p/parafem/downloads/list Download] tab, click to download the latest source code archive {{{ParaFEM_r40.tar.gz}}}.
  * Select a directory in which to install ParaFEM.
  * Unzip the archive by typing {{{gunzip ParaFEM_r40.tar.gz}}} 
