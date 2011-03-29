@@ -22,8 +22,8 @@ At the moment, you can either checkout the latest version of source code directl
 == Building a ParaFEM Program == 
  * If you wish to use an existing program, change to the appropriate directory and build it. For example:
  * Change directory to {{{~/parafem/src/programs/4th_ed/p121}}}
- * Type: {{{make -f makeprograms}}}
- * *Note* If rebuilding after an update to the source code, first clean the build by typing: {{{make -f makeprograms clean}}}
+ * Type: {{{make -f makeprograms.xt}}}
+ * *Note* If rebuilding after an update to the source code, first clean the build by typing: {{{make -f makeprograms.xt clean}}}
  * Example input decks can be found in the {{{~/parafem/examples/p121}}} directory
 
 == (B) Download a Linux release version ==
