@@ -35,9 +35,9 @@ At the moment, you can either checkout the latest version of source code directl
 
 == Building the ParaFEM Library ==
  * In {{{~/parafem/src/modules}}} create a makefile for your system or use an existing one.
- * Type: {{{make -f makemodules.xt}}} (for a Cray XT4 or XT6 system)
- * Type: {{{make -f makemodules.xt install}}} (moves the .mod files to ~/parafem/include and the .a file to ~/parafem/lib)
- * *NOTE* If rebuilding after a source code update, type: {{{make -f makemodules.xt clean}}} (removes old files)
+ * Type: {{{make -f makemodules.xt4}}} (for a Cray XT4 system)
+ * Type: {{{make -f makemodules.xt4 install}}} (moves the .mod files to ~/parafem/include and the .a file to ~/parafem/lib)
+ * *NOTE* If rebuilding after a source code update, type: {{{make -f makemodules.xt4 clean}}} (removes old files)
 
 == Building a ParaFEM Program ==
 
