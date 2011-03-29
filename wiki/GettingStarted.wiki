@@ -13,6 +13,19 @@ At the moment, you can either checkout the latest version of source code directl
  * On HECToR (UK National HPC Facility), svn needs to be loaded. To do this type _{{{module load svn}}}_ at the command prompt.
  * To update an existing installation, use the command {{{svn update}}} instead of {{{svn checkout}}}
 
+== Building the ParaFEM Library ==
+ * Change directory to {{{~/parafem/src/modules}}} and select the library you wish to build.
+ * Type: {{{make -f makempi.xt}}} (builds new library)
+ * Type: {{{make -f makempi.xt install}}} (installs new library)
+ * *NOTE* If rebuilding after a source code update, type: {{{make -f makempi.xt clean}}} (removes old files)
+
+== Building a ParaFEM Program == 
+ * If you wish to use an existing program, change to the appropriate directory and build it. For example:
+ * Change directory to {{{~/parafem/src/programs/4th_ed/p121}}}
+ * Type: {{{make -f makeprograms}}}
+ * *Note* If rebuilding after an update to the source code, first clean the build by typing: {{{make -f makeprograms clean}}}
+ * Example input decks can be found in the {{{~/parafem/examples/p121}}} directory
+
 == (B) Download a Linux release version ==
  * Under the [http://code.google.com/p/parafem/downloads/list Download] tab, click to download the latest source code archive {{{ParaFEM_r40.tar.gz}}}.
  * Select a directory in which to install ParaFEM.
@@ -24,19 +37,10 @@ At the moment, you can either checkout the latest version of source code directl
  * In {{{~/parafem/src/modules}}} create a makefile for your system or use an existing one.
  * Type: {{{make -f makemodules.xt}}} (for a Cray XT4 or XT6 system)
  * Type: {{{make -f makemodules.xt install}}} (moves the .mod files to ~/parafem/include and the .a file to ~/parafem/lib)
+ * *NOTE* If rebuilding after a source code update, type: {{{make -f makemodules.xt clean}}} (removes old files)
 
-== Rebuilding the ParaFEM Library After an Update ==
- * Change directory to {{{~/parafem/src/modules}}} and select the library you wish to build.
- * Type: {{{make -f makempi.xt clean}}} (removes old files)
- * Type: {{{make -f makempi.xt}}} (builds new library)
- * Type: {{{make -f makempi.xt install}}} (installs new library)
 
-== Building a ParaFEM Program == 
- * If you wish to use an existing program, change to the appropriate directory and build it. For example:
- * Change directory to {{{~/parafem/src/programs/4th_ed/p121}}}
- * Type: {{{make -f makeprograms}}}
- * *Note* If rebuilding after an update to the source code, first clean the build by typing: {{{make -f makeprograms clean}}}
- * Example input decks can be found in the {{{~/parafem/examples/p121}}} directory
+
 
 = ParaFEM-Viewer = 
 == Checkout the latest version of source code ==
