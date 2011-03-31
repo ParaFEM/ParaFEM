@@ -1,19 +1,42 @@
-module    = ../../../../include
-lib       = ../../../../lib
+# MAKEFILE src/programs/4th_ed/p121.makeprograms.xt
+# Author: Lee Margetts
+# Modified by: Louise M. Lever
+# -----------------------------------------------------------------------
+# Compiles p121 program executable as RELEASE or DEBUG
+# Links with RELEASE STATIC library libparafem_mpi.$(VERSION).a
+#    or with RELEASE STATIC library libparafem_mpi_D.$(VERSION).a
+# -----------------------------------------------------------------------
+# Available Rules:
+#   (default) : execute the release rule
+#
+#   release: Build p121 executable as RELEASE edition
+#   debug: Build p121 executable as DEBUG edition
+#   install: Copy p121 executable into global bin directory
+#   clean:
+#   execlean:
+#   relink:
+# -----------------------------------------------------------------------
+# Notes:
+# -----------------------------------------------------------------------
 
+include ../../../../include/mk_defs.inc
+
+MODULE	= ../../../../include
+LIB	= ../../../../lib
 FC=ftn
-
-#  Flags
-#FFLAGS= -c -I$(module) -V -g -Mbounds -traceback
-FFLAGS= -c -I$(module) -V -fastsse -Mlarge_arrays
-
-LDFLAGS= -L$(lib) -lParaFEM_mpi -lblas
-
 .SUFFIXES: .o .f90
 
-all: p121
-default: all
+all:	release
 
+release:
+	$(MAKE) -f makeprograms.xt p121 \
+	FFLAGS="-c -I$(MODULE) -V -fastsse -Mlarge_arrays" \
+	LDFLAGS="-L$(LIB) -lparafem_mpi.$(VERSION) -lblas"
+
+debug:
+	$(MAKE) -f makeprograms.xt p121 \
+	FFLAGS="-c -I$(MODULE) -V -g -Mbounds -traceback" \
+	LDFLAGS="-L$(LIB) -lparafem_mpi_D.$(VERSION) -lblas"
 
 p121: p121.o
 	$(FC) p121.o -o p121 $(LDFLAGS)
@@ -29,3 +52,5 @@ execlean:
 
 relink: p121
 
+install:
+	cp p121 ../../../../bin
