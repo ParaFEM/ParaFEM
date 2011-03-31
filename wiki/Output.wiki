@@ -32,4 +32,4 @@ nodeID-nn  x-displacement  y-displacement  z-displacement
 ||{{{x-displacement}}} || Real || Value of the X displacement at the node.||
 ||{{{y-displacement}}} || Real || Value of the Y displacement at the node.||
 ||{{{z-displacement}}} || Real || Value of the Z displacement at the node.||
-||{{{nn}}} || Integer || Total number of nodes in the mesh, {{{nn}}} ||
+||{{{nn}}} || Integer || Total number of nodes in the mesh.||
