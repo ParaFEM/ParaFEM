@@ -37,3 +37,24 @@ nodeID-nn  x-displacement  y-displacement  z-displacement
 ||{{{y-displacement}}} || Real || Value of the Y displacement at the node.||
 ||{{{z-displacement}}} || Real || Value of the Z displacement at the node.||
 ||{{{nn}}} || Integer || Total number of nodes in the mesh.||
+
+= The .str file =
+
+A typical ".str" file has the following format:
+
+{{{
+keyword
+step-1
+nodeID-1   sxx  syy  szz  syz  szx  sxy
+nodeID-2   sxx  syy  szz  syz  szx  sxy
+nodeID-3   sxx  syy  szz  syz  szx  sxy
+...
+nodeID-nn  sxx  syy  szz  syz  szx  sxy
+}}}
+
+|| *Variable Name* || *Type* || *Purpose* ||
+||{{{keyword}}} || Character || A label that identifies the type of output. Here the value is {{{*DISPLACEMENT}}}.||
+||{{{step}}} || Integer || Output step number in analysis with multiple load increments and/or time steps.||
+||{{{nodeID}}} || Integer || A unique number that identifies the node. ParaFEM assumes sequential numbering from 1 to {{{nn}}}, shown here as {{{nodeID-1, nodeID-2, nodeID-3, ... , nodeID-nn}}}.||
+||{{{sxx}}} || Real || Normal stress component acting in the x direction on the plane perpendicular to x axis.||
+||{{{nn}}} || Integer || Total number of nodes in the mesh.||
