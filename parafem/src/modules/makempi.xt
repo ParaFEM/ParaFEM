@@ -1,47 +1,85 @@
+# MAKEFILE src/modules/makempi.xt
+# Author: Lee Margetts
+# Modified by: Louise M. Lever
+# -----------------------------------------------------------------------
+# Compiles common "shared" files and specific "mpi" files
+# Builds as a STATIC library libParaFEM_mpi.a
+# -----------------------------------------------------------------------
+# Options:
+# (default) : Compile and build library
+# install: Copy modules into global include directory
+#          Copy library into global lib directory
+# -----------------------------------------------------------------------
+# Notes:
+# (1) VPATH required to find "shared" modules when building lib rule
+# -----------------------------------------------------------------------
+
 FC = ftn
-
-#  Flags
-FFLAGS= -fastsse -Mlarge_arrays 
-#FFLAGS= -g -Mbounds -traceback
-
-#  Path
-rootdir = $(realpath .)
-
- 
-share = precision.o global_variables.o partition.o steering.o elements.o      \
-        timing.o plasticity.o geometry.o fluid.o                                          
-
-mpi   = mp_interface.o input.o output.o maths.o gather_scatter.o pcg.o        \
-        loading.o bicg.o                                          
-
+VPATH = shared
 .SUFFIXES: .f90 .o
 
-lib: $(PWD)/shared/$(share) $(PWD)/mpi/$(mpi)
-	ar -r libParaFEM_mpi.a $(share) $(mpi)
+include ../../include/mk_defs.inc
+
+SHARED= precision.o \
+	global_variables.o \
+	partition.o \
+	steering.o \
+	elements.o \
+	timing.o \
+	plasticity.o \
+	geometry.o \
+	fluid.o
+
+MPI=	mp_interface.o \
+	input.o \
+	output.o \
+	maths.o \
+	gather_scatter.o \
+	pcg.o \
+	loading.o \
+	bicg.o
+
+all:	release
+
+release:
+	@echo
+	@echo "Building MODULE RELEASE"
+	$(MAKE) -f makempi.xt FFLAGS="-fastsse -Mlarge_arrays" lib-release
+	@echo "Done MODULE RELEASE"
+debug:
+	@echo
+	@echo "Building MODULE DEBUG"
+	$(MAKE) -f makempi.xt FFLAGS="-g -Mbounds -traceback" lib-debug
+	@echo "Done MODULE DEBUG"
+
+lib-release:	$(SHARED) $(MPI)
+	ar -r libparafem_mpi.$(VERSION).a $(SHARED) $(MPI)
+
+lib-debug:	$(SHARED) $(MPI)
+	ar -r libparafem_mpi_D.$(VERSION).a $(SHARED) $(MPI)
 
 .f90.o:
-	$(FC) -c $(FFLAGS) $(PWD)/shared/precision.f90
-	$(FC) -c $(FFLAGS) $(PWD)/shared/global_variables.f90
-	$(FC) -c $(FFLAGS) $(PWD)/shared/partition.f90
-	$(FC) -c $(FFLAGS) $(PWD)/shared/steering.f90
-	$(FC) -c $(FFLAGS) $(PWD)/shared/elements.f90
-	$(FC) -c $(FFLAGS) $(PWD)/shared/timing.f90
-	$(FC) -c $(FFLAGS) $(PWD)/shared/plasticity.f90
-	$(FC) -c $(FFLAGS) $(PWD)/shared/geometry.f90
-	$(FC) -c $(FFLAGS) $(PWD)/shared/fluid.f90
-	$(FC) -c $(FFLAGS) $(PWD)/mpi/mp_interface.f90
-	$(FC) -c $(FFLAGS) $(PWD)/mpi/input.f90
-	$(FC) -c $(FFLAGS) $(PWD)/mpi/output.f90
-	$(FC) -c $(FFLAGS) $(PWD)/mpi/maths.f90
-	$(FC) -c $(FFLAGS) $(PWD)/mpi/gather_scatter.f90
-	$(FC) -c $(FFLAGS) $(PWD)/mpi/pcg.f90
-	$(FC) -c $(FFLAGS) $(PWD)/mpi/loading.f90
-	$(FC) -c $(FFLAGS) $(PWD)/mpi/bicg.f90
+	$(FC) -c $(FFLAGS) shared/precision.f90
+	$(FC) -c $(FFLAGS) shared/global_variables.f90
+	$(FC) -c $(FFLAGS) shared/partition.f90
+	$(FC) -c $(FFLAGS) shared/steering.f90
+	$(FC) -c $(FFLAGS) shared/elements.f90
+	$(FC) -c $(FFLAGS) shared/timing.f90
+	$(FC) -c $(FFLAGS) shared/plasticity.f90
+	$(FC) -c $(FFLAGS) shared/geometry.f90
+	$(FC) -c $(FFLAGS) shared/fluid.f90
+	$(FC) -c $(FFLAGS) mpi/mp_interface.f90
+	$(FC) -c $(FFLAGS) mpi/input.f90
+	$(FC) -c $(FFLAGS) mpi/output.f90
+	$(FC) -c $(FFLAGS) mpi/maths.f90
+	$(FC) -c $(FFLAGS) mpi/gather_scatter.f90
+	$(FC) -c $(FFLAGS) mpi/pcg.f90
+	$(FC) -c $(FFLAGS) mpi/loading.f90
+	$(FC) -c $(FFLAGS) mpi/bicg.f90
 
 clean:
-	rm *.o *.mod
+	rm -f *.o *.mod
 
 install:
-	rm *.o
-	mv *.mod ../../include
-	mv *.a ../../lib
+	cp *.mod ../../include
+	cp *.a ../../lib
