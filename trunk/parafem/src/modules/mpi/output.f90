@@ -106,7 +106,7 @@ MODULE OUTPUT
 ! 2. Write basic details about the problem
 !------------------------------------------------------------------------------
 
-    WRITE(11,'(/A)')   "PROGRAM SECTION EXECUTION TIMES                 "     
+    WRITE(11,'(/A)')   "BASIC JOB DATA                                  "     
  
     WRITE(11,'(A,I12)')    "Number of processors used                   ",npes 
     WRITE(11,'(A,I12)')    "Number of nodes in the mesh                 ",nn
