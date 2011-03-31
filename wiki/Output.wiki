@@ -64,7 +64,7 @@ nodeID-nn  sxx  syy  szz  syz  szx  sxy
 ||{{{sxy}}} || Real || Shear stress component acting in the x direction on the plane perpendicular to y axis.||
 ||{{{nn}}} || Integer || Total number of nodes in the mesh.||
 
-A real example follows (from example {{{tet4-force}}}) :
+A real example follows:
 
 {{{
 *STRESS
