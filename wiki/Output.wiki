@@ -160,7 +160,6 @@ A real example follows:
 
 {{{
 *MISES STRESS
-*MISES STRESS
             1
        1  1.9353E+00  0.0000E+00  0.0000E+00
        2  2.1240E+00  0.0000E+00  0.0000E+00
