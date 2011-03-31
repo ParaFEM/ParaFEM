@@ -38,6 +38,22 @@ nodeID-nn  x-displacement  y-displacement  z-displacement
 ||{{{z-displacement}}} || Real || Value of the Z displacement at the node.||
 ||{{{nn}}} || Integer || Total number of nodes in the mesh.||
 
+A real example follows:
+
+{{{
+*DISPLACEMENT
+            1
+       1  0.0000E+00  0.0000E+00  0.0000E+00
+       2  0.0000E+00 -3.0271E-02  0.0000E+00
+       3  0.0000E+00 -1.2309E-03  0.0000E+00
+      
+       .
+       .
+       .
+      
+      46 -7.5440E-03 -1.1737E-02 -7.3349E-03
+}}}
+
 = The .str file =
 
 A typical ".str" file has the following format:
