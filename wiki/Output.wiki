@@ -135,6 +135,46 @@ A real example follows:
       46 -8.5381E-01 -1.1626E+00 -2.4771E+00
 }}}
 
+= The .vms file =
+
+A typical ".vms" file has the following format:
+
+{{{
+keyword
+step-1
+nodeID-1   seq  0.0000E+00  0.0000E+00
+nodeID-2   seq  0.0000E+00  0.0000E+00
+nodeID-3   seq  0.0000E+00  0.0000E+00
+...
+nodeID-nn  seq  0.0000E+00  0.0000E+00
+}}}
+
+|| *Variable Name* || *Type* || *Purpose* ||
+||{{{keyword}}} || Character || A label that identifies the type of output. Here the value is {{{*MISES STRESS}}}.||
+||{{{step}}} || Integer || Output step number in analysis with multiple load increments and/or time steps.||
+||{{{nodeID}}} || Integer || A unique number that identifies the node. ParaFEM assumes sequential numbering from 1 to {{{nn}}}, shown here as {{{nodeID-1, nodeID-2, nodeID-3, ... , nodeID-nn}}}.||
+||{{{seq}}} || Real || The von Mises stress or equivalent stress.||
+||{{{nn}}} || Integer || Total number of nodes in the mesh.||
+
+A real example follows:
+
+{{{
+*MISES STRESS
+*MISES STRESS
+            1
+       1  1.9353E+00  0.0000E+00  0.0000E+00
+       2  2.1240E+00  0.0000E+00  0.0000E+00
+       3  5.9070E-01  0.0000E+00  0.0000E+00
+      
+       .
+       .
+       .
+      
+      46  1.4930E+00  0.0000E+00  0.0000E+00
+}}}
+
+_Note: von Mises stress is a scalar value. Only the values in the first column should be used in any visualization. The second and third columns are dummy columns filled with zeros for the purpose of reading the file in the ParaFEM-Viewer. See Future enhancements below for further explanation._
+
 = Future enhancements =
 
 We'd like to change the file formats to contain scalar, vector and tensor information. This will reduce the number of file types down to 3. Currently, the only file format that contains scalar information is a file with the .ttr extension and a {{{*TEMPERATURE}}} keyword. Placing the scalar Von Mises stress data in a file for temperature is more confusing than adding zeros to a vector file format. The current barrier to change is available programming effort.
