@@ -7,6 +7,7 @@
 This page describes the format of the ParaFEM ASCII output decks. The output decks comprise a number of separate files:
 
 ||*File extension*||*Content*||*Output by program*||
+||{{{.res}}}|| Basic job data and timing information||All programs||
 ||{{{.dis}}}|| Nodal displacements||p121, p1211||
 ||{{{.str}}}  || Stress tensor||p121||
 ||{{{.pri}}}  || Principal stress||p121||
@@ -14,6 +15,40 @@ This page describes the format of the ParaFEM ASCII output decks. The output dec
 ||{{{.rea}}}|| Reactions||p121||
 
 The philosophy behind having separate files is that it reduces the burden of data transfer when running very large problems on parallel supercomputers. An enhancement to ParaFEM for those running smaller problems would be to allow the user to decide whether to use a single output file or have several separate files as defined here.
+
+= The .res file =
+
+All programs output a ".res" file. These contain basic details about the job and timing information. A user should consult this file to see whether the job ran as expected.
+
+A real example follows:
+
+{{{
+BASIC JOB DATA
+Number of processors used                              1
+Number of nodes in the mesh                           46
+Number of nodes that were restrained                  31
+Number of equations solved                            81
+Number of PCG iterations                              39
+Number of loaded nodes                                 9
+Total load applied                            0.1000E+03
+
+PROGRAM SECTION EXECUTION TIMES                  SECONDS  %TOTAL
+Setup                                           0.387363   28.22
+Read element steering array                     0.351263   25.59
+Convert Abaqus to S&G node ordering             0.000005    0.00
+Read nodal coordinates                          0.000518    0.04
+Read restrained nodes                           0.059007    4.30
+Compute steering array and neq                  0.000321    0.02
+Compute interprocessor communication tables     0.000402    0.03
+Allocate neq_pp arrays                          0.000007    0.00
+Compute element stiffness matrices              0.000944    0.07
+Build the preconditioner                        0.000028    0.00
+Get starting r                                  0.060667    4.42
+Solve equations                                 0.002298    0.17
+Output results                                  0.509597   37.13
+Total execution time                            1.372420  100.00
+}}}
+
 
 = The .dis file =
 
