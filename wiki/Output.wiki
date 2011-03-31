@@ -96,6 +96,45 @@ A real example follows:
       46 -1.4139E+00 -1.6881E+00 -1.3915E+00 -4.3127E-01 -4.1357E-01 -2.3707E-01
 }}}
 
+= The .pri file =
+
+A typical ".pri" file has the following format:
+
+{{{
+keyword
+step-1
+nodeID-1   s1  s2  s3
+nodeID-2   s1  s2  s3
+nodeID-3   s1  s2  s3
+...
+nodeID-nn  s1  s2  s3
+}}}
+
+|| *Variable Name* || *Type* || *Purpose* ||
+||{{{keyword}}} || Character || A label that identifies the type of output. Here the value is {{{*PRINCIPAL STRESS}}}.||
+||{{{step}}} || Integer || Output step number in analysis with multiple load increments and/or time steps.||
+||{{{nodeID}}} || Integer || A unique number that identifies the node. ParaFEM assumes sequential numbering from 1 to {{{nn}}}, shown here as {{{nodeID-1, nodeID-2, nodeID-3, ... , nodeID-nn}}}.||
+||{{{s1}}} || Real || Maximum principal stress.||
+||{{{s2}}} || Real || Second principal stress.||
+||{{{s3}}} || Real || Minimum principal stress.||
+||{{{nn}}} || Integer || Total number of nodes in the mesh.||
+
+A real example follows:
+
+{{{
+*PRINCIPAL STRESS
+            1
+       1 -6.6082E-01 -1.3788E+00 -2.8525E+00
+       2  6.2651E-01 -7.3666E-01 -1.8208E+00
+       3  1.0954E-01 -1.4445E-01 -5.6567E-01
+      
+       .
+       .
+       .
+      
+      46 -8.5381E-01 -1.1626E+00 -2.4771E+00
+}}}
+
 = Future enhancements =
 
 We'd like to change the file formats to contain scalar, vector and tensor information. This will reduce the number of file types down to 3. Currently, the only file format that contains scalar information is a file with the .ttr extension and a {{{*TEMPERATURE}}} keyword. Placing the scalar Von Mises stress data in a file for temperature is more confusing than adding zeros to a vector file format. The current barrier to change is available programming effort.
