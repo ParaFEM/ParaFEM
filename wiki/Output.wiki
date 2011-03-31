@@ -1,0 +1,35 @@
+#summary ParaFEM ASCII output decks explained
+#sidebar TOC
+<wiki:toc max_depth="2" />
+
+= Introduction =
+
+This page describes the format of the ParaFEM ASCII output decks. The output decks comprise a number of separate files:
+
+||*File extension*||*Content*||*Output by program*||
+||{{{.dis}}}|| Nodal displacements||p121, p1211||
+||{{{.str}}}  || Stress tensor||p121||
+||{{{.pri}}}  || Principal stress||p121||
+||{{{.vms}}}|| Von Mises stress||p121||
+||{{{.rea}}}|| Reactions||p121||
+
+The philosophy behind having separate files is that it reduces the burden of data transfer when running very large problems on parallel supercomputers. An enhancement to ParaFEM for those running smaller problems would be to allow the user to decide whether to use a single output file or have several separate files as defined here.
+
+= The .dis file =
+
+A typical ".dis" file has the following format:
+
+{{{
+nodeID-1   x-displacement  y-displacement  z-displacement
+nodeID-2   x-displacement  y-displacement  z-displacement
+nodeID-3   x-displacement  y-displacement  z-displacement
+...
+nodeID-nn  x-displacement  y-displacement  z-displacement
+}}}
+
+|| *Variable Name* || *Type* || *Purpose* ||
+||{{{nodeID}}} || Integer || A unique number that identifies the node. ParaFEM assumes sequential numbering from 1 to {{{nn}}}, shown here as {{{nodeID-1, nodeID-2, nodeID-3,,, ... , nodeID-nn}}}.||
+||{{{x-displacement}}} || Real || Value of the X displacement at the node.||
+||{{{y-displacement}}} || Real || Value of the Y displacement at the node.||
+||{{{z-displacement}}} || Real || Value of the Z displacement at the node.||
+||{{{nn}}} || Integer || Total number of nodes in the mesh, {{{nn}}} ||
