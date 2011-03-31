@@ -20,6 +20,8 @@ The philosophy behind having separate files is that it reduces the burden of dat
 A typical ".dis" file has the following format:
 
 {{{
+keyword
+step-1
 nodeID-1   x-displacement  y-displacement  z-displacement
 nodeID-2   x-displacement  y-displacement  z-displacement
 nodeID-3   x-displacement  y-displacement  z-displacement
@@ -28,6 +30,8 @@ nodeID-nn  x-displacement  y-displacement  z-displacement
 }}}
 
 || *Variable Name* || *Type* || *Purpose* ||
+||{{{keyword}}} || Character || A label that identifies the type of output. Here the value is {{{*DISPLACEMENT}}}||
+||{{{step}}} || Integer || Output step number in analysis with multiple load increments and/or time steps.||
 ||{{{nodeID}}} || Integer || A unique number that identifies the node. ParaFEM assumes sequential numbering from 1 to {{{nn}}}, shown here as {{{nodeID-1, nodeID-2, nodeID-3,,, ... , nodeID-nn}}}.||
 ||{{{x-displacement}}} || Real || Value of the X displacement at the node.||
 ||{{{y-displacement}}} || Real || Value of the Y displacement at the node.||
