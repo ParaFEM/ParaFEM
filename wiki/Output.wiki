@@ -30,7 +30,7 @@ nodeID-nn  x-displacement  y-displacement  z-displacement
 }}}
 
 || *Variable Name* || *Type* || *Purpose* ||
-||{{{keyword}}} || Character || A label that identifies the type of output. Here the value is {{{*DISPLACEMENT}}}.||
+||{{{keyword}}} || Character || A label that identifies the type of output. Here the value is {{{*STRESS}}}.||
 ||{{{step}}} || Integer || Output step number in analysis with multiple load increments and/or time steps.||
 ||{{{nodeID}}} || Integer || A unique number that identifies the node. ParaFEM assumes sequential numbering from 1 to {{{nn}}}, shown here as {{{nodeID-1, nodeID-2, nodeID-3, ... , nodeID-nn}}}.||
 ||{{{x-displacement}}} || Real || Value of the X displacement at the node.||
@@ -59,4 +59,7 @@ nodeID-nn  sxx  syy  szz  syz  szx  sxy
 ||{{{sxx}}} || Real || Normal stress component acting in the x direction on the plane perpendicular to x axis.||
 ||{{{syy}}} || Real || Normal stress component acting in the y direction on the plane perpendicular to y axis.||
 ||{{{szz}}} || Real || Normal stress component acting in the z direction on the plane perpendicular to z axis.||
+||{{{syz}}} || Real || Shear stress component acting in the y direction on the plane perpendicular to z axis.||
+||{{{szx}}} || Real || Shear stress component acting in the z direction on the plane perpendicular to x axis.||
+||{{{sxy}}} || Real || Shear stress component acting in the x direction on the plane perpendicular to y axis.||
 ||{{{nn}}} || Integer || Total number of nodes in the mesh.||
