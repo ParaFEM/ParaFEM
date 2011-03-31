@@ -92,7 +92,7 @@ modules:
 
 modules-debug:
 	@echo "Building $(OPT) Modules and Library Debug"
-	cd src/modules && \
+	@cd src/modules && \
 	$(MAKE) -f make$(OPT).$(MACHINE) debug && \
 	$(MAKE) -f make$(OPT).$(MACHINE) install && \
 	cd ../..
@@ -100,16 +100,16 @@ modules-debug:
 # Programs RELEASE and DEBUG rules
 programs:
 	@echo "Building p121 $(OPT) Release for $(MACHINE)"
-	cd src/programs/4th_ed/p121 && \
-	make -f makeprograms.$(MACHINE) release && \
-	make -f makeprograms.$(MACHINE) install && \
+	@cd src/programs/4th_ed/p121 && \
+	$(MAKE) -f makeprograms.$(MACHINE) release && \
+	$(MAKE) -f makeprograms.$(MACHINE) install && \
 	cd ../../..
 
 programs-debug:
 	@echo "Building p121 $(OPT) Release for $(MACHINE)"
-	cd src/programs/4th_ed/p121 && \
-	make -f makeprograms.$(MACHINE) debug && \
-	make -f makeprograms.$(MACHINE) install && \
+	@cd src/programs/4th_ed/p121 && \
+	$(MAKE) -f makeprograms.$(MACHINE) debug && \
+	$(MAKE) -f makeprograms.$(MACHINE) install && \
 	cd ../../..
 
 # Tool Builds and Installs
