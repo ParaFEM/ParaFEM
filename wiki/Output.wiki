@@ -63,3 +63,14 @@ nodeID-nn  sxx  syy  szz  syz  szx  sxy
 ||{{{szx}}} || Real || Shear stress component acting in the z direction on the plane perpendicular to x axis.||
 ||{{{sxy}}} || Real || Shear stress component acting in the x direction on the plane perpendicular to y axis.||
 ||{{{nn}}} || Integer || Total number of nodes in the mesh.||
+
+A real example follows:
+
+{{{
+*STRESS
+       1
+       1 -1.3564E+00 -2.6708E+00 -8.6496E-01 -2.8340E-01 -1.2612E-01 -1.8275E-02
+       2 -3.0094E-01 -1.1312E+00 -4.9880E-01 -7.2354E-01 -4.9339E-01  3.1996E-01
+       3 -1.4589E-01 -2.0571E-01 -2.4897E-01 -9.7981E-02 -1.1620E-01  5.7801E-02
+       4 -1.1049E+00 -1.4674E+00 -1.1473E+00 -3.2011E-01 -3.0869E-01 -1.6639E-01
+}}}
