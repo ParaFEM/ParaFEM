@@ -1,0 +1,3 @@
+#!/bin/bash
+echo "Converting $1 to ParaFEM Format"
+awk -f ~/bin/inp2d.awk $1
