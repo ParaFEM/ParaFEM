@@ -216,18 +216,20 @@ A typical ".rea" file has the following format:
 {{{
 keyword
 step-1
-nodeID-1   seq  0.0000E+00  0.0000E+00
-nodeID-2   seq  0.0000E+00  0.0000E+00
-nodeID-3   seq  0.0000E+00  0.0000E+00
+nodeID-1   rfx  rfy  rfz
+nodeID-2   rfx  rfy  rfz   
+nodeID-3   rfx  rfy  rfz   
 ...
-nodeID-nn  seq  0.0000E+00  0.0000E+00
+nodeID-nn  rfx  rfy  rfz
 }}}
 
 || *Variable Name* || *Type* || *Purpose* ||
-||{{{keyword}}} || Character || A label that identifies the type of output. Here the value is {{{*MISES STRESS}}}.||
+||{{{keyword}}} || Character || A label that identifies the type of output. Here the value is {{{*NODAL REACTIONS}}}.||
 ||{{{step}}} || Integer || Output step number in analysis with multiple load increments and/or time steps.||
 ||{{{nodeID}}} || Integer || A unique number that identifies the node. ParaFEM assumes sequential numbering from 1 to {{{nn}}}, shown here as {{{nodeID-1, nodeID-2, nodeID-3, ... , nodeID-nn}}}.||
-||{{{seq}}} || Real || The von Mises stress or equivalent stress.||
+||{{{rfx}}} || Real || x component of the reaction force.||
+||{{{rfy}}} || Real || y component of the reaction force.||
+||{{{rfz}}} || Real || z component of the reaction force.||
 ||{{{nn}}} || Integer || Total number of nodes in the mesh.||
 
 A real example follows:
