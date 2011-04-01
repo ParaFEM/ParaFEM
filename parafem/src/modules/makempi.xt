@@ -3,7 +3,7 @@
 # Modified by: Louise M. Lever
 # -----------------------------------------------------------------------
 # Compiles common "shared" files and specific "mpi" files
-# Builds as a STATIC library libParaFEM_mpi.a
+# Builds as a STATIC library libparafem_mpi.a
 # -----------------------------------------------------------------------
 # Options:
 # (default) : Compile and build library
@@ -78,7 +78,7 @@ lib-debug:	$(SHARED) $(MPI)
 	$(FC) -c $(FFLAGS) mpi/bicg.f90
 
 clean:
-	rm -f *.o *.mod
+	rm -f *.o *.mod *.a
 
 install:
 	cp *.mod ../../include
