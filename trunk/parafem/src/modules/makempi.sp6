@@ -3,7 +3,7 @@
 # Modified by: Louise M. Lever
 # -----------------------------------------------------------------------
 # Compiles common "shared" files and specific "mpi" files
-# Builds as a STATIC library libparafem_mpi.a
+# Builds as a STATIC library libParaFEM_mpi.a
 # -----------------------------------------------------------------------
 # Options:
 # (default) : Compile and build library
@@ -53,10 +53,10 @@ debug:
 	@echo "Done MODULE DEBUG"
 
 lib-release:	$(SHARED) $(MPI)
-	ar -r libparafem_mpi.$(VERSION).a $(SHARED) $(MPI)
+	ar -r libParaFEM_mpi.$(VERSION).a $(SHARED) $(MPI)
 
 lib-debug:	$(SHARED) $(MPI)
-	ar -r libparafem_mpi_D.$(VERSION).a $(SHARED) $(MPI)
+	ar -r libParaFEM_mpi_D.$(VERSION).a $(SHARED) $(MPI)
 
 .f90.o:
 	$(FC) -c $(FFLAGS) shared/precision.f90
