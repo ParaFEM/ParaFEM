@@ -1,18 +1,42 @@
-module    = ../../../../include
-lib       = ../../../../lib
+# MAKEFILE src/programs/4th_ed/p121.makeprograms.sp6
+# Author: Lee Margetts
+# Modified by: Louise M. Lever
+# -----------------------------------------------------------------------
+# Compiles p121 program executable as RELEASE or DEBUG
+# Links with RELEASE STATIC library libParaFEM_mpi.$(VERSION).a
+#    or with RELEASE STATIC library libParaFEM_mpi_D.$(VERSION).a
+# -----------------------------------------------------------------------
+# Available Rules:
+#   (default) : execute the release rule
+#
+#   release: Build p121 executable as RELEASE edition
+#   debug: Build p121 executable as DEBUG edition
+#   install: Copy p121 executable into global bin directory
+#   clean: Remove .o object files
+#   execlean: Remove the local p121 executable
+#   relink: Rebuild p121 from object files and libraries
+# -----------------------------------------------------------------------
+# Notes:
+# -----------------------------------------------------------------------
 
+include ../../../../include/mk_defs.inc
+
+MODULE	= ../../../../include
+LIB	= ../../../../lib
 FC=mpxlf90
-
-#  Flags
-FFLAGS= -c -I$(module) -O2
-
-LDFLAGS= -L$(lib) -lParaFEM_mpi
-
 .SUFFIXES: .o .f90
 
-all: p121
-default: all
+all:	release
 
+release:
+	$(MAKE) -f makeprograms.sp6 p121 \
+	FFLAGS="-c -I$(MODULE) -O2" \
+	LDFLAGS="-L$(LIB) -lParaFEM_mpi.$(VERSION)"
+
+debug:
+	$(MAKE) -f makeprograms.sp6 p121 \
+	FFLAGS="-c -I$(MODULE) -V -g" \
+	LDFLAGS="-L$(LIB) -lParaFEM_mpi_D.$(VERSION)"
 
 p121: p121.o
 	$(FC) p121.o -o p121 $(LDFLAGS)
