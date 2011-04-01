@@ -3,8 +3,8 @@
 # Modified by: Louise M. Lever
 # -----------------------------------------------------------------------
 # Compiles p121 program executable as RELEASE or DEBUG
-# Links with RELEASE STATIC library libparafem_mpi.$(VERSION).a
-#    or with RELEASE STATIC library libparafem_mpi_D.$(VERSION).a
+# Links with RELEASE STATIC library libParaFEM_mpi.$(VERSION).a
+#    or with RELEASE STATIC library libParaFEM_mpi_D.$(VERSION).a
 # -----------------------------------------------------------------------
 # Available Rules:
 #   (default) : execute the release rule
@@ -31,12 +31,12 @@ all:	release
 release:
 	$(MAKE) -f makeprograms.xt p121 \
 	FFLAGS="-c -I$(MODULE) -V -fastsse -Mlarge_arrays" \
-	LDFLAGS="-L$(LIB) -lparafem_mpi.$(VERSION) -lblas"
+	LDFLAGS="-L$(LIB) -lParaFEM_mpi.$(VERSION) -lblas"
 
 debug:
 	$(MAKE) -f makeprograms.xt p121 \
 	FFLAGS="-c -I$(MODULE) -V -g -Mbounds -traceback" \
-	LDFLAGS="-L$(LIB) -lparafem_mpi_D.$(VERSION) -lblas"
+	LDFLAGS="-L$(LIB) -lParaFEM_mpi_D.$(VERSION) -lblas"
 
 p121: p121.o
 	$(FC) p121.o -o p121 $(LDFLAGS)
