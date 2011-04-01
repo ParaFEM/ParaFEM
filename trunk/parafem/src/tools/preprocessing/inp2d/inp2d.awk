@@ -1,23 +1,41 @@
 # @(#) inp2d.awk - Basic conversion of Abaqus Input Deck .inp to ParaFEM input files .d .bnd .lds .dat
 # @(#) Usage:awk -f inp2d.awk <filename.inp>
 # Author: Louise M. Lever (louise.lever@manchester.ac.uk)
+# Version: 1.0.1
 
 # FUNCTIONS:
 #
+# BEGIN
+# END
+# 
 # start_nodes()
 # do_nodes()
 # start_elements()
 # do_elements()
 # start_nset()
 # do_nset()
+# do_nset_gen()
 # start_bc()
 # do_bc()
 # output_bnd()
 # start_step()
 # output_load()
+# output_fixed()
 # start_material()
 # start_elastic()
 # do_elastic()
+# start_cload()
+# do_cload()
+#
+# (MAIN BODY)
+
+# BEGIN
+# 
+# Initialize AWK. Set RS to process DOS and UNIX newlines.
+# Set FS to use comma as well as whitespace
+# Prepare the various filenames for output.
+# Report some settings to stdout
+# Set some default ParaFEM .dat values
 
 BEGIN {
   RS = "\r\n|\n";
@@ -59,6 +77,11 @@ BEGIN {
   fixed_count = 0;
 }
 
+# END
+# 
+# Input file now completely processed. Report collected values for .dat file.
+# Write .dat file
+
 END {
   # report dat file values
   print "Type:", dat_elem_type;
@@ -75,6 +98,14 @@ END {
 }
 
 # Functions
+#
+# Called below from MAIN BODY
+
+# FUNCTION: start_nodes()
+#
+# Triggered by *Nodes keyword
+# Add *NODES keyword to output .d file
+# Enter NODE mode to trigger do_nodes() until new keyword found
 
 function start_nodes() {
   print "Processing Nodes";
