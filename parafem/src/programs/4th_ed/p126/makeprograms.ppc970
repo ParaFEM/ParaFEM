@@ -13,8 +13,8 @@
 #   debug: Build p126 executable as DEBUG edition
 #   install: Copy p126 executable into global bin directory
 #   clean: Remove .o object files
-#   execlean: Remove the local p121 executable
-#   relink: Rebuild p121 from object files and libraries
+#   execlean: Remove the local p126 executable
+#   relink: Rebuild p126 from object files and libraries
 # -----------------------------------------------------------------------
 # Notes:
 # -----------------------------------------------------------------------
