@@ -1,6 +1,6 @@
 # ParaFEM Top-Level Makefile
 # Author: Louise M. Lever (louise.lever@manchester.ac.uk)
-# Version: 0.1.1
+# Version: 0.1.2
 
 # Set Latest ParaFEM VERSION Number
 include include/mk_defs.inc
@@ -37,7 +37,11 @@ all:
 	@echo
 	@echo "Or select one or more of the following options:"
 	@echo
-	@echo "  [tools]    - Builds and/or copies tools to ~/bin directory"
+	@echo "  [tools-xt]      - Builds tools for HECToR (xt) and installs to bin directory"
+	@echo "  [tools-ppc970]  - Builds tools for PPC970 and installs to bin directory"
+	@echo "  [tools-sp6]     - Builds tools for SP6 and installs to bin directory"
+	@echo "  [tools-scripts] - Builds and/or copies script based tools to bin directory"
+	@echo
 	@echo "  [clean]    - Cleans out all module *.mod, object *.o and library lib*.a files from all directories"
 	@echo "  [execlean] - Cleans out all executable programs"
 	@echo
@@ -132,8 +136,20 @@ programs-debug:
 	$(MAKE) -f makeprograms.$(MACHINE) install && \
 	cd ../../../..
 
-# Tool Builds and Installs
-tools:	tool-inp2d tool-sg12mg
+# MACHINE specific Tool Builds and Installs
+tools-xt:
+	$(MAKE) tools scripts OPT=mpi MACHINE=xt
+
+tools-ppc970:	tool-sg12mg
+	$(MAKE) tools scripts OPT=mpi MACHINE=ppc970
+
+tools-sp6:	tool-sg12mg
+	$(MAKE) tools scripts OPT=mpi MACHINE=sp6
+
+# Tool and Script Builds and Installs
+tools:	tool-sg12mg
+
+scripts:	tool-inp2d
 
 tool-inp2d:
 	@echo "Installing the inp2d script in bin"
