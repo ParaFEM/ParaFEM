@@ -103,17 +103,37 @@ programs:
 	@cd src/programs/4th_ed/p121 && \
 	$(MAKE) -f makeprograms.$(MACHINE) release && \
 	$(MAKE) -f makeprograms.$(MACHINE) install && \
-	cd ../../..
+	cd ../../../..
+	@echo "Building p126 $(OPT) Release for $(MACHINE)"
+	@cd src/programs/4th_ed/p126 && \
+	$(MAKE) -f makeprograms.$(MACHINE) release && \
+	$(MAKE) -f makeprograms.$(MACHINE) install && \
+	cd ../../../..
+	@echo "Building p129 $(OPT) Release for $(MACHINE)"
+	@cd src/programs/4th_ed/p129 && \
+	$(MAKE) -f makeprograms.$(MACHINE) release && \
+	$(MAKE) -f makeprograms.$(MACHINE) install && \
+	cd ../../../..
 
 programs-debug:
 	@echo "Building p121 $(OPT) Release for $(MACHINE)"
 	@cd src/programs/4th_ed/p121 && \
 	$(MAKE) -f makeprograms.$(MACHINE) debug && \
 	$(MAKE) -f makeprograms.$(MACHINE) install && \
-	cd ../../..
+	cd ../../../..
+	@echo "Building p126 $(OPT) Release for $(MACHINE)"
+	@cd src/programs/4th_ed/p126 && \
+	$(MAKE) -f makeprograms.$(MACHINE) debug && \
+	$(MAKE) -f makeprograms.$(MACHINE) install && \
+	cd ../../../..
+	@echo "Building p129 $(OPT) Release for $(MACHINE)"
+	@cd src/programs/4th_ed/p129 && \
+	$(MAKE) -f makeprograms.$(MACHINE) debug && \
+	$(MAKE) -f makeprograms.$(MACHINE) install && \
+	cd ../../../..
 
 # Tool Builds and Installs
-tools:	tool-inp2d
+tools:	tool-inp2d tool-sg12mg
 
 tool-inp2d:
 	@echo "Installing the inp2d script in bin"
@@ -121,12 +141,21 @@ tool-inp2d:
 	@cp src/tools/preprocessing/inp2d/inp2d bin
 	@chmod +x bin/inp2d
 
+tool-sg12mg:
+	@echo "Building sg12mg Release for $(MACHINE)"
+	@cd src/tools/preprocessing/ed4mesher && \
+	$(MAKE) -f makeprograms.$(MACHINE) release && \
+	$(MAKE) -f makeprograms.$(MACHINE) install && \
+	cd ../../../..
+
 # Clean rules
 clean:
 	@echo "Cleaning modules build directories"
 	cd src/modules && make -f makempi.xt clean && cd ../..
 	@echo "Cleaning program build directories"
 	cd src/programs/4th_ed/p121 && make -f makeprograms.xt clean && cd ../../..
+	cd src/programs/4th_ed/p126 && make -f makeprograms.xt clean && cd ../../..
+	cd src/programs/4th_ed/p129 && make -f makeprograms.xt clean && cd ../../..
 	@echo "Cleaning global include directory"
 	cd include && rm -f *.mod && cd ..
 	@echo "Cleaning global lib directory"
@@ -135,5 +164,7 @@ clean:
 execlean:
 	@echo "Cleaning program build directories"
 	cd src/programs/4th_ed/p121 && make -f makeprograms.xt execlean && cd ../../..
+	cd src/programs/4th_ed/p126 && make -f makeprograms.xt execlean && cd ../../..
+	cd src/programs/4th_ed/p129 && make -f makeprograms.xt execlean && cd ../../..
 	@echo "Cleaning global bin directory"
-	cd bin && rm -f p121 && cd ..
+	cd bin && rm -f p121 p126 p129 && cd ..
