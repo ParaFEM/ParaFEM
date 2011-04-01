@@ -1,19 +1,42 @@
-module    = ../../../../include
-lib       = ../../../../lib
+# MAKEFILE src/programs/4th_ed/p126/makeprograms.ppc970
+# Author: Lee Margetts
+# Modified by: Louise M. Lever
+# -----------------------------------------------------------------------
+# Compiles p126 program executable as RELEASE or DEBUG
+# Links with RELEASE STATIC library libParaFEM_mpi.$(VERSION).a
+#    or with RELEASE STATIC library libParaFEM_mpi_D.$(VERSION).a
+# -----------------------------------------------------------------------
+# Available Rules:
+#   (default) : execute the release rule
+#
+#   release: Build p126 executable as RELEASE edition
+#   debug: Build p126 executable as DEBUG edition
+#   install: Copy p126 executable into global bin directory
+#   clean: Remove .o object files
+#   execlean: Remove the local p121 executable
+#   relink: Rebuild p121 from object files and libraries
+# -----------------------------------------------------------------------
+# Notes:
+# -----------------------------------------------------------------------
 
+include ../../../../include/mk_defs.inc
+
+MODULE	= ../../../../include
+LIB	= ../../../../lib
 FC=mpif90
-
-#  Flags
-FFLAGS= -c -I$(module) -O3 -qstrict -qtune=ppc970 -qarch=ppc970 \
-	-qcache=auto -q64
-
-LDFLAGS= -L$(lib) -lParaFEM_mpi -lblas
-
 .SUFFIXES: .o .f90
 
-all: p126
-default: all
+all:	release
 
+release:
+	$(MAKE) -f makeprograms.ppc970 p126 \
+	FFLAGS="-c -I$(MODULE) -O3 -qstrict -qtune=ppc970 -qarch=ppc970 -qcache=auto -q64" \
+	LDFLAGS="-L$(LIB) -lParaFEM_mpi.$(VERSION) -lblas"
+
+debug:
+	$(MAKE) -f makeprograms.ppc970 p126 \
+	FFLAGS="-c -I$(MODULE) -V -g" \
+	LDFLAGS="-L$(LIB) -lParaFEM_mpi_D.$(VERSION) -lblas"
 
 p126: p126.o
 	$(FC) p126.o -o p126 $(LDFLAGS)
@@ -29,3 +52,5 @@ execlean:
 
 relink: p126
 
+install:
+	cp p126 ../../../../bin
