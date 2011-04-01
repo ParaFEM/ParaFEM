@@ -1,18 +1,42 @@
-module    = ../../../../include
-lib       = ../../../../lib
+# MAKEFILE src/tools/preprocessing/ed4mesher/makeprograms.sp6
+# Author: Lee Margetts
+# Modified by: Louise M. Lever
+# -----------------------------------------------------------------------
+# Compiles sg12mg program executable as RELEASE or DEBUG
+# Links with RELEASE STATIC library libParaFEM_mpi.$(VERSION).a
+#    or with RELEASE STATIC library libParaFEM_mpi_D.$(VERSION).a
+# -----------------------------------------------------------------------
+# Available Rules:
+#   (default) : execute the release rule
+#
+#   release: Build sg12mg executable as RELEASE edition
+#   debug: Build sg12mg executable as DEBUG edition
+#   install: Copy sg12mg executable into global bin directory
+#   clean: Remove .o object files
+#   execlean: Remove the local sg12mg executable
+#   relink: Rebuild sg12mg from object files and libraries
+# -----------------------------------------------------------------------
+# Notes:
+# -----------------------------------------------------------------------
 
+include ../../../../include/mk_defs.inc
+
+MODULE	= ../../../../include
+LIB	= ../../../../lib
 FC=mpxlf90_r
-
-#  Flags
-FFLAGS= -c -I$(module) -O2
-
-LDFLAGS= -L$(lib) -lParaFEM_mpi
-
 .SUFFIXES: .o .f90
 
-all: sg12mg
-default: all
+all:	release
 
+release:
+	$(MAKE) -f makeprograms.sp6 sg12mg \
+	FFLAGS="-c -I$(MODULE) -O2" \
+	LDFLAGS="-L$(LIB) -lParaFEM_mpi.$(VERSION)"
+
+debug:
+	$(MAKE) -f makeprograms.sp6 sg12mg \
+	FFLAGS="-c -I$(MODULE) -V -g" \
+	LDFLAGS="-L$(LIB) -lParaFEM_mpi_D.$(VERSION)"
 
 sg12mg: sg12mg.o
 	$(FC) sg12mg.o -o sg12mg $(LDFLAGS)
