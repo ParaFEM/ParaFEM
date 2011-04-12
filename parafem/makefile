@@ -1,6 +1,6 @@
 # ParaFEM Top-Level Makefile
 # Author: Louise M. Lever (louise.lever@manchester.ac.uk)
-# Version: 0.1.2
+# Version: 0.1.3
 
 # Set Latest ParaFEM VERSION Number
 include include/mk_defs.inc
@@ -40,7 +40,6 @@ all:
 	@echo "  [tools-xt]      - Builds tools for HECToR (xt) and installs to bin directory"
 	@echo "  [tools-ppc970]  - Builds tools for PPC970 and installs to bin directory"
 	@echo "  [tools-sp6]     - Builds tools for SP6 and installs to bin directory"
-	@echo "  [tools-scripts] - Builds and/or copies script based tools to bin directory"
 	@echo
 	@echo "  [clean]    - Cleans out all module *.mod, object *.o and library lib*.a files from all directories"
 	@echo "  [execlean] - Cleans out all executable programs"
@@ -118,6 +117,16 @@ programs:
 	$(MAKE) -f makeprograms.$(MACHINE) release && \
 	$(MAKE) -f makeprograms.$(MACHINE) install && \
 	cd ../../../..
+	@echo "Building p1211 $(OPT) Release for $(MACHINE)"
+	@cd src/programs/5th_ed/p1211 && \
+	$(MAKE) -f makeprograms.$(MACHINE) release && \
+	$(MAKE) -f makeprograms.$(MACHINE) install && \
+	cd ../../../..
+	@echo "Building p1212 $(OPT) Release for $(MACHINE)"
+	@cd src/programs/5th_ed/p1212 && \
+	$(MAKE) -f makeprograms.$(MACHINE) release && \
+	$(MAKE) -f makeprograms.$(MACHINE) install && \
+	cd ../../../..
 
 programs-debug:
 	@echo "Building p121 $(OPT) Release for $(MACHINE)"
@@ -132,6 +141,16 @@ programs-debug:
 	cd ../../../..
 	@echo "Building p129 $(OPT) Release for $(MACHINE)"
 	@cd src/programs/4th_ed/p129 && \
+	$(MAKE) -f makeprograms.$(MACHINE) debug && \
+	$(MAKE) -f makeprograms.$(MACHINE) install && \
+	cd ../../../..
+	@echo "Building p1211 $(OPT) Release for $(MACHINE)"
+	@cd src/programs/5th_ed/p1211 && \
+	$(MAKE) -f makeprograms.$(MACHINE) debug && \
+	$(MAKE) -f makeprograms.$(MACHINE) install && \
+	cd ../../../..
+	@echo "Building p1212 $(OPT) Release for $(MACHINE)"
+	@cd src/programs/5th_ed/p1212 && \
 	$(MAKE) -f makeprograms.$(MACHINE) debug && \
 	$(MAKE) -f makeprograms.$(MACHINE) install && \
 	cd ../../../..
@@ -172,6 +191,8 @@ clean:
 	cd src/programs/4th_ed/p121 && make -f makeprograms.xt clean && cd ../../..
 	cd src/programs/4th_ed/p126 && make -f makeprograms.xt clean && cd ../../..
 	cd src/programs/4th_ed/p129 && make -f makeprograms.xt clean && cd ../../..
+	cd src/programs/5th_ed/p1211 && make -f makeprograms.xt clean && cd ../../..
+	cd src/programs/5th_ed/p1212 && make -f makeprograms.xt clean && cd ../../..
 	@echo "Cleaning global include directory"
 	cd include && rm -f *.mod && cd ..
 	@echo "Cleaning global lib directory"
@@ -182,5 +203,7 @@ execlean:
 	cd src/programs/4th_ed/p121 && make -f makeprograms.xt execlean && cd ../../..
 	cd src/programs/4th_ed/p126 && make -f makeprograms.xt execlean && cd ../../..
 	cd src/programs/4th_ed/p129 && make -f makeprograms.xt execlean && cd ../../..
+	cd src/programs/5th_ed/p1211 && make -f makeprograms.xt execlean && cd ../../..
+	cd src/programs/5th_ed/p1212 && make -f makeprograms.xt execlean && cd ../../..
 	@echo "Cleaning global bin directory"
-	cd bin && rm -f p121 p126 p129 && cd ..
+	cd bin && rm -f p121 p126 p129 p1211 p1212 && cd ..
