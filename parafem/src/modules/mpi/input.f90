@@ -164,6 +164,8 @@ MODULE INPUT
 !------------------------------------------------------------------------------
   
   IF(readRemainder > 0) THEN
+    DEALLOCATE(g_coord)
+    ALLOCATE(g_coord(ndim,readRemainder))
     g_coord  = zero
     bufsize  = ndim * readRemainder
     nnStart  = (readSteps * readCount) + 1
