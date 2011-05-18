@@ -1,0 +1,57 @@
+This folder contains the source code and makefile for the d2metin
+and metout2d pre-processing tools to support PARTITIONING of input
+decks using the METIS partitioning library and tools.
+
+The METIS library and tools must also be downloaded, compiled and
+installed on your system to make use of these ParaFEM tools.
+
+METIS can be obtained from:
+      http://glaros.dtc.umn.edu/gkhome/metis/metis/download
+
+These tools were compiled and tested against VERSION 4.0.3.
+
+d2metin
+  This program takes a ParaFEM input deck (.d file) and
+  pre-processes it by transforming it into the file format
+  required for use by the METIS Partitioning library and tools.
+
+  USAGE:
+  d2metin <input_model_filename> <output_model_filename>
+  e.g., d2metin helix.d helix.met
+
+metout2d
+  This program takes an unpartitioned ParaFEM input deck
+  (.d, .bnd, .lds) and a METIS output partition file and outputs
+  a new ParaFEM input deck (.d, .bnd, .lds AND .psize) that
+  incorporates the partitioning information.
+  
+  NOTE: if the BND or LDS files are not present, they will not be
+  processed but the program will exit after processing the model
+  files.
+
+  NOTE: the METIS partition programs (partnmesh/partdmesh) will
+  output TWO partition files, with the suffix of .epart.# or
+  .npart.#, where # matches the number of partitions specified
+  when the partition programs were executed. The epart.# file
+  should be used for this program.
+ 
+  NOTE: ParaFEM .fix files are not supported.
+  
+  USAGE:
+    metout2d <partition_file> <input_basename> <output_basename>
+    e.g., metout2d helix.met.epart.3 helix helix_part
+ 
+  NOTE: use the basename i.e., without the .d suffix.
+  
+WORKFLOW
+
+  The overall workflow for partitioning ParaFEM input decks is as
+  follows:
+
+    e.g., d2metin helix.d helix.met
+          partnmesh helix.met 3
+          metout2d helix.met.epart.3 helix helix_part
+
+  This will generate helix_part.d and helix_part.psize files. It
+  will also generate helix_part.bnd and helix_part.lds if those
+  input files were present.
