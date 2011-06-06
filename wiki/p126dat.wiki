@@ -11,7 +11,7 @@ mesh
 nels nn nr fixed_equations nip
 visc rho tol limit
 cjtol cjits penalty
-x0 ell kappa
+x0 ell kappa partitioner
 }}}
 
 ||*Variable Name*||*Type*||*Meaning*||
@@ -31,7 +31,7 @@ x0 ell kappa
 ||{{{x0}}} || Real || Start value.||
 ||{{{ell}}} || Integer || l in the BiCGStab(l) process.||
 ||{{{kappa}}} || Real || kappa in the BiCGStab(l) process.||
-
+||{{{partitioner}}} || Integer || Determines whether partitioning is internal or external.||
 
 A real example follows:
 
@@ -41,5 +41,5 @@ A real example follows:
 1000000 4090601 3120302 20401 8
 0.1000E-01 0.1000E+01 0.1000E-02 30
 0.1000E-04 5000 0.1000E+06
-0.1000E+01    4 0.0000E+00
+0.1000E+01    4 0.0000E+00  1
 }}}
