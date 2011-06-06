@@ -31,7 +31,7 @@ x0 ell kappa partitioner
 ||{{{x0}}} || Real || Start value.||
 ||{{{ell}}} || Integer || l in the BiCGStab(l) process.||
 ||{{{kappa}}} || Real || kappa in the BiCGStab(l) process.||
-||{{{partitioner}}} || Integer || Determines whether partitioning is internal or external.||
+||{{{partitioner}}} || Integer || Partitioning strategy. Permitted values are 1 (Smith and Griffiths partitioning) or 2 (use external partitioner).||
 
 A real example follows:
 
