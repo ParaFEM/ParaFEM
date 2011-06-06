@@ -27,7 +27,7 @@ PROGRAM p126
   INTEGER               :: cjiters,cjits,nr,n_t,num_no,no_index_start
   INTEGER               :: nres,is,it,nlen,nels,ndof
   INTEGER               :: npes_pp
-  INTEGER               :: argc,iargc,meshgen
+  INTEGER               :: argc,iargc,meshgen,partitioner
   INTEGER               :: node_end,node_start,nodes_pp  
   REAL(iwp)             :: visc,rho,rho1,det,ubar,vbar,wbar,tol,cjtol,alpha
   REAL(iwp)             :: beta,penalty,x0,pp,kappa,gama,omega
@@ -72,9 +72,9 @@ PROGRAM p126
   CALL GETARG(1, job_name) 
 
   CALL read_p126(job_name,numpe,cjits,cjtol,ell,fixed_equations,kappa,limit,  &
-                 meshgen,nels,nip,nn,nr,penalty,rho,tol,x0,visc)
+                 meshgen,nels,nip,nn,nr,partitioner,penalty,rho,tol,x0,visc)
 
-  CALL calc_nels_pp(nels)
+  CALL calc_nels_pp(job_name,nels,npes,numpe,partitioner,nels_pp)
  
   ntot        = nod+nodf+nod+nod
   n_t         = nod*nodof
