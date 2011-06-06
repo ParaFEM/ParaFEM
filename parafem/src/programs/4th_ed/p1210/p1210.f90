@@ -28,7 +28,7 @@ PROGRAM p1210
   INTEGER               :: i,j,k,jj,iel,nstep,npri,num_no
   INTEGER               :: no_index_start,is,it,nlen,ndof,nels,npes_pp
   INTEGER               :: node_end,node_start,nodes_pp
-  INTEGER               :: argc,iargc,meshgen
+  INTEGER               :: argc,iargc,meshgen,partitioner=1
   REAL(iwp)             :: rho,dtim,e,v,det,sbary,pload,sigm,f,fnew,fac
   REAL(iwp)             :: volume,sbar,dsbar,lode_theta,real_time,tload
   REAL(iwp),PARAMETER   :: zero = 0.0_iwp    
@@ -67,9 +67,9 @@ PROGRAM p1210
   CALL GETARG(1, job_name) 
 
   CALL read_p1210(job_name,numpe,dtim,e,element,loaded_nodes,meshgen,nels,    &
-                  nip,nn,nod,npri,nr,nstep,pload,rho,sbary,v)
+                  nip,nn,nod,npri,nr,nstep,partitioner,pload,rho,sbary,v)
  
-  CALL calc_nels_pp(nels)
+  CALL calc_nels_pp(job_name,nels,npes,numpe,partitioner,nels_pp)
 
   ndof = nod*nodof
   ntot = ndof

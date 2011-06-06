@@ -21,7 +21,7 @@ PROGRAM p121
   INTEGER               :: loaded_nodes,fixed_freedoms,iel,i,j,k,l,idx1,idx2
   INTEGER               :: iters,limit,nn,nr,nip,nod,nels,ndof,npes_pp
   INTEGER               :: node_end,node_start,nodes_pp
-  INTEGER               :: argc,iargc,meshgen
+  INTEGER               :: argc,iargc,meshgen,partitioner
   INTEGER               :: fixed_freedoms_pp,fixed_freedoms_start
   REAL(iwp)             :: e,v,det,tol,up,alpha,beta,tload
   REAL(iwp),PARAMETER   :: zero = 0.0_iwp
@@ -64,9 +64,9 @@ PROGRAM p121
   CALL GETARG(1, job_name) 
 
   CALL read_p121(job_name,numpe,e,element,fixed_freedoms,limit,loaded_nodes, &
-                 meshgen,nels,nip,nn,nod,nr,tol,v)
+                 meshgen,nels,nip,nn,nod,nr,partitioner,tol,v)
 
-  CALL calc_nels_pp(nels)
+  CALL calc_nels_pp(job_name,nels,npes,numpe,partitioner,nels_pp)
 
   ndof = nod*nodof
   ntot = ndof
