@@ -37,6 +37,7 @@ MODULE GATHER_SCATTER
   USE precision
   USE mp_interface
   USE global_variables
+  USE input, ONLY: read_nels_pp
 
 !------------------------------------------------------------------------------
 ! 1. Variables restricted to gather_scatter module:
@@ -134,13 +135,14 @@ MODULE GATHER_SCATTER
 !------------------------------------------------------------------------------
 !------------------------------------------------------------------------------
 
-  SUBROUTINE CALC_NELS_PP(nels)
+  SUBROUTINE CALC_NELS_PP(job_name,nels,npes,numpe,partitioner,nels_pp)
 
   !/****f* gather_scatter/calc_nels_pp
   !*  NAME
   !*    SUBROUTINE: calc_nels_pp
   !*  SYNOPSIS
-  !*    Usage:      CALL calc_nels_pp(nels)
+  !*    Usage:      CALL calc_nels_pp(job_name,nels,npes,numpe,partitioner, &
+  !*                                  nels_pp)
   !*  FUNCTION
   !*    Calculates the number of elements, NELS_PP, assigned to each processor.
   !*    It is effectively a very naive method of mesh partitioning. The 
@@ -162,7 +164,7 @@ MODULE GATHER_SCATTER
   !*
   !*    num_nels_pp1 = 3  (103 - 20*5 = 3, these are the 3 remaining elements)
   !*
-  !*    nels_pp2     = 21 (number of elements assigned to the first 3 processors)
+  !*    nels_pp2     = 21 (no. of elements assigned to the first 3 processors)
   !*
   !*    So the result is:
   !*
@@ -181,40 +183,63 @@ MODULE GATHER_SCATTER
   !*    M.A. Pettipher
   !*    L. Margetts
   !*  COPYRIGHT
-  !*    (c) University of Manchester 1996-2010
+  !*    (c) University of Manchester 1996-2011
   !******
   !*
   !* Would be improved if nels_pp and iel_start were subroutine arguments
-  !*
+  !* 
+  !* 20.05.2011 Added ability to use external partitioner
   !*/
   
     IMPLICIT NONE
   
-    INTEGER, INTENT(IN) :: nels
-    INTEGER             :: num_nels_pp1, nels_pp1, nels_pp2
-  
-    IF (npes == 1) THEN
-      nels_pp1 = 0
-      nels_pp2 = nels
-      nels_pp  = nels_pp2
-      iel_start = 1
-    ELSE
-      nels_pp2     = nels/npes
-      num_nels_pp1 = nels - nels_pp2*npes
-      IF (num_nels_pp1 == 0) THEN
-        nels_pp1   = nels_pp2
+    CHARACTER(LEN=50),INTENT(IN) :: job_name 
+    INTEGER, INTENT(IN)          :: nels,npes,numpe,partitioner
+    INTEGER, INTENT(INOUT)       :: nels_pp
+    INTEGER                      :: num_nels_pp1, nels_pp1, nels_pp2
+ 
+    SELECT CASE (partitioner)
+ 
+      CASE (1) ! S&G partitioning 
+
+      IF (npes == 1) THEN
+        nels_pp1 = 0
+        nels_pp2 = nels
+        nels_pp  = nels_pp2
+        iel_start = 1
       ELSE
-        nels_pp1   = nels_pp2 + 1
+        nels_pp2     = nels/npes
+        num_nels_pp1 = nels - nels_pp2*npes
+        IF (num_nels_pp1 == 0) THEN
+          nels_pp1   = nels_pp2
+        ELSE
+          nels_pp1   = nels_pp2 + 1
+        ENDIF
+        IF (numpe <= num_nels_pp1 .OR. num_nels_pp1 == 0) THEN
+          nels_pp    = nels_pp1
+          iel_start  = (numpe - 1)*nels_pp1 + 1
+        ELSE
+          nels_pp    = nels_pp2
+          iel_start  = num_nels_pp1*nels_pp1+                                 &
+                       (numpe-num_nels_pp1-1)*(nels_pp1-1)+1
+        ENDIF
       ENDIF
-      IF (numpe <= num_nels_pp1 .OR. num_nels_pp1 == 0) THEN
-        nels_pp    = nels_pp1
-        iel_start  = (numpe - 1)*nels_pp1 + 1
-      ELSE
-        nels_pp    = nels_pp2
-        iel_start  = num_nels_pp1*nels_pp1+(numpe-num_nels_pp1-1)*(nels_pp1-1)+1
-      ENDIF
-    ENDIF
   
+    CASE (2)
+
+      CALL read_nels_pp(job_name,nels_pp,npes,numpe)
+
+    CASE DEFAULT
+     
+      PRINT*
+      PRINT*, "Incorrect value for variable PARTITIONER. Permitted values are:"
+      PRINT*, "  1 - Smith and Griffiths partitioning"
+      PRINT*, "  2 - External partitioning (requires .psize file)"
+
+      CALL shutdown()
+
+    END SELECT
+
     WRITE(details,'(A,I8,A,I8)') 'PE no: ', numpe, ' nels_pp: ', nels_pp
 
   END SUBROUTINE CALC_NELS_PP

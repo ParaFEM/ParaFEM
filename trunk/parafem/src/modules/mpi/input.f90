@@ -19,6 +19,7 @@ MODULE INPUT
   !*    READ_REST              Reads the restraints
   !*    READ_MATERIALID_PP     Reads the material ID for each element
   !*    READ_MATERIALVALUE     Reads property values for each material ID
+  !*    READ_NELS_PP           Reads number of elements assigned to processor
   !*    READ_P121              Reads the control data for program p121
   !*    READ_P126              Reads the control data for program p126
   !*    READ_P1212             Reads the control data for program p1212
@@ -869,8 +870,90 @@ MODULE INPUT
 !------------------------------------------------------------------------------
 !------------------------------------------------------------------------------
 
+  SUBROUTINE READ_NELS_PP(job_name,nels_pp,npes,numpe)
+
+  !/****f* input/read_nels_pp
+  !*  NAME
+  !*    SUBROUTINE: read_nels_pp
+  !*  SYNOPSIS
+  !*    Usage:      CALL read_nels_pp(job_name,nels_pp,npes,numpe)
+  !*  FUNCTION
+  !*    Reads NELS_PP from a file called job_name.psize 
+  !*  INPUTS
+  !*    The following scalar character argument has the INTENT(IN) attribute:
+  !*
+  !*    job_name               : File name that contains the data to be read
+  !*
+  !*    The following scalar integer arguments have the INTENT(IN) attribute:
+  !*
+  !*    numpe                  : ID of calling processor
+  !*    npes                   : Number of processors being used
+  !*
+  !*    The following scalar integer argument has the INTENT(OUT) attribute:
+  !*
+  !*    nels_pp                : Number of elements assigned to a processor
+  !*
+  !*  AUTHOR
+  !*    Lee Margetts
+  !*  CREATION DATE
+  !*    18.05.2011
+  !*  COPYRIGHT
+  !*    (c) University of Manchester 2011
+  !******
+  !*  Place remarks that should not be included in the documentation here.
+  !*  Need to add some error traps
+  !*/
+
+  IMPLICIT NONE
+
+  CHARACTER(LEN=50), INTENT(IN)    :: job_name
+  CHARACTER(LEN=50)                :: fname
+  INTEGER, INTENT(IN)              :: npes,numpe
+  INTEGER, INTENT(OUT)             :: nels_pp
+  INTEGER, ALLOCATABLE             :: psize(:)
+  INTEGER                          :: i,p
+
+!------------------------------------------------------------------------------
+! 1. Master processor reads the data into a temporary array 
+!------------------------------------------------------------------------------
+
+  ALLOCATE(psize(npes))
+  psize = 0
+
+  IF (numpe==1) THEN
+    fname = job_name(1:INDEX(job_name, " ") -1) // ".psize"
+    OPEN(10,FILE=fname,STATUS='OLD',ACTION='READ')
+    READ(10,*) p,psize(:)
+    IF(p/=npes) THEN
+      PRINT*, "Number of partitions is different to the number of processes."
+      CALL shutdown
+    END IF
+    CLOSE(10)
+  END IF
+
+!------------------------------------------------------------------------------
+! 2. Array copied to all processors 
+!------------------------------------------------------------------------------
+
+  CALL MPI_BCAST(psize,npes,MPI_INTEGER,0,MPI_COMM_WORLD,ier)
+
+!------------------------------------------------------------------------------
+! 3. Each processor takes the value it needs
+!------------------------------------------------------------------------------
+
+  nels_pp = psize(numpe)
+ 
+  DEALLOCATE(psize)
+
+  RETURN
+  END SUBROUTINE READ_NELS_PP
+
+!------------------------------------------------------------------------------
+!------------------------------------------------------------------------------
+!------------------------------------------------------------------------------
+
   SUBROUTINE READ_P121(job_name,numpe,e,element,fixed_freedoms,limit,        &
-                       loaded_nodes,mesh,nels,nip,nn,nod,nr,tol,v)
+                       loaded_nodes,mesh,nels,nip,nn,nod,nr,partition,tol,v)
 
   !/****f* input/read_p121
   !*  NAME
@@ -878,7 +961,7 @@ MODULE INPUT
   !*  SYNOPSIS
   !*    Usage:      CALL read_p121(job_name,numpe,e,element,fixed_freedoms,
   !*                               limit,loaded_nodes,mesh,nels,nip,nn,nod,nr,
-  !*                               tol,v)
+  !*                               partition,tol,v)
   !*  FUNCTION
   !*    Master processor reads the general data for the problem and broadcasts 
   !*    it to the slave processors.
@@ -890,6 +973,11 @@ MODULE INPUT
   !*
   !*    numpe                  : Integer
   !*                           : Processor number
+  !*
+  !*    partition              : Integer
+  !*                           : Type of partitioning 
+  !*                           : 1 = internal partitioning
+  !*                           : 2 = external partitioning with .psize file
   !*
   !*    The following arguments have the INTENT(INOUT) attribute:
   !*
@@ -951,14 +1039,14 @@ MODULE INPUT
   CHARACTER(LEN=15), INTENT(INOUT) :: element
   INTEGER, INTENT(IN)              :: numpe
   INTEGER, INTENT(INOUT)           :: nels,nn,nr,nod,nip,loaded_nodes
-  INTEGER, INTENT(INOUT)           :: limit,mesh,fixed_freedoms 
+  INTEGER, INTENT(INOUT)           :: limit,mesh,fixed_freedoms,partition 
   REAL(iwp), INTENT(INOUT)         :: e,v,tol
 
 !------------------------------------------------------------------------------
 ! 1. Local variables
 !------------------------------------------------------------------------------
 
-  INTEGER                          :: bufsize,ier,integer_store(9)
+  INTEGER                          :: bufsize,ier,integer_store(10)
   REAL(iwp)                        :: real_store(3)
   CHARACTER(LEN=50)                :: fname
   
@@ -970,7 +1058,7 @@ MODULE INPUT
     fname = job_name(1:INDEX(job_name, " ") -1) // ".dat"
     OPEN(10,FILE=fname,STATUS='OLD',ACTION='READ')
     READ(10,*) element,mesh,nels,nn,nr,nip,nod,loaded_nodes,fixed_freedoms,  &
-               e,v,tol,limit
+               e,v,tol,limit,partition
     CLOSE(10)
    
     integer_store      = 0
@@ -984,6 +1072,7 @@ MODULE INPUT
     integer_store(7)   = loaded_nodes
     integer_store(8)   = fixed_freedoms
     integer_store(9)   = limit
+    integer_store(10)  = partition
 
     real_store         = 0.0_iwp
 
@@ -997,7 +1086,7 @@ MODULE INPUT
 ! 3. Master processor broadcasts the temporary arrays to the slave processors
 !------------------------------------------------------------------------------
 
-  bufsize = 9
+  bufsize = 10
   CALL MPI_BCAST(integer_store,bufsize,MPI_INTEGER,0,MPI_COMM_WORLD,ier)
 
   bufsize = 3
@@ -1021,6 +1110,7 @@ MODULE INPUT
     loaded_nodes    = integer_store(7)
     fixed_freedoms  = integer_store(8)
     limit           = integer_store(9)
+    partition       = integer_store(10)
 
     e               = real_store(1)
     v               = real_store(2)
@@ -1553,7 +1643,8 @@ MODULE INPUT
 !------------------------------------------------------------------------------
 
   SUBROUTINE READ_P1210(job_name,numpe,dtim,e,element,loaded_nodes,meshgen,   &
-                        nels,nip,nn,nod,npri,nr,nstep,pload,rho,sbary,v)
+                        nels,nip,nn,nod,npri,nr,nstep,partitioner,pload,rho,  &
+                        sbary,v)
 
   !/****f* input/read_p1210
   !*  NAME
@@ -1561,7 +1652,7 @@ MODULE INPUT
   !*  SYNOPSIS
   !*    Usage:      CALL read_p1210(job_name,numpe,dtim,e,element,            &
   !*                                loaded_nodes,meshgen,nels,nip,nn,nod,npri,&
-  !*                                nr,nstep,pload,rho,sbary,v)
+  !*                                nr,nstep,partitioner,pload,rho,sbary,v)
   !*  FUNCTION
   !*    Master processor reads the general data for the problem and broadcasts 
   !*    it to the slave processors.
@@ -1570,9 +1661,10 @@ MODULE INPUT
   !*
   !*    job_name               : File name that contains the data to be read
   !*
-  !*    The following scalar integer argument has the INTENT(IN) attribute:
+  !*    The following scalar integer arguments have the INTENT(IN) attribute:
   !*
   !*    numpe                  : Processor ID of calling processor
+  !*    partitioner            : Type of partitioning used
   !*
   !*    The following scalar real arguments have the INTENT(INOUT) attribute:
   !*
@@ -1618,7 +1710,7 @@ MODULE INPUT
   CHARACTER(LEN=50), INTENT(IN)    :: job_name
   CHARACTER(LEN=15), INTENT(INOUT) :: element
   CHARACTER(LEN=50)                :: fname
-  INTEGER, INTENT(IN)              :: numpe
+  INTEGER, INTENT(IN)              :: numpe,partitioner
   INTEGER, INTENT(INOUT)           :: nels,nip,nn,nod,npri,nr,nstep
   INTEGER, INTENT(INOUT)           :: loaded_nodes,meshgen 
   REAL(iwp), INTENT(INOUT)         :: rho,e,v,sbary,dtim,pload
@@ -1627,7 +1719,7 @@ MODULE INPUT
 ! 1. Local variables
 !------------------------------------------------------------------------------
 
-  INTEGER                          :: bufsize,ier,integer_store(9)
+  INTEGER                          :: bufsize,ier,integer_store(10)
   REAL(iwp)                        :: real_store(6)
 
 !------------------------------------------------------------------------------
@@ -1638,7 +1730,7 @@ MODULE INPUT
     fname = job_name(1:INDEX(job_name, " ") -1) // ".dat"
     OPEN(10,FILE=fname,STATUS='OLD',ACTION='READ')
     READ(10,*) element,meshgen,nels,nip,nn,nr,nod,loaded_nodes,rho,e,v,       &
-               sbary,pload,dtim,nstep,npri
+               sbary,pload,dtim,nstep,npri,partitioner
     CLOSE(10)
    
     integer_store      = 0
@@ -1652,6 +1744,7 @@ MODULE INPUT
     integer_store(7)   = npri
     integer_store(8)   = nr 
     integer_store(9)   = nstep
+    integer_store(10)  = partitioner
 
     real_store         = 0.0_iwp
 
@@ -1668,7 +1761,7 @@ MODULE INPUT
 ! 3. Master processor broadcasts the temporary arrays to the slave processors
 !------------------------------------------------------------------------------
 
-  bufsize = 9
+  bufsize = 10
   CALL MPI_BCAST(integer_store,bufsize,MPI_INTEGER,0,MPI_COMM_WORLD,ier)
 
   bufsize = 6
@@ -1692,6 +1785,7 @@ MODULE INPUT
     npri          = integer_store(7)
     nr            = integer_store(8)
     nstep         = integer_store(9)
+    partitioner   = integer_store(10)
 
     dtim          = real_store(1)
     e             = real_store(2)
