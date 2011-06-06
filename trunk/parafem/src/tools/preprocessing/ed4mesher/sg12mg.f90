@@ -225,9 +225,9 @@ PROGRAM sg12mg
      OPEN(14,FILE=fname,STATUS='REPLACE',ACTION='WRITE')
   
      WRITE(14,'(A)') "'hexahedron'"
-     WRITE(14,'(A)') "2"              ! Abaqus node numbering scheme
+     WRITE(14,'(A)') "2"                        ! Abaqus node numbering scheme
      WRITE(14,'(3I12,2I5,2I9)')nels,nn,nr,nip,nod,loaded_freedoms,fixed_freedoms
-     WRITE(14,'(3E12.4,I8)') e,v,tol,limit
+     WRITE(14,'(3E12.4,I8,A)') e,v,tol,limit,"1"  ! S&G partitions
   
      CLOSE(14)
 
