@@ -26,6 +26,7 @@ e v tol limit
 ||{{{v}}} || Real || Poisson's ratio.||
 ||{{{tol}}} || Real || Convergence tolerance for PCG.||
 ||{{{limit}}} || Integer || Iteration ceiling for PCG.||
+||{{{partitioner}}} || Integer || Partitioning strategy. Permitted values are {{{1}}} (Smith and Griffiths partitioning) or {{{2}}} (Use external partitioner).||
 
 A real example follows:
 
@@ -33,5 +34,5 @@ A real example follows:
 hexahedron
 2
 2560 12465 225 8 20 17 0
-100000. .3 1.e-5 5000
+100000. .3 1.e-5 5000 1
 }}}
