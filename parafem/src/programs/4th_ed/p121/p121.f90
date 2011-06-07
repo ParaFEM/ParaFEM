@@ -159,11 +159,6 @@ PROGRAM p121
 
   dee = zero
   CALL deemat(e,v,dee)
-
-  DO i = 1, nst
-    PRINT *, dee(:,i)
-  END DO
-
   CALL sample(element,points,weights)
  
   storkm_pp       = zero
@@ -228,6 +223,8 @@ PROGRAM p121
     DEALLOCATE(node,no,sense,no_pp_temp)
 
   END IF
+
+  IF(fixed_freedoms == 0) fixed_freedoms_pp = 0
 
   DEALLOCATE(rest)
 
