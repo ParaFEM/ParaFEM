@@ -510,6 +510,8 @@ MODULE GATHER_SCATTER
     ALLOCATE(vtempput(neq_pp1,numpesput))
     ALLOCATE(pl_pp(0:len_pl_pp))
 
+    recbufsize = 0
+
 !------------------------------------------------------------------------------
 ! 1. Barrier to synchronise before gathering data (not always required, but 
 !    safer and removes necessity for some barriers in main program).
@@ -653,6 +655,8 @@ MODULE GATHER_SCATTER
     ALLOCATE(vrequest(numpesget))
     ALLOCATE(vstatus(MPI_STATUS_SIZE,numpesgetput))
     ALLOCATE(ul_pp(0:len_pl_pp))
+
+    recbufsize = 0
 
 !------------------------------------------------------------------------------
 ! 1. Barrier to synchronise before scattering data (not always required, but 
@@ -810,6 +814,8 @@ MODULE GATHER_SCATTER
     ALLOCATE(vstatus(MPI_STATUS_SIZE,numpesgetput))
     ALLOCATE(ul_pp(0:len_pl_pp))
 
+    recbufsize = 0
+
 !------------------------------------------------------------------------------
 ! 1. Generate ul_pp vector
 !------------------------------------------------------------------------------
@@ -952,6 +958,8 @@ MODULE GATHER_SCATTER
     INTEGER, ALLOCATABLE :: preq_pp(:,:)
 
     ALLOCATE(preq_pp(neq_pp1,npes))
+    
+    recbufsize = 0
 
 !------------------------------------------------------------------------------
 ! 1. Call routine to allocate arrays for gather_scatter related operations:

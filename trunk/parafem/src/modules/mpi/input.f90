@@ -1057,8 +1057,8 @@ MODULE INPUT
   IF (numpe==1) THEN
     fname = job_name(1:INDEX(job_name, " ") -1) // ".dat"
     OPEN(10,FILE=fname,STATUS='OLD',ACTION='READ')
-    READ(10,*) element,mesh,nels,nn,nr,nip,nod,loaded_nodes,fixed_freedoms,  &
-               e,v,tol,limit,partition
+    READ(10,*) element,mesh,partition,nels,nn,nr,nip,nod,loaded_nodes,        &
+               fixed_freedoms,e,v,tol,limit
     CLOSE(10)
    
     integer_store      = 0
