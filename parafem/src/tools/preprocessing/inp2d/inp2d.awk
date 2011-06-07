@@ -1,9 +1,11 @@
 # @(#) inp2d.awk - Basic conversion of Abaqus Input Deck .inp to ParaFEM input files .d .bnd .lds .dat
 # @(#) Usage:awk -f inp2d.awk <filename.inp>
 # Author: Louise M. Lever (louise.lever@manchester.ac.uk)
-# Version: 1.0.2
+# Version: 1.0.3
 
 # CHANGES:
+# v1.0.3:
+#   LML: Moved partition_mode parameter to new inserted 3rd line of .dat file.
 # v1.0.2:
 #   LML: Appended partition_mode to 4th line of .dat file; defaults to ParaFEM partitioning mode
 # v1.0.1:
@@ -95,15 +97,17 @@ END {
   # report dat file values
   print "Type:", dat_elem_type;
   print "Order:", dat_order;
+  print "partition_mode: " partition_mode;
   print "element_count: " element_count, "node_count: " node_count, "bound_count: " bound_count, "nip: " nip, "nod: " nod, "loaded_count: " loaded_count, "fixed_freedoms: " fixed_count;
-  print "youngs_mod: " youngs_mod, "poisson_ratio: " poisson_ratio, "tol: " tol, "limit: " limit, "partition_mode: " partition_mode;
+  print "youngs_mod: " youngs_mod, "poisson_ratio: " poisson_ratio, "tol: " tol, "limit: " limit; 
 
   # output dat file based on fixed and calculated values
   print "Generating .dat file";
   print dat_elem_type > dat_file;
   print dat_order > dat_file;
+  print partition_mode > dat_file;
   print element_count, node_count, bound_count, nip, nod, loaded_count, fixed_count > dat_file;
-  printf "%e %e %e %d\n", youngs_mod, poisson_ratio, tol, limit, partition_mode > dat_file;
+  printf "%e %e %e %d\n", youngs_mod, poisson_ratio, tol, limit > dat_file;
 }
 
 # Functions
