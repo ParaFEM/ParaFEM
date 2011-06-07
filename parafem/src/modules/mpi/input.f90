@@ -1246,8 +1246,8 @@ MODULE INPUT
     fname = job_name(1:INDEX(job_name, " ") -1) // ".dat"
     OPEN(10,FILE=fname,STATUS='OLD',ACTION='READ')
     READ(10,*) program_name
-    READ(10,*) mesh,nels,nn,nr,fixed_equations,nip,visc,rho,tol,limit,        &
-               cjtol,cjits,penalty,x0,ell,kappa,partitioner
+    READ(10,*) mesh,partitioner,nels,nn,nr,fixed_equations,nip,visc,rho,tol,  &
+               limit,cjtol,cjits,penalty,x0,ell,kappa
     CLOSE(10)
    
     integer_store      = 0

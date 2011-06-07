@@ -30,7 +30,7 @@ PROGRAM sg12mg
   INTEGER                :: ell
   INTEGER                :: fixed_nodes,fixed_freedoms,loaded_freedoms
   INTEGER                :: nev,ncv
-  INTEGER                :: meshgen
+  INTEGER                :: meshgen,partitioner
   REAL(iwp)              :: aa,bb,cc
   REAL(iwp)              :: cjtol  
   REAL(iwp)              :: rho,visc,e,v   
@@ -225,9 +225,9 @@ PROGRAM sg12mg
      OPEN(14,FILE=fname,STATUS='REPLACE',ACTION='WRITE')
   
      WRITE(14,'(A)') "'hexahedron'"
-     WRITE(14,'(A)') "2"                        ! Abaqus node numbering scheme
+     WRITE(14,'(A)') "2"                         ! Abaqus node numbering scheme
      WRITE(14,'(3I12,2I5,2I9)')nels,nn,nr,nip,nod,loaded_freedoms,fixed_freedoms
-     WRITE(14,'(3E12.4,I8,A)') e,v,tol,limit,"1"  ! S&G partitions
+     WRITE(14,'(3E12.4,I8,A)') e,v,tol,limit," 1" ! S&G partitions
   
      CLOSE(14)
 
@@ -350,7 +350,7 @@ PROGRAM sg12mg
      WRITE(14,'(A)') "'hexahedron'"
      WRITE(14,'(A)') "2"              ! Abaqus node numbering scheme
      WRITE(14,'(7I9)') nels, nn, nr, nip, nod, loaded_freedoms, fixed_freedoms
-     WRITE(14,'(3E12.4,I8)') e, v, tol, limit
+     WRITE(14,'(3E12.4,I8,A)') e, v, tol, limit, " 1" ! S&G partitions
 
      CLOSE(14)
 
@@ -538,10 +538,12 @@ PROGRAM sg12mg
   fname = job_name(1:INDEX(job_name, " ")-1) // ".dat" 
   OPEN(14,FILE=fname,STATUS='REPLACE',ACTION='WRITE')
 
-  meshgen = 2 ! current default
+  meshgen     = 2 ! current default
+  partitioner = 1 ! current default
 
   WRITE(14,'(A)') "'p126'"
   WRITE(14,'(I4)') meshgen
+  WRITE(14,'(I4)') partitioner
   WRITE(14,'(6I9)') nels, nn, nr, fixed_freedoms, nip
   WRITE(14,'(3E12.4,I8)') visc, rho, tol, limit
   WRITE(14,'(E12.4,I8,E12.4)') cjtol, cjits, penalty
