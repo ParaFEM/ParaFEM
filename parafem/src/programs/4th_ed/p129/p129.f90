@@ -25,6 +25,7 @@ PROGRAM p129
  INTEGER               :: node_end,node_start,nodes_pp,loaded_nodes
  INTEGER               :: argc,iargc ! command line arguments 
  INTEGER               :: meshgen    ! mesh type 1 = S&G ; 2 = Abaqus
+ INTEGER               :: partitioner! type 1 = S&G ; type 2 = external
  REAL(iwp)             :: e,v,det,rho,alpha1,beta1,omega,theta,period
  REAL(iwp)             :: pi,dtim,volume,c1,c2,c3,c4,real_time,tol,big,up
  REAL(iwp)             :: alpha,beta,tload     
@@ -69,9 +70,10 @@ PROGRAM p129
   CALL GETARG(1, job_name)
 
   CALL read_p129(job_name,numpe,alpha1,beta1,e,element,limit,loaded_nodes,    &
-                 meshgen,nels,nip,nn,nod,npri,nr,nstep,omega,rho,theta,tol,v)
+                 meshgen,nels,nip,nn,nod,npri,nr,nstep,omega,partitioner,     &
+                 rho,theta,tol,v)
    
-  CALL calc_nels_pp(nels)
+  CALL calc_nels_pp(job_name,nels,npes,numpe,partitioner,nels_pp)
 
   ndof = nod*nodof
   ntot = ndof
