@@ -1485,7 +1485,7 @@ MODULE INPUT
 
   SUBROUTINE READ_P129(job_name,numpe,alpha1,beta1,e,element,                 &
                        limit,loaded_nodes,mesh,nels,nip,nn,nod,               &
-                       npri,nr,nstep,omega,rho,theta,tol,v)
+                       npri,nr,nstep,omega,partitioner,rho,theta,tol,v)
 
   !/****f* input/read_p129
   !*  NAME
@@ -1493,7 +1493,8 @@ MODULE INPUT
   !*  SYNOPSIS
   !*    Usage:      CALL read_p129(job_name,numpe,alpha1,beta1,e,element,     &
   !*                               limit,loaded_nodes,mesh,nels,nip,nn,nod,   &
-  !*                               npri,nr,nstep,omega,rho,theta,tol,v)
+  !*                               npri,nr,nstep,omega,partitioner,rho,theta, &
+  !*                               tol,v)
   !*  FUNCTION
   !*    Master processor reads the general data for the problem and broadcasts 
   !*    it to the slave processors.
@@ -1531,6 +1532,9 @@ MODULE INPUT
   !*    npri                   : Print interval
   !*    nr                     : Number of restrained nodes
   !*    nstep                  : Number of time steps in analysis
+  !*    partitioner            : Type of partitioning
+  !*                           : 1 = Smith and Griffiths internal partitioning
+  !*                           : 2 = External partitioning with .psize file
   !*
   !*    The following scalar character argument has an INTENT(INOUT) attribute:
   !*
@@ -1542,7 +1546,7 @@ MODULE INPUT
   !*  CREATION DATE
   !*    25.02.2010
   !*  COPYRIGHT
-  !*    (c) University of Manchester 2010
+  !*    (c) University of Manchester 2010-11
   !******
   !*  Place remarks that should not be included in the documentation here.
   !*  Need to add some error traps
@@ -1555,14 +1559,14 @@ MODULE INPUT
   CHARACTER(LEN=50)                :: fname
   INTEGER, INTENT(IN)              :: numpe
   INTEGER, INTENT(INOUT)           :: nels,nn,nr,nod,nip,loaded_nodes
-  INTEGER, INTENT(INOUT)           :: nstep,npri,limit,mesh 
+  INTEGER, INTENT(INOUT)           :: nstep,npri,limit,mesh,partitioner 
   REAL(iwp), INTENT(INOUT)         :: rho,e,v,alpha1,beta1,theta,omega,tol
 
 !------------------------------------------------------------------------------
 ! 1. Local variables
 !------------------------------------------------------------------------------
 
-  INTEGER                          :: bufsize,ier,integer_store(10)
+  INTEGER                          :: bufsize,ier,integer_store(11)
   REAL(iwp)                        :: real_store(8)
 
 !------------------------------------------------------------------------------
@@ -1572,8 +1576,8 @@ MODULE INPUT
   IF (numpe==1) THEN
     fname = job_name(1:INDEX(job_name, " ") -1) // ".dat"
     OPEN(10,FILE=fname,STATUS='OLD',ACTION='READ')
-    READ(10,*) element,mesh,nels,nn,nr,nip,nod,loaded_nodes,rho,e,v,          &
-               alpha1,beta1,nstep,npri,theta,omega,tol,limit
+    READ(10,*) element,mesh,partitioner,nels,nn,nr,nip,nod,loaded_nodes,     &
+               rho,e,v,alpha1,beta1,nstep,npri,theta,omega,tol,limit
     CLOSE(10)
    
     integer_store      = 0
@@ -1588,6 +1592,7 @@ MODULE INPUT
     integer_store(8)   = nstep
     integer_store(9)   = npri
     integer_store(10)  = limit
+    integer_store(11)  = partitioner
 
     real_store         = 0.0_iwp
 
@@ -1606,7 +1611,7 @@ MODULE INPUT
 ! 3. Master processor broadcasts the temporary arrays to the slave processors
 !------------------------------------------------------------------------------
 
-  bufsize = 10
+  bufsize = 11
   CALL MPI_BCAST(integer_store,bufsize,MPI_INTEGER,0,MPI_COMM_WORLD,ier)
 
   bufsize = 8
@@ -1631,6 +1636,7 @@ MODULE INPUT
     nstep        = integer_store(8)
     npri         = integer_store(9)
     limit        = integer_store(10)
+    partitioner  = integer_store(11)
 
     rho          = real_store(1)
     e            = real_store(2)
