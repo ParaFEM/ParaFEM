@@ -1718,9 +1718,9 @@ MODULE INPUT
   CHARACTER(LEN=50), INTENT(IN)    :: job_name
   CHARACTER(LEN=15), INTENT(INOUT) :: element
   CHARACTER(LEN=50)                :: fname
-  INTEGER, INTENT(IN)              :: numpe,partitioner
+  INTEGER, INTENT(IN)              :: numpe
   INTEGER, INTENT(INOUT)           :: nels,nip,nn,nod,npri,nr,nstep
-  INTEGER, INTENT(INOUT)           :: loaded_nodes,meshgen 
+  INTEGER, INTENT(INOUT)           :: loaded_nodes,meshgen,partitioner 
   REAL(iwp), INTENT(INOUT)         :: rho,e,v,sbary,dtim,pload
 
 !------------------------------------------------------------------------------
@@ -1737,8 +1737,8 @@ MODULE INPUT
   IF (numpe==1) THEN
     fname = job_name(1:INDEX(job_name, " ") -1) // ".dat"
     OPEN(10,FILE=fname,STATUS='OLD',ACTION='READ')
-    READ(10,*) element,meshgen,nels,nip,nn,nr,nod,loaded_nodes,rho,e,v,       &
-               sbary,pload,dtim,nstep,npri,partitioner
+    READ(10,*) element,meshgen,partitioner,nels,nip,nn,nr,nod,loaded_nodes,   &
+               rho,e,v,sbary,pload,dtim,nstep,npri
     CLOSE(10)
    
     integer_store      = 0
