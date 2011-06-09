@@ -31,11 +31,13 @@ PROGRAM sg12mg
   INTEGER                :: fixed_nodes,fixed_freedoms,loaded_freedoms
   INTEGER                :: nev,ncv
   INTEGER                :: meshgen,partitioner
+  INTEGER                :: nstep,npri,count
   REAL(iwp)              :: aa,bb,cc
   REAL(iwp)              :: cjtol  
   REAL(iwp)              :: rho,visc,e,v   
   REAL(iwp)              :: el,er,acc  
   REAL(iwp)              :: kappa,penalty,tol,x0  
+  REAL(iwp)              :: alpha1,beta1,theta,omega
   CHARACTER(LEN=15)      :: element
   CHARACTER(LEN=50)      :: program_name,job_name,fname,problem_type
   CHARACTER(LEN=1)       :: bmat
@@ -773,10 +775,47 @@ PROGRAM sg12mg
 ! 16. Program p129
 !------------------------------------------------------------------------------  
   CASE('p129')
-  
-  DO i=1,nr
-    rest(i,1) = i
-  END DO
+ 
+  READ(10,*) nels,nxe,nze,nip
+  READ(10,*) aa,bb,cc,rho
+  READ(10,*) e,v
+  READ(10,*) alpha1,beta1
+  READ(10,*) nstep,npri,theta
+  READ(10,*) omega,tol,limit
+
+  nye   = nels/nxe/nze
+  nr    = 3*nxe*nze+2*nxe+2*nze+1
+  ndim  = 3
+  nodof = 3
+  nod   = 20
+  nn    = (((2*nxe+1)*(nze+1))+((nxe+1)*nze))*(nye+1)+(nxe+1)*(nze+1)*nye
+   
+  loaded_freedoms = (2*nxe)+1 ! Differs from the problem in the book
+
+!------------------------------------------------------------------------------
+! 16.1 Allocate dynamic arrays
+!------------------------------------------------------------------------------
+
+  ALLOCATE(coord(nod,ndim))
+  ALLOCATE(g_coord(ndim,nn))
+  ALLOCATE(g_num(nod,nels))
+  ALLOCATE(rest(nr,nodof+1))
+  ALLOCATE(no(loaded_freedoms))
+  ALLOCATE(val(loaded_freedoms))
+ 
+  coord   = 0.0_iwp
+  g_coord = 0.0_iwp
+  g_num   = 0
+  rest    = 0
+  val     = 0.0_iwp
+  no      = 0
+ 
+!------------------------------------------------------------------------------
+! 16.2 Find nodal coordinates and element steering array
+!      Write to file using Abaqus node numbering convention
+!------------------------------------------------------------------------------
+ 
+  PRINT*, "  Writing nodel coordinates and element steering array"
 
   DO iel=1,nels
     CALL geometry_20bxz(iel,nxe,nze,aa,bb,cc,coord,g_num(:,iel))
@@ -796,24 +835,83 @@ PROGRAM sg12mg
   WRITE(11,'(A)') "*ELEMENTS"
   DO iel = 1, nels
     WRITE(11,'(I6,A,20I10,A)') iel, " 3 20 1 ", g_num(3,iel),g_num(5,iel),    &
-                                 g_num(7,iel),g_num(1,iel),g_num(15,iel),    &
-                                 g_num(17,iel),g_num(19,iel),g_num(13,iel),    &
-                                 g_num(4,iel),g_num(6,iel),g_num(8,iel),    &
-                                 g_num(2,iel),g_num(16,iel),g_num(18,iel),     &
-                                 g_num(20,iel),g_num(14,iel),g_num(10,iel),    &
+                                 g_num(7,iel),g_num(1,iel),g_num(15,iel),     &
+                                 g_num(17,iel),g_num(19,iel),g_num(13,iel),   &
+                                 g_num(4,iel),g_num(6,iel),g_num(8,iel),      &
+                                 g_num(2,iel),g_num(16,iel),g_num(18,iel),    &
+                                 g_num(20,iel),g_num(14,iel),g_num(10,iel),   &
                                  g_num(11,iel),g_num(12,iel),g_num(9,iel)," 1 "
   END DO
 
   CLOSE(11)  
 
+!------------------------------------------------------------------------------
+! 16.3 Boundary conditions
+!------------------------------------------------------------------------------
+
   fname = job_name(1:INDEX(job_name, " ")-1) // ".bnd" 
   OPEN(12,FILE=fname,STATUS='REPLACE',ACTION='WRITE')
+
+  rest = 0
  
+  DO i=1,nr
+    rest(i,1) = i
+  END DO
+
   DO i = 1, nr
     WRITE(12,'(4I6)') rest(i,:) 
   END DO
 
   CLOSE(12)
+
+!------------------------------------------------------------------------------
+! 16.4 Loading conditions
+!------------------------------------------------------------------------------
+
+  count = 1
+
+  DO i = 1,loaded_freedoms
+    no(i) = nn - ((2*nxe)+1) + i
+    IF(i==1.OR.i==((2*nxe)+1)) THEN
+      val(count) = 25._iwp/12._iwp 
+    ELSE IF(mod(i,2)==0) THEN
+      val(count) = 25._iwp/3._iwp
+    ELSE
+      val(count) = 25._iwp/6._iwp
+    END IF
+    count = count + 1
+  END DO
+
+  fname = job_name(1:INDEX(job_name, " ")-1) // ".lds" 
+  OPEN(13,FILE=fname,STATUS='REPLACE',ACTION='WRITE')
+  
+  DO i = 1, loaded_freedoms
+    WRITE(13,'(I12,2A,E16.8)')  no(i),"  0.00000000E+00  ",                  &
+                                      "  0.00000000E+00  ", val(i)
+  END DO
+
+  CLOSE(13)
+
+!------------------------------------------------------------------------------
+! 16.5 New control data
+!------------------------------------------------------------------------------
+ 
+  PRINT *, "  Writing new control data file"
+
+  fname = job_name(1:INDEX(job_name, " ")-1) // ".dat"
+  OPEN(14,FILE=fname,STATUS='REPLACE',ACTION='WRITE')
+
+  meshgen     = 2 ! current default
+  partitioner = 1 ! current default
+  
+  WRITE(14,'(A)')             "'hexahedron'"
+  WRITE(14,'(I4)')            meshgen
+  WRITE(14,'(I4)')            partitioner
+  WRITE(14,'(3I12,2I5,2I12)') nels,nn,nr,nip,nod,loaded_freedoms
+  WRITE(14,'(5E14.6)')        rho,e,v,alpha1,beta1
+  WRITE(14,'(2I6,3E14.6,I6)') nstep,npri,theta,omega,tol,limit
+
+  CLOSE(14)
 
 !------------------------------------------------------------------------------
 ! 16. Program p1210
