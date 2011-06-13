@@ -192,3 +192,25 @@ The table below gives some performance figures for program p126 (direct numerica
 ||64||128||17014||-||-||17128||-||-||
 ||128||256||15734||-||-||15964||-||-||
 ||256||512||5007||-||-||5112||-||-||
+
+----
+
+= Forced Vibration of a 3D Elastic Solid =
+
+
+The table below gives some performance figures for program p129 (forced vibration of a 3D elastic solid). Basic data about the problem are listed as follows:
+
+{{{
+135,000 elements 
+570,121 nodes
+1,701,900 equations
+40 time steps
+}}}
+
+== HECToR Phase 2b ==
+
+|| Number of processors || Number of cores || Time (s) in solver || Speed up || Efficiency || Total time (s) || Speed up || Efficiency ||
+||8||96||6270||-||-||6417||-||-||
+||16||192||-||-||-||-||-||-||
+||32||384||1674||-||-||1796||-||-||
+||64||768||1254||-||-||1382||-||-||
