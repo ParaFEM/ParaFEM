@@ -1,8 +1,6 @@
 #summary Explanation of which programs use which libraries.
 #sidebar TOC
 
-<wiki:toc max_depth="2" />
-
 = Mapping Libraries to Programs =
 
 ||Program||SERIAL||MPI||Shared||OpenMP||BEM||GPU||
