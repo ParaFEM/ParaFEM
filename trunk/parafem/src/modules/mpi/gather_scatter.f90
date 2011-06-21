@@ -89,6 +89,8 @@ MODULE GATHER_SCATTER
     INTEGER, INTENT(IN)           :: numpe, ibar, channel
     CHARACTER (LEN=*), INTENT(IN) :: chstr
     INTEGER                       :: ier
+
+    ier = 0
   
     CALL MPI_BARRIER(MPI_COMM_WORLD,ier)
   
@@ -197,6 +199,10 @@ MODULE GATHER_SCATTER
     INTEGER, INTENT(IN)          :: nels,npes,numpe,partitioner
     INTEGER, INTENT(INOUT)       :: nels_pp
     INTEGER                      :: num_nels_pp1, nels_pp1, nels_pp2
+
+    num_nels_pp1 = 0
+    nels_pp1     = 0
+    nels_pp2     = 0
  
     SELECT CASE (partitioner)
  
@@ -276,7 +282,7 @@ MODULE GATHER_SCATTER
   !*
   !*    num_neq_pp1  = 3  (103 - 20*5 = 3, these are the 3 remaining equations)
   !*
-  !*    nels_pp2     = 21 (number of elements assigned to the first 3 processors)
+  !*    nels_pp2     = 21 (number of elements assigned to first 3 processors)
   !*
   !*    So the result is:
   !*
@@ -297,7 +303,13 @@ MODULE GATHER_SCATTER
   !*/
   
     IMPLICIT NONE
-   
+
+    neq_pp2     = 0
+    neq_pp1     = 0
+    neq_pp      = 0
+    ieq_start   = 0
+    num_neq_pp1 = 0
+
     IF (npes == 1) THEN
       neq_pp2   = neq
       neq_pp1   = neq
@@ -510,7 +522,8 @@ MODULE GATHER_SCATTER
     ALLOCATE(vtempput(neq_pp1,numpesput))
     ALLOCATE(pl_pp(0:len_pl_pp))
 
-    recbufsize = 0
+    vrequest   = 0 ; vstatus = 0 ; vtempput = 0 ; pl_pp(0:) = 0.0_iwp
+    recbufsize = 0 ; ier     = 0 ; nstart   = 0 ; pe_number = 0
 
 !------------------------------------------------------------------------------
 ! 1. Barrier to synchronise before gathering data (not always required, but 
@@ -656,7 +669,9 @@ MODULE GATHER_SCATTER
     ALLOCATE(vstatus(MPI_STATUS_SIZE,numpesgetput))
     ALLOCATE(ul_pp(0:len_pl_pp))
 
-    recbufsize = 0
+    vrequest   = 0 ; vstatus = 0 ; ul_pp  = 0.0_iwp
+    recbufsize = 0 ; ier     = 0 ; nstart = 0
+    pe_number  = 0 ; ibar    = 0
 
 !------------------------------------------------------------------------------
 ! 1. Barrier to synchronise before scattering data (not always required, but 
@@ -814,7 +829,9 @@ MODULE GATHER_SCATTER
     ALLOCATE(vstatus(MPI_STATUS_SIZE,numpesgetput))
     ALLOCATE(ul_pp(0:len_pl_pp))
 
-    recbufsize = 0
+    vrequest   = 0 ; vstatus = 0 ; ul_pp  = 0.0_iwp
+    recbufsize = 0 ; ier     = 0 ; nstart = 0
+    pe_number  = 0 ; ibar    = 0
 
 !------------------------------------------------------------------------------
 ! 1. Generate ul_pp vector
@@ -958,8 +975,17 @@ MODULE GATHER_SCATTER
     INTEGER, ALLOCATABLE :: preq_pp(:,:)
 
     ALLOCATE(preq_pp(neq_pp1,npes))
+
+    preq_pp       = 0    
     
-    recbufsize = 0
+    recbufsize    = 0       ; ier           = 0      ; pe_number = 0
+    bufid         = 0       ; count         = 0      ; preq_pp   = 0
+    position      = 0       ; rem_acc       = 0      ; loc_acc   = 0 
+    sum_rem_acc   = 0       ; sum_numpesget = 0
+    sum_numpesget = 0       
+ 
+    sumtemp1      = 0.0_iwp ; sumtemp2      = 0.0_iwp
+    rem_loc       = 0.0_iwp ; sum_rem_loc   = 0.0_iwp
 
 !------------------------------------------------------------------------------
 ! 1. Call routine to allocate arrays for gather_scatter related operations:
