@@ -1,3 +1,12 @@
-#summary One-sentence summary of this page.
+#summary Explanation of which programs use which libraries.
+#sidebar TOC
 
-= Introduction =
+<wiki:toc max_depth="2" />
+
+= Mapping Libraries to Programs =
+
+||Program||SERIAL||MPI||Shared||OpenMP||BEM||GPU||
+||p121||-||*||*||-||-||-||
+||p126||-||*||*||-||-||-||
+||p129||-||*||*||-||-||-||
+||p1210||-||*||*||-||-||-||
