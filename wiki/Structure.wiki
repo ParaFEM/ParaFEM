@@ -1,10 +1,13 @@
 #summary Explanation of which programs use which libraries.
 #sidebar TOC
 
-= Mapping Libraries to Programs =
+= Linking Libraries to Programs =
 
-||Program||SERIAL||MPI||Shared||OpenMP||BEM||GPU||
-||p121||-||Y||Y||-||-||-||
-||p126||-||Y||Y||-||-||-||
-||p129||-||Y||Y||-||-||-||
-||p1210||-||Y||Y||-||-||-||
+||Program||Problem Type||SERIAL||MPI||Shared||OpenMP||BEM-LIB||BEM-LIB-P||GPU||Arpack||
+||p121||-||-||Y||Y||-||-||-||-||-||-||-||
+||p126||-||-||Y||Y||-||-||-||-||-||-||-||
+||p129||-||-||Y||Y||-||-||-||-||-||-||-||
+||p1210||-||-||Y||Y||-||-||-||-||-||-||-||
+||p1211||-||-||Y||Y||-||-||-||-||-||-||-||
+||p1212||-||-||Y||Y||-||-||-||-||-||-||Y||
+||prog83||-||-||-||-||-||-||Y||-||-||-||
