@@ -4,8 +4,8 @@
 = Linking Libraries to Programs =
 
 ||*Program*||*Problem Type*||*SERIAL*||*MPI*||*Shared*||*OpenMP*||*BEM-LIB*||*BEM-LIB-P*||*GPU*||*Arpack*||
-||*p121*||Three dimensional analysis of an elastic solid||-||Y||Y||-||-||-||-||-||
-||*p126*||Steady state 3D Navier Stokes equations||-||Y||Y||-||-||-||-||-||
+||*p121*||Three dimensional analysis of an elastic solid||F||Y||Y||F||N||N||F||N||
+||*p126*||Steady state 3D Navier Stokes equations||F||Y||Y||F||N||N||F||N||
 ||*p129*||Forced vibration of a 3D elastic solid||-||Y||Y||-||-||-||-||-||
 ||*p1210*||Forced vibration of a 3D elastic-plastic (von Mises) solid||-||Y||Y||-||-||-||-||-||
 ||*p1211*||3D strain of an elastic-plastic (von Mises) solid||-||Y||Y||-||-||-||-||-||
