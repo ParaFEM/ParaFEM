@@ -15,3 +15,9 @@
 ||*prog83*||General purpose BEM program for solving elasticity problems (EBE BiCGSTAB(l) in parallel||-||-||-||-||-||Y||-||-||
 ||*gaitfem*||Three dimensional analysis of an elastic solid (direct solver in serial)||Y||-||-||-||-||-||-||-||
 ||p121u||3D analysis of an elastic solid with added UMAT support||-||Y||Y||-||-||-||-||-||
+
+{{{
+F = To be implemented in the future
+Y = Working
+N = Not relevant to this program
+}}}
