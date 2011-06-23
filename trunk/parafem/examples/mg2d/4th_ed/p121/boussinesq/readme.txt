@@ -1,9 +1,9 @@
 
 EXAMPLES: bsq-<size>-<element>.mg
 
-The files in this directory are input files for the program sg12mg.f90
+The files in this directory are input files for the program mg2d.f90
 
-Using the input file <filename>.mg, program sg12mg.f90 will create a full 
+Using the input file <filename>.mg, program mg2d.f90 will create a full 
 input deck for program p121. 
 
      bsq-<size>-<element>.mg
