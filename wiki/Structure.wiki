@@ -1,7 +1,7 @@
 #summary Explanation of which programs use which libraries.
 #sidebar TOC
 
-= Linking Libraries to Programs =
+= Linking to Libraries =
 
 ||*Program*||*Problem Type*||*SERIAL*||*MPI*||*Shared*||*OpenMP*||*BEM-LIB*||*BEM-LIB-P*||*GPU*||*Arpack*||
 ||*p121*||Three dimensional analysis of an elastic solid||F||Y||Y||F||-||-||F||-||
