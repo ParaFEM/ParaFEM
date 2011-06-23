@@ -19,7 +19,7 @@ PROGRAM p1213
 
  ! neq,ntot are now global variables - not declared
 
-  INTEGER,PARAMETER     :: nodof=3,ndim=3,nst=6
+  INTEGER,PARAMETER     :: nodof=3,ndim=3,nst=6,prop=2
   INTEGER               :: loaded_nodes,fixed_freedoms,iel,i,j,k,l,idx1,idx2
   INTEGER               :: iters,limit,nn,nr,nip,nod,nels,ndof,npes_pp
   INTEGER               :: node_end,node_start,nodes_pp
@@ -101,7 +101,10 @@ PROGRAM p1213
 
   CALL read_rest(job_name,numpe,rest)
   timest(6) = elap_time()
-    
+  
+  fname = job_name(1:INDEX(job_name, " ")-1) // ."mat" ! Move to subroutine
+  CALL read_materialValue(prop,fname,numpe,npes)       ! CALL read_prop? 
+  
 !------------------------------------------------------------------------------
 ! 4. Allocate dynamic arrays used in main program
 !------------------------------------------------------------------------------
