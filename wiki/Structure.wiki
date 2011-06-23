@@ -10,6 +10,7 @@
 ||*p1210*||Forced vibration of a 3D elastic-plastic (von Mises) solid||F||Y||Y||F||-||-||F||-||
 ||*p1211*||3D strain of an elastic-plastic (von Mises) solid||F||Y||Y||F||-||-||F||-||
 ||*p1212*||Eigenvalues and eigenvectors of a 3D solid using the Arnoldi algorithm||F||Y||Y||F||-||-||F||Y||
+||*p1213*||Three dimensional analysis of an elastic solid. Multiple materials. Mixed OpenMP/MPI||F||Y||Y||F||-||-||F||Y||
 ||*prog81*||General purpose BEM program for solving elasticity problems (iterative equation solution using BiCGSTAB(l) in serial)||-||-||-||-||Y||-||-||-||
 ||*prog82*||General purpose program for solving elasticity problems (EBE BiCGSTAB(l) in serial||-||-||-||-||Y||-||-||-||
 ||*prog83*||General purpose BEM program for solving elasticity problems (EBE BiCGSTAB(l) in parallel||-||-||-||-||-||Y||-||-||
