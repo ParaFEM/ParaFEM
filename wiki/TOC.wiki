@@ -4,6 +4,7 @@
  * [Documentation Documentation]
   * [GettingStarted Getting Started]
   * [HectorUsers Advice for HECToR Users]
+  * [Structure Linking to Libraries]
   * [Input Input Data Formats]
   * [Output Output Data Formats]
   * [TestProblems Simple Test Problems]
