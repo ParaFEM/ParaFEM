@@ -25,14 +25,14 @@
 # | other than your home directory.      |
 # %--------------------------------------%
 #
-home = $(HOME)/parafem/src/programs/arpack/ARPACK
+home = $(HOME)/parafem/src/libraries/ARPACK
 #
 #  %--------------------------------------%
 #  | The platform identifier to suffix to |
 #  | the end of library names             |
 #  %--------------------------------------%
 #
-PLAT = XT4
+PLAT = XE6
 #
 #  %------------------------------------------------------%
 #  | The directories to find the various pieces of ARPACK |
