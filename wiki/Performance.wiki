@@ -12,7 +12,7 @@ This page presents some basic performance data for the programs supplied with Pa
 The tables below give some performance figures for program p121 (3D small strain elasticity) using various systems. Basic data about the problem are listed as follows:
 
 {{{
-1,000,000 elements 
+1,000,000 twenty noded brick elements
 4,090,601 nodes
 12,059,800 equations
 }}}
@@ -63,7 +63,7 @@ The tables below give some performance figures for program p121 (3D small strain
 }}}
 
 {{{
-8,000,000 elements 
+8,000,000 twenty noded brick elements 
 32,361,201 nodes
 96,239,600 equations
 }}}
@@ -76,6 +76,18 @@ The tables below give some performance figures for program p121 (3D small strain
 ||128||1536||246||-||-||1468||-||-||
 ||256||3072||181||-||-||1402||-||-||
 ||512||6144||222||-||-||1462||-||-||
+
+{{{
+27,000,000 twenty noded brick elements 
+108,811,801 nodes
+324,539,400 equations
+}}}
+
+== HECToR Phase 2b ==
+
+|| Number of processors || Number of cores || Time (s) in solver || Speed up || Efficiency || Total time (s) || Speed up || Efficiency ||
+||256||3072||1290||-||-||9477||-||-||
+||512||6144||-||-||-||-||-||-||
 
 ----
 
@@ -166,7 +178,7 @@ This specifies the memory required per core, thus ensuring dedicated access to t
 The table below gives some performance figures for program p126 (direct numerical solution of the Navier Stokes equations). Basic data about the problem are listed as follows:
 
 {{{
-1,000,000 elements 
+1,000,000 twenty noded brick elements (eight for pressure) 
 4,090,601 nodes
 12,792,398 equations
 }}}
@@ -201,7 +213,7 @@ The table below gives some performance figures for program p126 (direct numerica
 The table below gives some performance figures for program p129 (forced vibration of a 3D elastic solid). Basic data about the problem are listed as follows:
 
 {{{
-135,000 elements 
+135,000 twenty noded brick elements 
 570,121 nodes
 1,701,900 equations
 40 time steps
