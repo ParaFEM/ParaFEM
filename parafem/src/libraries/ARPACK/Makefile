@@ -64,7 +64,7 @@ arpacklib:
 		$(CD) ..; \
 	done );
 	$(RANLIB) $(ARPACKLIB)
-	mv $(ARPACKLIB) ../../../../lib
+	mv $(ARPACKLIB) ../../../lib
 
 cleantest:
 
