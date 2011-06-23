@@ -4,20 +4,20 @@
 = Linking Libraries to Programs =
 
 ||*Program*||*Problem Type*||*SERIAL*||*MPI*||*Shared*||*OpenMP*||*BEM-LIB*||*BEM-LIB-P*||*GPU*||*Arpack*||
-||*p121*||Three dimensional analysis of an elastic solid||F||Y||Y||F||N||N||F||N||
-||*p126*||Steady state 3D Navier Stokes equations||F||Y||Y||F||N||N||F||N||
-||*p129*||Forced vibration of a 3D elastic solid||F||Y||Y||F||N||N||F||N||
-||*p1210*||Forced vibration of a 3D elastic-plastic (von Mises) solid||F||Y||Y||F||N||N||F||N||
-||*p1211*||3D strain of an elastic-plastic (von Mises) solid||F||Y||Y||F||N||N||F||N||
-||*p1212*||Eigenvalues and eigenvectors of a 3D solid using the Arnoldi algorithm||F||Y||Y||F||N||N||F||Y||
-||*prog81*||General purpose BEM program for solving elasticity problems (iterative equation solution using BiCGSTAB(l) in serial)||N||N||N||N||Y||N||N||N||
-||*prog82*||General purpose program for solving elasticity problems (EBE BiCGSTAB(l) in serial||N||N||N||N||Y||N||N||N||
-||*prog83*||General purpose BEM program for solving elasticity problems (EBE BiCGSTAB(l) in parallel||N||N||N||N||N||Y||N||N||
-||*gaitfem*||Three dimensional analysis of an elastic solid (direct solver in serial)||Y||N||N||N||N||N||N||N||
-||p121u||3D analysis of an elastic solid with added UMAT support||F||Y||Y||F||N||N||F||N||
+||*p121*||Three dimensional analysis of an elastic solid||F||Y||Y||F||-||-||F||-||
+||*p126*||Steady state 3D Navier Stokes equations||F||Y||Y||F||-||-||F||-||
+||*p129*||Forced vibration of a 3D elastic solid||F||Y||Y||F||-||-||F||-||
+||*p1210*||Forced vibration of a 3D elastic-plastic (von Mises) solid||F||Y||Y||F||-||-||F||-||
+||*p1211*||3D strain of an elastic-plastic (von Mises) solid||F||Y||Y||F||-||-||F||-||
+||*p1212*||Eigenvalues and eigenvectors of a 3D solid using the Arnoldi algorithm||F||Y||Y||F||-||-||F||Y||
+||*prog81*||General purpose BEM program for solving elasticity problems (iterative equation solution using BiCGSTAB(l) in serial)||-||-||-||-||Y||-||-||-||
+||*prog82*||General purpose program for solving elasticity problems (EBE BiCGSTAB(l) in serial||-||-||-||-||Y||-||-||-||
+||*prog83*||General purpose BEM program for solving elasticity problems (EBE BiCGSTAB(l) in parallel||-||-||-||-||-||Y||-||-||
+||*gaitfem*||Three dimensional analysis of an elastic solid (direct solver in serial)||Y||-||-||-||-||-||-||-||
+||p121u||3D analysis of an elastic solid with added UMAT support||F||Y||Y||F||-||-||F||-||
 
 {{{
 F = To be implemented in the future
 Y = Working
-N = Not relevant to this program
+- = Not relevant to this program
 }}}
