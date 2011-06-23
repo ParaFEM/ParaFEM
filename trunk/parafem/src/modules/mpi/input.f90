@@ -22,8 +22,9 @@ MODULE INPUT
   !*    READ_NELS_PP           Reads number of elements assigned to processor
   !*    READ_P121              Reads the control data for program p121
   !*    READ_P126              Reads the control data for program p126
-  !*    READ_P1212             Reads the control data for program p1212
   !*    READ_P129              Reads the control data for program p129
+  !*    READ_P1212             Reads the control data for program p1212
+  !*    READ_P1213             Reads the control data for program p1213
   !*    BCAST_INPUTDATA_P1211  Reads the control data for program ed5/p1211
   !*    CHECK_INPUTDATA_P1211  Checks the control data for program ed5/p1211
   !*  AUTHOR
@@ -353,7 +354,166 @@ MODULE INPUT
   RETURN
 
   END SUBROUTINE READ_G_NUM_PP2
+  
+!------------------------------------------------------------------------------
+!------------------------------------------------------------------------------
+!------------------------------------------------------------------------------
+    
+  SUBROUTINE READ_ELEMENTS(job_name,iel_start,nn,npes,numpe,etype_pp,prop,    &
+                           g_num_pp)
 
+  !/****f* input/read_elements
+  !*  NAME
+  !*    SUBROUTINE: read_elements
+  !*  SYNOPSIS
+  !*    Usage:      CALL read_elements(job_name,iel_start,nn,npes,numpe,      &
+  !*                                   etype_pp,prop,g_num_pp)
+  !*  FUNCTION
+  !*    Master process reads the global array of elements and broadcasts
+  !*    to slave processes.
+  !*    Processes record only its local part of elements.
+  !*  INPUTS
+  !*    The following arguments have the INTENT(IN) attribute:
+  !*
+  !*    job_name              : Character
+  !*                          : Used to create file name to read
+  !*
+  !*    iel_start             : Integer
+  !*                          : First element number in a process
+  !*
+  !*    nn                    : Integer
+  !*                          : Total number of nodes 
+  !*
+  !*    npes                  : Integer
+  !*                          : Total number of processors
+  !*
+  !*    numpe                 : Integer
+  !*                          : Process number
+  !*
+  !*    The following scalar array arguments have the INTENT(OUT) attribute:
+  !*
+  !*    g_num_pp(nod,nels_pp) : Element connectivity
+  !*    etype_pp(nels_pp)     : Element property type vector     
+  !*
+  !*    The following real array argument has the INTENT(OUT) attribute:
+  !*
+  !*    prop(nprops,np_types) : Element properties matrix
+  !*
+  !*  AUTHOR
+  !*    L. Margetts
+  !*  COPYRIGHT
+  !*    (c) University of Manchester 2007-2011
+  !******
+  !*  Place remarks that should not be included in the documentation here.
+  !*
+  !*  This method avoids the allocation of a global array.
+  !*  Delete READ_G_NUM_PP and replace it with this subroutine once its 
+  !*  stability has been demonstrated.
+  !*
+  !*/
+
+  IMPLICIT NONE
+
+  CHARACTER(LEN=50), INTENT(IN) :: job_name
+  CHARACTER(LEN=50)             :: fname
+  INTEGER, INTENT(IN)           :: iel_start, nn, npes, numpe
+  INTEGER, INTENT(INOUT)        :: g_num_pp(:,:),etype_pp(:)
+  INTEGER                       :: nod, nels_pp, iel, i, k
+  INTEGER                       :: bufsize, ielpe, ier, ndim=3
+  INTEGER                       :: readSteps,max_nels_pp
+  INTEGER                       :: status(MPI_STATUS_SIZE)
+  INTEGER, ALLOCATABLE          :: g_num(:,:),localCount(:),readCount(:)
+
+!------------------------------------------------------------------------------
+! 1. Initiallize variables
+!------------------------------------------------------------------------------
+
+  nod       = UBOUND(g_num_pp,1)
+  nels_pp   = UBOUND(g_num_pp,2)
+
+!------------------------------------------------------------------------------
+! 2. Find READSTEPS, the number of steps in which the read will be carried
+!    out and READCOUNT, the size of each read.
+!------------------------------------------------------------------------------
+
+  ALLOCATE(readCount(npes))
+  ALLOCATE(localCount(npes))
+  
+  readCount         = 0
+  localCount        = 0
+  readSteps         = npes
+  localCount(numpe) = nels_pp
+
+  CALL MPI_ALLREDUCE(localCount,readCount,npes,MPI_INTEGER,MPI_SUM,           &
+                     MPI_COMM_WORLD,ier) 
+ 
+!------------------------------------------------------------------------------
+! 3. Allocate the array g_num into which the steering array for each processor
+!    is to be read
+!------------------------------------------------------------------------------
+
+  max_nels_pp = MAXVAL(readCount,1)
+  
+  ALLOCATE(g_num(nod+1,max_nels_pp))
+  
+  g_num = 0             ! different value for each processor
+
+!------------------------------------------------------------------------------
+! 4. Master processor opens the data file and advances to the start of the 
+!    element steering array
+!------------------------------------------------------------------------------
+
+  IF (numpe==1) THEN
+    fname     = job_name(1:INDEX(job_name, " ")-1) // ".d"
+    OPEN(10,FILE=fname,STATUS='OLD',ACTION='READ')
+    READ(10,*)   !header
+    READ(10,*)   !header
+    DO i = 1,nn  
+      READ(10,*) !skip nodes until reaching the elements
+    END DO
+    READ(10,*)   !header
+  END IF
+
+!------------------------------------------------------------------------------
+! 5. Go around READSTEPS loop, read data, and send to appropriate processor
+!------------------------------------------------------------------------------
+
+  DO i=1,npes
+    IF(i == 1) THEN  ! local data
+      IF(numpe == 1) THEN
+        DO iel = 1,readCount(i)
+          READ(10,*)k,k,k,k,g_num_pp(:,iel),etype_pp(iel)
+        END DO
+      END IF
+    ELSE
+      bufsize = readCount(i)*(nod+1)
+      IF(numpe == 1) THEN
+        DO iel = 1,readCount(i)
+          READ(10,*)k,k,k,k,g_num(:,iel)
+        END DO
+        CALL MPI_SEND(g_num(:,1:readCount(i)),bufsize,MPI_INTEGER,i-1,i,     &
+                      MPI_COMM_WORLD,status,ier)
+      END IF
+      IF(numpe == i) THEN
+        g_num = 0
+        CALL MPI_RECV(g_num,bufsize,MPI_INTEGER,0,i,MPI_COMM_WORLD,status,ier)
+        g_num_pp = g_num(1:nod,:)
+        etype_pp = g_num(nod+1,:)
+    END IF
+  END DO
+  
+!------------------------------------------------------------------------------
+! 6. Close file and deallocate global arrays
+!------------------------------------------------------------------------------
+
+  IF(numpe==1) CLOSE(10)
+
+  DEALLOCATE(g_num,readCount,localCount)
+
+  RETURN
+
+  END SUBROUTINE READ_ELEMENTS
+  
 !------------------------------------------------------------------------------
 !------------------------------------------------------------------------------
 !------------------------------------------------------------------------------
@@ -1651,7 +1811,196 @@ MODULE INPUT
 
   RETURN
   END SUBROUTINE READ_P129
+  
+!------------------------------------------------------------------------------
+!------------------------------------------------------------------------------
+!------------------------------------------------------------------------------
 
+  SUBROUTINE READ_P1213(job_name,numpe,e,element,fixed_freedoms,limit,        &
+                        loaded_nodes,mesh,nels,nip,nn,nod,np_types,nr,        &
+                        partition,tol,v)
+
+  !/****f* input/read_p1213
+  !*  NAME
+  !*    SUBROUTINE: read_p1213
+  !*  SYNOPSIS
+  !*    Usage:      CALL read_p1213(job_name,numpe,e,element,fixed_freedoms,
+  !*                                limit,loaded_nodes,mesh,nels,nip,nn,nod,nr,
+  !*                                partition,tol,v)
+  !*  FUNCTION
+  !*    Master processor reads the general data for the problem and broadcasts 
+  !*    it to the slave processors.
+  !*  INPUTS
+  !*    The following arguments have the INTENT(IN) attribute:
+  !*
+  !*    job_name               : Character
+  !*                           : File name that contains the data to be read
+  !*
+  !*    numpe                  : Integer
+  !*                           : Processor number
+  !*
+  !*    partition              : Integer
+  !*                           : Type of partitioning 
+  !*                           : 1 = internal partitioning
+  !*                           : 2 = external partitioning with .psize file
+  !*
+  !*    The following arguments have the INTENT(INOUT) attribute:
+  !*
+  !*    e                      : Real
+  !*                           : Young's modulus
+  !*
+  !*    element                : Character
+  !*                           : Element type
+  !*                           : Values: 'hexahedron' or 'tetrahedron'
+  !*
+  !*    fixed_freedoms         : Integer
+  !*                           : Number of fixed displacements
+  !*
+  !*    limit                  : Integer
+  !*                           : Maximum number of PCG iterations allowed
+  !*
+  !*    loaded_nodes           : Integer
+  !*                           : Number of nodes with applied forces
+  !*
+  !*    mesh                   : Integer
+  !*                           : 1 = Smith and Griffiths numbering scheme
+  !*                           : 2 = Abaqus numbering scheme
+  !*
+  !*    nels                   : Integer
+  !*                           : Total number of elements
+  !*
+  !*    nip                    : Integer
+  !*                           : Number of Gauss integration points
+  !*
+  !*    nn                     : Integer
+  !*                           : Total number of nodes in the mesh
+  !*
+  !*    nod                    : Integer
+  !*                           : Number of nodes per element
+  !*
+  !*    np_types               : Integer
+  !*                           : Number of property types
+  !*
+  !*    nr                     : Integer
+  !*                           : Number of nodes with restrained degrees of
+  !*                             freedom 
+  !*
+  !*    tol                    : Real
+  !*                           : Tolerance for PCG
+  !*
+  !*    v                      : Real
+  !*                           : Poisson coefficient
+  !*  AUTHOR
+  !*    Lee Margetts
+  !*  CREATION DATE
+  !*    03.03.2010
+  !*  COPYRIGHT
+  !*    (c) University of Manchester 2010-2011
+  !******
+  !*  Place remarks that should not be included in the documentation here.
+  !*  Need to add some error traps
+  !*/
+
+  IMPLICIT NONE
+
+  CHARACTER(LEN=50), INTENT(IN)    :: job_name
+  CHARACTER(LEN=15), INTENT(INOUT) :: element
+  INTEGER, INTENT(IN)              :: numpe
+  INTEGER, INTENT(INOUT)           :: nels,nn,nr,nod,nip,loaded_nodes,partition
+  INTEGER, INTENT(INOUT)           :: limit,mesh,fixed_freedoms,np_types 
+  REAL(iwp), INTENT(INOUT)         :: e,v,tol
+
+!------------------------------------------------------------------------------
+! 1. Local variables
+!------------------------------------------------------------------------------
+
+  INTEGER                          :: bufsize,ier,integer_store(11)
+  REAL(iwp)                        :: real_store(3)
+  CHARACTER(LEN=50)                :: fname
+  
+!------------------------------------------------------------------------------
+! 2. Master processor reads the data and copies it into temporary arrays
+!------------------------------------------------------------------------------
+
+  IF (numpe==1) THEN
+    fname = job_name(1:INDEX(job_name, " ") -1) // ".dat"
+    OPEN(10,FILE=fname,STATUS='OLD',ACTION='READ')
+    READ(10,*) element,mesh,partition,np_types,nels,nn,nr,nip,nod,loaded_nodes,        &
+               fixed_freedoms,e,v,tol,limit
+    CLOSE(10)
+   
+    integer_store      = 0
+
+    integer_store(1)   = mesh
+    integer_store(2)   = nels
+    integer_store(3)   = nn
+    integer_store(4)   = nr 
+    integer_store(5)   = nip
+    integer_store(6)   = nod
+    integer_store(7)   = loaded_nodes
+    integer_store(8)   = fixed_freedoms
+    integer_store(9)   = limit
+    integer_store(10)  = partition
+    integer_store(11)  = np_types
+    
+
+    real_store         = 0.0_iwp
+
+    real_store(1)      = e  
+    real_store(2)      = v  
+    real_store(3)      = tol  
+
+  END IF
+
+!------------------------------------------------------------------------------
+! 3. Master processor broadcasts the temporary arrays to the slave processors
+!------------------------------------------------------------------------------
+
+  bufsize = 11
+  CALL MPI_BCAST(integer_store,bufsize,MPI_INTEGER,0,MPI_COMM_WORLD,ier)
+
+  bufsize = 3
+  CALL MPI_BCAST(real_store,bufsize,MPI_REAL8,0,MPI_COMM_WORLD,ier)
+
+  bufsize = 15
+  CALL MPI_BCAST(element,bufsize,MPI_CHARACTER,0,MPI_COMM_WORLD,ier)
+
+!------------------------------------------------------------------------------
+! 4. Slave processors extract the variables from the temporary arrays
+!------------------------------------------------------------------------------
+
+  IF (numpe/=1) THEN
+
+    mesh            = integer_store(1)
+    nels            = integer_store(2)
+    nn              = integer_store(3)
+    nr              = integer_store(4)
+    nip             = integer_store(5)
+    nod             = integer_store(6)
+    loaded_nodes    = integer_store(7)
+    fixed_freedoms  = integer_store(8)
+    limit           = integer_store(9)
+    partition       = integer_store(10)
+    np_types        = integer_store(11)
+
+    e               = real_store(1)
+    v               = real_store(2)
+    tol             = real_store(3)
+
+  END IF
+
+  IF(fixed_freedoms > 0 .AND. loaded_nodes > 0) THEN
+    PRINT *
+    PRINT *, "Error - model has", fixed_freedoms, " fixed freedoms and"
+    PRINT *, loaded_nodes, " loaded nodes"
+    PRINT *, "Mixed displacement and load control not supported"
+    PRINT *
+    CALL shutdown()
+  END IF
+
+  RETURN
+  END SUBROUTINE READ_P1213
+  
 !------------------------------------------------------------------------------
 !------------------------------------------------------------------------------
 !------------------------------------------------------------------------------

@@ -43,13 +43,13 @@ PROGRAM p1213
   REAL(iwp),ALLOCATABLE :: diag_precon_pp(:),p_pp(:),r_pp(:),x_pp(:),xnew_pp(:)
   REAL(iwp),ALLOCATABLE :: u_pp(:),pmul_pp(:,:),utemp_pp(:,:),d_pp(:),timest(:)
   REAL(iwp),ALLOCATABLE :: diag_precon_tmp(:,:),eld_pp(:,:),tensor_pp(:,:,:)
-  REAL(iwp),ALLOCATABLE :: valf(:),store_pp(:)
+  REAL(iwp),ALLOCATABLE :: valf(:),store_pp(:),prop(:,:)
   REAL(iwp),ALLOCATABLE :: fun(:),shape_integral_pp(:,:)
   REAL(iwp),ALLOCATABLE :: stress_integral_pp(:,:),stressnodes_pp(:)
   REAL(iwp),ALLOCATABLE :: principal_integral_pp(:,:),princinodes_pp(:)
   REAL(iwp),ALLOCATABLE :: principal(:),reacnodes_pp(:)  
   INTEGER,  ALLOCATABLE :: rest(:,:),g_num_pp(:,:),g_g_pp(:,:),node(:)
-  INTEGER,  ALLOCATABLE :: no(:),no_pp(:),no_pp_temp(:),sense(:)
+  INTEGER,  ALLOCATABLE :: no(:),no_pp(:),no_pp_temp(:),sense(:),etype_pp(:)
 
 !------------------------------------------------------------------------------
 ! 3. Read job_name from the command line. 
@@ -65,8 +65,8 @@ PROGRAM p1213
   IF (argc /= 1) CALL job_name_error(numpe,program_name)
   CALL GETARG(1, job_name) 
 
-  CALL read_p121(job_name,numpe,e,element,fixed_freedoms,limit,loaded_nodes, &
-                 meshgen,nels,nip,nn,nod,nr,partitioner,tol,v)
+  CALL read_p1213(job_name,numpe,e,element,fixed_freedoms,limit,loaded_nodes, &
+                  meshgen,nels,nip,nn,nod,np_types,nr,partitioner,tol,v)
 
   CALL calc_nels_pp(job_name,nels,npes,numpe,partitioner,nels_pp)
 
@@ -76,14 +76,19 @@ PROGRAM p1213
   ALLOCATE(g_num_pp(nod, nels_pp)) 
   ALLOCATE(g_coord_pp(nod,ndim,nels_pp)) 
   ALLOCATE(rest(nr,nodof+1)) 
+  ALLOCATE(etype_pp(nels_pp))
+  ALLOCATE(prop(nprops,np_types))
  
-  g_num_pp  = 0
-  g_coord_pp= zero
-  rest      = 0
+  g_num_pp   = 0
+  rest       = 0
+  etype_pp   = 0
+  g_coord_pp = zero
+  prop       = zero
+  
 
   timest(2) = elap_time()
   
-  CALL read_g_num_pp2(job_name,iel_start,nn,npes,numpe,g_num_pp)
+  CALL read_elements(job_name,iel_start,nn,npes,numpe,etype_pp,prop,g_num_pp)
   timest(3) = elap_time()
 
 ! CALL read_g_num_pp(job_name,iel_start,nels,nn,numpe,g_num_pp)
@@ -159,13 +164,18 @@ PROGRAM p1213
 ! 8. Element stiffness integration and storage
 !------------------------------------------------------------------------------
 
-  dee = zero
-  CALL deemat(e,v,dee)
   CALL sample(element,points,weights)
  
   storkm_pp       = zero
  
   elements_3: DO iel=1,nels_pp
+  
+    e   = prop(1,etype_pp(iel))
+    v   = prop(2,etype_pp(iel))
+    dee = zero
+    
+    CALL deemat(e,v,dee)
+    
     gauss_pts_1: DO i=1,nip
       CALL shape_der(der,points,i)
       jac   = MATMUL(der,g_coord_pp(:,:,iel))
@@ -177,6 +187,7 @@ PROGRAM p1213
                              MATMUL(MATMUL(TRANSPOSE(bee),dee),bee) *         &
                              det*weights(i)   
     END DO gauss_pts_1
+    
   END DO elements_3
   
   timest(10) = elap_time()
