@@ -20,7 +20,7 @@ PROGRAM p1212
    
   INTEGER               :: nn,nr,nip,nodof=3,nod,nst=6,i,j,k,l,inode
   INTEGER               :: iel,ndim=3,iters,model,nconv,ncv,nev,maxitr 
-  INTEGER               :: argc,iargc,partitioner
+  INTEGER               :: argc,iargc,partitioner=1
   INTEGER               :: nels,ndof,npes_pp,meshgen,first,last,ic
   INTEGER               :: ido,ierr,info,iparam(11),ipntr(11),ishfts,lworkl  
   REAL(iwp)             :: rho,e,nu,det,sigma,tol

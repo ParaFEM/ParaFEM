@@ -44,6 +44,7 @@
  INTEGER              :: npes_pp
  INTEGER              :: numSteps              ! number of load steps
  INTEGER              :: outputIncrement       ! increment counter for results
+ INTEGER              :: partitioner = 1       ! 1 = internal, 2 = external
  INTEGER              :: plasiters
  INTEGER              :: plasitersMin          ! for adaptive load stepping
  INTEGER              :: plasitersMax          ! for adaptive load stepping
@@ -212,7 +213,7 @@
 
   ! Elements
   
-  CALL calc_nels_pp(nels)
+  CALL calc_nels_pp(job_name,nels,npes,numpe,partitioner,nels_pp)
 ! fname = fname_base(1:INDEX(fname_base, " ")-1) // ".psize"
 ! CALL readall_nels_pp_fname(fname)
 
