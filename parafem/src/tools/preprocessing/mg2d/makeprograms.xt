@@ -1,20 +1,20 @@
-# MAKEFILE src/tools/preprocessing/ed4mesher/makeprograms.xt
+# MAKEFILE src/tools/preprocessing/mg2d/makeprograms.xt
 # Author: Lee Margetts
 # Modified by: Louise M. Lever
 # -----------------------------------------------------------------------
-# Compiles sg12mg program executable as RELEASE or DEBUG
+# Compiles mg2d program executable as RELEASE or DEBUG
 # Links with RELEASE STATIC library libParaFEM_mpi.$(VERSION).a
 #    or with RELEASE STATIC library libParaFEM_mpi_D.$(VERSION).a
 # -----------------------------------------------------------------------
 # Available Rules:
 #   (default) : execute the release rule
 #
-#   release: Build sg12mg executable as RELEASE edition
-#   debug: Build sg12mg executable as DEBUG edition
-#   install: Copy sg12mg executable into global bin directory
+#   release: Build mg2d executable as RELEASE edition
+#   debug: Build mg2d executable as DEBUG edition
+#   install: Copy mg2d executable into global bin directory
 #   clean: Remove .o object files
-#   execlean: Remove the local sg12mg executable
-#   relink: Rebuild sg12mg from object files and libraries
+#   execlean: Remove the local mg2d executable
+#   relink: Rebuild mg2d from object files and libraries
 # -----------------------------------------------------------------------
 # Notes:
 # -----------------------------------------------------------------------
@@ -29,28 +29,28 @@ FC=ftn
 all:	release
 
 release:
-	$(MAKE) -f makeprograms.xt sg12mg \
+	$(MAKE) -f makeprograms.xt mg2d \
 	FFLAGS="-c -I$(MODULE) -V -fastsse -Mlarge_arrays" \
 	LDFLAGS="-L$(LIB) -lParaFEM_mpi.$(VERSION) -lblas"
 
 debug:
-	$(MAKE) -f makeprograms.xt sg12mg \
+	$(MAKE) -f makeprograms.xt mg2d \
 	FFLAGS="-c -I$(MODULE) -V -g -Mbounds -traceback" \
 	LDFLAGS="-L$(LIB) -lParaFEM_mpi_D.$(VERSION) -lblas"
 
-sg12mg: sg12mg.o
-	$(FC) sg12mg.o -o sg12mg $(LDFLAGS)
+mg2d: mg2d.o
+	$(FC) mg2d.o -o mg2d $(LDFLAGS)
 
-sg12mg.o: sg12mg.f90
-	$(FC) sg12mg.f90 $(FFLAGS)
+mg2d.o: mg2d.f90
+	$(FC) mg2d.f90 $(FFLAGS)
 
 clean:
 	rm -f *.o
 
 execlean:
-	rm -f sg12mg
+	rm -f mg2d
 
-relink: sg12mg
+relink: mg2d
 
 install:
-	cp sg12mg ../../../../bin
+	cp mg2d ../../../../bin

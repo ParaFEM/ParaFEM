@@ -1,10 +1,10 @@
-PROGRAM sg12mg
+PROGRAM mg2d
 
-!/****h* Programs/Smith&Griffiths/sg12mg
+!/****h* tools/preprocessing/mg2d
 !*  NAME
-!*    PROGRAM sg12mg
+!*    PROGRAM mg2d
 !*  FUNCTION
-!*    Creates simple meshes for the programs in Smith and Griffiths Edition 4.
+!*    Creates simple meshes using files with the .mg extension.
 !*  AUTHOR
 !*    Lee Margetts
 !*  COPYRIGHT
@@ -56,7 +56,7 @@ PROGRAM sg12mg
   argc = iargc()
   IF (argc /= 1) THEN
     PRINT*
-    PRINT*, "Usage:  sg12mg <job_name>"
+    PRINT*, "Usage:  mg2d <job_name>"
     PRINT*
     PRINT*, "        program expects <job_name>.mg and outputs any or all of"
     PRINT*, "        <job_name>.dat <job_name>.d" 
@@ -939,4 +939,4 @@ PROGRAM sg12mg
 
   END SELECT
   
-END PROGRAM sg12mg
+END PROGRAM mg2d
