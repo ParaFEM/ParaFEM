@@ -38,3 +38,5 @@ hexahedron
 2560 12465 225 8 20 17 0
 100000. .3 1.e-5 5000
 }}}
+
+Compare with source code for SUBROUTINE READ_P121 in src/input.f90 
