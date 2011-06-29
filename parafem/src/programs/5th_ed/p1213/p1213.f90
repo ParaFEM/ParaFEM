@@ -19,11 +19,11 @@ PROGRAM p1213
 
  ! neq,ntot are now global variables - not declared
 
-  INTEGER,PARAMETER     :: nodof=3,ndim=3,nst=6,prop=2
+  INTEGER,PARAMETER     :: nodof=3,ndim=3,nst=6,nprops=2
   INTEGER               :: loaded_nodes,fixed_freedoms,iel,i,j,k,l,idx1,idx2
   INTEGER               :: iters,limit,nn,nr,nip,nod,nels,ndof,npes_pp
   INTEGER               :: node_end,node_start,nodes_pp
-  INTEGER               :: argc,iargc,meshgen,partitioner
+  INTEGER               :: argc,iargc,meshgen,partitioner,np_types
   INTEGER               :: fixed_freedoms_pp,fixed_freedoms_start
   REAL(iwp)             :: e,v,det,tol,up,alpha,beta,tload
   REAL(iwp),PARAMETER   :: zero = 0.0_iwp
@@ -88,7 +88,7 @@ PROGRAM p1213
 
   timest(2) = elap_time()
   
-  CALL read_elements(job_name,iel_start,nn,npes,numpe,etype_pp,prop,g_num_pp)
+  CALL read_elements(job_name,iel_start,nn,npes,numpe,etype_pp,g_num_pp)
   timest(3) = elap_time()
 
 ! CALL read_g_num_pp(job_name,iel_start,nels,nn,numpe,g_num_pp)
@@ -102,7 +102,7 @@ PROGRAM p1213
   CALL read_rest(job_name,numpe,rest)
   timest(6) = elap_time()
   
-  fname = job_name(1:INDEX(job_name, " ")-1) // ."mat" ! Move to subroutine
+  fname = job_name(1:INDEX(job_name, " ")-1) // ".mat" ! Move to subroutine
   CALL read_materialValue(prop,fname,numpe,npes)       ! CALL read_prop? 
   
 !------------------------------------------------------------------------------

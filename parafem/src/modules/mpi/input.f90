@@ -359,15 +359,14 @@ MODULE INPUT
 !------------------------------------------------------------------------------
 !------------------------------------------------------------------------------
     
-  SUBROUTINE READ_ELEMENTS(job_name,iel_start,nn,npes,numpe,etype_pp,prop,    &
-                           g_num_pp)
+  SUBROUTINE READ_ELEMENTS(job_name,iel_start,nn,npes,numpe,etype_pp,g_num_pp)
 
   !/****f* input/read_elements
   !*  NAME
   !*    SUBROUTINE: read_elements
   !*  SYNOPSIS
   !*    Usage:      CALL read_elements(job_name,iel_start,nn,npes,numpe,      &
-  !*                                   etype_pp,prop,g_num_pp)
+  !*                                   etype_pp,g_num_pp)
   !*  FUNCTION
   !*    Master process reads the global array of elements and broadcasts
   !*    to slave processes.
@@ -394,10 +393,6 @@ MODULE INPUT
   !*
   !*    g_num_pp(nod,nels_pp) : Element connectivity
   !*    etype_pp(nels_pp)     : Element property type vector     
-  !*
-  !*    The following real array argument has the INTENT(OUT) attribute:
-  !*
-  !*    prop(nprops,np_types) : Element properties matrix
   !*
   !*  AUTHOR
   !*    L. Margetts
@@ -499,6 +494,7 @@ MODULE INPUT
         CALL MPI_RECV(g_num,bufsize,MPI_INTEGER,0,i,MPI_COMM_WORLD,status,ier)
         g_num_pp = g_num(1:nod,:)
         etype_pp = g_num(nod+1,:)
+      END IF
     END IF
   END DO
   
