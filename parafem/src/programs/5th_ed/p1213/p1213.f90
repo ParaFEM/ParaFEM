@@ -65,8 +65,8 @@ PROGRAM p1213
   IF (argc /= 1) CALL job_name_error(numpe,program_name)
   CALL GETARG(1, job_name) 
 
-  CALL read_p1213(job_name,numpe,e,element,fixed_freedoms,limit,loaded_nodes, &
-                  meshgen,nels,nip,nn,nod,np_types,nr,partitioner,tol,v)
+  CALL read_p1213(job_name,numpe,element,fixed_freedoms,limit,loaded_nodes,   &
+                  meshgen,nels,nip,nn,nod,np_types,nr,partitioner,tol)
 
   CALL calc_nels_pp(job_name,nels,npes,numpe,partitioner,nels_pp)
 
