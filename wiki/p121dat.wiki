@@ -8,6 +8,7 @@ A typical p121.dat file has the following format:
 {{{
 element
 mesh
+partitioner
 nels nn nr nip nod loaded_nodes fixed_freedoms
 e v tol limit
 }}}
@@ -33,6 +34,7 @@ A real example follows:
 {{{
 hexahedron
 2
+1
 2560 12465 225 8 20 17 0
-100000. .3 1.e-5 5000 1
+100000. .3 1.e-5 5000
 }}}
