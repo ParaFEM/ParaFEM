@@ -6,10 +6,10 @@
 == Smith and Griffiths, 4th Edition ==
 
 ||*Program*||*Problem Type*||*Status*||*SERIAL*||*MPI*||*Shared*||*OpenMP*||*BEM-LIB*||*BEM-LIB-P*||*GPU*||*Arpack*||
-||*p121*||Three dimensional analysis of an elastic solid||F||Y||Y||F||-||-||F||-||
-||*p126*||Steady state 3D Navier Stokes equations||F||Y||Y||F||-||-||F||-||
-||*p129*||Forced vibration of a 3D elastic solid||F||Y||Y||F||-||-||F||-||
-||*p1210*||Forced vibration of a 3D elastic-plastic (von Mises) solid||F||Y||Y||F||-||-||F||-||
+||*p121*||Three dimensional analysis of an elastic solid||C||F||Y||Y||F||-||-||F||-||
+||*p126*||C||Steady state 3D Navier Stokes equations||C||F||Y||Y||F||-||-||F||-||
+||*p129*||C||Forced vibration of a 3D elastic solid||C||F||Y||Y||F||-||-||F||-||
+||*p1210*||Forced vibration of a 3D elastic-plastic (von Mises) solid||C||F||Y||Y||F||-||-||F||-||
 
 == Smith, Griffiths and Margetts, 5th Edition (in preparation) ==
 
