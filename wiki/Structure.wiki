@@ -26,6 +26,7 @@
 ||*xx4*||3D strain of an elastic-plastic von Mises solid||F||Y||F||F||-||-||-||
 ||*xx5*||Eigenvalues and eigenvectors of a 3D solid using the Arnoldi algorithm||F||Y||F||F||-||-||Y||
 ||*xx6*||Three dimensional analysis of an elastic solid. Large deformation formulation with adaptive step sizes. (Under development).||F||Y||F||F||-||-||-||
+||*xx7*||Two dimensional probabilistic foundation settlement. See RSETL2D in Fenton and Griffiths (Under development).||
 
 == Beer, Smith and Duenser ==
 
