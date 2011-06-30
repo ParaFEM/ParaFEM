@@ -1,9 +1,11 @@
 # @(#) inp2d.awk - Basic conversion of Abaqus Input Deck .inp to ParaFEM input files .d .bnd .lds .dat
 # @(#) Usage:awk -f inp2d.awk <filename.inp>
 # Author: Louise M. Lever (louise.lever@manchester.ac.uk)
-# Version: 1.0.3
+# Version: 1.0.4
 
 # CHANGES:
+# v1.0.4:
+#   LML: Removed repeated *ELEMENTS keyword in .d for multiple *Elements in input deck
 # v1.0.3:
 #   LML: Moved partition_mode parameter to new inserted 3rd line of .dat file.
 # v1.0.2:
@@ -86,6 +88,9 @@ BEGIN {
   # Initialized counts
   loaded_count = 0;
   fixed_count = 0;
+
+  # State flags
+  started_elements_output = 0;
 }
 
 # END
@@ -134,7 +139,10 @@ function do_nodes() {
 
 function start_elements() {
   print "Processing Elements";
-  print "*ELEMENTS" > d_file;
+  if( started_elements_output == 0 ) {
+    print "*ELEMENTS" > d_file;
+    started_elements_output = 1;
+  } # else Just carry on adding element entries
   split( $2,elem_type,"=" );
   print "Element Type", elem_type[2];
   if( elem_type[2] == "C3D4" ) {
