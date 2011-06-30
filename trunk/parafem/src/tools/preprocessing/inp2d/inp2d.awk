@@ -1,9 +1,12 @@
 # @(#) inp2d.awk - Basic conversion of Abaqus Input Deck .inp to ParaFEM input files .d .bnd .lds .dat
 # @(#) Usage:awk -f inp2d.awk <filename.inp>
 # Author: Louise M. Lever (louise.lever@manchester.ac.uk)
-# Version: 1.0.4
+# Version: 1.0.5
 
 # CHANGES:
+# v1.0.5:
+#   LML: Added multiple material support; increments auto-material ID on each repeated *ELEMENT in input deck
+#   LML: Fixed "1" removed from each element line in  output; uses mat_id instead; defaults to 1
 # v1.0.4:
 #   LML: Removed repeated *ELEMENTS keyword in .d for multiple *Elements in input deck
 # v1.0.3:
@@ -78,6 +81,9 @@ BEGIN {
   # Open model file <name>.d and generate header
   print "*THREE_DIMENSIONAL" > d_file;
 
+  # Auto-increment default material id; ++ on additional *ELEMENTS
+  mat_id = 1;
+
   # some hard-coded ParaFEM values
   tol = 1.0e-06;
   limit = 2000;
@@ -139,10 +145,17 @@ function do_nodes() {
 
 function start_elements() {
   print "Processing Elements";
+    
+  # Only want to output *ELEMENTS once in D FILE
   if( started_elements_output == 0 ) {
     print "*ELEMENTS" > d_file;
+    # mat_id = 1; set in START
     started_elements_output = 1;
-  } # else Just carry on adding element entries
+  } else {
+    # else Just carry on adding element entries
+    # but increment the auto-material ID
+    mat_id++;	
+  }
   split( $2,elem_type,"=" );
   print "Element Type", elem_type[2];
   if( elem_type[2] == "C3D4" ) {
@@ -178,15 +191,15 @@ function start_elements() {
 function do_elements() {
   if( elem_type[2] == "C3D4" ) {
     gsub(/^ */,"");
-    print " ", $1, "3 4 1", $2, $3, $4, $5, "1" > d_file;
+    print " ", $1, "3 4 1", $2, $3, $4, $5, mat_id > d_file;
     element_count++;
   } else if( elem_type[2] == "C3D8I" ) {
     gsub(/^ */,"");
-    print " ", $1, "3 8 1", $2, $3, $4, $5, $6, $7, $8, $9, "1" > d_file;
+    print " ", $1, "3 8 1", $2, $3, $4, $5, $6, $7, $8, $9, mat_id > d_file;
     element_count++;
   } else if( elem_type[2] == "C3D8" ) {
     gsub(/^ */,"");
-    print " ", $1, "3 8 1", $2, $3, $4, $5, $6, $7, $8, $9, "1" > d_file;
+    print " ", $1, "3 8 1", $2, $3, $4, $5, $6, $7, $8, $9, mat_id > d_file;
     element_count++;
   } else {
     print "Element Type", elem_type[2], "Not Supported";
