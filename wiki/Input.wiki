@@ -151,3 +151,34 @@ A real example follows:
 27347 0. 0. 4.16666666
 27349 0. 0. 8.33333333
 }}}
+
+= The .mat file =
+
+The ".mat" file has the following format:
+
+{{{
+np_types
+matID-1 e v
+matID-2 e v
+matID-3 e v
+...
+matID-np_types e v
+}}}
+
+|| *Variable Name* || *Type* || *Purpose* ||
+||{{{matID}}} || Integer || A unique number that identifies the material type.||
+||{{{e}}} || Real || Young's modulus. ||
+||{{{v}}} || Real || Poisson's ratio. ||
+
+A real example follows:
+
+{{{
+5
+1  500.0 0.15
+2 1000.0 0.20
+3 1500.0 0.25
+4 2000.0 0.30
+5 3000.0 0.35
+}}}
+
+_Note: This file format currently only supports isotropic materials. For p1211, there is an additional scalar real variable, undrained shear strength._
