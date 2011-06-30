@@ -1,0 +1,56 @@
+# MAKEFILE src/programs/4th_ed/xx2/makeprograms.xt
+# Author: Lee Margetts
+# Modified by: Louise M. Lever
+# -----------------------------------------------------------------------
+# Compiles xx2 program executable as RELEASE or DEBUG
+# Links with RELEASE STATIC library libParaFEM_mpi.$(VERSION).a
+#    or with RELEASE STATIC library libParaFEM_mpi_D.$(VERSION).a
+# -----------------------------------------------------------------------
+# Available Rules:
+#   (default) : execute the release rule
+#
+#   release: Build xx2 executable as RELEASE edition
+#   debug: Build xx2 executable as DEBUG edition
+#   install: Copy xx2 executable into global bin directory
+#   clean: Remove .o object files
+#   execlean: Remove the local xx2 executable
+#   relink: Rebuild xx2 from object files and libraries
+# -----------------------------------------------------------------------
+# Notes:
+# -----------------------------------------------------------------------
+
+include ../../../../include/mk_defs.inc
+
+MODULE	= ../../../../include
+LIB	= ../../../../lib
+FC=ftn
+.SUFFIXES: .o .f90
+
+all:	release
+
+release:
+	$(MAKE) -f makeprograms.xt xx2 \
+	FFLAGS="-c -I$(MODULE) -V -fastsse -Mlarge_arrays" \
+	LDFLAGS="-L$(LIB) -lParaFEM_mpi.$(VERSION) -lblas"
+
+debug:
+	$(MAKE) -f makeprograms.xt xx2 \
+	FFLAGS="-c -I$(MODULE) -V -g -Mbounds -traceback" \
+	LDFLAGS="-L$(LIB) -lParaFEM_mpi_D.$(VERSION) -lblas"
+
+xx2: xx2.o
+	$(FC) xx2.o -o xx2 $(LDFLAGS)
+
+xx2.o: xx2.f90
+	$(FC) xx2.f90 $(FFLAGS)
+
+clean:
+	rm -f *.o
+
+execlean:
+	rm -f xx2
+
+relink: xx2
+
+install:
+	cp xx2 ../../../../bin
