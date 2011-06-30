@@ -5,7 +5,7 @@
 
 == Smith and Griffiths, 4th Edition ==
 
-||*Program*||*Problem Type*||*SERIAL*||*MPI*||*Shared*||*OpenMP*||*BEM-LIB*||*BEM-LIB-P*||*GPU*||*Arpack*||
+||*Program*||*Problem Type*||*Status*||*SERIAL*||*MPI*||*Shared*||*OpenMP*||*BEM-LIB*||*BEM-LIB-P*||*GPU*||*Arpack*||
 ||*p121*||Three dimensional analysis of an elastic solid||F||Y||Y||F||-||-||F||-||
 ||*p126*||Steady state 3D Navier Stokes equations||F||Y||Y||F||-||-||F||-||
 ||*p129*||Forced vibration of a 3D elastic solid||F||Y||Y||F||-||-||F||-||
@@ -13,22 +13,24 @@
 
 == Smith, Griffiths and Margetts, 5th Edition (in preparation) ==
 
-||*Program*||*Problem Type*||*SERIAL*||*MPI*||*Shared*||*OpenMP*||*BEM-LIB*||*BEM-LIB-P*||*GPU*||*Arpack*||
-||*xx1*||3D analysis of an elastic solid with added UMAT support||F||Y||Y||F||-||-||F||-||
-||*xx2*||Three dimensional analysis of an elastic solid. Multiple materials. Mixed OpenMP/MPI||F||Y||Y||F||-||-||F||-||
-||*xx3*||3D strain of an elastic-plastic (von Mises) solid||F||Y||Y||F||-||-||F||-||
-||*xx4*||Eigenvalues and eigenvectors of a 3D solid using the Arnoldi algorithm||F||Y||Y||F||-||-||F||Y||
+||*Program*||*Problem Type*||*Status*||*SERIAL*||*MPI*||*Shared*||*OpenMP*||*BEM-LIB*||*BEM-LIB-P*||*GPU*||*Arpack*||
+||*xx1*||3D analysis of an elastic solid with added UMAT support. A development branch of p121.||C||F||Y||Y||F||-||-||F||-||
+||*xx2*||Three dimensional analysis of an elastic solid. Multiple materials. Mixed OpenMP/MPI. A development branch of p121.||UD||F||Y||Y||F||-||-||F||-||
+||*xx3*||Three dimensional analysis of an elastic solid. Multiple materials. GPU support. A development branch of p121.||UD||F||Y||Y||F||-||-||F||-||
+||*xx4*||3D strain of an elastic-plastic (von Mises) solid||C||F||Y||Y||F||-||-||F||-||
+||*xx5*||Eigenvalues and eigenvectors of a 3D solid using the Arnoldi algorithm||C||F||Y||Y||F||-||-||F||Y||
+||*xx6*||Three dimensional analysis of an elastic solid. Large deformation formulation with adaptive step sizes.||
 
 == Beer, Smith and Duenser ==
 
-||*Program*||*Problem Type*||*SERIAL*||*MPI*||*Shared*||*OpenMP*||*BEM-LIB*||*BEM-LIB-P*||*GPU*||*Arpack*||
+||*Program*||*Problem Type*||*Status*||*SERIAL*||*MPI*||*Shared*||*OpenMP*||*BEM-LIB*||*BEM-LIB-P*||*GPU*||*Arpack*||
 ||*prog81*||General purpose BEM program for solving elasticity problems (iterative equation solution using BiCGSTAB(l) in serial)||-||-||-||-||Y||-||-||-||
 ||*prog82*||General purpose program for solving elasticity problems (EBE BiCGSTAB(l) in serial||-||-||-||-||Y||-||-||-||
 ||*prog83*||General purpose BEM program for solving elasticity problems (EBE BiCGSTAB(l) in parallel||-||-||-||-||-||Y||-||-||
 
 == Other Programs ==
 
-||*Program*||*Problem Type*||*SERIAL*||*MPI*||*Shared*||*OpenMP*||*BEM-LIB*||*BEM-LIB-P*||*GPU*||*Arpack*||
+||*Program*||*Problem Type*||*Status*||*SERIAL*||*MPI*||*Shared*||*OpenMP*||*BEM-LIB*||*BEM-LIB-P*||*GPU*||*Arpack*||
 ||*gaitfem*||Three dimensional analysis of an elastic solid (direct solver in serial)||Y||-||-||-||-||-||-||-||
 
 
