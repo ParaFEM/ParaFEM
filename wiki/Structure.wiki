@@ -7,7 +7,6 @@
 
 ||*Program*||*Problem Type*||*SERIAL*||*MPI*||*Shared*||*OpenMP*||*BEM-LIB*||*BEM-LIB-P*||*GPU*||*Arpack*||
 ||*p121*||Three dimensional analysis of an elastic solid||F||Y||Y||F||-||-||F||-||
-||p121u||3D analysis of an elastic solid with added UMAT support||F||Y||Y||F||-||-||F||-||
 ||*p126*||Steady state 3D Navier Stokes equations||F||Y||Y||F||-||-||F||-||
 ||*p129*||Forced vibration of a 3D elastic solid||F||Y||Y||F||-||-||F||-||
 ||*p1210*||Forced vibration of a 3D elastic-plastic (von Mises) solid||F||Y||Y||F||-||-||F||-||
@@ -15,9 +14,10 @@
 == Smith, Griffiths and Margetts, 5th Edition (in preparation) ==
 
 ||*Program*||*Problem Type*||*SERIAL*||*MPI*||*Shared*||*OpenMP*||*BEM-LIB*||*BEM-LIB-P*||*GPU*||*Arpack*||
-||*p1211*||3D strain of an elastic-plastic (von Mises) solid||F||Y||Y||F||-||-||F||-||
-||*p1212*||Eigenvalues and eigenvectors of a 3D solid using the Arnoldi algorithm||F||Y||Y||F||-||-||F||Y||
-||*p1213*||Three dimensional analysis of an elastic solid. Multiple materials. Mixed OpenMP/MPI||F||Y||Y||F||-||-||F||-||
+||*xx1*||3D analysis of an elastic solid with added UMAT support||F||Y||Y||F||-||-||F||-||
+||*xx2*||Three dimensional analysis of an elastic solid. Multiple materials. Mixed OpenMP/MPI||F||Y||Y||F||-||-||F||-||
+||*xx3*||3D strain of an elastic-plastic (von Mises) solid||F||Y||Y||F||-||-||F||-||
+||*xx4*||Eigenvalues and eigenvectors of a 3D solid using the Arnoldi algorithm||F||Y||Y||F||-||-||F||Y||
 
 == Beer, Smith and Duenser ==
 
