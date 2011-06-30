@@ -22,7 +22,7 @@
 ||*Program*||*Problem Type*||*SERIAL*||*MPI*||*Shared*||*OpenMP*||*BEM-LIB*||*BEM-LIB-P*||*GPU*||*Arpack*||
 ||*xx1*||3D analysis of an elastic solid with added UMAT support. See p121.||F||Y||Y||F||-||-||F||-||
 ||*xx2*||Three dimensional analysis of an elastic solid. Multiple materials. Mixed OpenMP/MPI. See p121. (Under development). ||F||Y||Y||F||-||-||F||-||
-||*xx3*||Three dimensional analysis of an elastic solid. Multiple materials. GPU support. See p121. (Under development). ||F||Y||Y||F||-||-||F||-||
+||*xx3*||Three dimensional analysis of an elastic solid. GPU support. See p121. (Under development). ||F||Y||Y||F||-||-||F||-||
 ||*xx4*||3D strain of an elastic-plastic von Mises solid||F||Y||Y||F||-||-||F||-||
 ||*xx5*||Eigenvalues and eigenvectors of a 3D solid using the Arnoldi algorithm||F||Y||Y||F||-||-||F||Y||
 ||*xx6*||Three dimensional analysis of an elastic solid. Large deformation formulation with adaptive step sizes. (Under development).||F||Y||Y||F||-||-||F||-||
