@@ -1,0 +1,44 @@
+#summary p1213 control file data format.
+#sidebar TOC
+
+==p1213.dat==
+
+A typical p1213.dat file has the following format:
+
+{{{
+element
+mesh
+partitioner
+np_types
+nels nn nr nip nod loaded_nodes fixed_freedoms
+tol limit
+}}}
+
+||*Variable Name*||*Type*||*Meaning*||
+||{{{element}}} || Character || The element type. Permitted values are {{{hexahedron}}} and {{{tetrahedron}}}.||
+||{{{mesh}}} || Integer || Element node ordering scheme. Permitted values are {{{1}}} (Smith and Griffiths scheme) or {{{2}}} (Abaqus scheme).||
+||{{{partitioner}}} || Integer || Partitioning strategy. Permitted values are {{{1}}} (Smith and Griffiths partitioning) or {{{2}}} (use external partitioner).||
+||{{{np_types}}} || Integer || Number of different property types. ||
+||{{{nels}}} || Integer || Number of elements in the mesh.||
+||{{{nn}}} || Integer || Number of nodes in the mesh.||
+||{{{nr}}} || Integer || Number of restrained nodes in the mesh.||
+||{{{nip}}} || Integer || Number of integration points.||
+||{{{nod}}} || Integer || Number of nodes per element.||
+||{{{loaded_nodes}}} || Integer || Number of nodes with externally applied loads.||
+||{{{fixed_freedoms}}} || Integer || Number of freedoms with fixed displacements.||
+||{{{tol}}} || Real || Convergence tolerance for PCG.||
+||{{{limit}}} || Integer || Iteration ceiling for PCG.||
+
+
+A real example follows:
+
+{{{
+hexahedron
+2
+1
+5
+125 756 396 8 20 8 0
+1.e-5 200
+}}}
+
+Compare with source code for SUBROUTINE READ_P1213 in src/input.f90 
