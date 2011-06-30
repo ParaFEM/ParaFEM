@@ -5,6 +5,8 @@
 
 == Smith and Griffiths, 4th Edition ==
 
+The program names in this section are those used in Chapter 12. For example, p121 is the program number 1 in Chapter 12 (p12.1). In the book, these programs can only run built-in problem types. The equivalent programs in ParaFEM allow the user to read in problems generated using a third party meshing tool.
+
 ||*Program*||*Problem Type*||*SERIAL*||*MPI*||*GPU*||*OpenMP*||*BEM-LIB*||*BEM-LIB-P*||*Arpack*||
 ||*p121*||Three dimensional analysis of an elastic solid||F||Y||F||F||-||-||-||
 ||*p122*||Three dimensional analysis of an elastic-plastic Mohr-Coulomb solid (under development)||F||Y||F||F||-||-||-||
@@ -18,6 +20,8 @@
 ||*p1210*||Forced vibration of a 3D elastic-plastic (von Mises) solid||F||Y||F||F||-||-||-||
 
 == Smith, Griffiths and Margetts, 5th Edition (in preparation) ==
+
+The programs in this section are being developed for the 5th edition of "Programming the Finite Element Method." It is too early to allocate program names on the basis of Chapter number and program number. Therefore the programs have been given temporary names. These will change when the book is published.
 
 ||*Program*||*Problem Type*||*SERIAL*||*MPI*||*GPU*||*OpenMP*||*BEM-LIB*||*BEM-LIB-P*||*Arpack*||
 ||*xx1*||3D analysis of an elastic solid with added UMAT support. See p121.||F||Y||F||F||-||-||-||
