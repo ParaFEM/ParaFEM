@@ -25,8 +25,8 @@ MODULE INPUT
   !*    READ_P129              Reads the control data for program p129
   !*    READ_P1212             Reads the control data for program p1212
   !*    READ_P1213             Reads the control data for program p1213
-  !*    BCAST_INPUTDATA_P1211  Reads the control data for program ed5/p1211
-  !*    CHECK_INPUTDATA_P1211  Checks the control data for program ed5/p1211
+  !*    BCAST_INPUTDATA_XX4    Reads the control data for program ed5/xx4
+  !*    CHECK_INPUTDATA_XX4    Checks the control data for program ed5/xx4
   !*  AUTHOR
   !*    L. Margetts
   !*  COPYRIGHT
@@ -2150,7 +2150,7 @@ MODULE INPUT
 !------------------------------------------------------------------------------
 !------------------------------------------------------------------------------
 
-    SUBROUTINE BCAST_INPUTDATA_P1211(numpe,npes,element,meshgen,nels,nn,nr,   &
+    SUBROUTINE BCAST_INPUTDATA_XX4(numpe,npes,element,meshgen,nels,nn,nr,     &
                                      nip,plasitersMax,plasitersMin,           &
                                      loadIncrementsMax,                       &
                                      cjits,plastol,cjtol,fftol,ltol,          &
@@ -2256,13 +2256,13 @@ MODULE INPUT
     CALL MPI_BCAST(element,bufsizer,MPI_CHARACTER,0,MPI_COMM_WORLD,ier)
 
     RETURN
-    END SUBROUTINE BCAST_INPUTDATA_P1211
+    END SUBROUTINE BCAST_INPUTDATA_XX4
 
 !------------------------------------------------------------------------------
 !------------------------------------------------------------------------------
 !------------------------------------------------------------------------------
 
-    SUBROUTINE CHECK_INPUTDATA_P1211(numpe,npes,element,meshgen,nels,nn,nr,   &
+    SUBROUTINE CHECK_INPUTDATA_XX4(numpe,npes,element,meshgen,nels,nn,nr,   &
                                      nip,plasitersMax,plasitersMin,           &
                                      loadIncrementMax,                        &
                                      cjits,plastol,cjtol,fftol,ltol,          &
@@ -2343,6 +2343,6 @@ MODULE INPUT
     END IF
 
     RETURN
-    END SUBROUTINE CHECK_INPUTDATA_P1211
+    END SUBROUTINE CHECK_INPUTDATA_XX4
     
 END MODULE INPUT
