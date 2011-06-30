@@ -31,14 +31,14 @@
 == Beer, Smith and Duenser ==
 
 ||*Program*||*Problem Type*||*SERIAL*||*MPI*||*GPU*||*OpenMP*||*BEM-LIB*||*BEM-LIB-P*||*Arpack*||
-||*prog81*||General purpose BEM program for solving elasticity problems (iterative equation solution using BiCGSTAB(l) in serial)||-||-||-||-||Y||-||-||-||
-||*prog82*||General purpose program for solving elasticity problems (EBE BiCGSTAB(l) in serial||-||-||-||-||Y||-||-||-||
-||*prog83*||General purpose BEM program for solving elasticity problems (EBE BiCGSTAB(l) in parallel||-||-||-||-||-||Y||-||-||
+||*prog81*||General purpose BEM program for solving elasticity problems (iterative equation solution using BiCGSTAB(l) in serial)||-||-||-||-||Y||-||-||
+||*prog82*||General purpose program for solving elasticity problems (EBE BiCGSTAB(l) in serial||-||-||-||-||Y||-||-||
+||*prog83*||General purpose BEM program for solving elasticity problems (EBE BiCGSTAB(l) in parallel||-||-||-||-||-||Y||-||
 
 == Other Programs ==
 
 ||*Program*||*Problem Type*||*SERIAL*||*MPI*||*GPU*||*OpenMP*||*BEM-LIB*||*BEM-LIB-P*||*Arpack*||
-||*gaitfem*||Three dimensional analysis of an elastic solid using direct solver (under development)||Y||-||-||-||-||-||-||-||
+||*gaitfem*||Three dimensional analysis of an elastic solid using direct solver (under development)||Y||-||-||-||-||-||-||
 
 {{{
 F = To be implemented in the future
