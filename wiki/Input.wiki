@@ -11,6 +11,7 @@ This page describes the format of the ParaFEM ASCII input decks. The input decks
 ||{{{.d}}}  || The geometry of the problem||p121, p126, p129||
 ||{{{.bnd}}}|| The boundary conditions||p121, p126, p129||
 ||{{{.lds}}}|| The loads to be applied||p121, p129||
+||{{{.mat}}}|| The material properties ||p1211, p1213||
 
 The philosophy behind having separate files is that it reduces the burden of data transfer when running very large problems on parallel supercomputers. An enhancement to ParaFEM for those running smaller problems would be to allow the user to decide whether to use a single input file or have several separate files as defined here.
 
@@ -18,7 +19,7 @@ _If you experience difficulties, please note we are modifying the input decks in
 
 = The .dat file =
 
-Each example program typically requires a control data file called {{{<job_name>.dat}}}. This contains basic data about the problem such as the number of elements and nodes in the model, as well as parameters required by the solver. Please click on the following links for program specific details: [p121dat p121.dat], [p126dat p126.dat], [p129dat p129.dat].
+Each example program typically requires a control data file called {{{<job_name>.dat}}}. This contains basic data about the problem such as the number of elements and nodes in the model, as well as parameters required by the solver. Please click on the following links for program specific details: [p121dat p121.dat], [p126dat p126.dat], [p129dat p129.dat], [p1213dat p1213.dat].
 
 = The .d file =
 
