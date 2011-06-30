@@ -36,8 +36,8 @@ The programs in this section are being developed for the 5th edition of "Program
 
 ||*Program*||*Problem Type*||*SERIAL*||*MPI*||*GPU*||*OpenMP*||*BEM-LIB*||*BEM-LIB-P*||*Arpack*||
 ||*prog81*||General purpose BEM program for solving elasticity problems (iterative equation solution using BiCGSTAB(l) in serial)||-||-||-||-||Y||-||-||
-||*prog82*||General purpose program for solving elasticity problems (EBE BiCGSTAB(l) in serial||-||-||-||-||Y||-||-||
-||*prog83*||General purpose BEM program for solving elasticity problems (EBE BiCGSTAB(l) in parallel||-||-||-||-||-||Y||-||
+||*prog82*||General purpose program for solving elasticity problems (EBE BiCGSTAB(l) in serial)||-||-||-||-||Y||-||-||
+||*prog83*||General purpose BEM program for solving elasticity problems (EBE BiCGSTAB(l) in parallel)||-||-||-||-||-||Y||-||
 
 == Other Programs ==
 
