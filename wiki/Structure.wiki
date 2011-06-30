@@ -7,8 +7,13 @@
 
 ||*Program*||*Problem Type*||*SERIAL*||*MPI*||*Shared*||*OpenMP*||*BEM-LIB*||*BEM-LIB-P*||*GPU*||*Arpack*||
 ||*p121*||Three dimensional analysis of an elastic solid||F||Y||Y||F||-||-||F||-||
-||*p122*||Three dimensional analysis of an elastic solid (under development)||F||Y||Y||F||-||-||F||-||
+||*p122*||Three dimensional analysis of an elastic-plastic (Mohr-Coulomb) solid (under development)||F||Y||Y||F||-||-||F||-||
+||*p123*||Three dimensional Lapacian flow(under development)||F||Y||Y||F||-||-||F||-||
+||*p124*||Three dimensional transient flow - implicit analysis in time(under development)||F||Y||Y||F||-||-||F||-||
+||*p125*||Three dimensional transient flow-explicit analysis in time(under development)||F||Y||Y||F||-||-||F||-||
 ||*p126*||Steady state 3D Navier Stokes equations||F||Y||Y||F||-||-||F||-||
+||*p127*||Three-dimensional analysis of Biot poro-elastic solid (under development)||F||Y||Y||F||-||-||F||-||
+||*p128*||Eigenvalue analysis of three dimensional elastic solid (under development)||F||Y||Y||F||-||-||F||-||
 ||*p129*||Forced vibration of a 3D elastic solid||F||Y||Y||F||-||-||F||-||
 ||*p1210*||Forced vibration of a 3D elastic-plastic (von Mises) solid||F||Y||Y||F||-||-||F||-||
 
@@ -33,7 +38,6 @@
 
 ||*Program*||*Problem Type*||*SERIAL*||*MPI*||*Shared*||*OpenMP*||*BEM-LIB*||*BEM-LIB-P*||*GPU*||*Arpack*||
 ||*gaitfem*||Three dimensional analysis of an elastic solid (direct solver in serial)||Y||-||-||-||-||-||-||-||
-
 
 {{{
 F = To be implemented in the future
