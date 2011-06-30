@@ -24,7 +24,7 @@ MODULE INPUT
   !*    READ_P126              Reads the control data for program p126
   !*    READ_P129              Reads the control data for program p129
   !*    READ_P1212             Reads the control data for program p1212
-  !*    READ_P1213             Reads the control data for program p1213
+  !*    READ_XX2               Reads the control data for program ed5/xx2
   !*    BCAST_INPUTDATA_XX4    Reads the control data for program ed5/xx4
   !*    CHECK_INPUTDATA_XX4    Checks the control data for program ed5/xx4
   !*  AUTHOR
@@ -1639,17 +1639,17 @@ MODULE INPUT
 !------------------------------------------------------------------------------
 !------------------------------------------------------------------------------
 
-  SUBROUTINE READ_P1213(job_name,numpe,element,fixed_freedoms,limit,          &
-                        loaded_nodes,mesh,nels,nip,nn,nod,np_types,nr,        &
-                        partition,tol)
+  SUBROUTINE READ_XX2(job_name,numpe,element,fixed_freedoms,limit,            &
+                      loaded_nodes,mesh,nels,nip,nn,nod,np_types,nr,          &
+                      partition,tol)
 
-  !/****f* input/read_p1213
+  !/****f* input/read_xx2
   !*  NAME
-  !*    SUBROUTINE: read_p1213
+  !*    SUBROUTINE: read_xx2
   !*  SYNOPSIS
-  !*    Usage:      CALL read_p1213(job_name,numpe,element,fixed_freedoms,
-  !*                                limit,loaded_nodes,mesh,nels,nip,nn,nod,
-  !*                                np_types,nr,partition,tol)
+  !*    Usage:      CALL read_xx2(job_name,numpe,element,fixed_freedoms,
+  !*                              limit,loaded_nodes,mesh,nels,nip,nn,nod,
+  !*                              np_types,nr,partition,tol)
   !*  FUNCTION
   !*    Master processor reads the general data for the problem and broadcasts 
   !*    it to the slave processors.
@@ -1810,7 +1810,7 @@ MODULE INPUT
   END IF
 
   RETURN
-  END SUBROUTINE READ_P1213
+  END SUBROUTINE READ_XX2
   
 !------------------------------------------------------------------------------
 !------------------------------------------------------------------------------
