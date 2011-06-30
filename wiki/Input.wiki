@@ -166,6 +166,7 @@ matID-np_types e v
 }}}
 
 || *Variable Name* || *Type* || *Purpose* ||
+||{{{np_types}}} || Integer || Number of different property types.||
 ||{{{matID}}} || Integer || A unique number that identifies the material type.||
 ||{{{e}}} || Real || Young's modulus. ||
 ||{{{v}}} || Real || Poisson's ratio. ||
