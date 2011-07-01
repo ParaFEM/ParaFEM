@@ -23,10 +23,10 @@ MODULE INPUT
   !*    READ_P121              Reads the control data for program p121
   !*    READ_P126              Reads the control data for program p126
   !*    READ_P129              Reads the control data for program p129
-  !*    READ_P1212             Reads the control data for program p1212
-  !*    READ_XX2               Reads the control data for program ed5/xx2
-  !*    BCAST_INPUTDATA_XX5    Reads the control data for program ed5/xx5
-  !*    CHECK_INPUTDATA_XX5    Checks the control data for program ed5/xx5
+  !*    READ_XX2               Reads the control data for program xx2
+  !*    BCAST_INPUTDATA_XX5    Reads the control data for program xx5
+  !*    CHECK_INPUTDATA_XX5    Checks the control data for program xx5
+  !*    READ_XX6               Reads the control data for program xx6
   !*  AUTHOR
   !*    L. Margetts
   !*  COPYRIGHT
@@ -1476,16 +1476,16 @@ MODULE INPUT
 !------------------------------------------------------------------------------
 !------------------------------------------------------------------------------
 
-  SUBROUTINE READ_P1212(job_name,numpe,bmat,e,element,maxitr,mesh,ncv,nels,   &
-                         nev,nip,nn,nod,nr,rho,tol,v,which)
+  SUBROUTINE READ_XX6(job_name,numpe,bmat,e,element,maxitr,mesh,ncv,nels,     &
+                      nev,nip,nn,nod,nr,rho,tol,v,which)
 
-  !/****f* input/read_p1212
+  !/****f* input/read_xx6
   !*  NAME
-  !*    SUBROUTINE: read_p1212
+  !*    SUBROUTINE: read_xx6
   !*  SYNOPSIS
-  !*    Usage:      CALL read_p1212(job_name,numpe,bmat,e,element,maxitr,     &
-  !*                                 mesh,ncv,nels,nev,nip,nn,nod,nr,rho,tol, &
-  !*                                 v,which) 
+  !*    Usage:      CALL read_xx6(job_name,numpe,bmat,e,element,maxitr,       &
+  !*                              mesh,ncv,nels,nev,nip,nn,nod,nr,rho,tol,    &
+  !*                              v,which) 
   !*  FUNCTION
   !*    Master processor reads the general data for the problem and broadcasts 
   !*    it to the slave processors.
@@ -1633,7 +1633,7 @@ MODULE INPUT
   END IF
 
   RETURN
-  END SUBROUTINE READ_P1212
+  END SUBROUTINE READ_XX6
 
 !------------------------------------------------------------------------------
 !------------------------------------------------------------------------------
