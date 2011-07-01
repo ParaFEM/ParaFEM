@@ -228,6 +228,7 @@ PROGRAM mg2d
   
      WRITE(14,'(A)') "'hexahedron'"
      WRITE(14,'(A)') "2"                         ! Abaqus node numbering scheme
+     WRITE(14,'(A)') "1"                         ! Internal mesh partitioning
      WRITE(14,'(3I12,2I5,2I9)')nels,nn,nr,nip,nod,loaded_freedoms,fixed_freedoms
      WRITE(14,'(3E12.4,I8,A)') e,v,tol,limit," 1" ! S&G partitions
   
@@ -351,6 +352,7 @@ PROGRAM mg2d
   
      WRITE(14,'(A)') "'hexahedron'"
      WRITE(14,'(A)') "2"              ! Abaqus node numbering scheme
+     WRITE(14,'(A)') "1"              ! Internal mesh partitioning
      WRITE(14,'(7I9)') nels, nn, nr, nip, nod, loaded_freedoms, fixed_freedoms
      WRITE(14,'(3E12.4,I8,A)') e, v, tol, limit, " 1" ! S&G partitions
 
