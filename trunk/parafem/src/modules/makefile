@@ -24,37 +24,37 @@ all:	release-mpi release-bem_lib release-bem_lib_p
 release-mpi:
 	@echo
 	@echo "Building MODULE RELEASE (MPI)"
-#	@cd mpi && $(MAKE) release && cd ..
+	@cd mpi && $(MAKE) release && cd ..
 	@echo "Done MODULE RELEASE (MPI)"
 
 debug-mpi:
 	@echo
 	@echo "Building MODULE DEBUG (MPI)"
-#	@cd mpi && $(MAKE) debug && cd ..
+	@cd mpi && $(MAKE) debug && cd ..
 	@echo "Done MODULE DEBUG (MPI)"
 
 release-bem_lib:
 	@echo
 	@echo "Building MODULE RELEASE (BEM_LIB)"
-#	@cd bem && $(MAKE) release && cd ..
+	@cd bem && $(MAKE) release && cd ..
 	@echo "Done MODULE RELEASE (BEM_LIB)"
 
 debug-bem_lib:
 	@echo
 	@echo "Building MODULE DEBUG (BEM_LIB)"
-#	@cd bem & $(MAKE) debug && cd ..
+	@cd bem & $(MAKE) debug && cd ..
 	@echo "Done MODULE DEBUG (BEM_LIB)"
 
 release-bem_lib_p:
 	@echo
 	@echo "Building MODULE RELEASE (BEM_LIB_P)"
-#	@cd bem_p && $(MAKE) release && cd ..
+	@cd bem_p && $(MAKE) release && cd ..
 	@echo "Done MODULE RELEASE (BEM_LIB_P)"
 
 debug-bem_lib_p:
 	@echo
 	@echo "Building MODULE DEBUG (BEM_LIB_P)"
-#	@cd bem_p & $(MAKE) debug && cd ..
+	@cd bem_p & $(MAKE) debug && cd ..
 	@echo "Done MODULE DEBUG (BEM_LIB_P)"
 
 clean:
