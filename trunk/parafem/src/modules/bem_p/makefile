@@ -28,12 +28,12 @@ all:	release
 release:
 	@echo
 	@echo "Building MODULE RELEASE (BEM_LIB_P)"
-	$(MAKE) FFLAGS=$(LIB_BEM_P_REL_FFLAGS) lib-release
+	$(MAKE) FFLAGS="$(LIB_BEM_P_REL_FFLAGS)" lib-release
 	@echo "Done MODULE RELEASE (BEM_LIB_P)"
 debug:
 	@echo
 	@echo "Building MODULE DEBUG (BEM_LIB_P)"
-	$(MAKE) FFLAGS=$(LIB_BEM_P_DBG_FFLAGS) lib-debug
+	$(MAKE) FFLAGS="$(LIB_BEM_P_DBG_FFLAGS)" lib-debug
 	@echo "Done MODULE DEBUG (BEM_LIB_P)"
 
 lib-release:	$(SHARED) $(BEM)
