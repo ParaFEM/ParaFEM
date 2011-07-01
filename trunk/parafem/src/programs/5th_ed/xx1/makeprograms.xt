@@ -7,7 +7,7 @@ FC=ftn
 #FFLAGS= -c -I$(module) -V -g -Mbounds -traceback
 FFLAGS= -c -I$(module) -V -fastsse -Mlarge_arrays
 
-LDFLAGS= -L$(lib) -lParaFEM_mpi -lblas
+LDFLAGS= -L$(lib) -lParaFEM_mpi.2.1.0 -lblas
 
 .SUFFIXES: .o .f90
 
