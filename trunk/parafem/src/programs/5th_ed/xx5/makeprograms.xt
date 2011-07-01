@@ -1,0 +1,56 @@
+# MAKEFILE src/programs/5th_ed/xx5/makeprograms.xt
+# Author: Lee Margetts
+# Modified by: Louise M. Lever
+# -----------------------------------------------------------------------
+# Compiles xx5 program executable as RELEASE or DEBUG
+# Links with RELEASE STATIC library libParaFEM_mpi.$(VERSION).a
+#    or with RELEASE STATIC library libParaFEM_mpi_D.$(VERSION).a
+# -----------------------------------------------------------------------
+# Available Rules:
+#   (default) : execute the release rule
+#
+#   release: Build xx5 executable as RELEASE edition
+#   debug: Build xx5 executable as DEBUG edition
+#   install: Copy xx5 executable into global bin directory
+#   clean: Remove .o object files
+#   execlean: Remove the local xx4 executable
+#   relink: Rebuild xx5 from object files and libraries
+# -----------------------------------------------------------------------
+# Notes:
+# -----------------------------------------------------------------------
+
+include ../../../../include/mk_defs.inc
+
+MODULE	= ../../../../include
+LIB	= ../../../../lib
+FC=ftn
+.SUFFIXES: .o .f90
+
+all:	release
+
+release:
+	$(MAKE) -f makeprograms.xt xx5 \
+	FFLAGS="-c -I$(MODULE) -V -fastsse -Mlarge_arrays" \
+	LDFLAGS="-L$(LIB) -lParaFEM_mpi.$(VERSION) -lblas"
+
+debug:
+	$(MAKE) -f makeprograms.xt xx5 \
+	FFLAGS="-c -I$(MODULE) -V -g -Mbounds -traceback" \
+	LDFLAGS="-L$(LIB) -lParaFEM_mpi_D.$(VERSION) -lblas"
+
+xx5: xx5.o
+	$(FC) xx5.o -o xx5 $(LDFLAGS)
+
+xx5.o: xx5.f90
+	$(FC) xx5.f90 $(FFLAGS)
+
+clean:
+	rm -f *.o
+
+execlean:
+	rm -f xx5
+
+relink: xx5
+
+install:
+	cp xx5 ../../../../bin
