@@ -7,7 +7,7 @@
 
 The program names in this section are those used in Chapter 12. For example, p121 is program number 1 in Chapter 12 (p12.1). In the book, these programs can only execute hard coded problem types. Here, in ParaFEM, the equivalent programs allow the user to read in problems generated using a third party meshing tool. 
 
-_Note: Some of the programs here are still being ported to the Google Code repository. These are marked as "under development"._
+_Note: Some of the programs here are still being ported to the Google Code repository. These are marked "under development"._
 
 ||*Program*||*Problem Type*||*SERIAL*||*MPI*||*GPU*||*OpenMP*||*BEM-LIB*||*BEM-LIB-P*||*Arpack*||
 ||*p121*||Three dimensional analysis of an elastic solid||F||Y||F||F||-||-||-||
