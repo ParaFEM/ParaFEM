@@ -25,6 +25,8 @@ _Note: Some of the programs still need to be ported to this Google Code reposito
 
 The programs in this section are being developed for the 5th edition of "Programming the Finite Element Method." It is too early to allocate program names on the basis of Chapter and program number. Therefore the programs have been given temporary names. These will change when the book is published.
 
+_Note: Some of the programs here are under development._
+
 ||*Program*||*Problem Type*||*SERIAL*||*MPI*||*GPU*||*OpenMP*||*BEM-LIB*||*BEM-LIB-P*||*Arpack*||
 ||*xx1*||3D analysis of an elastic solid with added UMAT support. See p121.||F||Y||F||F||-||-||-||
 ||*xx2*||Three dimensional analysis of an elastic solid. Multiple materials. Mixed OpenMP/MPI. See p121. (Under development). ||F||Y||F||F||-||-||-||
