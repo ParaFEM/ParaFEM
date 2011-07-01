@@ -1,8 +1,8 @@
-PROGRAM p121u         
+PROGRAM xx1         
 !------------------------------------------------------------------------------ 
-!      Program 12.1U three dimensional analysis of an elastic solid
-!                    load control or displacement control
-!                    with added UMAT support
+!      Program XX.1 Three dimensional analysis of an elastic solid using load 
+!                   control or displacement control. Added support for Abaqus
+!                   UMAT. Compare with P121.
 !------------------------------------------------------------------------------ 
                                  
   USE precision     ; USE global_variables ; USE mp_interface
@@ -28,7 +28,7 @@ PROGRAM p121u
   REAL(iwp),PARAMETER   :: zero = 0.0_iwp
   REAL(iwp),PARAMETER   :: penalty = 1.0e20_iwp
   CHARACTER(LEN=15)     :: element
-  CHARACTER(LEN=50)     :: program_name='p121u'
+  CHARACTER(LEN=50)     :: program_name='xx1'
   CHARACTER(LEN=50)     :: fname,job_name,label
   LOGICAL               :: converged = .false.
 
@@ -557,4 +557,4 @@ PROGRAM p121u
  
   CALL shutdown() 
  
-END PROGRAM p121u
+END PROGRAM XX1
