@@ -42,12 +42,12 @@ all:	release
 release:
 	@echo
 	@echo "Building MODULE RELEASE (MPI)"
-	$(MAKE) FFLAGS=$(LIB_MPI_REL_FFLAGS) lib-release
+	$(MAKE) FFLAGS="$(LIB_MPI_REL_FFLAGS)" lib-release
 	@echo "Done MODULE RELEASE (MPI)"
 debug:
 	@echo
 	@echo "Building MODULE DEBUG (MPI)"
-	$(MAKE) FFLAGS=$(LIB_MPI_DBG_FFLAGS) lib-debug
+	$(MAKE) FFLAGS="$(LIB_MPI_DBG_FFLAGS)" lib-debug
 	@echo "Done MODULE DEBUG (MPI)"
 
 lib-release:	$(SHARED) $(MPI)
