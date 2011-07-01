@@ -11,21 +11,21 @@ LDFLAGS= -L$(lib) -lParaFEM_mpi -lblas
 
 .SUFFIXES: .o .f90
 
-all: p121u
+all: xx1
 default: all
 
 
-p121u: p121u.o
-	$(FC) p121u.o pf-elastic.o -o p121u $(LDFLAGS)
+xx1: xx1.o
+	$(FC) xx1.o pf-elastic.o -o xx1 $(LDFLAGS)
 
-p121u.o: p121u.f90
-	$(FC) p121u.f90 $(FFLAGS)
+xx1.o: xx1.f90
+	$(FC) xx1.f90 $(FFLAGS)
 
 clean:
 	rm -f *.o
 
 execlean:
-	rm -f p121u
+	rm -f xx1
 
-relink: p121u
+relink: xx1
 
