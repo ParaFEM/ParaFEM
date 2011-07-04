@@ -100,7 +100,9 @@ while [ $# -gt 0 ]; do
     ARG=`echo $1 | tr "[:upper:]" "[:lower:]"`
     case $ARG in
 	-usage) showusage; exit;;
+	usage) showusage; exit;;
 	-help) showusage; exit;;
+	help) showusage; exit;;
 
 	debug) DO_RELEASE=0; DO_DEBUG=1;;
 	clean) DO_RELEASE=0; DO_DEBUG=0; DO_CLEAN=1;;
@@ -179,7 +181,7 @@ else
     export MACHINE=`echo $MACHINE | tr "[:upper:]" "[:lower:]"`
 fi 
 
-export MK_PARAFEM_DEFS="$PARAFEM_HOME"/include/"$MACHINE".inc
+export MK_PARAFEM_DEFS="$PARAFEM_HOME"/build/"$MACHINE".inc
 if ! [ -f $MK_PARAFEM_DEFS ]; then
     echo
     echo "************************************************************************"
