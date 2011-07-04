@@ -16,8 +16,8 @@
 VPATH = ../shared
 .SUFFIXES: .f90 .o
 
-include ../../../include/mk_defs.inc
-include ../../../include/$(MACHINE).inc
+include ../../../build/mk_defs.inc
+include ../../../build/$(MACHINE).inc
 
 SERIAL=	mp_interface.o \
 	input.o
@@ -68,5 +68,5 @@ clean:
 	rm -f *.o *.mod *.a
 
 install:
-	cp *.mod ../../../include
+	cp *.mod ../../../include/serial
 	cp *.a ../../../lib
