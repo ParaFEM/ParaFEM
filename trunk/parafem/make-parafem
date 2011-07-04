@@ -49,13 +49,14 @@ BUILD_MODULES_OPT=
 # options are: p12(default), prog8(default), gaitfem(default)
 BUILD_PROGRAMS_OPT=
 BUILD_GROUP_P12="p121 p126 p129 p1210"
-BUILD_GROUP_XX="xx1 xx2 xx3 xx4 xx5 xx6 xx7 xx8"
+BUILD_GROUP_XX="xx1 xx2 xx3 xx4 xx5"
+# xx6 xx7 xx8"
 BUILD_GROUP_PROG8="prog81 prog82 prog83"
 BUILD_GROUP_GAITFEM="gaitfem"
 
 BUILD_MODULES_DEFAULTS="mpi serial bem_lib bem_lib_p"
-BUILD_PROGRAMS_DEFAULTS="p12 prog8"
-# xx gaitfem"
+BUILD_PROGRAMS_DEFAULTS="p12 prog8 xx"
+# gaitfem"
 
 # --------------------------------------------------------------------------------
 # Local functions
