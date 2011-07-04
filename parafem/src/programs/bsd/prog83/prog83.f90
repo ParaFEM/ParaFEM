@@ -21,10 +21,12 @@ REAL(iwp), ALLOCATABLE :: store_dUe_pp(:,:,:),store_dTe_pp(:,:,:)
 REAL(iwp), ALLOCATABLE :: F(:),F1(:)     !  global RHS
 REAL(iwp), ALLOCATABLE :: u1(:),y_cop(:) ! global vector of unknowns 
 CHARACTER (LEN=80) :: Title
+CHARACTER (LEN=50) :: job_name='prog83'
 INTEGER :: Cdim,m,n,Nodel,Nel,N_dof,Toa,N_tot
 INTEGER :: Nreg,Ltyp,Nodes,Maxe,Ndofe,Ndofs               
 INTEGER :: nod,nd,i,j,k,l,DoF,Pos,Isym,nsym,nsy
 INTEGER :: its,iters,ell,nels,ielpe
+INTEGER :: partitioner=1
 REAL(iwp),ALLOCATABLE    :: Fac(:)     !  Factors for symmetry
 REAL(iwp),ALLOCATABLE    :: Elres_te(:),Elres_ue(:)   
 INTEGER,ALLOCATABLE :: Incie(:)   !  Incidences for one element
@@ -67,7 +69,7 @@ CALL Destination(Isym,Ndest,Ldest,xP,Inci,Ndofs,nodes,N_dof,Nodel,nels)
 !     Determine global Boundary code vector
 !---------------------------------------------------------------------
 ALLOCATE(NCode(Ndofs))   
-CALL calc_nels_pp(nels)   ! elements per processor
+CALL calc_nels_pp(job_name,nels,npes,numpe,partitioner,nels_pp)
 IF(numpe==1) WRITE(12,*) "Elements on first processor ",nels_pp
 NCode=0
 DoF_o_System: &
