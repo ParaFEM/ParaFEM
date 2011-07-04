@@ -30,6 +30,7 @@ release:
 	@echo "Building MODULE RELEASE (BEM)"
 	$(MAKE) FFLAGS="$(LIB_BEM_REL_FFLAGS)" lib-release
 	@echo "Done MODULE RELEASE (BEM)"
+
 debug:
 	@echo
 	@echo "Building MODULE DEBUG (BEM)"
