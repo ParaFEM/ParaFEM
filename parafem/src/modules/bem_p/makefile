@@ -17,11 +17,20 @@
 VPATH = ../shared
 .SUFFIXES: .f90 .o
 
-include ../../../include/mk_defs.inc
-include ../../../include/$(MACHINE).inc
+include ../../../build/mk_defs.inc
+include ../../../build/$(MACHINE).inc
+
+SHARED=	precision.o \
+	global_variables.o \
+	timing.o
+
+MPI=	mp_interface.o \
+	input.o \
+	maths.o \
+	gather_scatter.o \
+	bicg.o
 
 BEM=	bem_lib_p.o
-SHARED=	precision.o global_variables.o
 
 all:	release
 
@@ -38,19 +47,25 @@ debug:
 	@echo "Done MODULE DEBUG (BEM_LIB_P)"
 
 lib-release:	$(SHARED) $(BEM)
-	ar -r libParaFEM_bem_p.$(VERSION).a $(SHARED) $(BEM)
+	ar -r libParaFEM_bem_p.$(VERSION).a $(SHARED) $(MPI) $(BEM)
 
 lib-debug:	$(SHARED) $(BEM)
-	ar -r libParaFEM_bem_p_D.$(VERSION).a $(SHARED) $(BEM)
+	ar -r libParaFEM_bem_p_D.$(VERSION).a $(SHARED) $(MPI) $(BEM)
 
 .f90.o:
 	$(FC) -c $(FFLAGS) ../shared/precision.f90
 	$(FC) -c $(FFLAGS) ../shared/global_variables.f90
+	$(FC) -c $(FFLAGS) ../shared/timing.f90
+	$(FC) -c $(FFLAGS) ../mpi/mp_interface.f90
+	$(FC) -c $(FFLAGS) ../mpi/input.f90
+	$(FC) -c $(FFLAGS) ../mpi/maths.f90
+	$(FC) -c $(FFLAGS) ../mpi/gather_scatter.f90
+	$(FC) -c $(FFLAGS) ../mpi/bicg.f90
 	$(FC) -c $(FFLAGS) bem_lib_p.f90
 
 clean:
 	rm -f *.o *.mod *.a
 
 install:
-	cp *.mod ../../../include
+	cp *.mod ../../../include/bem_p
 	cp *.a ../../../lib
