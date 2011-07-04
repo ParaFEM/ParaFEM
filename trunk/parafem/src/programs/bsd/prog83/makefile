@@ -1,4 +1,4 @@
-# MAKEFILE src/programs/4th_ed/prog83/makefile
+# MAKEFILE src/programs/bsd/prog83/makefile
 # Author: Louise M. Lever
 # -----------------------------------------------------------------------
 # Compiles prog83 program executable as RELEASE or DEBUG
