@@ -62,6 +62,8 @@ clean:
 	@cd bem && $(MAKE) clean && cd ..
 	@cd bem_p && $(MAKE) clean && cd ..
 
+install: install-mpi install-bem_lib install-bem_lib_p
+
 install-mpi:
 	@cd mpi && $(MAKE) install & cd ..
 
