@@ -54,7 +54,7 @@ release-bem_lib:
 debug-bem_lib:
 	@echo
 	@echo "Building MODULE DEBUG (BEM_LIB)"
-	@cd bem & $(MAKE) debug && cd ..
+	@cd bem && $(MAKE) debug && cd ..
 	@echo "Done MODULE DEBUG (BEM_LIB)"
 
 release-bem_lib_p:
@@ -66,7 +66,7 @@ release-bem_lib_p:
 debug-bem_lib_p:
 	@echo
 	@echo "Building MODULE DEBUG (BEM_LIB_P)"
-	@cd bem_p & $(MAKE) debug && cd ..
+	@cd bem_p && $(MAKE) debug && cd ..
 	@echo "Done MODULE DEBUG (BEM_LIB_P)"
 
 clean:
