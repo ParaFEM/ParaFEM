@@ -53,7 +53,7 @@ clean:
 	rm -f *.o
 
 execlean:
-	rm -f prog82
+	rm -f prog82 ../../../../bin/prog82
 
 relink: prog82
 
