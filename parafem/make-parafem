@@ -11,7 +11,7 @@
 # Config vars (change as required)
 # PARAFEM_HOME is the top level directory under which ParaFEM is compiled
 
-if [ -z "$PARAFEM_HOME" ] ; then PARAFEM_HOME=~/dev/parafem/parafem ; fi
+if [ -z "$PARAFEM_HOME" ] ; then PARAFEM_HOME=`pwd` ; fi
 VERSION=2.1.0
 
 # --------------------------------------------------------------------------------
@@ -53,8 +53,8 @@ BUILD_GROUP_PROG8="prog81 prog82 prog83"
 BUILD_GROUP_GAITFEM="gaitfem"
 
 BUILD_MODULES_DEFAULTS="mpi serial bem_lib bem_lib_p"
-BUILD_PROGRAMS_DEFAULTS="p12 prog8 xx"
-# gaitfem"
+BUILD_PROGRAMS_DEFAULTS="p12 prog8"
+# xx gaitfem"
 
 # --------------------------------------------------------------------------------
 # Local functions
@@ -103,8 +103,7 @@ while [ $# -gt 0 ]; do
 
 	debug) DO_RELEASE=0; DO_DEBUG=1;;
 	clean) DO_RELEASE=0; DO_DEBUG=0; DO_CLEAN=1;;
-	realclean) DO_RELEASE=0; DO_DEBUG=0; DO_CLEAN=2;;
-	execlean) DO_RELEASE=0; DO_DEBUG=0; DO_CLEAN=3;;
+	execlean) DO_RELEASE=0; DO_DEBUG=0; DO_CLEAN=2;;
 
 	# ------------------------------------------------------------------------
 	# all module options
@@ -195,11 +194,9 @@ MODULES_TARGET=
 TARGET=
 if [ $DO_CLEAN -gt 0 ]; then
     case $DO_CLEAN in
-	1) TARGET=clean;;
-	2) TARGET=realclean;;
-	3) TARGET=execlean;;
+	1) TARGET=clean; MODULES_TARGET=clean;;
+	2) TARGET=execlean; MODULES_TARGET=execlean;;
     esac
-    MODULES_TARGET=clean;
 else
     # for release/debug prefixes append each MODULES_BUILD_OPT
     if [ $DO_RELEASE = 1 ]; then
