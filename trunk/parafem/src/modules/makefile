@@ -19,7 +19,7 @@ VPATH = shared
 include ../../include/mk_defs.inc
 include ../../include/$(MACHINE).inc
 
-all:	release-mpi release-bem_lib release-bem_lib_p
+all:	release-mpi release-serial release-bem_lib release-bem_lib_p
 
 release-mpi:
 	@echo
@@ -32,6 +32,18 @@ debug-mpi:
 	@echo "Building MODULE DEBUG (MPI)"
 	@cd mpi && $(MAKE) debug && cd ..
 	@echo "Done MODULE DEBUG (MPI)"
+
+release-serial:
+	@echo
+	@echo "Building MODULE RELEASE (SERIAL)"
+	@cd serial && $(MAKE) release && cd ..
+	@echo "Done MODULE RELEASE (SERIAL)"
+
+debug-serial:
+	@echo
+	@echo "Building MODULE DEBUG (SERIAL)"
+	@cd serial && $(MAKE) debug && cd ..
+	@echo "Done MODULE DEBUG (SERIAL)"
 
 release-bem_lib:
 	@echo
@@ -62,10 +74,13 @@ clean:
 	@cd bem && $(MAKE) clean && cd ..
 	@cd bem_p && $(MAKE) clean && cd ..
 
-install: install-mpi install-bem_lib install-bem_lib_p
+install: install-mpi install-serial install-bem_lib install-bem_lib_p
 
 install-mpi:
 	@cd mpi && $(MAKE) install & cd ..
+
+install-serial:
+	@cd serial && $(MAKE) install & cd ..
 
 install-bem_lib:
 	@cd bem && $(MAKE) install && cd ..
