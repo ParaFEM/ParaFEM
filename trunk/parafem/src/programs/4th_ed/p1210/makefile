@@ -53,7 +53,7 @@ clean:
 	rm -f *.o
 
 execlean:
-	rm -f p1210
+	rm -f p1210 ../../../../bin/p1210
 
 relink: p1210
 
