@@ -71,8 +71,13 @@ debug-bem_lib_p:
 
 clean:
 	@cd mpi && $(MAKE) clean && cd ..
+	@cd serial && $(MAKE) clean && cd ..
 	@cd bem && $(MAKE) clean && cd ..
 	@cd bem_p && $(MAKE) clean && cd ..
+
+execlean:
+	@rm -f ../../include/*.mod
+	@rm -f ../../lib/libParaFEM_*.a
 
 install: install-mpi install-serial install-bem_lib install-bem_lib_p
 
