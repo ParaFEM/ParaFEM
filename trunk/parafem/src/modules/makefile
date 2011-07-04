@@ -16,8 +16,8 @@
 VPATH = shared
 .SUFFIXES: .f90 .o
 
-include ../../include/mk_defs.inc
-include ../../include/$(MACHINE).inc
+include ../../build/mk_defs.inc
+include ../../build/$(MACHINE).inc
 
 all:	release-mpi release-serial release-bem_lib release-bem_lib_p
 
@@ -76,10 +76,13 @@ clean:
 	@cd bem_p && $(MAKE) clean && cd ..
 
 execlean:
-	@rm -f ../../include/*.mod
+	@rm -rf ../../include/*.mod
 	@rm -f ../../lib/libParaFEM_*.a
 
-install: install-mpi install-serial install-bem_lib install-bem_lib_p
+install:
+	@echo
+	@echo "Installing: MPI SERIAL BEM BEM_P libraries"
+	$(MAKE) install-mpi install-serial install-bem_lib install-bem_lib_p
 
 install-mpi:
 	@cd mpi && $(MAKE) install & cd ..
