@@ -24,6 +24,7 @@ DO_RELEASE=1
 DO_DEBUG=0
 DO_INSTALL=1
 DO_CLEAN=0
+DO_EXECLEAN=0
 
 # build flags - default all
 BUILD_MODULES=1
@@ -103,7 +104,7 @@ while [ $# -gt 0 ]; do
 
 	debug) DO_RELEASE=0; DO_DEBUG=1;;
 	clean) DO_RELEASE=0; DO_DEBUG=0; DO_CLEAN=1;;
-	execlean) DO_RELEASE=0; DO_DEBUG=0; DO_CLEAN=2;;
+	execlean) DO_RELEASE=0; DO_DEBUG=0; DO_EXECLEAN=1;;
 
 	# ------------------------------------------------------------------------
 	# all module options
@@ -192,11 +193,13 @@ fi
 
 MODULES_TARGET=
 TARGET=
-if [ $DO_CLEAN -gt 0 ]; then
-    case $DO_CLEAN in
-	1) TARGET="$TARGET clean"; MODULES_TARGET="$MODULES_TARGET clean";;
-	2) TARGET="$TARGET execlean"; MODULES_TARGET="$MODULES_TARGET execlean";;
-    esac
+if [ $DO_CLEAN -gt 0 ] || [ $DO_EXECLEAN -gt 0 ]; then
+    if [ $DO_CLEAN -gt 0 ]; then
+	TARGET="$TARGET clean"; MODULES_TARGET="$MODULES_TARGET clean"
+    fi
+    if [ $DO_EXECLEAN -gt 0 ]; then
+	TARGET="$TARGET execlean"; MODULES_TARGET="$MODULES_TARGET execlean"
+    fi
 else
     # for release/debug prefixes append each MODULES_BUILD_OPT
     if [ $DO_RELEASE = 1 ]; then
