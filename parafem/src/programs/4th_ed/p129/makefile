@@ -18,10 +18,10 @@
 # Notes:
 # -----------------------------------------------------------------------
 
-include ../../../../include/mk_defs.inc
-include ../../../../include/$(MACHINE).inc
+include ../../../../build/mk_defs.inc
+include ../../../../build/$(MACHINE).inc
 
-MODULE	= ../../../../include
+MODULE	= ../../../../include/mpi
 LIB	= ../../../../lib
 .SUFFIXES: .o .f90
 
