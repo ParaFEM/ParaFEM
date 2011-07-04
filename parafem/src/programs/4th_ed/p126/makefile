@@ -53,7 +53,7 @@ clean:
 	rm -f *.o
 
 execlean:
-	rm -f p126
+	rm -f p126 ../../../../bin/p126
 
 relink: p126
 

@@ -53,7 +53,7 @@ clean:
 	rm -f *.o
 
 execlean:
-	rm -f p129
+	rm -f p129 ../../../../bin/p129
 
 relink: p129
 
