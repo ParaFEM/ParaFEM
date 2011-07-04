@@ -2,8 +2,8 @@
 # Author: Louise M. Lever
 # -----------------------------------------------------------------------
 # Compiles prog81 program executable as RELEASE or DEBUG
-# Links with RELEASE STATIC library libParaFEM_mpi.$(VERSION).a
-#    or with RELEASE STATIC library libParaFEM_mpi_D.$(VERSION).a
+# Links with RELEASE STATIC library libParaFEM_bem.$(VERSION).a
+#    or with RELEASE STATIC library libParaFEM_bem_D.$(VERSION).a
 # -----------------------------------------------------------------------
 # Available Rules:
 #   (default) : execute the release rule
@@ -18,10 +18,10 @@
 # Notes:
 # -----------------------------------------------------------------------
 
-include ../../../../include/mk_defs.inc
-include ../../../../include/$(MACHINE).inc
+include ../../../../build/mk_defs.inc
+include ../../../../build/$(MACHINE).inc
 
-MODULE	= ../../../../include
+MODULE	= ../../../../include/bem
 LIB	= ../../../../lib
 .SUFFIXES: .o .f90
 
@@ -31,16 +31,16 @@ release:
 	@echo
 	@echo "Building prog81 RELEASE"
 	$(MAKE) prog81 \
-	FFLAGS="-c -I$(MODULE) $(PROG81_MPI_REL_FFLAGS)" \
-	LDFLAGS="-L$(LIB) -lParaFEM_bem.$(VERSION) $(PROG81_MPI_REL_LDFLAGS)"
+	FFLAGS="-c -I$(MODULE) $(PROG81_BEM_REL_FFLAGS)" \
+	LDFLAGS="-L$(LIB) -lParaFEM_bem.$(VERSION) $(PROG81_BEM_REL_LDFLAGS)"
 	@echo "Done prog81 RELEASE"
 
 debug:
 	@echo
 	@echo "Building prog81 DEBUG"
 	$(MAKE) prog81 \
-	FFLAGS="-c -I$(MODULE) $(PROG81_MPI_DBG_FFLAGS)" \
-	LDFLAGS="-L$(LIB) -lParaFEM_bem_D.$(VERSION) $(PROG81_MPI_DBG_LDFLAGS)"
+	FFLAGS="-c -I$(MODULE) $(PROG81_BEM_DBG_FFLAGS)" \
+	LDFLAGS="-L$(LIB) -lParaFEM_bem_D.$(VERSION) $(PROG81_BEM_DBG_LDFLAGS)"
 	@echo "Done prog81 DEBUG"
 
 prog81: prog81.o
