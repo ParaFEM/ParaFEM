@@ -47,11 +47,14 @@ BUILD_MODULES_OPT=
 # PROGRAM build options
 # options are: p12(default), prog8(default), gaitfem(default)
 BUILD_PROGRAMS_OPT=
-#BUILD_GROUP_P12="p121 p126 p129 p1210"
-BUILD_GROUP_P12="p121"
+BUILD_GROUP_P12="p121 p126 p129 p1210"
 BUILD_GROUP_XX="xx1 xx2 xx3 xx4 xx5 xx6 xx7 xx8"
 BUILD_GROUP_PROG8="prog81 prog82 prog83"
 BUILD_GROUP_GAITFEM="gaitfem"
+
+BUILD_MODULES_DEFAULTS="mpi serial bem_lib bem_lib_p"
+BUILD_PROGRAMS_DEFAULTS="p12 prog8 xx"
+# gaitfem"
 
 # --------------------------------------------------------------------------------
 # Local functions
@@ -144,14 +147,13 @@ echo "MACHINE set to $MACHINE";
 # If no build options are given, report and set defaults
 echo
 if [ $BUILD_MODULES_GIVEN = 0 ]; then
-    echo "No build type given for MODULES; defaulting to: mpi bem_lib bem_lib_p"
-    BUILD_MODULES_OPT="mpi bem_lib bem_lib_p"
+    echo "No build type given for MODULES; defaulting to: $BUILD_MODULES_DEFAULTS"
+    BUILD_MODULES_OPT=$BUILD_MODULES_DEFAULTS
 fi
 
 if [ $BUILD_PROGRAMS_GIVEN = 0 ]; then
-    echo "No build type given for PROGRAMS; defaulting to: p12 prog8 gaitfem"
-    #BUILD_PROGRAMS_OPT="p12 xx prog8 gaitfem"
-    BUILD_PROGRAMS_OPT="p12"
+    echo "No build type given for PROGRAMS; defaulting to: $BUILD_PROGRAMS_DEFAULTS"
+    BUILD_PROGRAMS_OPT=$BUILD_PROGRAMS_DEFAULTS
 fi
 
 # --------------------------------------------------------------------------------
@@ -177,7 +179,7 @@ else
     export MACHINE=`echo $MACHINE | tr "[:upper:]" "[:lower:]"`
 fi 
 
-export MK_PARAFEM_DEFS="$PARAFEM_HOME"/include/"$MACHINE"_defs.inc
+export MK_PARAFEM_DEFS="$PARAFEM_HOME"/include/"$MACHINE".inc
 if ! [ -f $MK_PARAFEM_DEFS ]; then
     echo
     echo "************************************************************************"
@@ -215,6 +217,7 @@ else
     fi
     # append install rule if set
     if [ $DO_INSTALL = 1 ]; then
+	MODULES_TARGET="$MODULES_TARGET install"
 	TARGET="$TARGET install"
     fi
 fi
@@ -253,8 +256,8 @@ if [ $BUILD_PROGRAMS = 1 ]; then
 		    cd src/programs/bsd/$PROG && make $TARGET && cd ../../../..
 		done;;
 	    gaitfem) 
-		for PROG in $BUILD_GROUP_PROG8; do
-		    cd src/programs/gaitfem/$PROG && make $TARGET && cd ../../../..
+		for PROG in $BUILD_GROUP_GAITFEM; do
+		    cd src/programs/gaitfem && make $TARGET && cd ../../../..
 		done;;
 	esac
     done
