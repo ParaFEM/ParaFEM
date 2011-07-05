@@ -71,14 +71,14 @@ BUILD_GROUP_GAITFEM="gaitfem"
 
 # TOOLS build options
 BUILD_TOOLS_OPT=
-BUILD_GROUP_PREPROC="inp2d mg2d partitioner dinomesher"
+BUILD_GROUP_PREPROC="inp2d mg2d" # + partitioner dinomesher
 BUILD_GROUP_POSTPROC="d2off bnd2dis mat2numpe rdfaces upvw2dis testbc"
 
 # DEFAULT build options for LIBRARIES, MODULES, PROGRAMS and TOOLS
 BUILD_LIBRARIES_DEFAULTS="arpack metis"
 BUILD_MODULES_DEFAULTS="mpi serial bem_lib bem_lib_p"
 BUILD_PROGRAMS_DEFAULTS="p12 prog8 xx" # + gaitfem
-BUILD_TOOLS_DEFAULTS="preproc postproc"
+BUILD_TOOLS_DEFAULTS="preproc" # + postproc
 
 # --------------------------------------------------------------------------------
 # Local functions
