@@ -26,6 +26,7 @@ MPI=	mp_interface.o \
 	gather_scatter.o \
 	pcg.o \
 	loading.o \
+	large_strain.o \
 	bicg.o
 SHARED=	precision.o \
 	global_variables.o \
@@ -75,6 +76,7 @@ lib-debug:	$(SHARED) $(MPI)
 	$(FC) -c $(FFLAGS) pcg.f90
 	$(FC) -c $(FFLAGS) loading.f90
 	$(FC) -c $(FFLAGS) bicg.f90
+	$(FC) -c $(FFLAGS) large_strain.f90
 
 clean:
 	rm -f *.o *.mod *.a

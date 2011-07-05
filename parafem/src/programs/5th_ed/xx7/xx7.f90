@@ -1,24 +1,19 @@
-program p132_gen
+program XX7
 !------------------------------------------------------------------------------
-!      program par132:  elastic analysis, large deformations
+!      program xx7:  elastic analysis, large deformations
 !------------------------------------------------------------------------------
 
   USE precision
-  USE maths_serial
-  USE elements
-  USE decomposition
-  USE structure_dof
-  USE others_serial
-  USE large_deformations
-
-  USE start_finish
-  USE input_output
-  USE maths_parallel
-  USE stress
   USE global_variables
+  USE mp_interface
+  USE input
+  USE output
   USE gather_scatter
-  USE others_parallel
-  USE krylov_methods
+  USE partition
+  USE maths
+  USE timing
+  USE large_strain
+  
 
   IMPLICIT NONE
 
@@ -26,6 +21,7 @@ program p132_gen
   INTEGER :: nels, nn, nr, nip, nodof=3, nod, nst=6, loaded_nodes, nn_pp
   INTEGER :: nf_start, fmt=1, i, j, k, ndim=3, iters, limit, iel, nn_start
   INTEGER :: num_load_steps, iload, igauss, dimH, inewton, jump, npes_pp
+  INTEGER :: partitioner=1
   REAL(iwp) :: e, v, det, tol, maxdiff, tol2, detF
   REAL(iwp) :: energy, energy1, rn0
   CHARACTER(len=15) :: element
@@ -91,8 +87,8 @@ program p132_gen
 !     Output: fname_base ch: Name of the file (maybe par131) 
  
   fname = fname_base(1:INDEX(fname_base," ")-1) // ".dat"
-  CALL READ_DATA_PAR132(fname,numpe,nels,nn,nr,loaded_nodes,fixed_nodes,nip, &
-                        limit,tol,e,v,nod,num_load_steps,jump,tol2)
+  CALL READ_DATA_XX7(fname,numpe,nels,nn,nr,loaded_nodes,fixed_nodes,nip,     &
+                     limit,tol,e,v,nod,num_load_steps,jump,tol2)
 
   IF (nels < npes) THEN
     CALL SHUTDOWN
@@ -113,27 +109,18 @@ program p132_gen
     dimH=4
   END IF
 
-  !-------------------------------------------------------------------------
-  ! 1.a Get integration Gauss points and weights in the element
-  !-------------------------------------------------------------------------
+!------------------------------------------------------------------------------
+! 1. Get integration Gauss points and weights in the element
+!------------------------------------------------------------------------------
   
   ALLOCATE(points(ndim,nip), weights(nip))
   CALL GET_GAUSS_POINTS(element,points,weights)
 
-  !-------------------------------------------------------------------------
-  ! 2. Import and distribute mesh
-  !-------------------------------------------------------------------------
+!------------------------------------------------------------------------------
+! 2. Import and distribute mesh
+!------------------------------------------------------------------------------
 
-!     Input: numpe i:  rank of the local processor (1, 2, ..., npes)
-!            npes i:   number of processors 
-!            nels i:   number of elements in the problem
-  CALL CALC_NELS_PP(nels)
-!     Output: nels_pp i:  number of elements in the processor numpe
-!             iel_start i: first element assignated in the processor numpe,
-!                          so the elements for processor numpe are:
-!                          iel_start, iel_start+1, iel_start+2,...,
-!                          iel_start+nels_pp-1
-!     Remarks: This subroutine is in gather_scatter.f90 (line 93)
+  CALL CALC_NELS_PP(fname_base,nels,npes,numpe,partitioner,nels_pp)
 
   ALLOCATE(g_num_pp(nod, nels_pp)) 
 
@@ -203,24 +190,15 @@ program p132_gen
 
   CALL COMPUTE_NPES_PP(nels,neq,nn,npes,numpe,g_num_pp,rest,npes_pp)
 
-!---------------------------------------------------------------------------
-!     Input: numpe i:  rank of the local processor (1, 2, ..., npes)
-!            npes i:   number of processors 
-!            neq i:    number of equations to solve
-  CALL CALC_NEQ_PP
-!     Output: neq_pp i:    number of equations assigned to processor numpe
-!             ieq_start i: first equation assignated in the processor numpe,
-!                          so the equations for processor numpe are:
-!                          ieq_start, ieq_start+1, ieq_start+2,...,
-!                          ieq_start+neq_pp-1
+  CALL CALC_NEQ_PP(nels)
 
-  CALL MAKE_GGL(npes_pp,g_g_pp)
+  CALL MAKE_GGL(npes_pp,npes,g_g_pp)
 
   timest(2) = ELAP_TIME()
 
-  !-------------------------------------------------------------------------
-  ! 4. Read and distribute essential boundary conditions
-  !-------------------------------------------------------------------------
+!------------------------------------------------------------------------------
+! 4. Read and distribute essential boundary conditions
+!------------------------------------------------------------------------------
 
   numfix_pp = 0
 
@@ -230,8 +208,7 @@ program p132_gen
     ALLOCATE(fixed_dof(fixed_nodes))
     ALLOCATE(fixed_value(fixed_nodes))
 
-    fname = fname_base(1:INDEX(fname_base, " ")-1) // ".fix"
-    CALL READ_FIXED(fname,numpe,fixed_dof,fixed_node,fixed_value)
+    CALL READ_FIXED(fname_base,numpe,fixed_node,fixed_dof,fixed_value) ! new order
 
     IF (element=='hexahedron') THEN
       fixdim=4
@@ -276,12 +253,12 @@ program p132_gen
 
   IF (loaded_nodes>0) THEN
 
-    fname = fname_base(1:INDEX(fname_base, " ")-1) // ".lds"
-    CALL READ_LOADS(fname,numpe,load_node,load_value)
+    CALL READ_LOADS(fname_base,numpe,load_node,load_value)
 
-    CALL LOAD(nn_start,g_num_pp,load_node,load_value,nf_pp,fext_pp(1:))
-
-    DEALLOCATE(load_node, load_value)
+    CALL LOAD_2(nn_start,g_num_pp,load_node,load_value,nf_pp,fext_pp(1:))
+!   Originally CALL LOAD - but this differs from subroutine in ParaFEM
+   
+    DEALLOCATE(load_node,load_value)
 
   END IF
 
@@ -564,7 +541,7 @@ program p132_gen
       END DO
 
       text = "*DISPLACEMENT"
-      CALL SCATTER_ALLNODES(npes,nn,nels_pp,g_num_pp,nod,nodof,nodes_pp, &
+      CALL SCATTER_NODES(npes,nn,nels_pp,g_num_pp,nod,nodof,nodes_pp, &
               node_start,node_end,xnewel_pp,xnewnodes_pp,1)
       CALL WRITE_NODAL_VARIABLE(text,24,iload,nodes_pp,npes,numpe,nodof, &
                                 xnewnodes_pp)
@@ -585,7 +562,7 @@ program p132_gen
       DEALLOCATE(principal_integral_pp,princinodes_pp)
 	 
       text = "*NODAL REACTIONS"
-      CALL SCATTER_ALLNODES(npes,nn,nels_pp,g_num_pp,nod,nodof,nodes_pp, &
+      CALL SCATTER_NODES(npes,nn,nels_pp,g_num_pp,nod,nodof,nodes_pp, &
               node_start,node_end,storefint_pp,reacnodes_pp,0)
       CALL WRITE_NODAL_VARIABLE(text,27,iload,nodes_pp,npes,numpe,nodof, &
                                 reacnodes_pp)
@@ -637,4 +614,4 @@ program p132_gen
 !---------------------------------- shutdown ----------------------------------
   CALL SHUTDOWN()
 
- END PROGRAM p132_gen
+ END PROGRAM XX7

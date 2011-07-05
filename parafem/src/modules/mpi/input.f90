@@ -13,10 +13,13 @@ MODULE INPUT
   !*
   !*    READ_G_COORD_PP        Reads the global coordinates
   !*    READ_G_NUM_PP          Reads the element nodal steering array
+  !*    READ_ELEMENTS          Reads the element nodal steering array
+  !*    READ_ELEMENTS_2        Reads the element nodal steering array
   !*    READ_LOADS             Reads nodal forces
   !*    READ_LOADS_NS          Reads lid velocities for p126
   !*    READ_FIXED             Reads fixed freedoms for displacement control
   !*    READ_REST              Reads the restraints
+  !*    READ_RESTRAINTS        Reads the restraints
   !*    READ_MATERIALID_PP     Reads the material ID for each element
   !*    READ_MATERIALVALUE     Reads property values for each material ID
   !*    READ_NELS_PP           Reads number of elements assigned to processor
@@ -27,6 +30,7 @@ MODULE INPUT
   !*    BCAST_INPUTDATA_XX5    Reads the control data for program xx5
   !*    CHECK_INPUTDATA_XX5    Checks the control data for program xx5
   !*    READ_XX6               Reads the control data for program xx6
+  !*    READ_XX7               Reads the control data for program xx7
   !*  AUTHOR
   !*    L. Margetts
   !*  COPYRIGHT
@@ -203,6 +207,118 @@ MODULE INPUT
   RETURN
   
   END SUBROUTINE READ_G_COORD_PP
+
+!---------------------------------------------------------------------------
+!---------------------------------------------------------------------------
+!---------------------------------------------------------------------------
+
+  SUBROUTINE READ_NODES(fname,nn,nn_start,numpe,g_coord_pp)
+
+    !/****f* input_output/read_nodes
+    !*  NAME
+    !*    SUBROUTINE: read_nodes
+    !*  SYNOPSIS
+    !*    Usage:      CALL read_nodes(fname,nn,nn_start,numpe,g_coord_pp)
+    !*  FUNCTION
+    !*    Master process reads the global array of nodal coordinates and
+    !*    broadcasts to slave processes.
+    !*    Processes record only its local part of nodal coordinates.
+    !*  INPUTS
+    !*    The following arguments have the INTENT(IN) attribute:
+    !*
+    !*    fname                  : Character
+    !*                           : File name to read
+    !*
+    !*    nn                     : Integer
+    !*                           : Total number of nodes 
+    !*
+    !*    nn_start               : Integer
+    !*                           : First node number in a process
+    !*
+    !*    numpe                  : Integer
+    !*                           : Process number
+    !*
+    !*    The following arguments have the INTENT(OUT) attribute:
+    !*
+    !*    g_coord_pp(ndim,nn_pp) : Real
+    !*                           : Nodal coordinates
+    !*
+    !*  AUTHOR
+    !*    Francisco Calvo
+    !*  CREATION DATE
+    !*    01.06.2007
+    !*  COPYRIGHT
+    !*    (c) University of Manchester 2007-2011
+    !******
+    !*  Place remarks that should not be included in the documentation here.
+    !*
+    !*  The method based on building global arrays.
+    !*  
+    !*  An improvement would be to avoid allocating the global array
+    !*  
+    !*  THIS SUBROUTINE IS ONLY USED IN PROGRAM XX7 AND NEEDS TO BE REMOVED
+    !*  FROM PARAFEM
+    !*/
+  
+    IMPLICIT NONE
+
+    CHARACTER(*), INTENT(IN)  :: fname
+    INTEGER,      INTENT(IN)  :: nn, nn_start, numpe
+    REAL(iwp),    INTENT(OUT) :: g_coord_pp(:,:)
+    INTEGER :: ndim, nn_pp, i, k, bufsize, inpe, ier
+    REAL(iwp), ALLOCATABLE :: g_coord(:,:)
+
+    !----------------------------------------------------------------------
+    ! 1. Allocate global arrays
+    !----------------------------------------------------------------------
+
+    ndim  = UBOUND(g_coord_pp,1)
+
+    ALLOCATE(g_coord(ndim,nn))
+
+    !----------------------------------------------------------------------
+    ! 2. Master process reads the data
+    !----------------------------------------------------------------------
+
+    IF(numpe==1)THEN
+      OPEN(10,FILE=fname,STATUS='OLD',ACTION='READ')
+      READ(10,*)   !headers
+      READ(10,*)   !headers
+      DO i = 1,nn
+        READ(10,*)k,g_coord(:,i)
+      END DO
+      CLOSE(10)
+    END IF
+
+    !----------------------------------------------------------------------
+    ! 3. Master process broadcasts the data to slave processes
+    !----------------------------------------------------------------------
+   
+    bufsize = ndim*nn
+
+    CALL MPI_BCAST(g_coord,bufsize,MPI_REAL8,0,MPI_COMM_WORLD,ier)
+
+    !----------------------------------------------------------------------
+    ! 4. Each process records only its local range of nodal coordinates
+    !----------------------------------------------------------------------
+
+    nn_pp = UBOUND(g_coord_pp,2) 
+    inpe  = nn_start 
+
+    DO i = 1,nn_pp
+      g_coord_pp(:,i) = g_coord(:,inpe)
+      inpe = inpe + 1
+    END DO
+
+    !----------------------------------------------------------------------
+    ! 5. Deallocate global arrays
+    !----------------------------------------------------------------------
+
+    DEALLOCATE(g_coord)
+
+    RETURN
+
+  END SUBROUTINE READ_NODES
   
 !------------------------------------------------------------------------------
 !------------------------------------------------------------------------------
@@ -510,6 +626,154 @@ MODULE INPUT
 
   END SUBROUTINE READ_ELEMENTS
   
+!------------------------------------------------------------------------------
+!------------------------------------------------------------------------------
+!------------------------------------------------------------------------------
+
+  SUBROUTINE READ_ELEMENTS_2(fname,npes,nn,numpe,g_num_pp)
+
+    !/****f* input_output/read_elements
+    !*  NAME
+    !*    SUBROUTINE: read_elements
+    !*  SYNOPSIS
+    !*    Usage:      CALL read_elements(fname,npes,nn,numpe,g_num_pp)
+    !*  FUNCTION
+    !*    Master process reads the global array of elements and broadcasts
+    !*    to slave processes.
+    !*    Processes record only its local part of elements.
+    !*  INPUTS
+    !*    The following arguments have the INTENT(IN) attribute:
+    !*
+    !*    fname                 : Character
+    !*                          : File name to read
+    !*
+    !*    npes                  : Integer
+    !*                          : Number of processes
+    !*
+    !*    nn                    : Integer
+    !*                          : Total number of nodes 
+    !*
+    !*    numpe                 : Integer
+    !*                          : Process number
+    !*
+    !*    The following arguments have the INTENT(OUT) attribute:
+    !*
+    !*    g_num_pp(nod,nels_pp) : Integer
+    !*                          : Elements connectivity
+    !*
+    !*  AUTHOR
+    !*    Francisco Calvo
+    !*  CREATION DATE
+    !*    01.06.2007
+    !*  COPYRIGHT
+    !*    (c) University of Manchester 2007-2011
+    !******
+    !*  Place remarks that should not be included in the documentation here.
+    !*
+    !*  The method based on building global arrays.
+    !*  
+    !*  An improvement would be to avoid allocating the global array
+    !* 
+    !*  From an old version of ParaFEM. Works with program xx7.f90. Needs 
+    !*  removing. Compare with READ_ELEMENTS
+    !*/
+  
+    IMPLICIT NONE
+
+    CHARACTER(*), INTENT(IN)  :: fname
+    INTEGER,      INTENT(IN)  :: npes, nn, numpe
+    INTEGER,      INTENT(OUT) :: g_num_pp(:,:)
+    INTEGER :: i, j, k, nod, nels_pp, iel, bufsize, ielpe, ier, buf2, &
+               statu(MPI_STATUS_SIZE)
+    INTEGER, ALLOCATABLE :: num_elem_pp(:), g_num(:,:)
+  
+    !----------------------------------------------------------------------
+    ! 1. Allocate element information arrays
+    !----------------------------------------------------------------------
+
+    ALLOCATE(num_elem_pp(npes))
+
+    !----------------------------------------------------------------------
+    ! 2. Master process receives the integer nels_pp from slave processes
+    !----------------------------------------------------------------------
+    
+    nels_pp = UBOUND(g_num_pp,2)
+
+    IF (numpe==1) THEN
+      num_elem_pp    = 0
+      num_elem_pp(1) = nels_pp
+    END IF
+    bufsize = 1
+
+    DO i = 2,npes
+      IF(numpe==i) THEN
+        CALL MPI_SEND(nels_pp,bufsize,MPI_INTEGER,0,i,MPI_COMM_WORLD,ier)
+      END IF
+      IF(numpe==1) THEN
+        CALL MPI_RECV(j,bufsize,MPI_INTEGER,i-1,i,MPI_COMM_WORLD,statu,ier)
+        num_elem_pp(i) = j
+      END IF
+    END DO 
+
+    !----------------------------------------------------------------------
+    ! 3. Allocate array to read elements
+    !----------------------------------------------------------------------
+
+    nod     = UBOUND(g_num_pp,1)
+
+    ALLOCATE(g_num(nod,nels_pp))
+
+    !----------------------------------------------------------------------
+    ! 4. Master process reads the elements and sends them to slave processes
+    !----------------------------------------------------------------------
+
+    !----------------------------------------------------------------------
+    ! 4.1 Master process reads its own elements
+    !----------------------------------------------------------------------
+
+    IF (numpe==1) THEN
+      OPEN(10,FILE=fname,STATUS='OLD',ACTION='READ')
+      READ(10,*)    !header
+      READ(10,*)    !header
+      DO i = 1,nn   !read nodes until reaching the elements
+        READ(10,*)
+      END DO
+      READ(10,*)    !keyword element
+      DO iel = 1,num_elem_pp(1)
+        READ(10,*)k,k,k,k,g_num_pp(:,iel),k
+      END DO
+    END IF
+
+    !----------------------------------------------------------------------
+    ! 4.2 Master process reads slave processes' elements and sends them
+    !----------------------------------------------------------------------
+
+    buf2 = nod*nels_pp
+
+    DO i = 2,npes
+      IF (numpe==1) THEN
+        DO iel = 1,num_elem_pp(i)
+          READ(10,*)k,k,k,k,g_num(:,iel),k
+        END DO
+        bufsize = nod*num_elem_pp(i)
+        CALL MPI_SEND(g_num,bufsize,MPI_INTEGER,i-1,i,MPI_COMM_WORLD,ier)
+      END IF      
+      IF (numpe==i) THEN
+        CALL MPI_RECV(g_num_pp,buf2,MPI_INTEGER,0,i,MPI_COMM_WORLD,statu,ier)
+      END IF
+    END DO
+    CLOSE(10)
+ 
+    !----------------------------------------------------------------------
+    ! 5. Deallocate arrays
+    !----------------------------------------------------------------------
+
+    DEALLOCATE(g_num, num_elem_pp)
+   
+    RETURN
+
+  END SUBROUTINE READ_ELEMENTS_2
+
 !------------------------------------------------------------------------------
 !------------------------------------------------------------------------------
 !------------------------------------------------------------------------------
@@ -921,6 +1185,88 @@ MODULE INPUT
   RETURN
   END SUBROUTINE READ_REST
 
+!---------------------------------------------------------------------------
+!---------------------------------------------------------------------------
+!---------------------------------------------------------------------------
+
+  SUBROUTINE READ_RESTRAINTS(fname,numpe,rest)
+
+    !/****f* input/read_restraints
+    !*  NAME
+    !*    SUBROUTINE: read_restraints
+    !*  SYNOPSIS
+    !*    Usage:      CALL read_restraints(fname,numpe,rest)
+    !*  FUNCTION
+    !*    Master process reads the global array of nodes with restrained 
+    !*    degrees of freedom.
+    !*    Master process broadcasts to slave processes.
+    !*
+    !*  INPUTS
+    !*    The following arguments have the INTENT(IN) attribute:
+    !*
+    !*    fname                  : Character
+    !*                           : File name to read
+    !*
+    !*    numpe                  : Integer
+    !*                           : Process number
+    !*
+    !*    The following arguments have the INTENT(OUT) attribute:
+    !*
+    !*    rest(nr,nodof+1)       : Integer
+    !*                           : Nodes (column 1) and degrees of freedom
+    !*                             restrained (columns 2,3,4). 
+    !*                             The criterion is:  1 fixed, 0 free
+    !*  AUTHOR
+    !*    Francisco Calvo
+    !*  CREATION DATE
+    !*    01.06.2007
+    !*  COPYRIGHT
+    !*    (c) University of Manchester 2007-2011
+    !******
+    !*  Place remarks that should not be included in the documentation here.
+    !*
+    !*  The method is based on reading a global array, although it's not a
+    !*  worry because the nodes with constraints are a small proportion of the 
+    !*  whole mesh.
+    !*
+    !*  THIS SUBROUTINE IS ONLY USED BY PROGRAM XX7 AND NEEDS REMOVING FROM 
+    !*  PARAFEM
+    !*/
+
+    IMPLICIT NONE
+
+    CHARACTER(*), INTENT(IN)  :: fname
+    INTEGER,      INTENT(IN)  :: numpe
+    INTEGER,      INTENT(OUT) :: rest(:,:)
+    INTEGER :: i, nr, nodof1, bufsize, ier
+
+    !----------------------------------------------------------------------
+    ! 1. Master process reads the data
+    !----------------------------------------------------------------------
+
+    nr = UBOUND(rest,1)
+
+    IF(numpe==1)THEN
+      OPEN(10,FILE=fname,STATUS='OLD',ACTION='READ')
+      DO i = 1,nr
+        READ(10,*)rest(i,:)
+      END DO
+      CLOSE(10)
+    END IF
+
+    !----------------------------------------------------------------------
+    ! 2. Master process broadcasts the data to slave processes
+    !----------------------------------------------------------------------
+
+    nodof1  = UBOUND(rest,2)
+    bufsize = nr*nodof1
+
+    CALL MPI_BCAST(rest,bufsize,MPI_INTEGER,0,MPI_COMM_WORLD,ier)
+
+    RETURN
+
+  END SUBROUTINE READ_RESTRAINTS
+  
 !------------------------------------------------------------------------------
 !------------------------------------------------------------------------------
 !------------------------------------------------------------------------------
@@ -2344,5 +2690,171 @@ MODULE INPUT
 
     RETURN
     END SUBROUTINE CHECK_INPUTDATA_XX5
-    
+  
+!------------------------------------------------------------------------------
+!------------------------------------------------------------------------------
+!------------------------------------------------------------------------------
+
+    SUBROUTINE READ_DATA_XX7(fname,numpe,nels,nn,nr,loaded_nodes,fixed_nodes, &
+                             nip,limit,tol,e,v,nod,num_load_steps,jump,tol2)
+
+    !/****f* input_output/read_data_xx7
+    !*  NAME
+    !*    SUBROUTINE: read_data_xx7
+    !*  SYNOPSIS
+    !*    Usage:      CALL read_data_xx7(fname,numpe,nels,nn,nr,              &
+    !*                                   loaded_nodes,fixed_nodes,nip,        &
+    !*                                   limit,tol,e,v,nod,num_load_steps,    &
+    !*                                   jump,tol2)
+    !*  FUNCTION
+    !*    Master process reads the general data of the problem
+    !*    Master process broadcasts to slave processes.
+    !*  INPUTS
+    !*    The following arguments have the INTENT(IN) attribute:
+    !*
+    !*    fname                  : Character
+    !*                           : File name to read
+    !*
+    !*    numpe                  : Integer
+    !*                           : Process number
+    !*
+    !*    The following arguments have the INTENT(OUT) attribute:
+    !*
+    !*    nels                   : Integer
+    !*                           : Total number of elements
+    !*
+    !*    nn                     : Integer
+    !*                           : Total number of nodes 
+    !*
+    !*    nr                     : Integer
+    !*                           : Number of nodes with restrained degrees of
+    !*                             freedom 
+    !*
+    !*    loaded_nodes           : Integer
+    !*                           : Number of nodes with applied forces
+    !*
+    !*    fixed_nodes            : Integer
+    !*                           : Number of restrained degrees of freedom 
+    !*                             with a non-zero applied value
+    !*
+    !*    nip                    : Integer
+    !*                           : Number of Gauss integration points
+    !*
+    !*    limit                  : Integer
+    !*                           : Maximum number of PCG iterations allowed
+    !*
+    !*    tol                    : Real
+    !*                           : Tolerance for PCG
+    !*
+    !*    e                      : Real
+    !*                           : Young's modulus
+    !*
+    !*    v                      : Real
+    !*                           : Poisson coefficient
+    !*
+    !*    nod                    : Integer
+    !*                           : Number of nodes per element
+    !*
+    !*    num_load_steps         : Integer
+    !*                           : Number of load steps
+    !*
+    !*    jump                   : Integer
+    !*                           : Number of load steps to skip before writing
+    !*                             results (periodically)
+    !*
+    !*    tol2                   : Real
+    !*                           : Tolerance for Newton-Raphson loop
+    !*
+    !*  AUTHOR
+    !*    Francisco Calvo
+    !*    L. Margetts
+    !*  CREATION DATE
+    !*    01.06.2007
+    !*  COPYRIGHT
+    !*    (c) University of Manchester 2007-2011
+    !******
+    !*  Place remarks that should not be included in the documentation here.
+    !*
+    !*/
+  
+    IMPLICIT NONE
+
+    CHARACTER(*), INTENT(IN)  :: fname
+    INTEGER,      INTENT(IN)  :: numpe
+    INTEGER,      INTENT(OUT) :: nels, nn, nr, loaded_nodes, fixed_nodes, nip,&
+                                 limit, nod, num_load_steps, jump
+    REAL(iwp),    INTENT(OUT) :: tol, e, v, tol2
+    INTEGER                   :: bufsize, ier, vec_integer(10)
+    REAL(iwp)                 :: vec_real(4)
+
+    !----------------------------------------------------------------------
+    ! 1. Master process reads the data and builds the integer and real
+    !    vectors with the data
+    !----------------------------------------------------------------------
+
+    IF (numpe==1) THEN
+      OPEN(10,FILE=fname,STATUS='OLD',ACTION='READ')
+      READ(10,*)nels,nn,nr,loaded_nodes,fixed_nodes,nip
+      READ(10,*)limit,tol,e,v
+      READ(10,*)nod
+      READ(10,*)num_load_steps,jump
+      READ(10,*)tol2
+      CLOSE(10)
+      
+      vec_integer(1)  = nels
+      vec_integer(2)  = nn
+      vec_integer(3)  = nr
+      vec_integer(4)  = loaded_nodes
+      vec_integer(5)  = fixed_nodes
+      vec_integer(6)  = nip
+      vec_integer(7)  = limit
+      vec_real(1)     = tol
+      vec_real(2)     = e
+      vec_real(3)     = v
+      vec_integer(8)  = nod
+      vec_integer(9)  = num_load_steps
+      vec_integer(10) = jump
+      vec_real(4)     = tol2
+      
+    END IF
+
+    !----------------------------------------------------------------------
+    ! 2. Master process broadcasts the data to slave processes
+    !----------------------------------------------------------------------
+
+    bufsize = 10
+    CALL MPI_BCAST(vec_integer,bufsize,MPI_INTEGER,0,MPI_COMM_WORLD,ier)
+
+    bufsize = 4
+    CALL MPI_BCAST(vec_real,bufsize,MPI_REAL8,0,MPI_COMM_WORLD,ier)
+
+    !----------------------------------------------------------------------
+    ! 3. Slave processes extract the variables back from the vectors
+    !----------------------------------------------------------------------
+
+    IF (numpe/=1) THEN
+      nels           = vec_integer(1)
+      nn             = vec_integer(2)
+      nr             = vec_integer(3)
+      loaded_nodes   = vec_integer(4)
+      fixed_nodes    = vec_integer(5)
+      nip            = vec_integer(6)
+      limit          = vec_integer(7)
+      tol            = vec_real(1)
+      e              = vec_real(2)
+      v              = vec_real(3)
+      nod            = vec_integer(8)
+      num_load_steps = vec_integer(9)
+      jump           = vec_integer(10)
+      tol2           = vec_real(4)
+    END IF
+
+    RETURN
+
+  END SUBROUTINE READ_DATA_XX7
+
+!------------------------------------------------------------------------------
+!------------------------------------------------------------------------------
+!------------------------------------------------------------------------------
+
 END MODULE INPUT
