@@ -12,7 +12,8 @@
 # PARAFEM_HOME is the top level directory under which ParaFEM is compiled
 
 if [ -z "$PARAFEM_HOME" ] ; then PARAFEM_HOME=`pwd` ; fi
-VERSION=2.1.0
+export PARAFEM_HOME
+export VERSION=2.1.0
 
 # --------------------------------------------------------------------------------
 # These are the default build parameters for the script and are used unless
@@ -28,6 +29,7 @@ DO_EXECLEAN=0
 
 # build flags - default all
 BUILD_MODULES=1
+BUILD_LIBRARIES=1
 BUILD_PROGRAMS=1
 BUILD_TOOLS=1
 
@@ -36,6 +38,7 @@ BUILD_TOOLS=1
 # checks have been made and no options were specified on the command line
 # --------------------------------------------------------------------------------
 BUILD_MODULES_GIVEN=0
+BUILD_LIBRARIES_GIVEN=0
 BUILD_PROGRAMS_GIVEN=0
 
 # MODULE build options:
@@ -45,16 +48,21 @@ BUILD_PROGRAMS_GIVEN=0
 #   options are: bem_lib, bem_lib_p
 BUILD_MODULES_OPT=
 
+# LIBRARIES build options:
+# - options are: arpack(default) metis(default)
+BUILD_LIBRARIES_OPT=
+
 # PROGRAM build options
 # options are: p12(default), prog8(default), gaitfem(default)
 BUILD_PROGRAMS_OPT=
 BUILD_GROUP_P12="p121 p126 p129 p1210"
-BUILD_GROUP_XX="xx1 xx2 xx3 xx4 xx5"
-# xx6 xx7 xx8"
+BUILD_GROUP_XX="xx1 xx2 xx3 xx4 xx5 xx7"
+# xx6 xx8"
 BUILD_GROUP_PROG8="prog81 prog82 prog83"
 BUILD_GROUP_GAITFEM="gaitfem"
 
 BUILD_MODULES_DEFAULTS="mpi serial bem_lib bem_lib_p"
+BUILD_LIBRARIES_DEFAULTS="arpack metis"
 BUILD_PROGRAMS_DEFAULTS="p12 prog8 xx"
 # gaitfem"
 
@@ -110,16 +118,16 @@ while [ $# -gt 0 ]; do
 	execlean) DO_RELEASE=0; DO_DEBUG=0; DO_EXECLEAN=1;;
 
 	# ------------------------------------------------------------------------
-	# all module options
-	-all) BUILD_MODULES_OPT="mpi bem_lib bem_lib_p"; BUILD_MODULES_GIVEN=1;;
-	#-all) BUILD_MODULES_OPT="-mpi -openmp -gpu -serial -bem_lib -bem_lib_p"; BUILD_MODULES_GIVEN=1;;
+	# library options
+	-arpack) BUILD_LIBRARIES_OPT="$BUILD_LIBRARIES_OPT arpack"; BUILD_LIBRARIES_GIVEN=1;;
+	-metis) BUILD_LIBRARIES_OPT="$BUILD_LIBRARIES_OPT metis"; BUILD_LIBRARIES_GIVEN=1;;
 
 	# ------------------------------------------------------------------------
 	# p12 and xx group module options
 	-mpi) BUILD_MODULES_OPT="$BUILD_MODULES_OPT mpi"; BUILD_MODULES_GIVEN=1;;
+	-serial) BUILD_MODULES_OPT="$BUILD_MODULES_OPT serial"; BUILD_MODULES_GIVEN=1;;
 	#-openmp) BUILD_MODULES_OPT="$BUILD_MODULES_OPT openmp"; BUILD_MODULES_GIVEN=1;;
 	#-gpu) BUILD_MODULES_OPT="$BUILD_MODULES_OPT gpu"; BUILD_MODULES_GIVEN=1;;
-	#-serial) BUILD_MODULES_OPT="$BUILD_MODULES_OPT serial"; BUILD_MODULES_GIVEN=1;;
 
 	# ------------------------------------------------------------------------
 	# prog8 group module options
@@ -135,9 +143,11 @@ while [ $# -gt 0 ]; do
 
 	# ------------------------------------------------------------------------
 	# build restriction options
-	--only-modules) BUILD_PROGRAMS=0; BUILD_TOOLS=0;;
-	--only-programs) BUILD_MODULES=0; BUILD_TOOLS=0;;
-	--only-tools) BUILD_MODULES=0; BUILD_PROGRAMS=0;;
+	--only-libs) BUILD_MODULES=0; BUILD_PROGRAMS=0; BUILD_TOOLS=0;;
+	--only-modules) BUILD_LIBRARIES=0; BUILD_PROGRAMS=0; BUILD_TOOLS=0;;
+	--only-programs) BUILD_LIBRARIES=0; BUILD_MODULES=0; BUILD_TOOLS=0;;
+	--only-tools) BUILD_LIBRARIES=0; BUILD_MODULES=0; BUILD_PROGRAMS=0;;
+	--no-libs) DO_LIBRAIES=0;;
 	--no-install) DO_INSTALL=0;;
 	machine=*) MACHINE=`echo $ARG | sed -e 's/machine=//g'`;;
     esac
@@ -149,12 +159,17 @@ echo "MACHINE set to $MACHINE";
 
 # If no build options are given, report and set defaults
 echo
-if [ $BUILD_MODULES_GIVEN = 0 ]; then
+if [ $BUILD_LIBRARIES = 1 ] && [ $BUILD_LIBRARIES_GIVEN = 0 ]; then
+    echo "No build type given for LIBRARIES; defaulting to: $BUILD_LIBRARIES_DEFAULTS"
+    BUILD_LIBRARIES_OPT=$BUILD_LIBRARIES_DEFAULTS
+fi
+
+if [ $BUILD_MODULES = 1 ] && [ $BUILD_MODULES_GIVEN = 0 ]; then
     echo "No build type given for MODULES; defaulting to: $BUILD_MODULES_DEFAULTS"
     BUILD_MODULES_OPT=$BUILD_MODULES_DEFAULTS
 fi
 
-if [ $BUILD_PROGRAMS_GIVEN = 0 ]; then
+if [ $BUILD_PROGRAMS = 1 ] && [ $BUILD_PROGRAMS_GIVEN = 0 ]; then
     echo "No build type given for PROGRAMS; defaulting to: $BUILD_PROGRAMS_DEFAULTS"
     BUILD_PROGRAMS_OPT=$BUILD_PROGRAMS_DEFAULTS
 fi
@@ -194,24 +209,35 @@ fi
 # Setup targets for building MODULES and PROGRAMS
 # --------------------------------------------------------------------------------
 
+LIBRARIES_TARGET=
 MODULES_TARGET=
 TARGET=
 if [ $DO_CLEAN -gt 0 ] || [ $DO_EXECLEAN -gt 0 ]; then
     if [ $DO_CLEAN -gt 0 ]; then
-	TARGET="$TARGET clean"; MODULES_TARGET="$MODULES_TARGET clean"
+	LIBRARIES_TARGET="$LIBRARIES_TARGET clean"
+	MODULES_TARGET="$MODULES_TARGET clean"
+	TARGET="$TARGET clean";
     fi
     if [ $DO_EXECLEAN -gt 0 ]; then
-	TARGET="$TARGET execlean"; MODULES_TARGET="$MODULES_TARGET execlean"
+	LIBRARIES_TARGET="$LIBRARIES_TARGET execlean"
+	MODULES_TARGET="$MODULES_TARGET execlean"
+	TARGET="$TARGET execlean";
     fi
 else
     # for release/debug prefixes append each MODULES_BUILD_OPT
     if [ $DO_RELEASE = 1 ]; then
+	for TYPE in $BUILD_LIBRARIES_OPT; do
+	    LIBRARIES_TARGET="$LIBRARIES_TARGET release-$TYPE"
+	done
 	for TYPE in $BUILD_MODULES_OPT; do
 	    MODULES_TARGET="$MODULES_TARGET release-$TYPE"
 	done
 	TARGET=release
     else
 	if [ $DO_DEBUG = 1 ]; then
+	    for TYPE in $BUILD_LIBRARIES_OPT; do
+		LIBRARIES_TARGET="$LIBRARIES_TARGET debug-$TYPE"
+	    done
 	    for TYPE in $BUILD_MODULES_OPT; do
 		MODULES_TARGET="$MODULES_TARGET debug-$TYPE"
 	    done
@@ -225,12 +251,19 @@ else
     fi
 fi
 echo
+echo "LIBRARIES TARGET is $LIBRARIES_TARGET"
 echo "MODULES TARGET is $MODULES_TARGET"
 echo "TARGET is $TARGET for programs: $BUILD_PROGRAMS_OPT"
 
 # --------------------------------------------------------------------------------
 # Perform the requested builds
 # --------------------------------------------------------------------------------
+
+if [ $BUILD_LIBRARIES = 1 ]; then
+    echo "Building LIBRARIES for $MACHINE"
+    cd src/libraries && make $LIBRARIES_TARGET && cd ../..
+    echo "Done building LIBRARIES for $MACHINE"
+fi
 
 if [ $BUILD_MODULES = 1 ]; then
     echo "Building MODULES for $MACHINE"
