@@ -25,14 +25,19 @@
 # | other than your home directory.      |
 # %--------------------------------------%
 #
+# PARAFEM: use existing PARAFEM_HOME to set root directory for build and install
 home = $(PARAFEM_HOME)/src/libraries/ARPACK
+# PARAFEM: specific includes to support multiple platform from build script
+include $(PARAFEM_HOME)/build/mk_defs.inc
+include $(PARAFEM_HOME)/build/$(MACHINE).inc
 #
 #  %--------------------------------------%
 #  | The platform identifier to suffix to |
 #  | the end of library names             |
 #  %--------------------------------------%
 #
-PLAT = XE6
+# PARAFEM: Use MACHINE from build script for platform
+PLAT = $(MACHINE)
 #
 #  %------------------------------------------------------%
 #  | The directories to find the various pieces of ARPACK |
@@ -101,10 +106,14 @@ ALIBS =  $(ARPACKLIB) $(LAPACKLIB) $(BLASLIB)
 # | for your system.                        |
 # %-----------------------------------------%
 #
-FC      = ftn
-FFLAGS	= -V -fastsse -r8
+# PARAFEM: Override defaults and use those defined in platform specific include
+FC=$(EXT_LIB_ARPACK_FC)
+FFLAGS=$(EXT_LIB_ARPACK_FFLAGS)
+LDFLAGS=$(EXT_LIB_ARPACK_LDFLAGS)
+#FC      = ftn
+#FFLAGS	= -V -fastsse -r8
+#LDFLAGS = 
 
-LDFLAGS = 
 CD      = cd
 
 ECHO    = echo
