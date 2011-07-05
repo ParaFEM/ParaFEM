@@ -161,3 +161,28 @@ XX9_MPI_REL_FFLAGS=$(DEFAULT_XX_MPI_REL_FFLAGS)
 XX9_MPI_REL_LDFLAGS=$(DEFAULT_XX_MPI_REL_LDFLAGS)
 XX9_MPI_DBG_FFLAGS=$(DEFAULT_XX_MPI_DBG_FFLAGS)
 XX9_MPI_DBG_LDFLAGS=$(DEFAULT_XX_MPI_DBG_LDFLAGS)
+
+# --------------------------------------------------------------------------------
+# DEFAULT FLAGS for all tool groups
+# --------------------------------------------------------------------------------
+# Form is DEFAULT_(PREPROC|POSTPROC)_(MPI|SERIAL|OPENMP|GPU)_(REL|DBG)_(FFLAGS|LDFLAGS)
+#   where applicable.
+# These are NOT directly used in any makefiles; specific tool flags are assigned
+# these defaults below and may be overridden.
+# --------------------------------------------------------------------------------
+
+# generic PREPROC group FFLAGS and LDFLAGS
+DEFAULT_PREPROC_MPI_REL_FFLAGS=-V -fastsse -Mlarge_arrays
+DEFAULT_PREPROC_MPI_DBG_FFLAGS=-V -g -Mbounds -traceback
+DEFAULT_PREPROC_MPI_REL_LDFLAGS=
+DEFAULT_PREPROC_MPI_DBG_LDFLAGS=
+
+# --------------------------------------------------------------------------------
+# TOOL FLAGS for selected tools.
+# --------------------------------------------------------------------------------
+# All use their tool group defaults defined above unless overridden below
+# --------------------------------------------------------------------------------
+MG2D_MPI_REL_FFLAGS=$(DEFAULT_PREPROC_MPI_REL_FFLAGS)
+MG2D_MPI_REL_LDFLAGS=$(DEFAULT_PREPROC_MPI_REL_LDFLAGS)
+MG2D_MPI_DBG_FFLAGS=$(DEFAULT_PREPROC_MPI_DBG_FFLAGS)
+MG2D_MPI_DBG_LDFLAGS=$(DEFAULT_PREPROC_MPI_DBG_LDFLAGS)
