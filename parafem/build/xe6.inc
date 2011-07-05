@@ -1,8 +1,21 @@
+# --------------------------------------------------------------------------------
 # Generic settings for compilation
+# --------------------------------------------------------------------------------
 FC=ftn
 
-  # Flags for MODULE/LIBRARY compliation
+# --------------------------------------------------------------------------------
+# FLAGS for EXTERNAL LIBRARY compliation
+# --------------------------------------------------------------------------------
+EXT_LIB_ARPACK_FC=ftn
+EXT_LIB_ARPACK_FFLAGS=-V -fastsse -r8
+EXT_LIB_ARPACK_LDFLAGS=
+  
+# --------------------------------------------------------------------------------
+# FLAGS for MODULE/LIBRARY compliation
+# --------------------------------------------------------------------------------
 # Form is LIB_(MPI|SERIAL|OPENMP|GPU)_(REL|DBG)_(FFLAGS|LDFLAGS)
+# These flags are directly used by the module makefiles
+# --------------------------------------------------------------------------------
 LIB_MPI_REL_FFLAGS=-fastsse -Mlarge_arrays
 LIB_MPI_DBG_FFLAGS=-g -Mbounds -traceback
   
@@ -15,15 +28,28 @@ LIB_BEM_DBG_FFLAGS=-g -Mbounds -traceback
 LIB_BEM_P_REL_FFLAGS=-fastsse -Mlarge_arrays
 LIB_BEM_P_DBG_FFLAGS=-g -Mbounds -traceback
 
+# --------------------------------------------------------------------------------
+# DEFAULT FLAGS for all program groups
+# --------------------------------------------------------------------------------
+# Form is DEFAULT_(P12|XX|PROG8|GAITFEM)_(MPI|SERIAL|OPENMP|GPU)_(REL|DBG)_(FFLAGS|LDFLAGS)
+#   where applicable.
+# These are NOT directly used in any makefiles; specific program flags are assigned
+# these defaults below and may be overridden.
+# --------------------------------------------------------------------------------
+
 # generic P12 group FFLAGS and LDFLAGS
-# These are not used in any makefiles directly; they only set default flags below and may be overridden
 DEFAULT_P12_MPI_REL_FFLAGS=-V -fastsse -Mlarge_arrays
 DEFAULT_P12_MPI_DBG_FFLAGS=-V -g -Mbounds -traceback
 DEFAULT_P12_MPI_REL_LDFLAGS=
 DEFAULT_P12_MPI_DBG_LDFLAGS=
 
+# generic XX group FFLAGS and LDFLAGS
+DEFAULT_XX_MPI_REL_FFLAGS=-V -fastsse -Mlarge_arrays
+DEFAULT_XX_MPI_DBG_FFLAGS=-V -g -Mbounds -traceback
+DEFAULT_XX_MPI_REL_LDFLAGS=
+DEFAULT_XX_MPI_DBG_LDFLAGS=
+
 # generic PROG8 group FFLAGS and LDFLAGS
-# These are not used in any makefiles directly; they only set default flags below and may be overridden
 DEFAULT_PROG8_BEM_REL_FFLAGS=
 DEFAULT_PROG8_BEM_DBG_FFLAGS=
 DEFAULT_PROG8_BEM_REL_LDFLAGS=
@@ -34,14 +60,16 @@ DEFAULT_PROG8_BEM_P_REL_LDFLAGS=
 DEFAULT_PROG8_BEM_P_DBG_LDFLAGS=
 
 # generic gaitfem group FFLAGS and LDFLAGS
-# These are not used in any makefiles directly; they only set default flags below and may be overridden
 DEFAULT_GAITFEM_SERIAL_REL_FFLAGS=-V -fastsse -Mlarge_arrays
 DEFAULT_GAITFEM_SERIAL_DBG_FFLAGS=-V -g -Mbounds -traceback
 DEFAULT_GAITFEM_SERIAL_REL_LDFLAGS=
 DEFAULT_GAITFEM_SERIAL_DBG_LDFLAGS=
   
-# program specific FFLAGS and LDFLAGS (use group settings by default)
-# OVERRIDE these if you need control per program
+# --------------------------------------------------------------------------------
+# PROGRAM FLAGS for all programs.
+# --------------------------------------------------------------------------------
+# All use their program group defaults defined above unless overridden below
+# --------------------------------------------------------------------------------
 P121_MPI_REL_FFLAGS=$(DEFAULT_P12_MPI_REL_FFLAGS)
 P121_MPI_REL_LDFLAGS=$(DEFAULT_P12_MPI_REL_LDFLAGS)
 P121_MPI_DBG_FFLAGS=$(DEFAULT_P12_MPI_DBG_FFLAGS)
@@ -82,3 +110,47 @@ GAITFEM_SERIAL_REL_LDFLAGS=$(DEFAULT_GAITFEM_SERIAL_REL_LDFLAGS)
 GAITFEM_SERIAL_DBG_FFLAGS=$(DEFAULT_GAITFEM_SERIAL_DBG_FFLAGS)
 GAITFEM_SERIAL_DBG_LDFLAGS=$(DEFAULT_GAITFEM_SERIAL_DBG_LDFLAGS)
   
+XX1_MPI_REL_FFLAGS=$(DEFAULT_XX_MPI_REL_FFLAGS)
+XX1_MPI_REL_LDFLAGS=$(DEFAULT_XX_MPI_REL_LDFLAGS)
+XX1_MPI_DBG_FFLAGS=$(DEFAULT_XX_MPI_DBG_FFLAGS)
+XX1_MPI_DBG_LDFLAGS=$(DEFAULT_XX_MPI_DBG_LDFLAGS)
+
+XX2_MPI_REL_FFLAGS=$(DEFAULT_XX_MPI_REL_FFLAGS)
+XX2_MPI_REL_LDFLAGS=$(DEFAULT_XX_MPI_REL_LDFLAGS)
+XX2_MPI_DBG_FFLAGS=$(DEFAULT_XX_MPI_DBG_FFLAGS)
+XX2_MPI_DBG_LDFLAGS=$(DEFAULT_XX_MPI_DBG_LDFLAGS)
+
+XX3_MPI_REL_FFLAGS=$(DEFAULT_XX_MPI_REL_FFLAGS)
+XX3_MPI_REL_LDFLAGS=$(DEFAULT_XX_MPI_REL_LDFLAGS)
+XX3_MPI_DBG_FFLAGS=$(DEFAULT_XX_MPI_DBG_FFLAGS)
+XX3_MPI_DBG_LDFLAGS=$(DEFAULT_XX_MPI_DBG_LDFLAGS)
+
+XX4_MPI_REL_FFLAGS=$(DEFAULT_XX_MPI_REL_FFLAGS)
+XX4_MPI_REL_LDFLAGS=$(DEFAULT_XX_MPI_REL_LDFLAGS)
+XX4_MPI_DBG_FFLAGS=$(DEFAULT_XX_MPI_DBG_FFLAGS)
+XX4_MPI_DBG_LDFLAGS=$(DEFAULT_XX_MPI_DBG_LDFLAGS)
+
+XX5_MPI_REL_FFLAGS=$(DEFAULT_XX_MPI_REL_FFLAGS)
+XX5_MPI_REL_LDFLAGS=$(DEFAULT_XX_MPI_REL_LDFLAGS)
+XX5_MPI_DBG_FFLAGS=$(DEFAULT_XX_MPI_DBG_FFLAGS)
+XX5_MPI_DBG_LDFLAGS=$(DEFAULT_XX_MPI_DBG_LDFLAGS)
+
+XX6_MPI_REL_FFLAGS=$(DEFAULT_XX_MPI_REL_FFLAGS)
+XX6_MPI_REL_LDFLAGS=$(DEFAULT_XX_MPI_REL_LDFLAGS)
+XX6_MPI_DBG_FFLAGS=$(DEFAULT_XX_MPI_DBG_FFLAGS)
+XX6_MPI_DBG_LDFLAGS=$(DEFAULT_XX_MPI_DBG_LDFLAGS)
+
+XX7_MPI_REL_FFLAGS=$(DEFAULT_XX_MPI_REL_FFLAGS)
+XX7_MPI_REL_LDFLAGS=$(DEFAULT_XX_MPI_REL_LDFLAGS)
+XX7_MPI_DBG_FFLAGS=$(DEFAULT_XX_MPI_DBG_FFLAGS)
+XX7_MPI_DBG_LDFLAGS=$(DEFAULT_XX_MPI_DBG_LDFLAGS)
+
+XX8_MPI_REL_FFLAGS=$(DEFAULT_XX_MPI_REL_FFLAGS)
+XX8_MPI_REL_LDFLAGS=$(DEFAULT_XX_MPI_REL_LDFLAGS)
+XX8_MPI_DBG_FFLAGS=$(DEFAULT_XX_MPI_DBG_FFLAGS)
+XX8_MPI_DBG_LDFLAGS=$(DEFAULT_XX_MPI_DBG_LDFLAGS)
+
+XX9_MPI_REL_FFLAGS=$(DEFAULT_XX_MPI_REL_FFLAGS)
+XX9_MPI_REL_LDFLAGS=$(DEFAULT_XX_MPI_REL_LDFLAGS)
+XX9_MPI_DBG_FFLAGS=$(DEFAULT_XX_MPI_DBG_FFLAGS)
+XX9_MPI_DBG_LDFLAGS=$(DEFAULT_XX_MPI_DBG_LDFLAGS)
