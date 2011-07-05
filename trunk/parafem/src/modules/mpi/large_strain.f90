@@ -24,7 +24,6 @@ MODULE LARGE_STRAIN
   !*    CALC_NEQ               Find the number of equations in the problem
   !*    COMPUTE_NPES_PP        Find the value of npes_pp
   !*    PCG_VER1               Preconditioned conjugate gradient solver
-  !*    PRINCIPALSTRESS3D      Compute principal stresses in 3D
   !*  AUTHOR
   !*    F. Calvo Plaza
   !*    V. Szeremi
@@ -1709,84 +1708,6 @@ MODULE LARGE_STRAIN
     RETURN
 
   END SUBROUTINE PCG_VER1
-
-!------------------------------------------------------------------------------
-!------------------------------------------------------------------------------
-!------------------------------------------------------------------------------
-
-  SUBROUTINE PRINCIPALSTRESS3D(sigma1C,principal)
-
-    !/****f* large_strain/principalstress3D
-    !*  NAME
-    !*    SUBROUTINE: principalstress3D
-    !*  SYNOPSIS
-    !*    Usage:      CALL principalstress3D(sigma1C,principal)
-    !*  FUNCTION
-    !*    Compute principal stresses in 3D
-    !*    
-    !*  INPUTS
-    !*    The following arguments have the INTENT(IN) attribute:
-    !*
-    !*    sigma1C(nst)          : Real
-    !*                          : Stress tensor (Voigt notation)
-    !*
-    !*    The following arguments have the INTENT(OUT) attribute:
-    !*
-    !*    principal(ndim)       : Real
-    !*                          : Principal stresses
-    !*  AUTHOR
-    !*    Francisco Calvo
-    !*  CREATION DATE
-    !*    10.09.2007
-    !*  COPYRIGHT
-    !*    (c) University of Manchester 2007-2011
-    !******
-    !*  Place remarks that should not be included in the documentation here.
-    !*
-    !*/
-
-    IMPLICIT NONE
-
-    REAL(iwp), INTENT(IN)  :: sigma1C(:)
-    REAL(iwp), INTENT(OUT) :: principal(:)
-    INTEGER :: i
-    REAL(iwp) :: bd(6), pi23, thrd, tol, al, b1, b2, b3, c1, c2,c3
-      
-    pi23 = 2.0943951023931955_iwp
-    thrd = 0.3333333333333333_iwp
-    tol  = 1.0e-12_iwp
-
-    b1 = (sigma1C(1) + sigma1C(2) + sigma1C(3))*thrd
-
-    DO i = 1,6
-      bd(i) = sigma1C(i)
-    END DO
-
-    DO i = 1,3
-      bd(i) = bd(i) - b1
-    END DO
-
-    c1 = bd(4)*bd(4)
-    c2 = bd(5)*bd(5)
-    c3 = bd(6)*bd(6)
-    b2 = 0.5d0*(bd(1)*bd(1)+bd(2)*bd(2)+bd(3)*bd(3))+ c1 + c2 + c3
-    IF(b2.le.tol*b1*b1) THEN
-      principal(1) = b1
-      principal(2) = b1
-      principal(3) = b1
-    ELSE
-      b3 = bd(1)*bd(2)*bd(3)+(bd(4)+bd(4))*bd(5)*bd(6) +        &
-           bd(1)*(c1-c2) + bd(2)*(c1-c3)
-      c1 = 2.d0*SQRT(b2*thrd)
-      c2 = 4.d0*b3
-      c3 = c1*c1*c1
-      al = ATAN2(SQRT(ABS(c3*c3-c2*c2)),c2)*thrd
-      principal(1) = b1 + c1*COS(al)
-      principal(2) = b1 + c1*COS(al-pi23)
-      principal(3) = b1 + c1*COS(al+pi23)
-    END IF
-
-  END SUBROUTINE PRINCIPALSTRESS3D
 
 !---------------------------------------------------------------------------
 !---------------------------------------------------------------------------
