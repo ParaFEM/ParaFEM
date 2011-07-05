@@ -227,7 +227,7 @@ MODULE LOADING
       END DO
     END DO
 
-    CALL SCATTER_NOADD(fext_pp,r_temp)
+    CALL SCATTER_NOADD(r_temp,fext_pp)
 
     DEALLOCATE(r_temp)
 
