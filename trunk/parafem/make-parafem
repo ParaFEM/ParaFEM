@@ -34,12 +34,21 @@ BUILD_PROGRAMS=1
 BUILD_TOOLS=1
 
 # --------------------------------------------------------------------------------
-# build type GROUPS and flags - defaults mpi and p12 are set below after ARG
-# checks have been made and no options were specified on the command line
+# Build type GROUPS and FLAGS
+# --------------------------------------------------------------------------------
+# BUILD_*_GIVEN denotes if command line arguments have been provided to specify
+#   what build groups should be processed.
+# BUILD_*_DEFAULTS list all the group that should be built if no command line
+#   arguments are given.
+# BUILD_GROUP_* are the components of each group (if applicable)
+# BUILD_*_OPT are the actual groups that will be built. They are initialized to
+#   (null) here and either 1) set via command line arguments, or 2) set as the
+#   defaults above if no arguments are provided.
 # --------------------------------------------------------------------------------
 BUILD_MODULES_GIVEN=0
 BUILD_LIBRARIES_GIVEN=0
 BUILD_PROGRAMS_GIVEN=0
+BUILD_TOOLS_GIVEN=0
 
 # MODULE build options:
 # - p12 group: for programs p121,p126,p129,p1210,p1211,p1212,p1213,(p121u)
@@ -56,15 +65,20 @@ BUILD_LIBRARIES_OPT=
 # options are: p12(default), prog8(default), gaitfem(default)
 BUILD_PROGRAMS_OPT=
 BUILD_GROUP_P12="p121 p126 p129 p1210"
-BUILD_GROUP_XX="xx1 xx2 xx3 xx4 xx5 xx7"
-# xx6 xx8"
+BUILD_GROUP_XX="xx1 xx2 xx3 xx4 xx5 xx7" # + xx6 xx8
 BUILD_GROUP_PROG8="prog81 prog82 prog83"
 BUILD_GROUP_GAITFEM="gaitfem"
 
-BUILD_MODULES_DEFAULTS="mpi serial bem_lib bem_lib_p"
+# TOOLS build options
+BUILD_TOOLS_OPT=
+BUILD_GROUP_PREPROC="inp2d mg2d partitioner dinomesher"
+BUILD_GROUP_POSTPROC="d2off bnd2dis mat2numpe rdfaces upvw2dis testbc"
+
+# DEFAULT build options for LIBRARIES, MODULES, PROGRAMS and TOOLS
 BUILD_LIBRARIES_DEFAULTS="arpack metis"
-BUILD_PROGRAMS_DEFAULTS="p12 prog8 xx"
-# gaitfem"
+BUILD_MODULES_DEFAULTS="mpi serial bem_lib bem_lib_p"
+BUILD_PROGRAMS_DEFAULTS="p12 prog8 xx" # + gaitfem
+BUILD_TOOLS_DEFAULTS="preproc postproc"
 
 # --------------------------------------------------------------------------------
 # Local functions
@@ -142,12 +156,18 @@ while [ $# -gt 0 ]; do
 	-gaitfem) BUILD_PROGRAMS_OPT="$BUILD_PROGRAMS_OPT gaitfem"; BUILD_PROGRAMS_GIVEN=1;;
 
 	# ------------------------------------------------------------------------
+	# tool group module options
+	-preproc) BUILD_TOOLS_OPT="$BUILD_TOOLS_OPT preproc"; BUILD_TOOLS_GIVEN=1;;
+	-postproc) BUILD_TOOLS_OPT="%BUILD_TOOLS_OPT postproc"; BUILD_TOOLS_GIVEN=1;;
+
+	# ------------------------------------------------------------------------
 	# build restriction options
 	--only-libs) BUILD_MODULES=0; BUILD_PROGRAMS=0; BUILD_TOOLS=0;;
 	--only-modules) BUILD_LIBRARIES=0; BUILD_PROGRAMS=0; BUILD_TOOLS=0;;
 	--only-programs) BUILD_LIBRARIES=0; BUILD_MODULES=0; BUILD_TOOLS=0;;
 	--only-tools) BUILD_LIBRARIES=0; BUILD_MODULES=0; BUILD_PROGRAMS=0;;
-	--no-libs) DO_LIBRAIES=0;;
+	--no-libs) BUILD_LIBRARIES=0;;
+	--no-tools) BUILD_TOOLS=0;;
 	--no-install) DO_INSTALL=0;;
 	machine=*) MACHINE=`echo $ARG | sed -e 's/machine=//g'`;;
     esac
@@ -172,6 +192,11 @@ fi
 if [ $BUILD_PROGRAMS = 1 ] && [ $BUILD_PROGRAMS_GIVEN = 0 ]; then
     echo "No build type given for PROGRAMS; defaulting to: $BUILD_PROGRAMS_DEFAULTS"
     BUILD_PROGRAMS_OPT=$BUILD_PROGRAMS_DEFAULTS
+fi
+
+if [ $BUILD_TOOLS = 1 ] && [ $BUILD_TOOLS_GIVEN = 0 ]; then
+    echo "No build type given for TOOLS; defaulting to: $BUILD_TOOLS_DEFAULTS"
+    BUILD_TOOLS_OPT=$BUILD_TOOLS_DEFAULTS
 fi
 
 # --------------------------------------------------------------------------------
@@ -301,6 +326,21 @@ fi
 
 if [ $BUILD_TOOLS = 1 ]; then
     echo "Building TOOLS for $MACHINE"
+    for GROUP in $BUILD_TOOLS_OPT; do
+	echo "Building GROUP $GROUP"
+	case $GROUP in
+	    preproc)
+		echo "preproc: $BUILD_GROUP_PREPROC"
+		for PROG in $BUILD_GROUP_PREPROC; do
+		    cd src/tools/preprocessing/$PROG && make $TARGET && cd ../../../..
+		done;;
+	    postproc)
+		echo "postproc: $BUILD_GROUP_POSTPROC"
+		for PROG in $BUILD_GROUP_POSTPROC; do
+		    cd src/tools/postprocessing/$PROG && make $TARGET && cd ../../../..
+		done;;
+	    esac
+    done
 fi
 
 
