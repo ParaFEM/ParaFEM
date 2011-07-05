@@ -37,6 +37,8 @@ MODULE LARGE_STRAIN
   !*  This is a temporary module that supports program src/programs/5th_ed/xx7.f90
   !*/
 
+  USE PRECISION
+  
   CONTAINS
 
   SUBROUTINE KINE3D(igauss,auxm,coord,points,det,detF,beeF,defE,derivF,jacF)
