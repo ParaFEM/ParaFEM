@@ -9,6 +9,13 @@ FC=ftn
 EXT_LIB_ARPACK_FC=ftn
 EXT_LIB_ARPACK_FFLAGS=-V -fastsse -r8
 EXT_LIB_ARPACK_LDFLAGS=
+
+EXT_LIB_METIS_CC=cc
+EXT_LIB_METIS_OPTFLAGS=-O2
+EXT_LIB_METIS_COPTIONS=
+EXT_LIB_METIS_LDOPTIONS=
+EXT_LIB_METIS_AR=ar rv
+EXT_LIB_METIS_RANLIB=ranlib
   
 # --------------------------------------------------------------------------------
 # FLAGS for MODULE/LIBRARY compliation
