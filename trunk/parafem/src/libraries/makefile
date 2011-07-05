@@ -31,6 +31,7 @@ debug-arpack:
 release-metis:
 	@echo
 	@echo "Building LIBRARY RELEASE (METIS)"
+	@cd metis-4.0.3 && $(MAKE) default && cd ..
 	@echo "Done LIBRARY RELEASE (METIS)"
 
 debug-metis:
@@ -43,9 +44,12 @@ debug-metis:
 
 clean:
 	@cd ARPACK && $(MAKE) clean && cd ..
+	@cd metis-4.0.3 && $(MAKE) clean && cd ..
 
 execlean:
 	@rm -f ../../lib/libarpack*.a
+	@rm -f ../../lib/libmetis*.a
+	@cd metis-4.0.3 && $(MAKE) realclean && cd ..
 
 #install:
 #	@echo
