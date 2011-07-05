@@ -25,7 +25,7 @@
 # | other than your home directory.      |
 # %--------------------------------------%
 #
-home = $(HOME)/parafem/src/libraries/ARPACK
+home = $(PARAFEM_HOME)/src/libraries/ARPACK
 #
 #  %--------------------------------------%
 #  | The platform identifier to suffix to |
