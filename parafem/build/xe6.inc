@@ -79,6 +79,42 @@ DEFAULT_GAITFEM_SERIAL_REL_LDFLAGS=
 DEFAULT_GAITFEM_SERIAL_DBG_LDFLAGS=
   
 # --------------------------------------------------------------------------------
+# DEFAULT FLAGS for all tool groups
+# --------------------------------------------------------------------------------
+# Form is DEFAULT_(PREPROC|POSTPROC)_(FC|CC|MPI|SERIAL|OPENMP|GPU)_(REL|DBG)_(FFLAGS|LDFLAGS)
+#   where applicable.
+# These are NOT directly used in any makefiles; specific tool flags are assigned
+# these defaults below and may be overridden.
+# --------------------------------------------------------------------------------
+
+# generic PREPROC group FFLAGS and LDFLAGS
+DEFAULT_PREPROC_MPI_REL_FFLAGS=-V -fastsse -Mlarge_arrays
+DEFAULT_PREPROC_MPI_DBG_FFLAGS=-V -g -Mbounds -traceback
+DEFAULT_PREPROC_MPI_REL_LDFLAGS=
+DEFAULT_PREPROC_MPI_DBG_LDFLAGS=
+
+DEFAULT_PREPROC_CC_REL_FFLAGS=-c -O2
+DEFAULT_PREPROC_CC_DBG_FFLAGS=-c -g
+DEFAULT_PREPROC_FC_REL_FFLAGS=-V -fastsse -Mlarge_arrays
+DEFAULT_PREPROC_FC_DBG_FFLAGS=-V -g -Mbounds -traceback
+
+# generic POSTPROC group FFLAGS and LDFLAGS
+DEFAULT_POSTPROC_MPI_REL_FFLAGS=-V -fastsse -Mlarge_arrays
+DEFAULT_POSTPROC_MPI_DBG_FFLAGS=-V -g -Mbounds -traceback
+DEFAULT_POSTPROC_MPI_REL_LDFLAGS=
+DEFAULT_POSTPROC_MPI_DBG_LDFLAGS=
+
+# --------------------------------------------------------------------------------
+# --------------------------------------------------------------------------------
+# SPECIFIC FLAGS for PROGRAMS and TOOLS
+# By default these inherit the defaults defined above.
+# NOTE: If a specific program needs different flags then modify below.
+# NOTE: It may be useful to create a new include file for a modified architecture.
+#   e.g., xe6_test.inc and use MACHINE=xe6_test in the build script.
+# --------------------------------------------------------------------------------
+# --------------------------------------------------------------------------------
+
+# --------------------------------------------------------------------------------
 # PROGRAM FLAGS for all programs.
 # --------------------------------------------------------------------------------
 # All use their program group defaults defined above unless overridden below
@@ -167,32 +203,6 @@ XX9_MPI_REL_FFLAGS=$(DEFAULT_XX_MPI_REL_FFLAGS)
 XX9_MPI_REL_LDFLAGS=$(DEFAULT_XX_MPI_REL_LDFLAGS)
 XX9_MPI_DBG_FFLAGS=$(DEFAULT_XX_MPI_DBG_FFLAGS)
 XX9_MPI_DBG_LDFLAGS=$(DEFAULT_XX_MPI_DBG_LDFLAGS)
-
-# --------------------------------------------------------------------------------
-# DEFAULT FLAGS for all tool groups
-# --------------------------------------------------------------------------------
-# Form is DEFAULT_(PREPROC|POSTPROC)_(FC|CC|MPI|SERIAL|OPENMP|GPU)_(REL|DBG)_(FFLAGS|LDFLAGS)
-#   where applicable.
-# These are NOT directly used in any makefiles; specific tool flags are assigned
-# these defaults below and may be overridden.
-# --------------------------------------------------------------------------------
-
-# generic PREPROC group FFLAGS and LDFLAGS
-DEFAULT_PREPROC_MPI_REL_FFLAGS=-V -fastsse -Mlarge_arrays
-DEFAULT_PREPROC_MPI_DBG_FFLAGS=-V -g -Mbounds -traceback
-DEFAULT_PREPROC_MPI_REL_LDFLAGS=
-DEFAULT_PREPROC_MPI_DBG_LDFLAGS=
-
-DEFAULT_PREPROC_CC_REL_FFLAGS=-c -O2
-DEFAULT_PREPROC_CC_DBG_FFLAGS=-c -g
-DEFAULT_PREPROC_FC_REL_FFLAGS=-V -fastsse -Mlarge_arrays
-DEFAULT_PREPROC_FC_DBG_FFLAGS=-V -g -Mbounds -traceback
-
-# generic POSTPROC group FFLAGS and LDFLAGS
-DEFAULT_POSTPROC_MPI_REL_FFLAGS=-V -fastsse -Mlarge_arrays
-DEFAULT_POSTPROC_MPI_DBG_FFLAGS=-V -g -Mbounds -traceback
-DEFAULT_POSTPROC_MPI_REL_LDFLAGS=
-DEFAULT_POSTPROC_MPI_DBG_LDFLAGS=
 
 # --------------------------------------------------------------------------------
 # TOOL FLAGS for selected tools.
