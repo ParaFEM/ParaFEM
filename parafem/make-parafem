@@ -85,6 +85,9 @@ BUILD_TOOLS_DEFAULTS="preproc postproc"
 # --------------------------------------------------------------------------------
 
 showusage() {
+    echo "To capture a log file, please run the script as:"
+    echo "  ./make-parafem <ARGS> 2>&1 | tee log"
+    echo
     echo "To use the make-parafem script, please use one or more of the following options on the command line:"
     echo
     echo "Building the LIBRARIES:"
