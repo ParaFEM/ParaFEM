@@ -71,14 +71,14 @@ BUILD_GROUP_GAITFEM="gaitfem"
 
 # TOOLS build options
 BUILD_TOOLS_OPT=
-BUILD_GROUP_PREPROC="inp2d mg2d partitioner" # + dinomesher
-BUILD_GROUP_POSTPROC="d2off bnd2dis mat2numpe rdfaces upvw2dis testbc"
+BUILD_GROUP_PREPROC="inp2d mg2d partitioner dinomesher"
+BUILD_GROUP_POSTPROC="d2off bnd2dis mat2numpe upvw2dis"
 
 # DEFAULT build options for LIBRARIES, MODULES, PROGRAMS and TOOLS
 BUILD_LIBRARIES_DEFAULTS="arpack" # + metis
 BUILD_MODULES_DEFAULTS="mpi serial bem_lib bem_lib_p"
 BUILD_PROGRAMS_DEFAULTS="p12 prog8 xx" # + gaitfem
-BUILD_TOOLS_DEFAULTS="preproc" # + postproc
+BUILD_TOOLS_DEFAULTS="preproc postproc"
 
 # --------------------------------------------------------------------------------
 # Local functions
@@ -289,7 +289,9 @@ echo "TARGET is $TARGET for programs: $BUILD_PROGRAMS_OPT"
 # --------------------------------------------------------------------------------
 
 if [ $BUILD_LIBRARIES = 1 ]; then
+    echo "--------------------------------------------------------------------------------"
     echo "Building LIBRARIES for $MACHINE"
+    echo "--------------------------------------------------------------------------------"
     cd $PARAFEM_HOME
     cd src/libraries && make $LIBRARIES_TARGET && cd ../..
     if [ $? = 2 ]; then	error "LIBRARIES/$LIBRARIES_TARGET"; fi
@@ -297,7 +299,9 @@ if [ $BUILD_LIBRARIES = 1 ]; then
 fi
 
 if [ $BUILD_MODULES = 1 ]; then
+    echo "--------------------------------------------------------------------------------"
     echo "Building MODULES for $MACHINE"
+    echo "--------------------------------------------------------------------------------"
     cd $PARAFEM_HOME
     cd src/modules && make $MODULES_TARGET && cd ../..
     if [ $? = 2 ]; then	error "MODULES/$MODULES_TARGET"; fi
@@ -305,11 +309,15 @@ if [ $BUILD_MODULES = 1 ]; then
 fi
 
 if [ $BUILD_PROGRAMS = 1 ]; then
+    echo "--------------------------------------------------------------------------------"
     echo "Building PROGRAMS for $MACHINE"
+    echo "--------------------------------------------------------------------------------"
 
     # build each program group selected
     for GROUP in $BUILD_PROGRAMS_OPT; do
+	echo "--------------------------------------------------------------------------------"
 	echo "Building GROUP $GROUP"
+	echo "--------------------------------------------------------------------------------"
 	case $GROUP in
 	    p12)
 		echo "p12: $BUILD_GROUP_P12"
@@ -349,15 +357,23 @@ if [ $BUILD_TOOLS = 1 ]; then
 		echo "preproc: $BUILD_GROUP_PREPROC"
 		for PROG in $BUILD_GROUP_PREPROC; do
 		    cd $PARAFEM_HOME
-		    cd src/tools/preprocessing/$PROG && make $TARGET && cd ../../../..
-		    if [ $? = 2 ]; then	error "BUILD_GROUP_PREPROC/$PROG/$TARGET"; fi
+		    if [ -d src/tools/preprocessing/$PROG ]; then
+			cd src/tools/preprocessing/$PROG && make $TARGET && cd ../../../..
+			if [ $? = 2 ]; then error "BUILD_GROUP_PREPROC/$PROG/$TARGET"; fi
+		    else
+			error "BUILD_GROUP_PREPROC directory src/tools/preprocessing/$PROG does not exist"
+		    fi
 		done;;
 	    postproc)
 		echo "postproc: $BUILD_GROUP_POSTPROC"
 		for PROG in $BUILD_GROUP_POSTPROC; do
 		    cd $PARAFEM_HOME
-		    cd src/tools/postprocessing/$PROG && make $TARGET && cd ../../../..
-		    if [ $? = 2 ]; then	error "BUILD_GROUP_POSTPROC/$PROG/$TARGET"; fi
+		    if [ -d src/tools/postprocessing/$PROG ]; then
+			cd src/tools/postprocessing/$PROG && make $TARGET && cd ../../../..
+			if [ $? = 2 ]; then error "BUILD_GROUP_POSTPROC/$PROG/$TARGET"; fi
+		    else
+			error "BUILD_GROUP_POSTPROC directory src/tools/postprocessing/$PROG does not exist"
+		    fi
 		done;;
 	    esac
     done
