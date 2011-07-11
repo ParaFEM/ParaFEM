@@ -33,6 +33,7 @@ PROGRAM mat2numpe
 
   INTEGER,PARAMETER     :: ndim  = 3
   INTEGER               :: nod   = 4
+  INTEGER               :: partitioner = 1
   INTEGER               :: nn 
   INTEGER               :: nels
   INTEGER               :: nr 
@@ -120,7 +121,7 @@ PROGRAM mat2numpe
 
   DO i = 1, npes 
     numpe = numpe + 1
-    CALL calc_nels_pp(nels)
+    CALL calc_nels_pp(job_name,nels,npes,numpe,partitioner,nels_pp)
     nels_pp_store(i) = nels_pp
   END DO
 

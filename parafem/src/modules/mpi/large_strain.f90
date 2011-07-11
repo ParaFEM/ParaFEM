@@ -33,11 +33,13 @@ MODULE LARGE_STRAIN
   !******
   !*  Place remarks that should not be included in the documentation here.
   !*
-  !*  This is a temporary module that supports program src/programs/5th_ed/xx7.f90
+  !*  This is a temporary module that supports program 
+  !*  src/programs/5th_ed/xx7.f90
   !*/
 
   USE PRECISION
   USE MP_INTERFACE
+  USE GATHER_SCATTER
   USE MATHS
   
   
