@@ -1,3 +1,9 @@
+# BUILD INCLUDE build/xe6.inc
+# Author: Louise M. Lever
+# --------------------------------------------------------------------------------
+# Include file for the xe6 (HECToR) architecture.
+# --------------------------------------------------------------------------------
+
 # --------------------------------------------------------------------------------
 # Generic settings for compilation
 # --------------------------------------------------------------------------------
@@ -165,7 +171,7 @@ XX9_MPI_DBG_LDFLAGS=$(DEFAULT_XX_MPI_DBG_LDFLAGS)
 # --------------------------------------------------------------------------------
 # DEFAULT FLAGS for all tool groups
 # --------------------------------------------------------------------------------
-# Form is DEFAULT_(PREPROC|POSTPROC)_(CC|MPI|SERIAL|OPENMP|GPU)_(REL|DBG)_(FFLAGS|LDFLAGS)
+# Form is DEFAULT_(PREPROC|POSTPROC)_(FC|CC|MPI|SERIAL|OPENMP|GPU)_(REL|DBG)_(FFLAGS|LDFLAGS)
 #   where applicable.
 # These are NOT directly used in any makefiles; specific tool flags are assigned
 # these defaults below and may be overridden.
@@ -179,6 +185,8 @@ DEFAULT_PREPROC_MPI_DBG_LDFLAGS=
 
 DEFAULT_PREPROC_CC_REL_FFLAGS=-c -O2
 DEFAULT_PREPROC_CC_DBG_FFLAGS=-c -g
+DEFAULT_PREPROC_FC_REL_FFLAGS=-V -fastsse -Mlarge_arrays
+DEFAULT_PREPROC_FC_DBG_FFLAGS=-V -g -Mbounds -traceback
 
 # generic POSTPROC group FFLAGS and LDFLAGS
 DEFAULT_POSTPROC_MPI_REL_FFLAGS=-V -fastsse -Mlarge_arrays
@@ -203,6 +211,8 @@ PARTITIONER_REL_FFLAGS=$(DEFAULT_PREPROC_CC_REL_FFLAGS)
 PARTITIONER_DBG_FFLAGS=$(DEFAULT_PREPROC_CC_DBG_FFLAGS)
 
 # DINOMESH_ flags to be added
+DINOMESH_REL_FFLAGS=$(DEFAULT_PREPROC_FC_REL_FFLAGS)
+DINOMESH_DBG_FFLAGS=$(DEFAULT_PREPROC_FC_DBG_FFLAGS)
   
 # Post Processing tools
 BND2DIS_MPI_REL_FFLAGS=$(DEFAULT_POSTPROC_MPI_REL_FFLAGS)
