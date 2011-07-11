@@ -44,12 +44,12 @@ debug-metis:
 
 clean:
 	@cd ARPACK && $(MAKE) clean && cd ..
-	@cd metis-4.0.3 && $(MAKE) clean && cd ..
+#	@cd metis-4.0.3 && $(MAKE) clean && cd ..
 
 execlean:
 	@rm -f ../../lib/libarpack*.a
 	@rm -f ../../lib/libmetis*.a
-	@cd metis-4.0.3 && $(MAKE) realclean && cd ..
+#	@cd metis-4.0.3 && $(MAKE) realclean && cd ..
 
 #install:
 #	@echo
