@@ -165,7 +165,7 @@ XX9_MPI_DBG_LDFLAGS=$(DEFAULT_XX_MPI_DBG_LDFLAGS)
 # --------------------------------------------------------------------------------
 # DEFAULT FLAGS for all tool groups
 # --------------------------------------------------------------------------------
-# Form is DEFAULT_(PREPROC|POSTPROC)_(MPI|SERIAL|OPENMP|GPU)_(REL|DBG)_(FFLAGS|LDFLAGS)
+# Form is DEFAULT_(PREPROC|POSTPROC)_(CC|MPI|SERIAL|OPENMP|GPU)_(REL|DBG)_(FFLAGS|LDFLAGS)
 #   where applicable.
 # These are NOT directly used in any makefiles; specific tool flags are assigned
 # these defaults below and may be overridden.
@@ -177,6 +177,9 @@ DEFAULT_PREPROC_MPI_DBG_FFLAGS=-V -g -Mbounds -traceback
 DEFAULT_PREPROC_MPI_REL_LDFLAGS=
 DEFAULT_PREPROC_MPI_DBG_LDFLAGS=
 
+DEFAULT_PREPROC_CC_REL_FFLAGS=-c -O2
+DEFAULT_PREPROC_CC_DBG_FFLAGS=-c -g
+  
 # --------------------------------------------------------------------------------
 # TOOL FLAGS for selected tools.
 # --------------------------------------------------------------------------------
@@ -186,3 +189,6 @@ MG2D_MPI_REL_FFLAGS=$(DEFAULT_PREPROC_MPI_REL_FFLAGS)
 MG2D_MPI_REL_LDFLAGS=$(DEFAULT_PREPROC_MPI_REL_LDFLAGS)
 MG2D_MPI_DBG_FFLAGS=$(DEFAULT_PREPROC_MPI_DBG_FFLAGS)
 MG2D_MPI_DBG_LDFLAGS=$(DEFAULT_PREPROC_MPI_DBG_LDFLAGS)
+
+PARTITIONER_REL_FFLAGS=$(DEFAULT_PREPROC_CC_REL_FFLAGS)
+PARTITIONER_DBG_FFLAGS=$(DEFAULT_PREPROC_CC_DBG_FFLAGS)
