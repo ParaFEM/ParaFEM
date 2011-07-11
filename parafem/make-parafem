@@ -425,7 +425,7 @@ fi
 echo
 echo "************************************************************************"
 echo "Build ERRORS encountered:"
-if [ $BUILD_ERRORS ]; then
+if [ "$BUILD_ERRORS" != "" ]; then
     echo -e $BUILD_ERRORS
 else
     echo "  None"
