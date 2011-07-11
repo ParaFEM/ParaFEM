@@ -292,6 +292,7 @@ if [ $BUILD_LIBRARIES = 1 ]; then
     echo "Building LIBRARIES for $MACHINE"
     cd $PARAFEM_HOME
     cd src/libraries && make $LIBRARIES_TARGET && cd ../..
+    if [ $? = 2 ]; then	error "LIBRARIES/$LIBRARIES_TARGET"; fi
     echo "Done building LIBRARIES for $MACHINE"
 fi
 
@@ -299,6 +300,7 @@ if [ $BUILD_MODULES = 1 ]; then
     echo "Building MODULES for $MACHINE"
     cd $PARAFEM_HOME
     cd src/modules && make $MODULES_TARGET && cd ../..
+    if [ $? = 2 ]; then	error "MODULES/$MODULES_TARGET"; fi
     echo "Done building MODULES for $MACHINE"
 fi
 
@@ -314,24 +316,25 @@ if [ $BUILD_PROGRAMS = 1 ]; then
 		for PROG in $BUILD_GROUP_P12; do
 		    cd $PARAFEM_HOME
 		    cd src/programs/4th_ed/$PROG && make $TARGET && cd ../../../..
+		    if [ $? = 2 ]; then	error "BUILD_GROUP_P12/$PROG/$TARGET"; fi
 		done;;
 	    xx)
 		for PROG in $BUILD_GROUP_XX; do
 		    cd $PARAFEM_HOME
 		    cd src/programs/5th_ed/$PROG && make $TARGET && cd ../../../..
-		    if [ $? = 2 ]; then
-			error "BUILD_GROUP_XX/$PROG/$TARGET"
-		    fi
+		    if [ $? = 2 ]; then	error "BUILD_GROUP_XX/$PROG/$TARGET"; fi
 		done;;
 	    prog8) 
 		for PROG in $BUILD_GROUP_PROG8; do
 		    cd $PARAFEM_HOME
 		    cd src/programs/bsd/$PROG && make $TARGET && cd ../../../..
+		    if [ $? = 2 ]; then	error "BUILD_GROUP_PROG8/$PROG/$TARGET"; fi
 		done;;
 	    gaitfem) 
 		for PROG in $BUILD_GROUP_GAITFEM; do
 		    cd $PARAFEM_HOME
 		    cd src/programs/gaitfem && make $TARGET && cd ../../../..
+		    if [ $? = 2 ]; then	error "BUILD_GROUP_GAITFEM/$PROG/$TARGET"; fi
 		done;;
 	esac
     done
@@ -347,12 +350,14 @@ if [ $BUILD_TOOLS = 1 ]; then
 		for PROG in $BUILD_GROUP_PREPROC; do
 		    cd $PARAFEM_HOME
 		    cd src/tools/preprocessing/$PROG && make $TARGET && cd ../../../..
+		    if [ $? = 2 ]; then	error "BUILD_GROUP_PREPROC/$PROG/$TARGET"; fi
 		done;;
 	    postproc)
 		echo "postproc: $BUILD_GROUP_POSTPROC"
 		for PROG in $BUILD_GROUP_POSTPROC; do
 		    cd $PARAFEM_HOME
 		    cd src/tools/postprocessing/$PROG && make $TARGET && cd ../../../..
+		    if [ $? = 2 ]; then	error "BUILD_GROUP_POSTPROC/$PROG/$TARGET"; fi
 		done;;
 	    esac
     done
