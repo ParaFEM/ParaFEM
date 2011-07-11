@@ -110,6 +110,9 @@ showusage() {
 }
 
 error() {
+    echo
+    echo "^^^^^^^^^^ ERROR ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^"
+    echo
     BUILD_ERRORS="$BUILD_ERRORS\nERROR in $1";
 }
 
@@ -289,6 +292,7 @@ echo "TARGET is $TARGET for programs: $BUILD_PROGRAMS_OPT"
 # --------------------------------------------------------------------------------
 
 if [ $BUILD_LIBRARIES = 1 ]; then
+    echo
     echo "--------------------------------------------------------------------------------"
     echo "Building LIBRARIES for $MACHINE"
     echo "--------------------------------------------------------------------------------"
@@ -299,6 +303,7 @@ if [ $BUILD_LIBRARIES = 1 ]; then
 fi
 
 if [ $BUILD_MODULES = 1 ]; then
+    echo
     echo "--------------------------------------------------------------------------------"
     echo "Building MODULES for $MACHINE"
     echo "--------------------------------------------------------------------------------"
@@ -309,12 +314,13 @@ if [ $BUILD_MODULES = 1 ]; then
 fi
 
 if [ $BUILD_PROGRAMS = 1 ]; then
+    echo
     echo "--------------------------------------------------------------------------------"
     echo "Building PROGRAMS for $MACHINE"
     echo "--------------------------------------------------------------------------------"
-
     # build each program group selected
     for GROUP in $BUILD_PROGRAMS_OPT; do
+	echo
 	echo "--------------------------------------------------------------------------------"
 	echo "Building GROUP $GROUP"
 	echo "--------------------------------------------------------------------------------"
@@ -349,7 +355,10 @@ if [ $BUILD_PROGRAMS = 1 ]; then
 fi
 
 if [ $BUILD_TOOLS = 1 ]; then
+    echo
+    echo "--------------------------------------------------------------------------------"
     echo "Building TOOLS for $MACHINE"
+    echo "--------------------------------------------------------------------------------"
     for GROUP in $BUILD_TOOLS_OPT; do
 	echo "Building GROUP $GROUP"
 	case $GROUP in
@@ -380,9 +389,12 @@ if [ $BUILD_TOOLS = 1 ]; then
 fi
 
 echo
-echo "ParaFEM Build Complete"
-echo
+echo "************************************************************************"
 echo "Build ERRORS encountered:"
 echo -e $BUILD_ERRORS
+echo "************************************************************************"
+echo
+echo "ParaFEM Build Complete"
+echo
 
 
