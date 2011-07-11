@@ -16,13 +16,14 @@ MODULE ELEMENTS
   !*    SAMPLE                 Returns local coords of the integrating points
   !*    ECMAT                  Returns the consistent mass matrix
   !*    DEEMAT                 Compute the D matrix
+  !*    SHAPE_DERIVATIVES      Compute the derivatives of the shape functions
   !* 
   !*  AUTHOR
   !*    I.M. Smith
   !*    D.V. Griffiths
   !*    L. Margetts
   !*  COPYRIGHT
-  !*    2004-2010 University of Manchester
+  !*    2004-2011 University of Manchester
   !******
   !*  Place remarks that should not be included in the documentation here.
   !*  
@@ -1530,5 +1531,117 @@ MODULE ELEMENTS
 !---------------------------------------------------------------------------
 !---------------------------------------------------------------------------
 !---------------------------------------------------------------------------
+  
+  SUBROUTINE SHAPE_DERIVATIVES(i,points,der)
+
+    !/****f* elements/shape_derivatives
+    !*  NAME
+    !*    SUBROUTINE: shape_derivatives
+    !*  SYNOPSIS
+    !*    Usage:      CALL shape_derivatives(i,points,der)
+    !*  FUNCTION
+    !*    Compute the derivatives of the shape functions at a Gauss point
+    !*  INPUTS
+    !*    The following arguments have the INTENT(IN) attribute:
+    !*
+    !*    i                  : Integer
+    !*                       : Gauss point number
+    !*
+    !*    points(nip,ndim)   : Real
+    !*                       : Gauss points coordinates at the reference 
+    !*                         element
+    !*
+    !*    The following arguments have the INTENT(OUT) attribute:
+    !*
+    !*    der(ndim,nod)      : Real
+    !*                       : Derivatives of the shape functions at a 
+    !*                         Gauss point
+    !*  AUTHOR
+    !*    Francisco Calvo
+    !*  CREATION DATE
+    !*    24.01.2008
+    !*  COPYRIGHT
+    !*    (c) University of Manchester 2007-2011
+    !******
+    !*  Place remarks that should not be included in the documentation here.
+    !*
+    !*  In this routine, tetrahedra elements are supposed to be oriented
+    !*  with the 4 node right-handed from the first 3 nodes.
+    !*   
+    !*  This routine has to be completed with elements for 1 and 2 dimensions  
+    !*  and 3D elements with unusual number of nodes
+    !*
+    !*  A programming branch by Fran that needs to be removed from ParaFEM
+    !*/
+     
+    INTEGER,   INTENT(IN)  :: i
+    REAL(iwp), INTENT(IN)  :: points(:,:)
+    REAL(iwp), INTENT(OUT) :: der(:,:) 
+    INTEGER :: ndim, nod
+    REAL(iwp) :: xi, xip, xim, eta, etap, etam, zeta, zetap, zetam 
+
+    ndim = UBOUND(der,1)
+    nod  = UBOUND(der,2)
     
+    SELECT CASE(ndim)
+      CASE(3) !three dimensional elements
+        xi    = points(1,i)
+        eta   = points(2,i)
+        zeta  = points(3,i)
+        xip   = 1._iwp + xi 
+        etap  = 1._iwp + eta 
+        zetap = 1._iwp + zeta
+        xim   = 1._iwp - xi 
+        etam  = 1._iwp - eta 
+        zetam = 1._iwp - zeta
+        SELECT CASE(nod)	 
+          CASE(4) ! 4-node tetrahedra
+            der(1,1) =  1._iwp  !N1_x
+            der(2,1) =  0._iwp  !N1_y
+            der(3,1) =  0._iwp  !N1_z
+            der(1,2) =  0._iwp  !N2_x
+            der(2,2) =  1._iwp  !N2_y
+            der(3,2) =  0._iwp  !etc...
+            der(1,3) = -1._iwp
+            der(2,3) = -1._iwp
+            der(3,3) = -1._iwp
+            der(1,4) =  0._iwp
+            der(2,4) =  0._iwp
+            der(3,4) =  1._iwp
+          CASE(8) !8-node hexahedra
+            der(1,1) =  0.125_iwp*etam*zetam !N1_x
+            der(2,1) = -0.125_iwp*xip*zetam  !N1_y
+            der(3,1) = -0.125_iwp*xip*etam   !N1_z
+            der(1,2) =  0.125_iwp*etap*zetam !N2_x
+            der(2,2) =  0.125_iwp*xip*zetam  !N2_y
+            der(3,2) = -0.125_iwp*xip*etap   !etc...
+            der(1,3) = -0.125_iwp*etap*zetam
+            der(2,3) =  0.125_iwp*xim*zetam
+            der(3,3) = -0.125_iwp*xim*etap
+            der(1,4) = -0.125_iwp*etam*zetam
+            der(2,4) = -0.125_iwp*xim*zetam
+            der(3,4) = -0.125_iwp*xim*etam
+            der(1,5) =  0.125_iwp*etam*zetap
+            der(2,5) = -0.125_iwp*xip*zetap
+            der(3,5) =  0.125_iwp*xip*etam
+            der(1,6) =  0.125_iwp*etap*zetap
+            der(2,6) =  0.125_iwp*xip*zetap
+            der(3,6) =  0.125_iwp*xip*etap
+            der(1,7) = -0.125_iwp*etap*zetap
+            der(2,7) =  0.125_iwp*xim*zetap
+            der(3,7) =  0.125_iwp*xim*etap
+            der(1,8) = -0.125_iwp*etam*zetap
+            der(2,8) = -0.125_iwp*xim*zetap
+            der(3,8) =  0.125_iwp*xim*etam
+          CASE DEFAULT
+            WRITE(*,*)"Wrong number of nodes!!"
+        END SELECT
+      CASE DEFAULT
+        WRITE(*,*)"Wrong number of dimensions!!"
+    END SELECT
+
+    RETURN
+
+  END SUBROUTINE SHAPE_DERIVATIVES
+  
 END MODULE ELEMENTS

@@ -782,5 +782,105 @@ MODULE MATHS
 !---------------------------------------------------------------------------
 !---------------------------------------------------------------------------
 !---------------------------------------------------------------------------
+
+ SUBROUTINE INVERT_MATRIX_3x3(a,a_1)
+
+    !/****f* maths/invert_matrix_3x3
+    !*  NAME
+    !*    SUBROUTINE: invert_matrix_3x3
+    !*  SYNOPSIS
+    !*    Usage:      CALL invert_matrix_3x3(a,a_1)
+    !*  FUNCTION
+    !*    Invert a 3x3 matrix
+    !*  INPUTS
+    !*    The following arguments have the INTENT(IN) attribute:
+    !*
+    !*    a(3,3):        : Real
+    !*                   : Matrix to be inverted
+    !*
+    !*    The following arguments have the INTENT(OUT) attribute:
+    !*
+    !*    a_1(3,3):      : Real
+    !*                   : Inverse of the matrix
+    !*  AUTHOR
+    !*    Francisco Calvo
+    !*  CREATION DATE
+    !*    05.06.2007
+    !*  COPYRIGHT
+    !*    (c) University of Manchester 2007-2011
+    !******
+    !*  Place remarks that should not be included in the documentation here.
+    !*
+    !*  A programming branch by Fran that needs to be removed from the main
+    !*  ParaFEM distribution
+    !*/
+
+    IMPLICIT NONE
+	  
+    REAL(iwp), INTENT(IN)  :: a(3,3)
+    REAL(iwp), INTENT(OUT) :: a_1(3,3)
+    REAL(iwp) :: det
+
+    CALL DETERMINANT_MATRIX_3x3(a,det)
+    det = 1._iwp/det
+
+    a_1(1,1) =  (a(2,2)*a(3,3) - a(3,2)*a(2,3))*det
+    a_1(1,2) = -(a(1,2)*a(3,3) - a(3,2)*a(1,3))*det
+    a_1(1,3) =  (a(1,2)*a(2,3) - a(2,2)*a(1,3))*det
+    a_1(2,1) = -(a(2,1)*a(3,3) - a(3,1)*a(2,3))*det
+    a_1(2,2) =  (a(1,1)*a(3,3) - a(3,1)*a(1,3))*det
+    a_1(2,3) = -(a(1,1)*a(2,3) - a(2,1)*a(1,3))*det
+    a_1(3,1) =  (a(2,1)*a(3,2) - a(3,1)*a(2,2))*det
+    a_1(3,2) = -(a(1,1)*a(3,2) - a(3,1)*a(1,2))*det
+    a_1(3,3) =  (a(1,1)*a(2,2) - a(2,1)*a(1,2))*det
+
+  END SUBROUTINE INVERT_MATRIX_3x3
+
+!---------------------------------------------------------------------------
+!---------------------------------------------------------------------------
+!---------------------------------------------------------------------------
+
+  SUBROUTINE DETERMINANT_MATRIX_3x3(a,det)
+
+    !/****f* maths/determinant_matrix_3x3
+    !*  NAME
+    !*    SUBROUTINE: determinant_matrix_3x3
+    !*  SYNOPSIS
+    !*    Usage:      CALL determinant_matrix_3x3(a,det)
+    !*  FUNCTION
+    !*    Compute the determinant of a matrix 3x3
+    !*  INPUTS
+    !*    The following arguments have the INTENT(IN) attribute:
+    !*
+    !*    a(3,3):        : Real
+    !*                   : Matrix whose determinant is to be computed
+    !*
+    !*    The following arguments have the INTENT(OUT) attribute:
+    !*
+    !*    det:           : Real
+    !*                   : Determinant of the matrix
+    !*  AUTHOR
+    !*    Francisco Calvo
+    !*  CREATION DATE
+    !*    05.06.2007
+    !*  COPYRIGHT
+    !*    (c) University of Manchester 2007-2011
+    !******
+    !*  Place remarks that should not be included in the documentation here.
+    !*
+    !*  A programming branch from Fran that needs to be removed from the main
+    !*  ParaFEM distribution
+    !*/
+
+    IMPLICIT NONE
+
+    REAL(iwp), INTENT(IN)  :: a(3,3)
+    REAL(iwp), INTENT(OUT) ::  det
+
+    det = a(1,1)*( a(2,2)*a(3,3) - a(2,3)*a(3,2) ) + &
+          a(2,1)*( a(3,2)*a(1,3) - a(1,2)*a(3,3) ) + &
+          a(3,1)*( a(1,2)*a(2,3) - a(1,3)*a(2,2) )
+
+  END SUBROUTINE DETERMINANT_MATRIX_3x3
   
 END MODULE MATHS

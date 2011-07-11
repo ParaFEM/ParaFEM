@@ -12,11 +12,12 @@ MODULE PARTITION
   !*    Subroutine             Purpose
   !*    
   !*    CALC_NODES_PP          Subdivide the nodes across processors
+  !*    CALC_ELEMPROC          Subdivide any quantity across processors
   !*  AUTHOR
   !*    F. Calvo
   !*    L. Margetts
   !*  COPYRIGHT
-  !*    2004-2010 University of Manchester
+  !*    2004-2011 University of Manchester
   !******
   !*  Place remarks that should not be included in the documentation here.
   !*
@@ -130,5 +131,80 @@ MODULE PARTITION
 !---------------------------------------------------------------------------
 !---------------------------------------------------------------------------
 !---------------------------------------------------------------------------
+
+  SUBROUTINE CALC_ELEMPROC(nobjects,npes,objectproc)
+
+    !/****f* partition/calc_elemproc
+    !*  NAME 
+    !*    SUBROUTINE: calc_elemproc
+    !*  SYNOPSIS
+    !*    Usage:      CALL calc_elemproc(nobjects,npes,objectproc)
+    !*  FUNCTION
+    !*    Compute the array "elemproc" that contains the process number
+    !*    assigned to each object (e.g. elements, equations)
+    !*  INPUTS
+    !*    The following arguments have the INTENT(IN) attribute:
+    !*
+    !*    nobjects             : Integer
+    !*                           Total number of objects
+    !*
+    !*    npes                 : Integer
+    !*                           Number of processes
+    !*
+    !*    The following arguments have the INTENT(OUT) attribute:
+    !*
+    !*    objectproc(nobjects) : Integer
+    !*                           Process number assigned to each object
+    !*  AUTHOR
+    !*    Francisco Calvo
+    !*  CREATION DATE
+    !*    16.01.2008
+    !*  COPYRIGHT
+    !*    (c) University of Manchester 2007-2008
+    !******
+    !*  Place remarks that should not be included in the documentation here.
+    !*
+    !*    This routine can be used to split anything (elements, equations,...)
+    !*    evenly (save 1 number) across the processes
+    !*/    
+
+    IMPLICIT NONE
+
+    INTEGER, INTENT(IN)  :: nobjects, npes
+    INTEGER, INTENT(OUT) :: objectproc(nobjects)
+    INTEGER  :: i, j, countleft, minobject_pp, maxobject_pp, objects_left
+    INTEGER  :: actualproc, jump
+
+    IF (npes==1) THEN
+      objectproc = 1
+    ELSE
+      minobject_pp = nobjects/npes
+      objects_left  = nobjects - minobject_pp*npes
+      IF (objects_left == 0) THEN
+        maxobject_pp = minobject_pp
+      ELSE
+        maxobject_pp = minobject_pp + 1
+      ENDIF
+
+      actualproc = 1
+      countleft = 0
+      jump = maxobject_pp
+
+      DO i = 1,nobjects
+        objectproc(i) = actualproc
+        IF (i==jump) THEN
+          actualproc = actualproc + 1
+          countleft = countleft + 1
+          IF (countleft < objects_left) THEN
+            jump = jump + maxobject_pp
+          ELSE
+            jump = jump + minobject_pp
+          END IF
+        END IF
+      END DO
+    END IF
+
+  END SUBROUTINE CALC_ELEMPROC
+
  
 END MODULE PARTITION
