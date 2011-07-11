@@ -16,18 +16,33 @@
 # Notes:
 # -----------------------------------------------------------------------
 
-CC=cc
+include ../../../../build/mk_defs.inc
+include ../../../../build/$(MACHINE).inc
+
+MODULE	= ../../../../include/mpi
+LIB	= ../../../../lib
+
 .SUFFIXES: .o .c
 
 all:	release
 
 release:
-	$(MAKE) -f makefile d2metin FFLAGS="-c -O2" \
-	&& $(MAKE) -f makefile metout2d FFLAGS="-c -O2"
+	@echo
+	@echo "Building d2metin and metout2d RELEASE"
+	$(MAKE) d2metin \
+	FFLAGS="-c -I$(MODULE) $(PARTITIONER_REL_FFLAGS)"
+	$(MAKE) metout2d \
+	FFLAGS="-c -I$(MODULE) $(PARTITIONER_REL_FFLAGS)"
+	@echo "Done d2metin and metout2d RELEASE"
 
 debug:
-	$(MAKE) -f makefile d2metin FFLAGS="-c -g" \
-	&& $(MAKE) -f makefile metout2d FFLAGS="-c -g"
+	@echo
+	@echo "Building d2metin and metout2d DEBUG"
+	$(MAKE) d2metin \
+	FFLAGS="-c -I$(MODULE) $(PARTITIONER_DBG_FFLAGS)"
+	$(MAKE) metout2d \
+	FFLAGS="-c -I$(MODULE) $(PARTITIONER_DBG_FFLAGS)"
+	@echo "Done d2metin and metout2d RELEASE"
 
 d2metin: d2metin.o
 	$(CC) d2metin.o -o d2metin
@@ -45,7 +60,7 @@ clean:
 	rm -f *.o
 
 execlean:
-	rm -f d2metin metout2d
+	rm -f d2metin metout2d ../../../../bin/d2metin ../../../../bin/metout2d
 
 relink: d2metin metout2d
 
