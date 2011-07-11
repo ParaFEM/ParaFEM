@@ -25,8 +25,7 @@ program XX7
   REAL(iwp) :: e, v, det, tol, maxdiff, tol2, detF
   REAL(iwp) :: energy, energy1, rn0
   CHARACTER(len=15) :: element
-  CHARACTER(len=30) :: text
-
+  CHARACTER(len=50) :: text
   CHARACTER(len=50) :: fname_base, fname
   INTEGER :: argc, iargc
   INTEGER :: fixed_nodes, numfix_pp, fixdim, writetimes=0
@@ -190,7 +189,7 @@ program XX7
 
   CALL COMPUTE_NPES_PP(nels,neq,nn,npes,numpe,g_num_pp,rest,npes_pp)
 
-  CALL CALC_NEQ_PP(nels)
+  CALL CALC_NEQ_PP
 
   CALL MAKE_GGL(npes_pp,npes,g_g_pp)
 
