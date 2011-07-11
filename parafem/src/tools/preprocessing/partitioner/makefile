@@ -42,7 +42,7 @@ debug:
 	FFLAGS="-c -I$(MODULE) $(PARTITIONER_DBG_FFLAGS)"
 	$(MAKE) metout2d \
 	FFLAGS="-c -I$(MODULE) $(PARTITIONER_DBG_FFLAGS)"
-	@echo "Done d2metin and metout2d RELEASE"
+	@echo "Done d2metin and metout2d DEBUG"
 
 d2metin: d2metin.o
 	$(CC) d2metin.o -o d2metin
