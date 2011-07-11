@@ -109,6 +109,10 @@ showusage() {
     # ...
 }
 
+error() {
+    BUILD_ERRORS="$BUILD_ERRORS\nERROR in $1";
+}
+
 # --------------------------------------------------------------------------------
 # End of local functions
 # --------------------------------------------------------------------------------
@@ -286,12 +290,14 @@ echo "TARGET is $TARGET for programs: $BUILD_PROGRAMS_OPT"
 
 if [ $BUILD_LIBRARIES = 1 ]; then
     echo "Building LIBRARIES for $MACHINE"
+    cd $PARAFEM_HOME
     cd src/libraries && make $LIBRARIES_TARGET && cd ../..
     echo "Done building LIBRARIES for $MACHINE"
 fi
 
 if [ $BUILD_MODULES = 1 ]; then
     echo "Building MODULES for $MACHINE"
+    cd $PARAFEM_HOME
     cd src/modules && make $MODULES_TARGET && cd ../..
     echo "Done building MODULES for $MACHINE"
 fi
@@ -306,18 +312,25 @@ if [ $BUILD_PROGRAMS = 1 ]; then
 	    p12)
 		echo "p12: $BUILD_GROUP_P12"
 		for PROG in $BUILD_GROUP_P12; do
+		    cd $PARAFEM_HOME
 		    cd src/programs/4th_ed/$PROG && make $TARGET && cd ../../../..
 		done;;
 	    xx)
 		for PROG in $BUILD_GROUP_XX; do
+		    cd $PARAFEM_HOME
 		    cd src/programs/5th_ed/$PROG && make $TARGET && cd ../../../..
+		    if [ $? = 2 ]; then
+			error "BUILD_GROUP_XX/$PROG/$TARGET"
+		    fi
 		done;;
 	    prog8) 
 		for PROG in $BUILD_GROUP_PROG8; do
+		    cd $PARAFEM_HOME
 		    cd src/programs/bsd/$PROG && make $TARGET && cd ../../../..
 		done;;
 	    gaitfem) 
 		for PROG in $BUILD_GROUP_GAITFEM; do
+		    cd $PARAFEM_HOME
 		    cd src/programs/gaitfem && make $TARGET && cd ../../../..
 		done;;
 	esac
@@ -332,15 +345,23 @@ if [ $BUILD_TOOLS = 1 ]; then
 	    preproc)
 		echo "preproc: $BUILD_GROUP_PREPROC"
 		for PROG in $BUILD_GROUP_PREPROC; do
+		    cd $PARAFEM_HOME
 		    cd src/tools/preprocessing/$PROG && make $TARGET && cd ../../../..
 		done;;
 	    postproc)
 		echo "postproc: $BUILD_GROUP_POSTPROC"
 		for PROG in $BUILD_GROUP_POSTPROC; do
+		    cd $PARAFEM_HOME
 		    cd src/tools/postprocessing/$PROG && make $TARGET && cd ../../../..
 		done;;
 	    esac
     done
 fi
+
+echo
+echo "ParaFEM Build Complete"
+echo
+echo "Build ERRORS encountered:"
+echo -e $BUILD_ERRORS
 
 
