@@ -119,6 +119,10 @@ error() {
     BUILD_ERRORS="$BUILD_ERRORS\nERROR in $1";
 }
 
+separator() {
+    echo "--------------------------------------------------------------------------------"
+}
+
 # --------------------------------------------------------------------------------
 # End of local functions
 # --------------------------------------------------------------------------------
@@ -331,24 +335,28 @@ if [ $BUILD_PROGRAMS = 1 ]; then
 	    p12)
 		echo "p12: $BUILD_GROUP_P12"
 		for PROG in $BUILD_GROUP_P12; do
+		    separator
 		    cd $PARAFEM_HOME
 		    cd src/programs/4th_ed/$PROG && make $TARGET && cd ../../../..
 		    if [ $? = 2 ]; then	error "BUILD_GROUP_P12/$PROG/$TARGET"; fi
 		done;;
 	    xx)
 		for PROG in $BUILD_GROUP_XX; do
+		    separator
 		    cd $PARAFEM_HOME
 		    cd src/programs/5th_ed/$PROG && make $TARGET && cd ../../../..
 		    if [ $? = 2 ]; then	error "BUILD_GROUP_XX/$PROG/$TARGET"; fi
 		done;;
 	    prog8) 
 		for PROG in $BUILD_GROUP_PROG8; do
+		    separator
 		    cd $PARAFEM_HOME
 		    cd src/programs/bsd/$PROG && make $TARGET && cd ../../../..
 		    if [ $? = 2 ]; then	error "BUILD_GROUP_PROG8/$PROG/$TARGET"; fi
 		done;;
 	    gaitfem) 
 		for PROG in $BUILD_GROUP_GAITFEM; do
+		    separator
 		    cd $PARAFEM_HOME
 		    cd src/programs/gaitfem && make $TARGET && cd ../../../..
 		    if [ $? = 2 ]; then	error "BUILD_GROUP_GAITFEM/$PROG/$TARGET"; fi
@@ -368,6 +376,7 @@ if [ $BUILD_TOOLS = 1 ]; then
 	    preproc)
 		echo "preproc: $BUILD_GROUP_PREPROC"
 		for PROG in $BUILD_GROUP_PREPROC; do
+		    separator
 		    cd $PARAFEM_HOME
 		    if [ -d src/tools/preprocessing/$PROG ]; then
 			cd src/tools/preprocessing/$PROG && make $TARGET && cd ../../../..
@@ -379,6 +388,7 @@ if [ $BUILD_TOOLS = 1 ]; then
 	    postproc)
 		echo "postproc: $BUILD_GROUP_POSTPROC"
 		for PROG in $BUILD_GROUP_POSTPROC; do
+		    separator
 		    cd $PARAFEM_HOME
 		    if [ -d src/tools/postprocessing/$PROG ]; then
 			cd src/tools/postprocessing/$PROG && make $TARGET && cd ../../../..
