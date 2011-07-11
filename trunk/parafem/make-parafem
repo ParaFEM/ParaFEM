@@ -2,6 +2,7 @@
 
 # --------------------------------------------------------------------------------
 # Script to build and install ParaFEM
+# Author: Louise M. Lever
 # --------------------------------------------------------------------------------
 
 # To log build output, run using something like:
