@@ -44,6 +44,7 @@ PROGRAM upvw2dis
   CHARACTER(LEN=50)     :: job_name
   CHARACTER(LEN=50)     :: fname
   CHARACTER(LEN=15)     :: element
+  CHARACTER(LEN=50)     :: program_name
 
 !------------------------------------------------------------------------------
 ! 2. Declare dynamic arrays
@@ -74,6 +75,7 @@ PROGRAM upvw2dis
 
   fname = job_name(1:INDEX(job_name, " ") -1) // ".dat"
   OPEN(10,FILE=fname,STATUS='OLD',ACTION='READ')
+  READ(10,*) program_name
   READ(10,*) element,meshgen,nels,nn
   CLOSE(10)
 
