@@ -494,6 +494,9 @@ MODULE GATHER_SCATTER
   !*    p_pp(:)               : Real
   !*                          : Distributed vector of dimension NEQ_PP
   !*
+  !*  OUTPUTS
+  !*    The following arguments have the INTENT(OUT) attribute:
+  !*
   !*    pmul_pp(:,:)          : Real
   !*                          : Distributed array(NTOT,NELS_PP) that is 
   !*                          : to be populated with the values in P_PP, 
