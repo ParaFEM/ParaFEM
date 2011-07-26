@@ -72,7 +72,7 @@ BUILD_GROUP_GAITFEM="gaitfem"
 
 # TOOLS build options
 BUILD_TOOLS_OPT=
-BUILD_GROUP_PREPROC="inp2d mg2d partitioner dinomesher"
+BUILD_GROUP_PREPROC="inp2d mg2d partitioner dinomesher fearfy"
 BUILD_GROUP_POSTPROC="d2off bnd2dis mat2numpe upvw2dis"
 
 # DEFAULT build options for LIBRARIES, MODULES, PROGRAMS and TOOLS
