@@ -29,8 +29,8 @@ REAL(iwp) :: Con,E,ny,Scat,Scad,tol,kappa
 !-----------------------------------------------------
 !   Read job information
 !-----------------------------------------------------
-OPEN (UNIT=11,FILE='my.dat',FORM='FORMATTED') !  Input
-OPEN (UNIT=12,FILE='my1.res',FORM='FORMATTED') !  Output
+OPEN (UNIT=11,FILE='prog81.dat',FORM='FORMATTED') !  Input
+OPEN (UNIT=12,FILE='prog81.res',FORM='FORMATTED') !  Output
 Call Jobin(Title,Cdim,N_dof,Toa,Nreg,Ltyp,Con,E,ny,&
            Isym,nodel,nodes,maxe)
 Nsym= 2**Isym   !   number of symmetry loops
