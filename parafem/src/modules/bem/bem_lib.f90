@@ -2652,9 +2652,9 @@ SUBROUTINE BCInput(Elres_u,Elres_t,Bcode,nodel,ndofe,n_dof)
 !			Reads boundary conditions
 !-----------------------------------------------------------
 IMPLICIT NONE
-REAL(iwp),INTENT(OUT)    :: Elres_u(:,:)  !  Element results , u
-REAL(iwp),INTENT(OUT)    :: Elres_t(:,:)  !  Element results , t 
-INTEGER,INTENT(OUT) :: BCode(:,:)    !  Element BC큦
+REAL(iwp),INTENT(INOUT)    :: Elres_u(:,:)  !  Element results , u
+REAL(iwp),INTENT(INOUT)    :: Elres_t(:,:)  !  Element results , t 
+INTEGER,INTENT(INOUT) :: BCode(:,:)    !  Element BC큦
 INTEGER,INTENT(IN)  :: nodel         !  Nodes per element
 INTEGER,INTENT(IN)  :: ndofe         !  D.o.F. per Element
 INTEGER,INTENT(IN)  :: n_dof          !  D.o.F per Node
@@ -2662,17 +2662,18 @@ INTEGER :: NE_u,NE_t,n,Nel,m,na
 WRITE(12,*)''
 WRITE(12,*)'Elements with Dirichlet BC큦: '
 WRITE(12,*)''
-Elres_u(:,:)=0  ! Default prescribed values for u = 0.0
-BCode = 0				! Default BC= Neumann Condition			
+Elres_u = 0.0_iwp  ! Default prescribed values for u = 0.0
+BCode = 0             ! Default BC= Neumann Condition			
 READ(11,*)NE_u    
 IF(NE_u > 0) THEN
 DO n=1,NE_u
         READ(11,*) Nel,(Elres_u(Nel,m),m=1,Ndofe)                 
 !       READ(11,*) Nel,(BCode(Nel,m),m=1,Ndofe)
 END DO  
-	BCode(Nel,:)=1
+        BCode(Nel,:)=1
         WRITE(12,*)'Element ',Nel,'  Prescribed values: '
-	Na= 1
+        CALL FLUSH(12)
+        Na= 1
         DO M= 1,Nodel , Nodel - 1
                 WRITE(12,*) Elres_u(Nel,na:na+n_dof-1)
                 Na= na+N_dof
@@ -2681,7 +2682,8 @@ END IF
 WRITE(12,*)''
 WRITE(12,*)'Elements with Neuman BC큦: '
 WRITE(12,*)''
-Elres_t(:,:)=0   !   Default prescribed values = 0.0
+CALL FLUSH(12)
+Elres_t(:,:) = 0.0_iwp   !   Default prescribed values = 0.0
 READ(11,*)NE_t            
 DO n=1,NE_t
         READ(11,*) Nel,(Elres_t(Nel,m),m=1,Ndofe)  
@@ -2692,6 +2694,7 @@ END DO
                 WRITE(12,*) Elres_t(Nel,na:na+n_dof-1)
                 Na= na+N_dof
         END DO 
+CALL FLUSH(12)
 RETURN
 END SUBROUTINE BCInput
 
@@ -2704,10 +2707,10 @@ INTEGER, INTENT(IN) ::	Nodes			!   Number of nodes
 INTEGER, INTENT(IN) ::	Maxe			!   Number of elements
 INTEGER, INTENT(IN) ::	Nodel			!   Number of Nodes of elements
 INTEGER, INTENT(IN) ::	Cdim			!   Cartesian Dimension
-REAL(iwp), INTENT(OUT)   ::  xP(:,:)         !   Node co-ordinates
+REAL(iwp), INTENT(INOUT)   ::  xP(:,:)         !   Node co-ordinates
 REAL(iwp)   ::      xmax(Cdim),xmin(Cdim),delta_x(Cdim)
-INTEGER, INTENT(OUT)::	Inci(:,:) !   Element incidences
-INTEGER							::	Node,Nel,M,n
+INTEGER, INTENT(INOUT):: Inci(:,:) !   Element incidences
+INTEGER               :: Node,Nel,M,n
 !-------------------------------------------------------
 !		Read Node Co-ordinates from Inputfile
 !-------------------------------------------------------
@@ -2725,12 +2728,13 @@ END DO
  WRITE(12,*)''
  WRITE(12,*)'Incidences: '
  WRITE(12,*)''
-	DO Nel=1,Maxe
+        DO Nel=1,Maxe
            READ(11,*) (Inci(Nel,n),n=1,Nodel)
         END DO
 DO Nel = 1 , Maxe, Maxe - 1
- WRITE(12,'(A3,I5,A8,24I5)')'EL ',Nel,'  Inci  ',Inci(Nel,:)
+ WRITE(12,'(A3,I5,A8,4I5)')'EL ',Nel,'  Inci  ',Inci(Nel,:)
 END DO 
+CALL FLUSH(12)
 RETURN
 END SUBROUTINE Geomin
 

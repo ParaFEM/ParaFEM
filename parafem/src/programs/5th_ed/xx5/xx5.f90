@@ -136,6 +136,32 @@
  LOGICAL               :: displacement_control  = .false.
 
 !------------------------------------------------------------------------------
+! 3a. Zero program variables
+!------------------------------------------------------------------------------
+
+ argc         = 0; meshgen      = 0;  cjiters        = 0
+ cjits        = 0; cjtot        = 0; iel             = 0;  i               = 0
+ j            = 0; k            = 0; ii              = 0;  jj              = 0
+ iy           = 0; nels         = 0; nn              = 0;  nr              = 0
+ nip          = 0; node_end     = 0; nodes_pp        = 0;  node_start      = 0
+ np_types     = 0; npes_pp      = 0; numsteps        = 0;  outputIncrement = 0
+ plasiters    = 0; plasitersMin = 0; plasitersMax    = 0
+
+ fileIndexLength      = 0; fixed_freedoms = 0; fixed_freedoms_pp = 0
+ fixed_freedoms_start = 0; loaded_nodes   = 0; loadIncrement     = 0
+ loadIncrementMax     = 0
+
+ e         = zero; v               = zero; sbary     = zero; dlam = zero
+ dsbar     = zero; lode_theta      = zero; det       = zero
+ fnew      = zero; ff              = zero; fstiff    = zero; top = zero
+ bot       = zero; sigm            = zero; tload     = zero
+ tloads    = zero; plastol         = zero; cjtol     = zero
+ ltol      = zero; fftol           = zero; up        = zero; alpha = zero
+ beta      = zero; tinc            = zero; tplas     = zero; maxDisp = zero
+ factor    = zero; fractionApplied = zero; tolerance = zero
+ bdyld_l2n = zero; ddyld_l2n       = zero
+
+!------------------------------------------------------------------------------
 ! 4. Start timer and initialize MPI
 !------------------------------------------------------------------------------
 
@@ -308,10 +334,12 @@
     WRITE(11,'(A,I12)')    "Number of elements on processor one:    ", nels_pp
     WRITE(11,'(A,I12)')    "Number of equations in problem:         ", neq
     WRITE(11,'(A,I12,/)')  "Number of equations per processor:      ", neq_pp
-!   CALL FLUSH_(11)
+    CALL FLUSH(11)
   END IF 
 
+  IF(numpe==1) PRINT *, "calc_npes_pp"
   CALL calc_npes_pp(npes,npes_pp)
+  IF(numpe==1) PRINT *, "make_ggl"
   CALL make_ggl(npes_pp,npes,g_g_pp)
 
 !------------------------------------------------------------------------------ 
@@ -344,6 +372,9 @@
 
   ALLOCATE(temp(nst,nst))
   temp = zero
+
+  IF(numpe==1) PRINT *, "Entering form_temp"
+
   CALL form_temp(temp)
   
 !------------------------------------------------------------------------------ 
@@ -359,12 +390,14 @@
                         "          "
     WRITE(11,'(2A)')    "------------------------------------------",         &
                         "----------"
-!   CALL FLUSH_(11)
+    CALL FLUSH(11)
   END IF 
 
 !-----------------------------------------------------------------------------
 ! 12. Initial element stiffness integration before entering load stepping loop
 !-----------------------------------------------------------------------------
+
+  IF(numpe==1) PRINT *, "sample"
 
   CALL sample(element,points,weights)
   
@@ -400,6 +433,8 @@
   diag_precon_tmp    = zero
   diag_precon_pp     = zero
   diag_precon_pp_old = zero
+  
+  IF(numpe==1) PRINT *, "preconditioner"
 
   elements_1: DO iel = 1,nels_pp 
     DO k = 1,ntot
@@ -421,7 +456,7 @@
   
   IF(numpe==1) THEN
     WRITE(11,'(/,A,I12)') "LOAD STEP                               ", ii
-!   CALL FLUSH_(11)
+    CALL FLUSH(11)
   END IF
 
   qinc            = zero ! collect successful increment sizes for each load step
@@ -439,7 +474,7 @@
       WRITE(11,'(A)')   "Analysis aborted"
       WRITE(11,'(2A/)') "------------------------------------------",       &
                         "----------"
-!     CALL FLUSH_(11)
+      CALL FLUSH(11)
     END IF
     CALL shutdown()
   END IF
@@ -449,14 +484,14 @@
 !-------------------------------------------------------------------------------
   
   IF(fixed_freedoms > 0) THEN
-    
+    IF(numpe==1) PRINT *, "fixed_freedoms = ", fixed_freedoms    
     displacement_control = .true. 
 
     IF(numpe==1) THEN
       WRITE(11,'(A,I12)')   "Number of fixed freedoms:               ",        &
                              fixed_freedoms
       WRITE(11,'(A,I12)')   "Program using displacement control      "
-!     CALL FLUSH_(11)
+      CALL FLUSH(11)
     END IF
 
     ALLOCATE(node(fixed_freedoms))
@@ -471,17 +506,23 @@
     sense       = 0
     val         = zero
 
+    PRINT *, "Allocated and zeroed fixed_freedoms arrays"
+
     CALL getFileNumber(step,ii)
     fname = job_name(1:INDEX(job_name, " ")-1) // "_" //                       &
             step(1:INDEX(step, " ")-1)  // ".fix"
     CALL read_fixed(fname,numpe,sense,node,val)
+    PRINT *, "Read fixed freedoms"
     CALL find_no(node,rest,sense,no)
+    PRINT *, "Found no array"
     CALL reindex_fixed_nodes(ieq_start,no,no_pp_temp,fixed_freedoms_pp,        &
                              fixed_freedoms_start,neq_pp)
-
+    PRINT *, "Reindexed fixed nodes"
+    PRINT *, "Fixed_freedoms_pp = ", fixed_freedoms_pp
     ALLOCATE(no_pp(fixed_freedoms_pp),store_pp(fixed_freedoms_pp))
     no_pp    = 0 
     store_pp = 0
+    PRINT *, "Allocated no_pp and store_pp"
     no_pp    = no_pp_temp(1:fixed_freedoms_pp)   
  
     DEALLOCATE(node)
@@ -496,14 +537,14 @@
 !-------------------------------------------------------------------------------
  
   IF(loaded_nodes > 0) THEN
-
+    IF(numpe==1) PRINT *, "loaded_nodes"
     displacement_control = .false.
 
     IF(numpe==1) THEN
       WRITE(11,'(A,I12)') "Number of loaded nodes:                 ",          &
                            loaded_nodes
       WRITE(11,'(A,I12)') "Program using load control              "
-!     CALL FLUSH_(11)
+      CALL FLUSH(11)
     END IF
 
     CALL getFileNumber(step,ii)
@@ -526,6 +567,7 @@
     IF(numpe==1) THEN
        WRITE(11,'(A,E14.6)') "Total load to be applied:             ",         &
                               tload
+       CALL FLUSH(11)
     END IF
     tload = 0.0_iwp
 
@@ -565,8 +607,9 @@
   outputIncrement     = 0
 
   load_increments : do
-
-  loadIncrement      = loadIncrement + 1
+  
+    loadIncrement      = loadIncrement + 1
+    IF(numpe==1) PRINT *, "load increment", loadIncrement
 
 !------------------------------------------------------------------------------
 ! 19. Save old data in case current load increment is abandoned and zero arrays
@@ -629,7 +672,7 @@
       DO i=1,outputIncrement
         WRITE(11,'(A,I5,A,F12.8)') "Load step ", i, " ", qinc(i)
       END DO
-!     CALL FLUSH_(11)
+      CALL FLUSH(11)
     END IF
     CALL shutdown()
   END IF
@@ -643,7 +686,7 @@
     ELSE
       WRITE(11,'(/A,I12)')"    Iteration    bdyld_l2n    ddyld_l2n    Tolerance"
     END IF
-!   CALL FLUSH_(11)
+    CALL FLUSH(11)
   END IF
 
 !------------------------------------------------------------------------------
@@ -660,6 +703,7 @@
    plastic_iterations: DO   
     
      plasiters = plasiters + 1
+     IF(numpe==1) PRINT *, "plasiters ",plasiters
 
      IF(plasiters==1) THEN
 
@@ -707,6 +751,7 @@
      conjugate_gradients:  DO
        
        cjiters = cjiters + 1 
+       IF(numpe==1) PRINT *, "cjiters ", cjiters
        u_pp    = zero   
        pmul_pp = zero
        
@@ -754,6 +799,7 @@
            WRITE(11,'(A)')     "Analysis aborted"
            WRITE(11,'(2A)')    "----------------------------------------",     &
                                "------------"
+           CALL FLUSH(11)
          END IF
          CALL SHUTDOWN()
        END IF
@@ -969,6 +1015,7 @@
     IF(numpe==1) THEN
       WRITE(11,'(A,I12,A,E12.4,A,E12.4)')" ",plasiters," ",tload,              &
                                          " ", tloads
+      CALL FLUSH(11)
     END IF 
   ELSE ! load control
     ddyld_l2n  = NORM_P(ddylds_pp)  
@@ -978,6 +1025,7 @@
     IF(numpe==1) THEN
       WRITE(11,'(A,I12,A,E12.4,A,E12.4,A,E12.4)')" ",plasiters," ",bdyld_l2n,  &
                                                  " ", ddyld_l2n, " ", tolerance
+      CALL FLUSH(11)
     END IF 
   END IF
 
@@ -1144,7 +1192,7 @@
                             "------------"
     END IF
 
-!   CALL FLUSH_(11)
+    CALL FLUSH(11)
 !------------------------------------------------------------------------------
 !------------------------------------------------------------------------------
 ! 35. End load increment loop

@@ -4,6 +4,7 @@ PROGRAM General_purpose_BEM
 !  This version uses iterative equation solution by BiCGStab(l) in serial
 !------------------------------------------------------------------------------
 USE bem_lib      !  contains precision
+USE precision 
 IMPLICIT NONE      !  Ndof changed to N_dof
 INTEGER, ALLOCATABLE :: Inci(:,:)  !  Element Incidences
 INTEGER, ALLOCATABLE :: BCode(:,:), NCode(:) !  Element BC´s
@@ -34,15 +35,20 @@ Call Jobin(Title,Cdim,N_dof,Toa,Nreg,Ltyp,Con,E,ny,&
            Isym,nodel,nodes,maxe)
 Nsym= 2**Isym   !   number of symmetry loops
 ALLOCATE(xP(Cdim,Nodes))   !  Array for node coordinates
+xP = 0.0_iwp
 ALLOCATE(Inci(Maxe,Nodel)) !  Array for incidences
+Inci = 0
 CALL Geomin(Nodes,Maxe,xp,Inci,Nodel,Cdim)
+CALL flush(12)
 Ndofe= Nodel*N_dof   !    Total degrees of freedom of element
 ALLOCATE(BCode(Maxe,Ndofe))      !    Element Boundary codes
 ALLOCATE(Elres_u(Maxe,Ndofe),Elres_t(Maxe,Ndofe))       
+BCode = 0 ; Elres_u = 0.0_iwp ; Elres_t = 0.0_iwp
 CALL BCinput(Elres_u,Elres_t,Bcode,nodel,ndofe,n_dof)
 READ(11,*) tol,its,ell,kappa    ! data for bicgstab(l)   
 ALLOCATE(Ldest(maxe,Ndofe))  ! Elem. destination vector
 ALLOCATE(Ndest(Nodes,N_dof))
+Ldest = 0; Ndest = 0
 !---------------------------------------------------------------------
 !     Determine Node destination vector and Element destination vector 
 !---------------------------------------------------------------------

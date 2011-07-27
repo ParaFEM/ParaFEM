@@ -55,7 +55,7 @@ IMPLICIT NONE
  WRITE(12,'(A18)')'*THREE_DIMENSIONAL'
  WRITE(12,'(A6)')'*NODES'
  do x=1,numnodes
-   WRITE(12,*)x,nodes(2,x),nodes(3,x),nodes(4,x)
+   WRITE(12,'(I8,3E16.8)')x,nodes(2,x),nodes(3,x),nodes(4,x)
  end do
  WRITE(12,'(A9)')'*ELEMENTS'
 
@@ -73,7 +73,7 @@ end if
 
 if(layer.eq.0)then
  do x=1,numelements
-  WRITE(12,*)elements(1,x), elements(2,x), elements(3,x), elements(4,x), &
+  WRITE(12,'(25I8)')elements(1,x), elements(2,x), elements(3,x), elements(4,x), &
              elements(5,x), elements(11,x), elements(23,x), elements(17,x), &
              elements(7,x), elements(9,x), elements(21,x), elements(19,x), &
              elements(12,x), elements(16,x), elements(24,x), elements(13,x), & 
