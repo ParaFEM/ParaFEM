@@ -449,7 +449,7 @@ end do
 
 else
   WRITE(*,*)'Generating an indenter is only available for 20-node elements &
- at this time. No elements have been generated above the soil.'
+ &at this time. No elements have been generated above the soil.'
 end if     
    end if
 
