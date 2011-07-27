@@ -31,16 +31,16 @@ release:
 	@echo
 	@echo "Building prog83 RELEASE"
 	$(MAKE) prog83 \
-	FFLAGS="-c -I$(MODULE) $(PROG83_BEM_REL_FFLAGS)" \
-	LDFLAGS="-L$(LIB) -lParaFEM_mpi.$(VERSION) -lParaFEM_bem_p.$(VERSION) $(PROG83_BEM_REL_LDFLAGS)"
+	FFLAGS="-c -I$(MODULE) $(PROG83_BEM_P_REL_FFLAGS)" \
+	LDFLAGS="-L$(LIB) -lParaFEM_mpi.$(VERSION) -lParaFEM_bem_p.$(VERSION) $(PROG83_BEM_P_REL_LDFLAGS)"
 	@echo "Done prog83 RELEASE"
 
 debug:
 	@echo
 	@echo "Building prog83 DEBUG"
 	$(MAKE) prog83 \
-	FFLAGS="-c -I$(MODULE) $(PROG83_BEM_DBG_FFLAGS)" \
-	LDFLAGS="-L$(LIB) -lParaFEM_mpi_D.$(VERSION) -lParaFEM_bem_p_D.$(VERSION) $(PROG83_BEM_DBG_LDFLAGS)"
+	FFLAGS="-c -I$(MODULE) $(PROG83_BEM_P_DBG_FFLAGS)" \
+	LDFLAGS="-L$(LIB) -lParaFEM_mpi_D.$(VERSION) -lParaFEM_bem_p_D.$(VERSION) $(PROG83_BEM_P_DBG_LDFLAGS)"
 	@echo "Done prog83 DEBUG"
 
 prog83: prog83.o
