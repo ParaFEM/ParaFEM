@@ -2,11 +2,12 @@
   PROGRAM: prog82.f90
 
   prog82 is a general purpose BEM program for solving elasticity problems. 
-  This version is serial and uses BiCGStab(l). The program is a modified 
-  modified version of the one published in Beer G., Smith I.M. and Duenser C., 
-  "The Boundary Element Method with Programming", Springer-Verlag, 2008.
+  This version is serial and uses BiCGStab(l). It is a modified version of a 
+  program with the same name from Beer, Smith and Duenser, "The Boundary 
+  Element Method with Programming", Springer, 2008.
 
-    Usage: prog82
+
+    Usage: prog82   (Requires an input deck called prog82.dat)
 
    
   REFERENCES
