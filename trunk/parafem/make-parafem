@@ -14,7 +14,18 @@
 
 if [ -z "$PARAFEM_HOME" ] ; then PARAFEM_HOME=`pwd` ; fi
 export PARAFEM_HOME
-export VERSION=2.1.0
+
+# Check for VERSION in mk_defs.inc file and export VERSION number
+MK_DEFS=$PARAFEM_HOME/build/mk_defs.inc
+if ! [ -f $MK_DEFS ]; then
+    echo
+    echo "************************************************************************"
+    echo "ERROR: ParaFEM MK_DEFS include file does not exist!"
+    echo "************************************************************************"
+    exit
+fi
+. $MK_DEFS
+export VERSION
 
 # --------------------------------------------------------------------------------
 # These are the default build parameters for the script and are used unless
