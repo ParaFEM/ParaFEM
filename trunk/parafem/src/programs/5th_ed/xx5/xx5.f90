@@ -22,7 +22,7 @@
 
  INTEGER, PARAMETER   :: nodof=3,nst=6,ndim=3
  INTEGER, PARAMETER   :: nprops=3              ! no of material properties 
- INTEGER, PARAMETER   :: nod=20                ! no of nodes per element 
+ INTEGER, PARAMETER   :: nod=8                 ! no of nodes per element 
 
  INTEGER              :: argc,iargc,meshgen
  INTEGER              :: cjiters
