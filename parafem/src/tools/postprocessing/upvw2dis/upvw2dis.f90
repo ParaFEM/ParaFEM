@@ -97,7 +97,7 @@ PROGRAM upvw2dis
   END DO
 
 !------------------------------------------------------------------------------
-! 5. Write ".dis" file
+! 5. Write ".dis" and ".ttr" files
 !------------------------------------------------------------------------------
 
   fname = job_name(1:INDEX(job_name, " ") -1) // ".dis"
@@ -109,13 +109,17 @@ PROGRAM upvw2dis
   DO i = 1, nn
     WRITE(20,'(I8,3E20.12)') i, upvw(1,i), upvw(3,i), upvw(4,i)
   END DO
+  CLOSE(20)
 
-  WRITE(20,'(A)') "*DISPLACEMENT"
-  WRITE(20,'(A)') " 2" 
+  fname = job_name(1:INDEX(job_name, " ") -1) // ".ttr"
+  OPEN(30,FILE=fname,STATUS='REPLACE',ACTION='WRITE')
+
+  WRITE(30,'(A)') "*TEMPERATURE"
+  WRITE(30,'(A)') " 1" 
 
   DO i = 1, nn
-    WRITE(20,'(I8, E20.12,2A)') i, upvw(2,i),"  0.0000E+00", "  0.0000E+00"
+    WRITE(30,'(I8, E20.12)') i, upvw(2,i)
   END DO
-
+  CLOSE(30)
   
 END PROGRAM upvw2dis
