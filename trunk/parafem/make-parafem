@@ -78,7 +78,7 @@ BUILD_GROUP_POSTPROC="d2off bnd2dis mat2numpe upvw2dis"
 # DEFAULT build options for LIBRARIES, MODULES, PROGRAMS and TOOLS
 BUILD_LIBRARIES_DEFAULTS="arpack" # + metis
 BUILD_MODULES_DEFAULTS="mpi serial bem_lib bem_lib_p"
-BUILD_PROGRAMS_DEFAULTS="p12 prog8 xx" # + gaitfem
+BUILD_PROGRAMS_DEFAULTS="p12 xx" # + prog8 + gaitfem
 BUILD_TOOLS_DEFAULTS="preproc postproc"
 
 # --------------------------------------------------------------------------------
