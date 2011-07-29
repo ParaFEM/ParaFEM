@@ -4,7 +4,7 @@
  * [Documentation Documentation]
   * [GettingStarted Getting Started]
   * [HectorUsers Advice for HECToR Users]
-  * [Structure ParaFEM Driver Programs]
+  * [Structure Driver Programs]
   * [Input Input Data Formats]
   * [Output Output Data Formats]
   * [TestProblems Simple Test Problems]
