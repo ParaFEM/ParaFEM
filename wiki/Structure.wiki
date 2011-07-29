@@ -1,7 +1,7 @@
 #summary Explanation of programs, their functions and which libraries they use.
 #sidebar TOC
 
-= Programs =
+= ParaFEM Driver Programs =
 
 == Smith and Griffiths, 4th Edition ==
 
