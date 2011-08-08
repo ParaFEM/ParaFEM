@@ -130,8 +130,8 @@ showusage() {
     echo "  * If no tool option is specified then the default builds are: $BUILD_TOOLS_DEFAULTS"
     echo
     echo "RELEASE or DEBUG build options:"
-    echo "  -debug will compile the selected libraries and programs with debugging enabled"
-    echo "  -release will compile the selected libraries and programs with the debugging disabled"
+    echo "  (-)debug will compile the selected libraries and programs with debugging enabled"
+    echo "  (-)release will compile the selected libraries and programs with the debugging disabled"
     echo "  * the default mode is -release and does not require explicitly setting"
     echo
     echo "Limiting build options:"
@@ -175,6 +175,9 @@ while [ $# -gt 0 ]; do
 	help) showusage; exit;;
 
 	debug) DO_RELEASE=0; DO_DEBUG=1;;
+	-debug) DO_RELEASE=0; DO_DEBUG=1;;
+	release) DO_RELEASE=1; DO_DEBUG=0;;
+	-release) DO_RELEASE=1; DO_DEBUG=0;;
 	clean) DO_RELEASE=0; DO_DEBUG=0; DO_CLEAN=1;;
 	execlean) DO_RELEASE=0; DO_DEBUG=0; DO_EXECLEAN=1;;
 
