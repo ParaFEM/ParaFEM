@@ -22,7 +22,7 @@ Published: 2004
 {{{
 The ' Goldilocks ' effect : preservation bias in vertebrate track assemblages 
 Author(s) Falkingham, PL, Bates, KT, Margetts, L and Manning, PL
-Source: Journal of the Royal Society: Interface
+Source: Journal of the Royal Society: Interface Volume: 8 Issue: 61 Pages: 1142-1154
 Published: 2011
 }}}
 
@@ -35,7 +35,7 @@ Source: Engineering Computations Volume: 27 Issue: 6 Pages: 746-772 Published: 2
 {{{
 Simulating sauropod manus-only trackway formation using finite-element analysis
 Author(s): Falkingham, PL; Bates KT; Margetts L and Manning PL
-Source: Biology Letters (published online before print June 30 2010) 
+Source: Biology Letters Volume: 7 Issue: 1 Pages: 142-145 Published: 2011 
 }}}
 
 {{{
