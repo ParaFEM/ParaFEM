@@ -1,0 +1,23 @@
+
+  PROGRAM: KUBCprep
+  
+  KUBCprep is a very simple shell script that appends loading conditions to the end of an inp file for the purposes of determining bulk properties of cubes of material using FEA.
+  
+  The program is designed to be run on output from simpleware.  Usage with ParaFEM requires running the tool "inp2d" on the files produced by this script.
+  
+    Usage: KUBCprep <filename.inp> <sizeOfCube>
+    
+    		e.g. KUBCprep foam.inp 9.95e-3
+    		
+    Output: Six files, of identical mesh to the input file, but with loads corresponding to:
+    	  o Compression in the X-axis
+  	    o Compression in the Y-axis
+ 	      o Compression in the Z-axis
+        o Shear along x-axis
+        o Shear along y-axis
+        o Shear along z-axis
+        
+        
+  AUTHOR
+  
+  Peter.Falkingham@manchester.ac.uk
