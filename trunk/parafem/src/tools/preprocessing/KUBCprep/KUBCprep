@@ -1,0 +1,244 @@
+#!/bin/bash
+#Script to generate 6 inp files in order to run KUBC test on a cube
+
+#Usage: $:./KUBCprep filename.inp <cubesize>
+
+
+cp $1 "xcompression_"$1  #creates a newfile for X-compression
+
+cat >> "xcompression_"$1 << _EOF_
+** 
+** BOUNDARY CONDITIONS
+** 
+** Name: BC-1 Type: Symmetry/Antisymmetry/Encastre
+*Boundary
+NS_MASK_3_WITH_XMIN, ENCASTRE
+** ----------------------------------------------------------------
+**
+** STEP: Step-1
+** 
+*Step, name=Step-1
+*Static
+1., 1., 1e-05, 1.
+**
+**BOUNDARY CONDITIONS
+**
+** Name: BC-2 Type: Displacement/Rotation
+*Boundary
+NS_MASK_3_WITH_XMAX, 1, 1, $2
+** 
+** OUTPUT REQUESTS
+** 
+*Restart, write, frequency=0
+** 
+** FIELD OUTPUT: F-Output-1
+** 
+*Output, field, variable=PRESELECT
+** 
+** HISTORY OUTPUT: H-Output-1
+** 
+*Output, history, variable=PRESELECT
+*End Step
+_EOF_
+
+
+#******************Zcompression
+
+cp $1 "zcompression_"$1  #creates a newfile for Z-compression
+
+cat >> "zcompression_"$1 << _EOF_
+** 
+** BOUNDARY CONDITIONS
+** 
+** Name: BC-1 Type: Symmetry/Antisymmetry/Encastre
+*Boundary
+NS_MASK_3_WITH_ZMIN, ENCASTRE
+** ----------------------------------------------------------------
+**
+** STEP: Step-1
+** 
+*Step, name=Step-1
+*Static
+1., 1., 1e-05, 1.
+**
+**BOUNDARY CONDITIONS
+**
+** Name: BC-2 Type: Displacement/Rotation
+*Boundary
+NS_MASK_3_WITH_ZMAX, 1, 1, $2
+** 
+** OUTPUT REQUESTS
+** 
+*Restart, write, frequency=0
+** 
+** FIELD OUTPUT: F-Output-1
+** 
+*Output, field, variable=PRESELECT
+** 
+** HISTORY OUTPUT: H-Output-1
+** 
+*Output, history, variable=PRESELECT
+*End Step
+_EOF_
+
+
+#******************Ycompression
+
+cp $1 "ycompression_"$1  #creates a newfile for Y-compression
+
+cat >> "ycompression_"$1 << _EOF_
+** 
+** BOUNDARY CONDITIONS
+** 
+** Name: BC-1 Type: Symmetry/Antisymmetry/Encastre
+*Boundary
+NS_MASK_3_WITH_YMIN, ENCASTRE
+** ----------------------------------------------------------------
+**
+** STEP: Step-1
+** 
+*Step, name=Step-1
+*Static
+1., 1., 1e-05, 1.
+**
+**BOUNDARY CONDITIONS
+**
+** Name: BC-2 Type: Displacement/Rotation
+*Boundary
+NS_MASK_3_WITH_YMAX, 1, 1, $2
+** 
+** OUTPUT REQUESTS
+** 
+*Restart, write, frequency=0
+** 
+** FIELD OUTPUT: F-Output-1
+** 
+*Output, field, variable=PRESELECT
+** 
+** HISTORY OUTPUT: H-Output-1
+** 
+*Output, history, variable=PRESELECT
+*End Step
+_EOF_
+
+
+#NOW SHEAR
+
+#******************Xshear
+
+cp $1 "xshear_"$1  #creates a newfile for X-shear
+
+cat >> "xshear_"$1 << _EOF_
+** 
+** BOUNDARY CONDITIONS
+** 
+** Name: BC-1 Type: Symmetry/Antisymmetry/Encastre
+*Boundary
+NS_MASK_3_WITH_XMIN, ENCASTRE
+** ----------------------------------------------------------------
+**
+** STEP: Step-1
+** 
+*Step, name=Step-1
+*Static
+1., 1., 1e-05, 1.
+**
+**BOUNDARY CONDITIONS
+**
+** Name: BC-2 Type: Displacement/Rotation
+*Boundary
+NS_MASK_3_WITH_XMAX, 2, 2, $2
+** 
+** OUTPUT REQUESTS
+** 
+*Restart, write, frequency=0
+** 
+** FIELD OUTPUT: F-Output-1
+** 
+*Output, field, variable=PRESELECT
+** 
+** HISTORY OUTPUT: H-Output-1
+** 
+*Output, history, variable=PRESELECT
+*End Step
+_EOF_
+
+
+#******************Yshear
+
+cp $1 "yshear_"$1  #creates a newfile for y-shear
+
+cat >> "yshear_"$1 << _EOF_
+** 
+** BOUNDARY CONDITIONS
+** 
+** Name: BC-1 Type: Symmetry/Antisymmetry/Encastre
+*Boundary
+NS_MASK_3_WITH_YMIN, ENCASTRE
+** ----------------------------------------------------------------
+**
+** STEP: Step-1
+** 
+*Step, name=Step-1
+*Static
+1., 1., 1e-05, 1.
+**
+**BOUNDARY CONDITIONS
+**
+** Name: BC-2 Type: Displacement/Rotation
+*Boundary
+NS_MASK_3_WITH_YMAX, 3, 3, $2
+** 
+** OUTPUT REQUESTS
+** 
+*Restart, write, frequency=0
+** 
+** FIELD OUTPUT: F-Output-1
+** 
+*Output, field, variable=PRESELECT
+** 
+** HISTORY OUTPUT: H-Output-1
+** 
+*Output, history, variable=PRESELECT
+*End Step
+_EOF_
+
+
+#******************Zshear
+
+cp $1 "zshear_"$1  #creates a newfile for Zshear
+
+cat >> "zshear_"$1 << _EOF_
+** 
+** BOUNDARY CONDITIONS
+** 
+** Name: BC-1 Type: Symmetry/Antisymmetry/Encastre
+*Boundary
+NS_MASK_3_WITH_ZMIN, ENCASTRE
+** ----------------------------------------------------------------
+**
+** STEP: Step-1
+** 
+*Step, name=Step-1
+*Static
+1., 1., 1e-05, 1.
+**
+**BOUNDARY CONDITIONS
+**
+** Name: BC-2 Type: Displacement/Rotation
+*Boundary
+NS_MASK_3_WITH_ZMAX, 1, 1, $2
+** 
+** OUTPUT REQUESTS
+** 
+*Restart, write, frequency=0
+** 
+** FIELD OUTPUT: F-Output-1
+** 
+*Output, field, variable=PRESELECT
+** 
+** HISTORY OUTPUT: H-Output-1
+** 
+*Output, history, variable=PRESELECT
+*End Step
+_EOF_
