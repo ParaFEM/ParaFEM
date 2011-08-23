@@ -27,7 +27,7 @@ At the moment, you can either checkout the latest version of source code directl
  * In the top parafem directory type:
   * {{{make-parafem MACHINE=<system>}}}
  * *NOTE* If rebuilding after a source code update, remove the old files by typing: 
-  *{{{make-parafem clean}}}
+  * {{{make-parafem clean}}}
  * If successful, all the ParaFEM programs will be installed in the directory {{{~/parafem/bin}}}.
 
 = ParaFEM-Viewer = 
