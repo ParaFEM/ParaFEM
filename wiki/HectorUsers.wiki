@@ -24,16 +24,23 @@ To apply for an account, please see the following [http://www.hector.ac.uk/howca
  * To check the status of the job in the queue, type _$qstat_
  * For further information about the batch queues and batch scripts, consult the user documentation on the HECToR webpages. 
 
-= Known Issue on HECToR Phase2b =
+= Known Issues on HECToR Phase2b =
 
-If the job fails and you get output similar to the below, make clean the library and program, then load the module specific to the XE6 architecture:
+== Segmentation fault in {{{prog83}}} using PGI compiler ==
 
- * {{{module add xtpe-mc12}}}
+ * A segmentation fault occurs at run time in program {{{prog83}}} when built using the PGI compiler. The cause of this bug has not been identified.
+ * A workaround is to use the Pathscale compiler. To do this, type the sequence of commands below:
+  * module unload PrgEnv-pgi
+  * module load PrgEnv-pathscale
+  * make-parafem MACHINE=xe6-pathscale
+
+== Scatter Error ==
+
+If the job fails and you get output similar to the below, make clean the installation, load the module specific to the XE6 architecture, then rebuild the installation:
+
  * {{{make-parafem clean}}}   
+ * {{{module add xtpe-mc12}}}
  * {{{make-parafem MACHINE=xe6-pathscale}}} 
-
-
-Then rebuild the library and program.
 
 {{{
  PE:             1  Scatter error: recbufsize:             9 
