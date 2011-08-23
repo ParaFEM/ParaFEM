@@ -21,16 +21,17 @@ At the moment, you can either checkout the latest version of source code directl
 
 === Linux/UNIX ===
  * Select a directory in which to install ParaFEM.
- * Unzip the archive
-  * {{{gzip -d ParaFEM_src.2.0.819.tgz}}} 
- * Untar the archive
-  * {{{tar xvf ParaFEM_src.2.0.819.tar}}}
+ * Unzip and untar the archive
+  * {{{tar xvzf ParaFEM_src.2.0.819.tar}}}
  * You should now see all the source code expanded in your chosen directory.
  * In the top parafem directory type:
   * {{{make-parafem MACHINE=<system>}}}
+ * *NOTE* The {{{MACHINE=<system>}}} parameter is not required if MACHINE is already set in your environment.
  * *NOTE* If rebuilding after a source code update, remove the old files by typing: 
   * {{{make-parafem clean}}}
  * If successful, all the ParaFEM programs will be installed in the directory {{{~/parafem/bin}}}.
+ * To examine what other build options are available type:
+  * {{{make-parafem usage}}}
 
 === Windows ===
  * A version of the ParaFEM source code is provided as a Windows {{{zip}}} file on the official [http://www.parafem.org.uk/index.php?option=com_content&view=article&id=97:parafem-version-20819-now-released&catid=33:parafem-news&Itemid=66 version 2.0.819 download] page.
