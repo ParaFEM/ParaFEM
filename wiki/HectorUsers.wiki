@@ -26,7 +26,7 @@ To apply for an account, please see the following [http://www.hector.ac.uk/howca
 
 = Known Issues on HECToR Phase2b =
 
-== Segmentation fault in {{{prog83}}} using PGI compiler ==
+== Segmentation fault in {{{prog83}}} using the PGI compiler ==
 
  * A segmentation fault occurs at run time in program {{{prog83}}} when built using the PGI compiler. The cause of this bug has not been identified.
  * A workaround is to use the Pathscale compiler. To do this, type the sequence of commands below:
