@@ -31,7 +31,7 @@ To apply for an account, please see the following [http://www.hector.ac.uk/howca
  * A segmentation fault occurs at run time in program {{{prog83}}} when built using the PGI compiler. The cause of this bug has not been identified.
  * A workaround is to use the Pathscale compiler. To do this, type the sequence of commands below:
   * module unload !PrgEnv-pgi
-  * module load PrgEnv-pathscale
+  * module load !PrgEnv-pathscale
   * make-parafem MACHINE=xe6-pathscale
 
 == Scatter Error ==
@@ -40,6 +40,8 @@ If the job fails and you get output similar to the below, make clean the install
 
  * {{{make-parafem clean}}}   
  * {{{module add xtpe-mc12}}}
+ * module unload !PrgEnv-pgi
+ * module load !PrgEnv-pathscale
  * {{{make-parafem MACHINE=xe6-pathscale}}} 
 
 {{{
