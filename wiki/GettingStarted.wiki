@@ -27,7 +27,7 @@ At the moment, you can either checkout the latest version of source code directl
  * Example input decks can be found in the {{{~/parafem/examples/p121}}} directory
 
 == (B1) Download a Linux release version ==
- * Under the [http://code.google.com/p/parafem/downloads/list Download] tab, click to download the latest source code archive {{{ParaFEM_r40.tar.gz}}}.
+ * Go to the [http://preview.tinyurl.com/parafem-download official download page] and click to download the latest stable release of the source code, currently [http://www.parafem.org.uk/index.php?option=com_content&view=article&id=97:parafem-version-20819-now-released&catid=33:parafem-news&Itemid=66 version 2.0.819].
  * Select a directory in which to install ParaFEM.
  * Unzip the archive by typing {{{gunzip ParaFEM_r40.tar.gz}}} 
  * Untar the archive by typing {{{tar xvf ParaFEM_r40.tar}}}
