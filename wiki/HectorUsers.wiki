@@ -11,8 +11,8 @@ To apply for an account, please see the following [http://www.hector.ac.uk/howca
 
 = Common Commands =
 
- * Login: {{{$ssh <username>@phase2b.hector.ac.uk}}}
- * Change password: {{{$passwd}}}
+ * Login: {{{ssh <username>@phase2b.hector.ac.uk}}}
+ * Change password: {{{passwd}}}
 
 = Submitting Jobs to the Batch Queue =
 
