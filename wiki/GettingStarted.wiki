@@ -15,21 +15,28 @@ At the moment, you can either checkout the latest version of source code directl
 
 == Download a release version ==
  * Go to the [http://tinyurl.com/parafem-download official download page] and click to download the latest stable release of the source code, currently [http://www.parafem.org.uk/index.php?option=com_content&view=article&id=97:parafem-version-20819-now-released&catid=33:parafem-news&Itemid=66 version 2.0.819].
+
+== Building ParaFEM ==
+ * In the directory {{{~/parafem/build}}} create a {{{<system>.inc}}} file for your system or use an existing one. If you create a new one, please send to the project owner for inclusion in the next ParaFEM release.
+
+=== Linux/UNIX ===
  * Select a directory in which to install ParaFEM.
  * Unzip the archive
   * {{{gzip -d ParaFEM_src.2.0.819.tgz}}} 
  * Untar the archive
   * {{{tar xvf ParaFEM_src.2.0.819.tar}}}
  * You should now see all the source code expanded in your chosen directory.
-
-== Building ParaFEM ==
- * In the directory {{{~/parafem/build}}} create a {{{<system>.inc}}} file for your system or use an existing one. If you create a new one, please send to the project owner for inclusion in the next ParaFEM release.
  * In the top parafem directory type:
   * {{{make-parafem MACHINE=<system>}}}
  * *NOTE* If rebuilding after a source code update, remove the old files by typing: 
   * {{{make-parafem clean}}}
  * If successful, all the ParaFEM programs will be installed in the directory {{{~/parafem/bin}}}.
 
+=== Windows ===
+ * A version of the ParaFEM source code is provided as a Windows {{{zip}}} file on the official [http://www.parafem.org.uk/index.php?option=com_content&view=article&id=97:parafem-version-20819-now-released&catid=33:parafem-news&Itemid=66 version 2.0.819 download] page.
+ * The ParaFEM development team have not ported ParaFEM to a native Windows platform and currently there are no installation instructions.
+ * If you have successfully installed ParaFEM on Windows, we'd be keen to hear from you.
+ 
 = ParaFEM-Viewer = 
 == Checkout the latest version of source code ==
 The ParaFEM-Viewer source code will be made available shortly.
