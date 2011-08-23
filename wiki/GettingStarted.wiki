@@ -5,46 +5,26 @@
 
 = ParaFEM =
 
-At the moment, you can either checkout the latest version of source code directly from the repository _or_ download a release version. Choose which method you wish to use and follow the instructions (A) or (B) below.
+At the moment, you can either checkout the latest version of source code directly from the repository _or_ download a release version. Choose which method you wish to use and follow the instructions below.
 
-== (A1) Checkout the latest version of source code ==
+== Checkout the latest version of source code ==
  * ParaFEM uses the _subversion_ version control system (svn). Follow the instructions under the [http://code.google.com/p/parafem/source/checkout Source] tab. 
  * You may also need to see how to use {{{svn}}} on your local supercomputer or cluster. 
  * On HECToR (UK National HPC Facility), svn needs to be loaded. To do this type _{{{module load svn}}}_ at the command prompt.
  * To update an existing installation, use the command {{{svn update}}} instead of {{{svn checkout}}}
 
-== (A2) Building the ParaFEM Library ==
- * Change directory to {{{~/parafem/src/modules}}} and select the library you wish to build.
- * Type: {{{make -f makempi.xt}}} (builds new library)
- * Type: {{{make -f makempi.xt install}}} (installs new library)
- * *NOTE* If rebuilding after a source code update, type: {{{make -f makempi.xt clean}}} (removes old files)
-
-== (A3) Building a ParaFEM Program == 
- * If you wish to use an existing program, change to the appropriate directory and build it. For example:
- * Change directory to {{{~/parafem/src/programs/4th_ed/p121}}}
- * Type: {{{make -f makeprograms.xt}}}
- * *Note* If rebuilding after an update to the source code, first clean the build by typing: {{{make -f makeprograms.xt clean}}}
- * Example input decks can be found in the {{{~/parafem/examples/p121}}} directory
-
-== (B1) Download a Linux release version ==
+== Download a release version ==
  * Go to the [http://tinyurl.com/parafem-download official download page] and click to download the latest stable release of the source code, currently [http://www.parafem.org.uk/index.php?option=com_content&view=article&id=97:parafem-version-20819-now-released&catid=33:parafem-news&Itemid=66 version 2.0.819].
  * Select a directory in which to install ParaFEM.
- * Unzip the archive by typing {{{gunzip ParaFEM_r40.tar.gz}}} 
- * Untar the archive by typing {{{tar xvf ParaFEM_r40.tar}}}
+ * Unzip the archive by typing {{{gunzip ParaFEM_src.2.0.819.tgz}}} 
+ * Untar the archive by typing {{{tar xvf ParaFEM_src.2.0.819.tar}}}
  * You should now see all the source code expanded in your chosen directory.
 
-== (B2) Building the ParaFEM Library ==
- * In {{{~/parafem/src/modules}}} create a makefile for your system or use an existing one.
- * Type: {{{make -f makemodules.xt4}}} (for a Cray XT4 system)
- * Type: {{{make -f makemodules.xt4 install}}} (moves the .mod files to ~/parafem/include and the .a file to ~/parafem/lib)
- * *NOTE* If rebuilding after a source code update, type: {{{make -f makemodules.xt4 clean}}} (removes old files)
-
-== (B3) Building a ParaFEM Program ==
-
-    * If you wish to use an existing program, change to the appropriate directory and build it. For example:
-    * Change directory to {{{~/parafem/src/programs/sg12/p121}}}
-    * Type: {{{make -f makeprograms.xt4}}}
-    * Example input decks can be found in the {{{~/parafem/examples/p121}}} directory 
+== Building ParaFEM ==
+ * In {{{~/parafem/build}}} create a {{{<system>.inc}}} file for your system or use an existing one.
+ * In the top parafem directory type: {{{make-parafem MACHINE=<system>}}}
+ * *NOTE* If rebuilding after a source code update, type: {{{make-parafem clean}}} (removes old files)
+ * All the ParaFEM programs will be installed in the directory {{{~/parafem/bin}}}
 
 = ParaFEM-Viewer = 
 == Checkout the latest version of source code ==
