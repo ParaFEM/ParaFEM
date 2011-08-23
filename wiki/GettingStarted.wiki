@@ -19,7 +19,7 @@ At the moment, you can either checkout the latest version of source code directl
  * Unzip the archive
   * {{{gzip -d ParaFEM_src.2.0.819.tgz}}} 
  * Untar the archive
-  *{{{tar xvf ParaFEM_src.2.0.819.tar}}}
+  * {{{tar xvf ParaFEM_src.2.0.819.tar}}}
  * You should now see all the source code expanded in your chosen directory.
 
 == Building ParaFEM ==
