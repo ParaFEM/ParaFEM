@@ -186,7 +186,7 @@ A real example follows:
 _Note: This file format currently only supports isotropic materials. For p1211, there is an additional scalar real variable, undrained shear strength._
 = The .nset file =
 
-The ".nset" file is used by program /preprocessing/kubcgen/ (_which is under development_) and has the following format:
+The ".nset" file is used by preprocessing tool {{{kubcgen}}} (_which is under development_) and has the following format:
 
 {{{
 nset_type
