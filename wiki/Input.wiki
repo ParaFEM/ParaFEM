@@ -243,4 +243,4 @@ A real example follows:
 665 668 669 674 675
 }}}
 
-_NOTE: The strict convention for the order of the node sets for problem type {{{'kubc'}}} is XMIN, XMAX, YMIN, YMAX, ZMIN, ZMAX, corresponding to the 6 faces of a cube._
+_NOTE: The strict convention for the order of the node sets for problem type_ {{{'kubc'}}} _is XMIN, XMAX, YMIN, YMAX, ZMIN, ZMAX, corresponding to the 6 faces of a cube._
