@@ -191,20 +191,20 @@ The ".nset" file is used by program /preprocessing/kubcgen/ (_which is under dev
 {{{
 nset_type
 nsets
-nn-nset1
+nnset(1)
 nodeID-1 nodeID-2 nodeID-3 nodeID-4 nodeID-5 nodeID-6
 nodeID-7 nodeID-8 nodeID-9 nodeID-10 nodeID-11 nodeID-12
 ...
-nodeID-nn1-2 nodeID-nn1-1 nodeID-nn1
-nn-nset2
+nodeID-nnset(1)
+nnset(2)
 nodeID-1 nodeID-2 nodeID-3 nodeID-4 nodeID-5 nodeID-6
 nodeID-7 nodeID-8 nodeID-9 nodeID-10 nodeID-11 nodeID-12
 ...
-nodeID-nn1-2 nodeID-nn1-1 nodeID-nn-nset2
+nodeID-nnset(2)
 ...
 ...
 ...
-nn-nset(nsets)
+nnset(nsets)
 nodeID-1 nodeID-2 nodeID-3 nodeID-4 nodeID-5 nodeID-6
 nodeID-7 nodeID-8 nodeID-9 nodeID-10 nodeID-11 nodeID-12
 ...
@@ -243,4 +243,4 @@ A real example follows:
 665 668 669 674 675
 }}}
 
-_NOTE: The convention of the order of the node sets for KUBC is XMIN, XMAX, YMIN, YMAX, ZMIN, ZMAX, denoting the faces of a cube._
+_NOTE: The convention of the order of the node sets for KUBC is XMIN, XMAX, YMIN, YMAX, ZMIN, ZMAX, corresponding to the faces of a cube._
