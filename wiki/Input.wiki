@@ -208,13 +208,13 @@ nnset(nsets)
 nodeID-1 nodeID-2 nodeID-3 nodeID-4 nodeID-5 nodeID-6
 nodeID-7 nodeID-8 nodeID-9 nodeID-10 nodeID-11 nodeID-12
 ...
-nodeID--nn-nset(nsets)-2 nodeID-nn-nset(nsets)-1 nodeID-nn-nset(nsets)
+nodeID--nnset(nsets)
 }}}
 
 || *Variable Name* || *Type* || *Purpose* ||
-||{{{nset_type}}} || Character || Problem type. Only supported value is {{{KUBC}}}.||
-||{{{nsets}}} || Integer || Number of node sets in the file. For {{{KUBC}}} the correct value is 6.||
-||{{{nn-nset}}} || Integer || Number of nodes in the node set.||
+||{{{nset_type}}} || Character || Problem type. Only supported value is {{{'kubc'}}}.||
+||{{{nsets}}} || Integer || Number of node sets in the file. For {{{'kubc'}}} the correct value is 6.||
+||{{{nnset}}} || Integer || Number of nodes in the node set.||
 ||{{{nodeID}}} || Integer || A unique number that identifies the node number.||
 
 A real example follows:
