@@ -12,6 +12,7 @@ This page describes the format of the ParaFEM ASCII input decks. The input decks
 ||{{{.bnd}}}|| The boundary conditions||p121, p126, p129||
 ||{{{.lds}}}|| The loads to be applied||p121, p129||
 ||{{{.mat}}}|| The material properties ||p1211, p1213||
+||{{{.nset}}}|| Node sets||kubcgen||
 
 The philosophy behind having separate files is that it reduces the burden of data transfer when running very large problems on parallel supercomputers. An enhancement to ParaFEM for those running smaller problems would be to allow the user to decide whether to use a single input file or have several separate files as defined here.
 
@@ -183,3 +184,69 @@ A real example follows:
 }}}
 
 _Note: This file format currently only supports isotropic materials. For p1211, there is an additional scalar real variable, undrained shear strength._
+= The .nset file =
+
+The ".nset" file is used by program /preprocessing/kubcgen/ (_which is under development_) and has the following format:
+
+{{{
+nset_type
+nsets
+nn-nset1
+nodeID-1 nodeID-2 nodeID-3 nodeID-4 nodeID-5 nodeID-6
+nodeID-7 nodeID-8 nodeID-9 nodeID-10 nodeID-11 nodeID-12
+...
+nodeID-nn1-2 nodeID-nn1-1 nodeID-nn1
+nn-nset2
+nodeID-1 nodeID-2 nodeID-3 nodeID-4 nodeID-5 nodeID-6
+nodeID-7 nodeID-8 nodeID-9 nodeID-10 nodeID-11 nodeID-12
+...
+nodeID-nn1-2 nodeID-nn1-1 nodeID-nn-nset2
+...
+...
+...
+nn-nset(nsets)
+nodeID-1 nodeID-2 nodeID-3 nodeID-4 nodeID-5 nodeID-6
+nodeID-7 nodeID-8 nodeID-9 nodeID-10 nodeID-11 nodeID-12
+...
+nodeID--nn-nset(nsets)-2 nodeID-nn-nset(nsets)-1 nodeID-nn-nset(nsets)
+}}}
+
+|| *Variable Name* || *Type* || *Purpose* ||
+||{{{nset_type}}} || Character || Problem type. Only supported value is {{{KUBC}}}.||
+||{{{nsets}}} || Integer || Number of node sets in the file. For {{{KUBC}}} the correct value is 6.||
+||{{{nn-nset}}} || Integer || Number of nodes in the node set.||
+||{{{nodeID}}} || Integer || A unique number that identifies the node number.||
+
+A real example follows:
+
+{{{
+'kubc'
+6
+12
+234 245 257 259 269 270
+271 273 274 279 281 282
+11
+343 354 356 358 359 360
+365 368 369 374 375
+14
+421 422 423 436 438 439
+441 444 454 456 458 460
+463 464
+8
+10  11  131 142 164 178
+180 184
+12
+534 545 557 559 569 570
+571 573 574 579 581 582
+11
+643 654 656 658 659 660
+665 668 669 674 675
+
+_NOTE: The convention of the order of the node sets for KUBC is XMIN, XMAX, YMIN, YMAX, ZMIN, ZMAX, denoting the faces of a cubic representative elementary volume._
+
+1  500.0 0.15
+2 1000.0 0.20
+3 1500.0 0.25
+4 2000.0 0.30
+5 3000.0 0.35
+}}}
