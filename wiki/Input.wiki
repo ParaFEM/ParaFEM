@@ -208,7 +208,7 @@ nnset(nsets)
 nodeID-1 nodeID-2 nodeID-3 nodeID-4 nodeID-5 nodeID-6
 nodeID-7 nodeID-8 nodeID-9 nodeID-10 nodeID-11 nodeID-12
 ...
-nodeID--nnset(nsets)
+nodeID-nnset(nsets)
 }}}
 
 || *Variable Name* || *Type* || *Purpose* ||
