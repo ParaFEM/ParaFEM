@@ -241,12 +241,6 @@ A real example follows:
 11
 643 654 656 658 659 660
 665 668 669 674 675
+}}}
 
 _NOTE: The convention of the order of the node sets for KUBC is XMIN, XMAX, YMIN, YMAX, ZMIN, ZMAX, denoting the faces of a cubic representative elementary volume._
-
-1  500.0 0.15
-2 1000.0 0.20
-3 1500.0 0.25
-4 2000.0 0.30
-5 3000.0 0.35
-}}}
