@@ -18,7 +18,9 @@
         o Shear along y-axis
         o Shear along z-axis
         
-      User must then rename/copy&paste *.d accordingly to produce a full parafem p121 dataset.  I'll write a bash script eventually.
+  You can then run ./KUBCtidy to move all the files accordingly into seperate folders for xcompression, xshear, ycompression etc.  Note, if gives each input deck generic names, so you can alter the script or rename the files manually if this is a problem.
+
+
         
         
   AUTHOR
