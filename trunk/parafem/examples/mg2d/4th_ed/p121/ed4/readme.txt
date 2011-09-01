@@ -24,14 +24,14 @@ in the commercial software package Abaqus.
 
 SIZE "GPU"
 
-The file ed4-gpu-c3d20.mg is the largest test problem that will fit in memory
-on a GPU with 3GB on board RAM.
+The files ed4-gpu1-c3d20.mg and so on have been generated to try on GPUs,
+maximizing usage of different on board RAM memory sizes.
 
-This is estimated by multiplying the number of elements (45x45x45 = 91,125) by
+Memory is estimated by multiplying elements (45x45x45 = 91,125) by
 the storage required per element (60x60 + 2x60 = 3720) by the number of bytes
 required for each double precision real number (8).
 
-This gives 91,125 x 3720 x 8 = 2.7GB
+This gives 91,125 x 3720 x 8 = 2.7GB for ed4-gpu4-c3d20.mg
 
 
 AUTHOR
