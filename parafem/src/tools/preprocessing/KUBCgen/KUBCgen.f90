@@ -49,8 +49,8 @@ IMPLICIT NONE
 
 !*.dat values:
 	CHARACTER(LEN=50) :: element
-	INTEGER :: mesh, nels, nn, nr, nip, nod, loaded_nodes, fixed_freedoms
-	REAL :: e, v, tol, limit, partitioner
+	INTEGER :: mesh, nels, nn, nr, nip, nod, loaded_nodes, fixed_freedoms, partitioner
+	REAL :: e, v, tol, limit
 	
 !*.nset values
   INTEGER :: nsets
@@ -240,8 +240,8 @@ motion = 0.1
  ALLOCATE(out_xshear(unique))
  out_xshear = sorted_nset
  do x=1, unique
- out_xshear(x)%x = (out_xshear(x)%x+xcorr)*motion
- out_xshear(x)%y = (out_xshear(x)%y+ycorr)*motion
+ out_xshear(x)%x = (out_xshear(x)%z+zcorr)*motion
+ out_xshear(x)%y = (out_xshear(x)%z+zcorr)*motion
  end do
  out_xshear%z = 0
  
@@ -249,20 +249,19 @@ motion = 0.1
  ALLOCATE(out_yshear(unique))
  out_yshear = sorted_nset
  do x=1, unique
- out_yshear(x)%x = (out_yshear(x)%x+xcorr)*motion
- out_yshear(x)%z = (out_yshear(x)%z+zcorr)*motion
+ out_yshear(x)%x = (out_yshear(x)%y+ycorr)*motion
+ out_yshear(x)%z = (out_yshear(x)%y+ycorr)*motion
  end do 
  out_yshear%y = 0
  
 !Zshear
  ALLOCATE(out_zshear(unique))
  out_zshear = sorted_nset
- out_zshear%x = 0
  do x=1, unique
- out_zshear(x)%y = (out_zshear(x)%y+ycorr)*motion
- out_zshear(x)%z = (out_zshear(x)%z+zcorr)*motion
+ out_zshear(x)%y = (out_zshear(x)%x+xcorr)*motion
+ out_zshear(x)%z = (out_zshear(x)%x+xcorr)*motion
  end do
-   
+ out_zshear%x = 0   
 
 !now to output 6 bnd files, 6 fix files, and 6 dat files
 !Xcompression
@@ -477,18 +476,22 @@ end do
 
 do x=1, unique
   if(out_xshear(x)%x+out_xshear(x)%y+out_xshear(x)%z.ne.0)then
-  WRITE(11,'(I12)',advance='no')out_xshear(x)%nodeid
+
   if(out_xshear(x)%x.ne.0)then
-    WRITE(11,'(A, E16.8)',advance='no')' 1 ', out_xshear(x)%x
+    WRITE(11,'(I12)',advance='no')out_xshear(x)%nodeid
+    WRITE(11,'(A, E16.8)',advance='yes')' 1 ', out_xshear(x)%x
+    fixed_freedomsxs = fixed_freedomsxs+1
   end if
   if(out_xshear(x)%y.ne.0)then
-    WRITE(11,'(A, E16.8)',advance='no')' 2 ', out_xshear(x)%y
+    WRITE(11,'(I12)',advance='no')out_xshear(x)%nodeid
+    WRITE(11,'(A, E16.8)',advance='yes')' 2 ', out_xshear(x)%y
+    fixed_freedomsxs = fixed_freedomsxs+1
   end if  
   if(out_xshear(x)%z.ne.0)then
-    WRITE(11,'(A, E16.8)',advance='no')' 3 ', out_xshear(x)%z
-  end if
-  WRITE(11,*)' '
+    WRITE(11,'(I12)',advance='no')out_xshear(x)%nodeid
+    WRITE(11,'(A, E16.8)',advance='yes')' 3 ', out_xshear(x)%z
     fixed_freedomsxs = fixed_freedomsxs+1
+  end if
   end if
 end do
   CLOSE(11)  
@@ -499,18 +502,22 @@ end do
 
 do x=1, unique
   if(out_yshear(x)%x+out_yshear(x)%y+out_yshear(x)%z.ne.0)then
-  WRITE(11,'(I12)',advance='no')out_yshear(x)%nodeid
+  
   if(out_yshear(x)%x.ne.0)then
-    WRITE(11,'(A, E16.8)',advance='no')' 1 ', out_yshear(x)%x
+    WRITE(11,'(I12)',advance='no')out_yshear(x)%nodeid
+    WRITE(11,'(A, E16.8)',advance='yes')' 1 ', out_yshear(x)%x
+    fixed_freedomsys = fixed_freedomsys+1
   end if
   if(out_yshear(x)%y.ne.0)then
-    WRITE(11,'(A, E16.8)',advance='no')' 2 ', out_yshear(x)%y
+    WRITE(11,'(I12)',advance='no')out_yshear(x)%nodeid
+    WRITE(11,'(A, E16.8)',advance='yes')' 2 ', out_yshear(x)%y
+    fixed_freedomsys = fixed_freedomsys+1
   end if  
   if(out_yshear(x)%z.ne.0)then
-    WRITE(11,'(A, E16.8)',advance='no')' 3 ', out_yshear(x)%z
+    WRITE(11,'(I12)',advance='no')out_yshear(x)%nodeid
+    WRITE(11,'(A, E16.8)',advance='yes')' 3 ', out_yshear(x)%z
+    fixed_freedomsys = fixed_freedomsys+1
   end if
-    WRITE(11,*)' '
-        fixed_freedomsys = fixed_freedomsys+1
   end if
 end do
   CLOSE(11)  
@@ -521,18 +528,22 @@ end do
 
 do x=1, unique
   if(out_zshear(x)%x+out_zshear(x)%y+out_zshear(x)%z.ne.0)then
-  WRITE(11,'(I12)',advance='no')out_zshear(x)%nodeid
   if(out_zshear(x)%x.ne.0)then
-    WRITE(11,'(A, E16.8)',advance='no')' 1 ', out_zshear(x)%x
+    WRITE(11,'(I12)',advance='no')out_zshear(x)%nodeid
+    WRITE(11,'(A, E16.8)',advance='yes')' 1 ', out_zshear(x)%x
+    fixed_freedomszs = fixed_freedomszs+1
   end if
   if(out_zshear(x)%y.ne.0)then
-    WRITE(11,'(A, E16.8)',advance='no')' 2 ', out_zshear(x)%y
+    WRITE(11,'(I12)',advance='no')out_zshear(x)%nodeid
+    WRITE(11,'(A, E16.8)',advance='yes')' 2 ', out_zshear(x)%y
+    fixed_freedomszs = fixed_freedomszs+1
   end if  
   if(out_zshear(x)%z.ne.0)then
+    WRITE(11,'(I12)',advance='no')out_zshear(x)%nodeid
     WRITE(11,'(A, E16.8)',advance='yes')' 3 ', out_zshear(x)%z
+    fixed_freedomszs = fixed_freedomszs+1
   end if
-    WRITE(11,*)' '
-        fixed_freedomszs = fixed_freedomszs+1
+        
   end if
 end do
   CLOSE(11)  

@@ -1,0 +1,23 @@
+mkdir xcomp
+mv xcomp* xcomp/
+cp *.d xcomp/xcomp.d
+
+mkdir ycomp
+mv ycomp* ycomp/
+cp *.d ycomp/ycomp.d
+
+mkdir zcomp
+mv zcomp* zcomp/
+cp *.d zcomp/zcomp.d
+
+mkdir xshear
+mv xshear* xshear/
+cp *.d xshear/xshear.d
+
+mkdir yshear
+mv yshear* yshear/
+cp *.d yshear/yshear.d
+
+mkdir zshear
+mv zshear* zshear/
+cp *.d zshear/zshear.d
