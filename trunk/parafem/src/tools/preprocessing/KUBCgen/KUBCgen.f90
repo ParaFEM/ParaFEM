@@ -32,6 +32,7 @@ IMPLICIT NONE
   INTEGER :: fixed_freedomsxc, fixed_freedomsyc, fixed_freedomszc
   INTEGER :: fixed_freedomsxs, fixed_freedomsys, fixed_freedomszs
   REAL :: motion, maxx, maxy, maxz, minx, miny, minz         !motion is the distance nodes will be moving.  this is hardcoded here to 10% (0.1)
+  REAL :: xtemp, ytemp, ztemp
   REAL :: xcorr, ycorr, zcorr  !these are for correcting the box to 0,0,0 
   INTEGER, DIMENSION(:), ALLOCATABLE :: concat_nset
   TYPE(node), DIMENSION(:), ALLOCATABLE :: sorted_nset
@@ -240,8 +241,9 @@ motion = 0.1
  ALLOCATE(out_xshear(unique))
  out_xshear = sorted_nset
  do x=1, unique
- out_xshear(x)%x = (out_xshear(x)%z+zcorr)*motion
- out_xshear(x)%y = (out_xshear(x)%z+zcorr)*motion
+ xtemp = out_xshear(x)%x
+ out_xshear(x)%x = (out_xshear(x)%y+ycorr)*motion
+ out_xshear(x)%y = (xtemp+xcorr)*motion
  end do
  out_xshear%z = 0
  
@@ -249,8 +251,9 @@ motion = 0.1
  ALLOCATE(out_yshear(unique))
  out_yshear = sorted_nset
  do x=1, unique
- out_yshear(x)%x = (out_yshear(x)%y+ycorr)*motion
- out_yshear(x)%z = (out_yshear(x)%y+ycorr)*motion
+ xtemp =  out_yshear(x)%x
+ out_yshear(x)%x = (out_yshear(x)%z+zcorr)*motion
+ out_yshear(x)%z = (xtemp+xcorr)*motion
  end do 
  out_yshear%y = 0
  
@@ -258,8 +261,9 @@ motion = 0.1
  ALLOCATE(out_zshear(unique))
  out_zshear = sorted_nset
  do x=1, unique
- out_zshear(x)%y = (out_zshear(x)%x+xcorr)*motion
- out_zshear(x)%z = (out_zshear(x)%x+xcorr)*motion
+ ytemp =  out_zshear(x)%y
+ out_zshear(x)%y = (out_zshear(x)%z+zcorr)*motion
+ out_zshear(x)%z = (ytemp+ycorr)*motion
  end do
  out_zshear%x = 0   
 
