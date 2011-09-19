@@ -1,9 +1,12 @@
 # @(#) inp2d.awk - Basic conversion of Abaqus Input Deck .inp to ParaFEM input files .d .bnd .lds .dat
 # @(#) Usage:awk -f inp2d.awk <filename.inp>
 # Author: Louise M. Lever (louise.lever@manchester.ac.uk)
-# Version: 1.0.5
+# Version: 1.0.6
 
 # CHANGES:
+# v1.0.6
+#   LML: Added support for nset export to single .nset file
+#   LML: Fixed missing Bound count from .dat export
 # v1.0.5:
 #   LML: Added multiple material support; increments auto-material ID on each repeated *ELEMENT in input deck
 #   LML: Fixed "1" removed from each element line in  output; uses mat_id instead; defaults to 1
@@ -68,6 +71,7 @@ BEGIN {
   bnd_file = base_filename ".bnd";
   lds_file = base_filename ".lds";
   fix_file = base_filename ".fix";
+  nset_file = base_filename ".nset";
   dat_file = base_filename ".dat";
 
   # report filenames
@@ -76,6 +80,7 @@ BEGIN {
   print "Output bnd file:", bnd_file;
   print "Output lds file:", lds_file;
   print "Output fix file:", fix_file;
+  print "Output nset file:", nset_file;
   print "Output dat file:", dat_file;
 
   # Open model file <name>.d and generate header
@@ -92,6 +97,8 @@ BEGIN {
   partition_mode = 1;
 
   # Initialized counts
+  node_count = 0;
+  bound_count = 0;
   loaded_count = 0;
   fixed_count = 0;
 
@@ -105,20 +112,56 @@ BEGIN {
 # Write .dat file
 
 END {
-  # report dat file values
-  print "Type:", dat_elem_type;
-  print "Order:", dat_order;
-  print "partition_mode: " partition_mode;
-  print "element_count: " element_count, "node_count: " node_count, "bound_count: " bound_count, "nip: " nip, "nod: " nod, "loaded_count: " loaded_count, "fixed_freedoms: " fixed_count;
-  print "youngs_mod: " youngs_mod, "poisson_ratio: " poisson_ratio, "tol: " tol, "limit: " limit; 
-
-  # output dat file based on fixed and calculated values
-  print "Generating .dat file";
-  print dat_elem_type > dat_file;
-  print dat_order > dat_file;
-  print partition_mode > dat_file;
-  print element_count, node_count, bound_count, nip, nod, loaded_count, fixed_count > dat_file;
-  printf "%e %e %e %d\n", youngs_mod, poisson_ratio, tol, limit > dat_file;
+    # report dat file values
+    print "Type:", dat_elem_type;
+    print "Order:", dat_order;
+    print "partition_mode: " partition_mode;
+    print "element_count: " element_count, "node_count: " node_count, "bound_count: " bound_count, "nip: " nip, "nod: " nod, "loaded_count: " loaded_count, "fixed_freedoms: " fixed_count;
+    print "youngs_mod: " youngs_mod, "poisson_ratio: " poisson_ratio, "tol: " tol, "limit: " limit; 
+    
+    # output dat file based on fixed and calculated values
+    print "Generating .dat file";
+    print dat_elem_type > dat_file;
+    print dat_order > dat_file;
+    print partition_mode > dat_file;
+    print element_count, node_count, bound_count, nip, nod, loaded_count, fixed_count > dat_file;
+    printf "%e %e %e %d\n", youngs_mod, poisson_ratio, tol, limit > dat_file;
+    
+    # export NSET files
+    print node_set_count, "NSETS defined:";
+    if( node_set_count == 6 ) {
+	print "Assuming nset problem type of 'kubc' as there are SIX nsets defined";
+	print "'kubc'" > nset_file;
+    } else {
+	print "Assuming nset problem type of 'none'";
+	print "'none'" > nset_file;
+    }
+    print node_set_count > nset_file;
+    # export each nset in turn
+    for( ns=0; ns<node_set_count; ns++ ) {
+	tmp_nset_file = "tmp." ns "." base_filename ".nset";
+	nsnn = 0; # reset node count for this set
+	for( name in node_sets ) {
+	    if( node_sets[name] == ns ) {
+		print "Exporting NSET: ", ns, name;
+		ns_id = ns;
+		ns_name = name;
+	    }
+	}
+	# export node indices for this nset
+	for( nd in node_list ) {
+	    # print ">> " nd "/" ns " " node_list[nd], match(node_list[nd],":" ns ":")?" MATCH":" -";
+	    if( match(node_list[nd],":" ns ":" ) ) {
+		print nd | "sort -n >> " tmp_nset_file;
+		nsnn++;
+	    }
+	}
+	close( "sort -n >> " tmp_nset_file );
+	system("echo *NSET " nsnn " " ns_name " >> " nset_file);
+	system("cat " tmp_nset_file " >> " nset_file);
+	system("rm -f " tmp_nset_file);
+    }
+    print "Complete."
 }
 
 # Functions
@@ -269,7 +312,7 @@ function do_bc() {
     }
     print "Restraining " mask " in " $1 ":" bc_nset_id " node set";
     for( nd in node_list ) { # append mask to bound_list
-      print ">> " nd "/" bc_nset_id " " node_list[nd], match(node_list[nd],":" bc_nset_id ":")?" MATCH":" -";
+      # print ">> " nd "/" bc_nset_id " " node_list[nd], match(node_list[nd],":" bc_nset_id ":")?" MATCH":" -";
       if( match(node_list[nd],":" bc_nset_id ":" ) ) {
         bound_list[nd] = bound_list[nd] mask;
       }
@@ -296,7 +339,6 @@ function do_bc() {
       for( nd in node_list ) {
         if( match(node_list[nd],":" bc_nset_id ":") ) {
           fix_k_list[nd] = $4;
-          print "--" fix_k_list[nd];
         }
       }
     }
