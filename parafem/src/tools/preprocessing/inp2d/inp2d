@@ -1,3 +1,5 @@
 #!/bin/bash
+BINLOC=`echo $0 | sed -e 's_inp2d$__g' -`
+
 echo "Converting $1 to ParaFEM Format"
-awk -f ~/bin/inp2d.awk $1
+awk -f $BINLOC/inp2d.awk $1
