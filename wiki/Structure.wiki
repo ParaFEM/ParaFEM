@@ -36,6 +36,8 @@ _Note: Some of the programs here are under development._
 ||*xx6*||Eigenvalues and eigenvectors of a 3D solid using the Arnoldi algorithm||F||Y||F||F||-||-||Y||
 ||*xx7*||Three dimensional analysis of an elastic solid. Large deformation formulation.||F||Y||F||F||-||-||-||
 ||*xx8*||Two dimensional probabilistic foundation settlement. See RSETL2D in Fenton and Griffiths (Under development).||-||-||-||-||-||-||-||
+||*xx9*||Three dimensional analysis of an elastic solid. GPU support using CUDA. Special case. See p121. (Under development). ||F||Y||F||F||-||-||-||
+||*xx10*||Three dimensional analysis of an elastic solid. GPU support using OpenCL. Special case. See p121. (Under development). ||F||Y||F||F||-||-||-||
 
 == Beer, Smith and Duenser ==
 
