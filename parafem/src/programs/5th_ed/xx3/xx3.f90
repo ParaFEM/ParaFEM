@@ -9,6 +9,8 @@ PROGRAM xx3
   USE input         ; USE output           ; USE loading
   USE timing        ; USE maths            ; USE gather_scatter
   USE partition     ; USE elements         ; USE steering        ; USE pcg
+
+  use iso_c_binding
   
   IMPLICIT NONE
 
@@ -32,6 +34,29 @@ PROGRAM xx3
   CHARACTER(LEN=50)     :: fname,job_name,label
   LOGICAL               :: converged = .false.
 
+  ! GPU related variables etc
+  ! -------------------------
+  ! Pointers to device memory
+  type (c_ptr) :: device_matrix
+  type (c_ptr) :: device_lhs_vector
+  type (c_ptr) :: device_rhs_vector
+
+  logical :: use_gpu = .true.
+  integer :: status
+  integer :: ndof_per_element
+
+  external :: allocate_memory_on_gpu
+  external :: free_memory_on_gpu
+  external :: copy_data_to_gpu
+  external :: copy_data_from_gpu
+  external :: matrix_vector_multiplies
+
+  integer :: allocate_memory_on_gpu
+  integer :: free_memory_on_gpu
+  integer :: copy_data_to_gpu
+  integer :: copy_data_from_gpu
+  integer :: matrix_vector_multiplies
+
 !------------------------------------------------------------------------------
 ! 2. Declare dynamic arrays
 !------------------------------------------------------------------------------
@@ -54,7 +79,7 @@ PROGRAM xx3
 ! 3. Read job_name from the command line. 
 !    Read control data, mesh data, boundary and loading conditions. 
 !------------------------------------------------------------------------------
- 
+  
   ALLOCATE(timest(20))
   timest    = zero 
   timest(1) = elap_time()
@@ -287,22 +312,116 @@ PROGRAM xx3
   p_pp  = d_pp
   x_pp  = zero
 
+  ! Code to set up the gpu 
+  if (use_gpu) then
+     
+     ndof_per_element = 3 * nod
+
+     ! Allocate memory on the gpu for matrices
+     status = allocate_memory_on_gpu( &
+          nels_pp*ndof_per_element**2, &
+          sizeof(0.0d0), &
+          device_matrix)
+     if (status > 0) then
+        print *, "gpu memory failed to allocate!"
+        stop
+     end if
+
+     ! Allocate memory for lhs vectors
+     status = allocate_memory_on_gpu( &
+          nels_pp*ndof_per_element, &
+          sizeof(0.0d0), &
+          device_lhs_vector)
+     if (status > 0) then
+        print *, "gpu memory failed to allocate!"
+        stop
+     end if
+
+     ! Allocate memory for rhs vectors
+     status =  allocate_memory_on_gpu( &
+          nels_pp*ndof_per_element, &
+          sizeof(0.0d0), &
+          device_rhs_vector)
+     if (status > 0) then
+        print *, "gpu memory failed to allocate!"
+        stop
+     end if
+     
+     ! Copy matrix data to the gpu
+     status = copy_data_to_gpu( &
+          nels_pp*ndof_per_element**2, &
+          sizeof(0.0d0), &
+          storkm_pp(:,:,:), &
+          device_matrix)
+     if (status > 0) then
+        print *, "Failed to copy data to gpu!"
+        stop
+     end if
+     
+  end if
+  
 !------------------------------------------------------------------------------
 ! 14. Preconditioned conjugate gradient iterations
 !------------------------------------------------------------------------------
 
   iters = 0
 
-  iterations: DO 
+  iterations: DO
+   
     iters    = iters + 1
     u_pp     = zero
     pmul_pp  = zero
     utemp_pp = zero
-
+ 
     CALL gather(p_pp,pmul_pp)
-    elements_5: DO iel=1,nels_pp
-      utemp_pp(:,iel) = MATMUL(storkm_pp(:,:,iel),pmul_pp(:,iel))
-    END DO elements_5
+
+    ! matmul version
+    if (.not. use_gpu) then
+       
+       elements_5: DO iel=1,nels_pp
+          utemp_pp(:,iel) = MATMUL(storkm_pp(:,:,iel),pmul_pp(:,iel))
+       END DO elements_5
+
+       ! gpu version    
+    else
+       
+       ! Copy lhs vectors to gpu
+       status = copy_data_to_gpu( &
+            nels_pp*ndof_per_element, &
+            sizeof(0.0d0), &
+            pmul_pp(:,1:nels_pp), &
+            device_lhs_vector)
+       if (status > 0) then
+          print *, "Failed to copy data to gpu!"
+          stop
+       end if
+             
+       ! Call matrix-vector multiply kernel
+       status = matrix_vector_multiplies( &
+            nels_pp, &
+            ndof_per_element, &
+            ndof_per_element, &
+            device_lhs_vector, &
+            device_matrix, &
+            device_rhs_vector)
+       if (status > 0) then
+          print *, "gpu failed to multiply!"
+          stop
+       end if
+
+       ! Copy result vector back from gpu
+       status = copy_data_from_gpu( &
+            nels_pp*ndof_per_element, & 
+            sizeof(0.0d0), &
+            utemp_pp(:,1:nels_pp), &
+            device_rhs_vector)
+       if (status > 0) then
+          print *, "Failed to copy data from gpu!"
+          stop
+       end if
+
+    end if
+
     CALL scatter(u_pp,utemp_pp)
 
     IF(fixed_freedoms_pp > 0) THEN
@@ -326,7 +445,28 @@ PROGRAM xx3
   END DO iterations
 
   DEALLOCATE(p_pp,r_pp,x_pp,u_pp,d_pp,diag_precon_pp,storkm_pp,pmul_pp) 
-  
+ 
+  ! Deallocate memory on GPU
+  if (use_gpu) then
+     status = free_memory_on_gpu(device_matrix)
+     if (status > 0) then
+        print *, "gpu memory failed to deallocate device_matrix!"
+        stop
+     end if
+     
+     status = free_memory_on_gpu(device_lhs_vector)
+     if (status > 0) then
+        print *, "gpu memory failed to deallocate device_lhs_vector!"
+        stop
+     end if
+
+     status =  free_memory_on_gpu(device_rhs_vector)
+     if (status > 0) then
+        print *, "gpu memory failed to deallocate device_rhs_vector!"
+        stop
+     end if
+  end if
+
   timest(13) = elap_time()
 
 !------------------------------------------------------------------------------
@@ -500,6 +640,12 @@ PROGRAM xx3
 
   CALL WRITE_P121(fixed_freedoms,iters,job_name,loaded_nodes,neq,nn,npes,nr,  &
                   numpe,timest,tload)
+
+  if (use_gpu) then
+     print*, "gpu acceleration used in solver"
+  else
+     print*, "gpu acceleration not used in solver"
+  end if
  
   CALL shutdown() 
  
