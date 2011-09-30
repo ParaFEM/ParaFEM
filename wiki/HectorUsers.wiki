@@ -42,7 +42,7 @@ If the job fails and you get output similar to the below, you need to reserve on
 aprun -n 1472 -N 23 -r 1 ./p121 <job_name>
 }}}
 
-Note that in the batch submission script, you need to request the total number of cores and cores per node. For this example we need to set {{{mppwidth=1536}}} and {{{mppnpp=24}}}. There are 64 nodes requested, each with 24 cores, giving a total of 64 x 24 = 1536 cores. 
+Note that in the batch submission script (see {{{/parafem/etc/batchscripts/job.xe6}}}), you need to request the total number of cores and cores per node. For this example we need to set {{{mppwidth=1536}}} and {{{mppnpp=24}}}. There are 64 nodes requested, each with 24 cores, giving a total of 64 x 24 = 1536 cores. 
 
 1536 total - 1472 for the program = 64 reserved for the operating system, i.e. one core for each node.
 
