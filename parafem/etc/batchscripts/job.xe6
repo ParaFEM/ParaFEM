@@ -1,0 +1,9 @@
+#PBS -N ParaFEM
+#PBS -l mppwidth=1536
+#PBS -l mppnppn=24
+#PBS -l walltime=00:19:59
+#PBS -j oe
+#PBS -A e199-dcse
+cd /work/e107/e107/zzalslm3/peter
+export MPICH_UNEX_BUFFER_SIZE=629145600
+aprun -n 1472 -N 23 -r 1 ./p121 xcomp

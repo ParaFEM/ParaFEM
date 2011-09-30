@@ -1,7 +1,8 @@
-BATCH SCRIPT: job.xt 
+BATCH SCRIPTS: job.xt job.xe6
 
 The file "job.xt" is an example PBS batch script that can be used on the 
-Cray XT4 and Cray XT6 systems provided by the UK HECToR service.
+Cray XT4 and Cray XT6 systems provided by the UK HECToR service. "job.xe6" is 
+for the Cray XE6 system.
 
   Usage: qsub job.xt
   
@@ -30,7 +31,8 @@ NOTES
  o Useful PBS commands
    - $qstat          Check status of all jobs in the queue 
    - $qdel <job_id>  Delete the job with the PBS job number <job_id>
-   
-AUTHOR
+
+ o Script job.xe6 gives an example of how to reserve one core per node using 
+   the aprun switch -r. A full explanation can be found using $man aprun.
 
 lee.margetts@manchester.ac.uk
