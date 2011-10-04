@@ -45,18 +45,94 @@ PROGRAM xx3
   integer :: status
   integer :: ndof_per_element
 
-  external :: allocate_memory_on_gpu
-  external :: free_memory_on_gpu
-  external :: copy_data_to_gpu
-  external :: copy_data_from_gpu
-  external :: matrix_vector_multiplies
+  interface
+     integer(c_int) function allocate_memory_on_gpu( &
+          n_elements, &
+          element_size, &
+          device_pointer) bind(C)
+       
+       use iso_c_binding
+       
+       integer(c_int) :: n_elements
+       integer(c_int) :: element_size
+       type (c_ptr) :: device_pointer
+     end function allocate_memory_on_gpu
 
-  integer :: allocate_memory_on_gpu
-  integer :: free_memory_on_gpu
-  integer :: copy_data_to_gpu
-  integer :: copy_data_from_gpu
-  integer :: matrix_vector_multiplies
+     
+     integer(c_int) function free_memory_on_gpu( &
+          device_pointer) bind(C)
 
+       use iso_c_binding
+
+       type (c_ptr) :: device_pointer
+     end function free_memory_on_gpu
+
+     
+     integer(c_int) function copy_3d_data_to_gpu( & 
+          n_elements, &
+          element_size, &
+          host_data, &
+          device_pointer) bind(C, name='copy_data_to_gpu')
+       
+       use iso_c_binding
+       
+       integer(c_int) :: n_elements
+       integer(c_int) :: element_size
+       real(c_double) :: host_data(:,:,:)
+       type (c_ptr) :: device_pointer
+     end function copy_3d_data_to_gpu
+     
+     
+     integer(c_int) function copy_2d_data_to_gpu( & 
+          n_elements, &
+          element_size, &
+          host_data, &
+          device_pointer) bind(C, name='copy_data_to_gpu')
+       
+       use iso_c_binding
+       
+       integer(c_int) :: n_elements
+       integer(c_int) :: element_size
+       real(c_double) :: host_data(:,:)
+       type (c_ptr) :: device_pointer
+     end function copy_2d_data_to_gpu
+     
+
+     integer(c_int) function copy_data_from_gpu( &
+          n_elements, &
+          element_size, &
+          host_data, &
+          device_pointer) bind(C)
+
+       use iso_c_binding
+
+       integer(c_int) :: n_elements
+       integer(c_int) :: element_size
+       real(c_double) :: host_data(:,:)
+       type (c_ptr) :: device_pointer
+     end function copy_data_from_gpu
+
+     
+     integer(c_int) function matrix_vector_multiplies( &
+          n_mat, &
+          n_row, &
+          n_col, &
+          d_lhs_vector, &
+          d_matrix, &
+          d_rhs_vector) bind(C)
+       
+       use iso_c_binding
+
+       integer(c_int) :: n_mat
+       integer(c_int) :: n_row
+       integer(c_int) :: n_col
+       type (c_ptr) :: d_lhs_vector
+       type (c_ptr) :: d_matrix
+       type (c_ptr) :: d_rhs_vector
+     end function matrix_vector_multiplies
+  end interface
+
+  
 !------------------------------------------------------------------------------
 ! 2. Declare dynamic arrays
 !------------------------------------------------------------------------------
@@ -348,7 +424,7 @@ PROGRAM xx3
      end if
      
      ! Copy matrix data to the gpu
-     status = copy_data_to_gpu( &
+     status = copy_3d_data_to_gpu( &
           nels_pp*ndof_per_element**2, &
           sizeof(0.0d0), &
           storkm_pp(:,:,:), &
@@ -386,7 +462,7 @@ PROGRAM xx3
     else
        
        ! Copy lhs vectors to gpu
-       status = copy_data_to_gpu( &
+       status = copy_2d_data_to_gpu( &
             nels_pp*ndof_per_element, &
             sizeof(0.0d0), &
             pmul_pp(:,1:nels_pp), &

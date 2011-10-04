@@ -19,11 +19,15 @@
 # -----------------------------------------------------------------------
 
 include ../../../../build/mk_defs.inc
-include ../../../../build/$(MACHINE).inc
+include ../../../../build/$(MACHINE).inc 
 
 MODULE	= ../../../../include/mpi
-LIB	= ../../../../lib
-.SUFFIXES: .o .f90
+LIB	= ../../../../lib -L/export/cuda/cuda4.0.17/lib64 -lcublas
+.SUFFIXES: .o .f90 .c
+
+CUBLAS_INCLUDE=-I/export/cuda/cuda4.0.17/include
+CFLAGS=-O3
+CC=nvcc
 
 all:	release
 
@@ -43,8 +47,11 @@ debug:
 	LDFLAGS="-L$(LIB) -lParaFEM_mpi_D.$(VERSION) $(XX9_MPI_DBG_LDFLAGS)"
 	@echo "Done xx9 DEBUG"
 
-xx9: xx9.o
-	$(FC) xx9.o -o xx9 $(LDFLAGS)
+fortran.o: fortran.c fortran.h
+	$(CC) -c fortran.c $(CFLAGS) $(CUBLAS_INCLUDE)
+
+xx9: xx9.o fortran.o
+	$(FC) xx9.o fortran.o -o xx9 $(LDFLAGS)
 
 xx9.o: xx9.f90
 	$(FC) xx9.f90 $(FFLAGS)

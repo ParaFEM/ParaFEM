@@ -6,6 +6,56 @@
 
 /* Kernel definitions */
 
+/* 
+  This kernel assumes matrix is stored column wise
+
+  This attempts 2D thread blocks
+
+  Things to add: shared memory for temp array
+
+*/
+/* __global__ void MultiMatVecMultiply3(int n_mat, */
+/* 				     int n_row, */
+/* 				     int n_col, */
+/* 				     double* lhs_vector, */
+/* 				     double* matrix, */
+/* 				     double* rhs_vector) */
+/* { */
+/*   int global_row_id; */
+/*   int matrix_id; */
+/*   int row_id; */
+/*   int j;  */
+/*   double tmp; */
+
+/*   /\* Get the global index that corresponds to a row of some matrix *\/ */
+/*   global_row_id =  threadIdx.x + blockIdx.x * blockDim.x;   */
+  
+/*   if (global_row_id < n_mat*n_row) */
+/*     { */
+/*       /\* get matrix id *\/ */
+/*       matrix_id = global_row_id/n_row; */
+      
+/*       /\* Get local row id *\/ */
+/*       row_id = global_thread_id%n_row;  */
+      
+/*       /\* Change tmp to be a shared array of size *\/ */
+/*       tmp = 0.0; */
+      
+/*       /\* Change this loop to use y dim thread *\/ */
+/*       for (j=threadIdx.y; j<n_col; j+= blockDim.y) */
+/* 	{ */
+/* 	  tmp += */
+/* 	    lhs_vector[j+matrix_id*n_col] *  */
+/* 	    matrix[row_id+j*n_row+matrix_id*n_col*n_row]; */
+/* 	} */
+
+/*       /\* Reduce sums *\/ */
+
+/*       /\* Copy reduced value to result vector *\/ */
+/*       rhs_vector[global_thread_id] = tmp; */
+/*     } */
+/* } */
+
 /* This kernel used shared memory but assumes:
 
    - the matrix is stored column wise 
@@ -119,9 +169,9 @@ __global__ void MultiMatVecMultiply1(int n_mat,
 /* Helper functions */
 
 /* Function to allocate memory on device */
-extern "C" int allocate_memory_on_gpu_(const int *n_elements, 
-				       const int *element_size,
-				       void **device_pointer)
+extern "C" int allocate_memory_on_gpu(const int *n_elements, 
+				      const int *element_size,
+				      void **device_pointer)
 {
   cudaError_t cuda_status;
   
@@ -137,7 +187,7 @@ extern "C" int allocate_memory_on_gpu_(const int *n_elements,
 }
 
 /* Function to free memory on device */
-extern "C" int free_memory_on_gpu_(void **device_pointer)
+extern "C" int free_memory_on_gpu(void **device_pointer)
 {
   cudaError_t cuda_status;
   
@@ -153,13 +203,13 @@ extern "C" int free_memory_on_gpu_(void **device_pointer)
 }
 
 /* Function to copy data to the gpu */
-extern "C" int copy_data_to_gpu_(const int *n_elements,
-				 const int *element_size,
-				 const void *host_data,
-				 void **device_pointer)
+extern "C" int copy_data_to_gpu(const int *n_elements,
+				const int *element_size,
+				const void *host_data,
+				void **device_pointer)
 {
   cudaError_t cuda_status;
-
+  
   cuda_status = cudaMemcpy(*device_pointer,
 			   host_data,
 			   *n_elements * *element_size,
@@ -175,10 +225,10 @@ extern "C" int copy_data_to_gpu_(const int *n_elements,
  }
 
 /* Function to copy data from the gpu */
-extern "C" int copy_data_from_gpu_(const int *n_elements, 
-				   const int *element_size,
-				   void *host_data,
-				   void **device_pointer)
+extern "C" int copy_data_from_gpu(const int *n_elements, 
+				  const int *element_size,
+				  void *host_data,
+				  void **device_pointer)
 {
   cudaError_t cuda_status;
   
@@ -197,12 +247,12 @@ extern "C" int copy_data_from_gpu_(const int *n_elements,
 }
 
 /* Function to call the matrix vector multiply kernel */
-extern "C" int matrix_vector_multiplies_(int *n_mat,
-					 int *n_row,
-					 int *n_col,
-					 void **d_lhs_vector,
-					 void **d_matrix,
-					 void **d_rhs_vector)
+extern "C" int matrix_vector_multiplies(int *n_mat,
+					int *n_row,
+					int *n_col,
+					void **d_lhs_vector,
+					void **d_matrix,
+					void **d_rhs_vector)
 {
   /* Syntax <<<NumBlocks, ThreadsPerBlock>>> */
   /* Max no threads per dimension per block 1024 */
