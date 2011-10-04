@@ -11,7 +11,9 @@ PROGRAM XX9
   USE input         ; USE output           ; USE loading
   USE timing        ; USE maths            ; USE gather_scatter
   USE partition     ; USE elements         ; USE steering        ; USE pcg
-  
+
+  use iso_c_binding
+
   IMPLICIT NONE
 
 !------------------------------------------------------------------------------ 
@@ -34,6 +36,20 @@ PROGRAM XX9
   CHARACTER(LEN=50)     :: fname,job_name,label
   LOGICAL               :: converged = .false.
 
+  ! GPU related variables etc
+  ! -------------------------
+  integer :: cublas_alloc, cublas_free
+  integer :: cublas_set_matrix, cublas_get_matrix
+  integer :: cublas_init, cublas_shutdown
+
+  integer :: status
+  integer :: ndof_per_element
+  integer(kind=c_size_t) :: device_matrix
+  integer(kind=c_size_t) :: device_lhs_vectors
+  integer(kind=c_size_t) :: device_rhs_vectors
+  logical :: use_gpu = .false.
+  character(len=20, kind=c_char) :: op
+ 
 !------------------------------------------------------------------------------
 ! 2. Declare dynamic arrays
 !------------------------------------------------------------------------------
@@ -290,6 +306,69 @@ PROGRAM XX9
   p_pp  = d_pp
   x_pp  = zero
 
+  ! Code to set up the gpu 
+  if (use_gpu) then
+
+     ! Initialize CUBLAS
+     status = cublas_init
+     if (status .ne. 0) then
+        print *, "GPU failed to initialise!"
+        status = cublas_shutdown
+        stop
+     end if
+
+     ndof_per_element = 3 * nod
+
+     ! Allocate memory on the gpu for coefficient matrix
+     status = cublas_alloc( &
+          ndof_per_element**2, &
+          sizeof(0.0d0), &
+          device_matrix)
+     if (status .ne. 0) then
+        print *, "GPU memory failed to allocate!"
+        status = cublas_shutdown
+        stop
+     end if
+
+     ! Allocate memory for matrix of lhs vectors
+     status = cublas_alloc( &
+          nels_pp*ndof_per_element, &
+          sizeof(0.0d0), &
+          device_lhs_vectors)
+     if (status .ne. 0) then
+        print *, "GPU memory failed to allocate!"
+        status = cublas_shutdown
+        stop
+     end if
+
+     ! Allocate memory for matrix of rhs vectors
+     status =  cublas_alloc( &
+          nels_pp*ndof_per_element, &
+          sizeof(0.0d0), &
+          device_rhs_vectors)
+     if (status .ne. 0) then
+        print *, "GPU memory failed to allocate!"
+        status = cublas_shutdown
+        stop
+     end if
+     
+     ! Copy coefficient matrix to the gpu
+     status = cublas_set_matrix( &
+          ndof_per_element, &
+          ndof_per_element, &
+          sizeof(0.0d0), &
+          km, &
+          ndof_per_element, &
+          device_matrix, &
+          ndof_per_element)
+     if (status .ne. 0) then
+        print *, "Failed to copy data to gpu!"
+        status = cublas_shutdown
+        stop
+     end if
+
+  end if
+
 !------------------------------------------------------------------------------
 ! 14. Preconditioned conjugate gradient iterations
 !------------------------------------------------------------------------------
@@ -304,7 +383,65 @@ PROGRAM XX9
     u_pp     = zero
 
     CALL gather(p_pp,pmul_pp)
-    utemp_pp = MATMUL(km,pmul_pp)
+
+    ! matmul version
+    if (.not. use_gpu) then
+       utemp_pp = MATMUL(km,pmul_pp)
+
+       ! gpu version
+    else
+       ! Copy lhs vectors to gpu
+       status = cublas_set_matrix( &
+            ndof_per_element, &
+            nels_pp, &
+            sizeof(0.0d0), &
+            pmul_pp, &
+            ndof_per_element, &
+            device_lhs_vectors, &
+            ndof_per_element)
+       if (status .ne. 0) then
+          print *, "Failed to copy data to gpu!"
+          status = cublas_shutdown
+          stop
+       end if
+             
+       ! Call CUBLAS 
+       alpha = 1.d0
+       beta = 0.d0
+       op = "N"
+       call cublas_dgemm( &
+            trim(op)//c_null_char, &
+            trim(op)//c_null_char, &
+            ndof_per_element, &
+            nels_pp, &
+            ndof_per_element, &
+            alpha, &
+            device_matrix, &
+            ndof_per_element, &
+            device_lhs_vectors, &
+            ndof_per_element, &
+            beta, &
+            device_rhs_vectors, &
+            ndof_per_element)
+
+       ! Copy result vectors back from gpu
+       status = cublas_get_matrix( &
+            ndof_per_element, & 
+            nels_pp, &
+            sizeof(0.0d0), &
+            device_rhs_vectors, &
+            ndof_per_element, & 
+            utemp_pp, &
+            ndof_per_element)
+       if (status .ne. 0) then
+          print *, "Failed to copy data from gpu!"
+          status = cublas_shutdown
+          stop
+       end if
+
+    end if
+
+
     CALL scatter(u_pp,utemp_pp)
 
     IF(fixed_freedoms_pp > 0) THEN
@@ -328,7 +465,14 @@ PROGRAM XX9
   END DO iterations
 
   DEALLOCATE(p_pp,r_pp,x_pp,u_pp,d_pp,diag_precon_pp,km,pmul_pp) 
-  
+
+  ! Tidy up GPU
+  status = cublas_free(device_matrix)
+  status = cublas_free(device_lhs_vectors)
+  status = cublas_free(device_rhs_vectors)
+  status = cublas_free(device_matrix)
+  status = cublas_shutdown
+
   timest(13) = elap_time()
 
 !------------------------------------------------------------------------------
