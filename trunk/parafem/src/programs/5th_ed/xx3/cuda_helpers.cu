@@ -6,55 +6,76 @@
 
 /* Kernel definitions */
 
+extern __shared__ float work_array[];
+
 /* 
   This kernel assumes matrix is stored column wise
 
   This attempts 2D thread blocks
-
-  Things to add: shared memory for temp array
-
 */
-/* __global__ void MultiMatVecMultiply3(int n_mat, */
-/* 				     int n_row, */
-/* 				     int n_col, */
-/* 				     double* lhs_vector, */
-/* 				     double* matrix, */
-/* 				     double* rhs_vector) */
-/* { */
-/*   int global_row_id; */
-/*   int matrix_id; */
-/*   int row_id; */
-/*   int j;  */
-/*   double tmp; */
+__global__ void MultiMatVecMultiply3(int n_mat,
+				     int n_row,
+				     int n_col,
+				     double* lhs_vector,
+				     double* matrix,
+				     double* rhs_vector)
+{
+  int global_row_id;
+  int matrix_id;
+  int row_id;
+  int j;
+  double tmp;
 
-/*   /\* Get the global index that corresponds to a row of some matrix *\/ */
-/*   global_row_id =  threadIdx.x + blockIdx.x * blockDim.x;   */
-  
-/*   if (global_row_id < n_mat*n_row) */
-/*     { */
-/*       /\* get matrix id *\/ */
-/*       matrix_id = global_row_id/n_row; */
-      
-/*       /\* Get local row id *\/ */
-/*       row_id = global_thread_id%n_row;  */
-      
-/*       /\* Change tmp to be a shared array of size *\/ */
-/*       tmp = 0.0; */
-      
-/*       /\* Change this loop to use y dim thread *\/ */
-/*       for (j=threadIdx.y; j<n_col; j+= blockDim.y) */
-/* 	{ */
-/* 	  tmp += */
-/* 	    lhs_vector[j+matrix_id*n_col] *  */
-/* 	    matrix[row_id+j*n_row+matrix_id*n_col*n_row]; */
-/* 	} */
+  /* Get the global index that corresponds to a row of some matrix */
+  global_row_id =  threadIdx.x + blockIdx.x * blockDim.x;
 
-/*       /\* Reduce sums *\/ */
+  if (global_row_id < n_mat*n_row)
+    {
+      /* get matrix id */
+      matrix_id = global_row_id/n_row;
+      
+      /* Get local row id */
+      row_id = global_row_id%n_row;
+      
+      /* Variable to store partial row value */
+      tmp = 0.0;
+      
+      /* Each thread loop through a part of the row */
+      for (j=threadIdx.y; j<n_col; j+= blockDim.y)
+	{
+	  tmp +=
+	    lhs_vector[j+matrix_id*n_col] *
+	    matrix[row_id+j*n_row+matrix_id*n_col*n_row];
+	}
 
-/*       /\* Copy reduced value to result vector *\/ */
-/*       rhs_vector[global_thread_id] = tmp; */
-/*     } */
-/* } */
+      /* Put values in shared memory array */
+      work_array[threadIdx.x + threadIdx.y*n_row] = tmp;
+
+      /* Sync threads */
+      __syncthreads();
+
+      /* Reduce array values */
+      j = threadIdx.y;
+
+      while ( j>1 )
+	{
+	  j >>= 1; /* Divide j by 2 */
+
+	  if (threadIdx.y<j)
+	    {
+	      work_array[threadIdx.x + threadIdx.y*n_row]
+		+= work_array[threadIdx.x + threadIdx.y*(n_row+j)];
+
+	      /* Sync threads */
+	      __syncthreads();
+	    }
+	}
+      
+      /* Copy reduced value to result vector */
+      rhs_vector[global_row_id] = work_array[j];
+    }
+}
+
 
 /* This kernel used shared memory but assumes:
 
@@ -92,6 +113,7 @@ __global__ void MultiMatVecMultiply2(int n_mat,
 
   /* Shared memory to store copy of lhs vector */
   __shared__ double lhs_vector_shared[60];
+ /*  double* lhs_vector_shared = (double*)work_array; */
   
   /* Get row id */
   row_id = global_thread_id%n_row; 
@@ -259,21 +281,24 @@ extern "C" int matrix_vector_multiplies(int *n_mat,
   /* Max size of grid in each dimension 65535 */
   /* Warp size 32 */
   int NumBlocks;
-  int ThreadsPerBlock;
+  int ThreadsPerBlock_1D;
+  dim3 ThreadsPerBlock_2D;
   cudaError_t cuda_status;
 
-  int version = 2;
+  int method = 2;
 
-  if (version == 1)
+  size_t shared_mem_size;
+
+  if (method == 3)
     {
-      ThreadsPerBlock = 1024;
-      NumBlocks = (*n_mat * *n_row)/ThreadsPerBlock;
+      ThreadsPerBlock_1D = 1024;
+      NumBlocks = (*n_mat * *n_row)/ThreadsPerBlock_1D;
       
-      if ( (*n_mat * *n_row)%ThreadsPerBlock != 0)
+      if ( (*n_mat * *n_row)%ThreadsPerBlock_1D != 0)
 	NumBlocks += 1;
       
       /* Launch kernel */
-      MultiMatVecMultiply1<<<NumBlocks, ThreadsPerBlock>>>
+      MultiMatVecMultiply1<<<NumBlocks, ThreadsPerBlock_1D>>>
 	(*n_mat,
 	 *n_row,
 	 *n_col,
@@ -281,16 +306,16 @@ extern "C" int matrix_vector_multiplies(int *n_mat,
 	 (double *)(*d_matrix),
 	 (double *)(*d_rhs_vector));
     }
-  else
+  else if (method == 2)
     {
-      ThreadsPerBlock = 60;
-      NumBlocks = (*n_mat * *n_row)/ThreadsPerBlock;
+      ThreadsPerBlock_1D = *n_row;
+      NumBlocks = *n_mat; /* (*n_mat * *n_row)/ThreadsPerBlock_1D;
       
-      if ( (*n_mat * *n_row)%ThreadsPerBlock != 0)
-	NumBlocks += 1;
+      if ( (*n_mat * *n_row)%ThreadsPerBlock_1D != 0)
+      NumBlocks += 1; */
       
       /* Launch kernel */
-      MultiMatVecMultiply2<<<NumBlocks, ThreadsPerBlock>>>
+      MultiMatVecMultiply2<<<NumBlocks, ThreadsPerBlock_1D>>>
 	(*n_mat,
 	 *n_row,
 	 *n_col,
@@ -298,6 +323,26 @@ extern "C" int matrix_vector_multiplies(int *n_mat,
 	 (double *)(*d_matrix),
 	 (double *)(*d_rhs_vector));
       
+    }
+  else
+    {
+      NumBlocks = *n_mat;
+      
+      ThreadsPerBlock_2D.x = *n_row;
+      ThreadsPerBlock_2D.y = 2;
+      ThreadsPerBlock_2D.y = 1;
+      
+      shared_mem_size = sizeof(*d_matrix) * 
+	ThreadsPerBlock_2D.x * ThreadsPerBlock_2D.y;
+
+      MultiMatVecMultiply3
+	<<<NumBlocks, ThreadsPerBlock_2D, shared_mem_size>>>
+	(*n_mat,
+	 *n_row,
+	 *n_col,
+	 (double *)(*d_lhs_vector),
+	 (double *)(*d_matrix),
+	 (double *)(*d_rhs_vector));
     }
 
 
