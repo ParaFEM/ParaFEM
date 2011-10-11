@@ -1,0 +1,232 @@
+#!/bin/bash
+BINLOC=`echo $0 | sed -e 's_pf2ensi$__g' -`
+
+echo "pf2ensi"
+echo "Converting $1 to Ensight Gold CASE Format"
+
+# --------------------------------------------------------------------------------
+# Process command line arguments
+# --------------------------------------------------------------------------------
+
+while [ $# -gt 0 ]; do
+    ARG=`echo $1 | tr "[:upper:]" "[:lower:]"`
+    case $ARG in
+	-usage) showusage; exit;;
+	-help) showusage; exit;;
+
+	-flip-normals) D2GEO_ARGS="-v flip_normals=1";;
+
+	-*) unknown-arg; showusage; exit;;
+	*) BASE_FILENAME=$1
+    esac
+    shift
+done
+
+# --------------------------------------------------------------------------------
+# Build filenames for IO
+# --------------------------------------------------------------------------------
+
+# input model filename
+D_FILENAME="$BASE_FILENAME.d"
+
+# input variable filenames
+DIS_FILENAME="$BASE_FILENAME.dis"
+PRI_FILENAME="$BASE_FILENAME.pri"
+REA_FILENAME="$BASE_FILENAME.rea"
+BND_FILENAME="$BASE_FILENAME.bnd"
+LDS_FILENAME="$BASE_FILENAME.lds"
+VMS_FILENAME="$BASE_FILENAME.vms"
+STR_FILENAME="$BASE_FILENAME.str"
+FIX_FILENAME="$BASE_FILENAME.fix"
+NSET_FILENAME="$BASE_FILENAME.nset"
+
+# output Ensight filenames
+ENSI_CASE_FILENAME="$BASE_FILENAME.ensi.case"
+ENSI_GEO_FILENAME="$BASE_FILENAME.ensi.geo"
+ENSI_MATID_FILENAME="$BASE_FILENAME.ensi.MATID"
+
+# --------------------------------------------------------------------------------
+# Set default flags
+# --------------------------------------------------------------------------------
+
+# Enable/disable flags - set to zero to prevent processing of that filetype
+DO_DIS=1
+DO_PRI=1
+DO_REA=1
+DO_VMS=1
+DO_STR=1
+
+DO_BND=1 # enable only if fixed ParaView has been installed/compiled
+DO_LDS=1 # "
+DO_FIX=1 # "
+
+DO_MATI=1
+DO_NSET=1
+
+# --------------------------------------------------------------------------------
+# Generate output headers (initial)
+# --------------------------------------------------------------------------------
+
+# Generate the CASE file header
+echo "#" > $ENSI_CASE_FILENAME
+echo "# ParaFEM pf2ensi generated post-process file" >> $ENSI_CASE_FILENAME
+echo "# Ensight Gold Format" >> $ENSI_CASE_FILENAME
+echo "#" >> $ENSI_CASE_FILENAME
+echo -e "# Problem name:\t""$BASE_FILENAME" >> $ENSI_CASE_FILENAME
+echo "#" >> $ENSI_CASE_FILENAME
+echo "FORMAT" >> $ENSI_CASE_FILENAME
+echo -e "type:\tensight gold" >> $ENSI_CASE_FILENAME
+echo "GEOMETRY" >> $ENSI_CASE_FILENAME
+echo -e "model:\t1\t""$ENSI_GEO_FILENAME" >> $ENSI_CASE_FILENAME
+
+# Generate the GEO file header
+echo "" > $ENSI_GEO_FILENAME
+echo -e "Problem name:\t""$BASE_FILENAME" >> $ENSI_GEO_FILENAME
+echo "Geometry files" >> $ENSI_GEO_FILENAME
+echo "node id given" >> $ENSI_GEO_FILENAME
+echo "element id given" >> $ENSI_GEO_FILENAME
+# LML: Supports only one model part for now
+echo "part" >> $ENSI_GEO_FILENAME
+echo -e "\t1" >> $ENSI_GEO_FILENAME
+echo "Volume Mesh" >> $ENSI_GEO_FILENAME
+echo "coordinates" >> $ENSI_GEO_FILENAME
+
+# Generate the MATID file header
+echo "Alya Ensight Gold --- Scalar per-element variable file" > $ENSI_MATID_FILENAME
+# LML: Supports only one model part for now
+echo "part" >> $ENSI_MATID_FILENAME
+echo -e "\t1" >> $ENSI_MATID_FILENAME
+
+# --------------------------------------------------------------------------------
+# Convert the ParaFEM model file .d to Ensight GEO format
+# --------------------------------------------------------------------------------
+# CALL pf2ensi.geo.awk()
+#   ARGS   : "$D2GEO_ARGS" "$D_FILENAME"
+#   STDOUT : "NUM_NODES NUM_CELLS"
+#   STDERR : <messages>
+# --------------------------------------------------------------------------------
+
+D2GEO=`awk -f $BINLOC/pf2ensi.geo.awk $D2GEO_ARGS $D_FILENAME`
+NUM_NODES=`echo $D2GEO | awk '{print $1}'`
+NUM_CELLS=`echo $D2GEO | awk '{print $2}'`
+NUM_MATS=`echo $D2GEO | awk '{print $3}'`
+
+# time info
+NUM_TIME_STEPS=-1
+
+# --------------------------------------------------------------------------------
+# Process variables
+# --------------------------------------------------------------------------------0
+
+# Add to case file header
+echo "VARIABLE" >> $ENSI_CASE_FILENAME
+
+# check for available ParaFEM data files
+if [ -f $DIS_FILENAME ] && [ $DO_DIS == 1 ]; then
+    DIS2ENSI=`awk -f $BINLOC/pf2ensi.var.awk $DIS_FILENAME`
+    echo -e "vector per node:\t1\tDisplacement\t""$BASE_FILENAME"".ensi.DISPL-******" >> $ENSI_CASE_FILENAME
+    NUM_TIME_STEPS=$DIS2ENSI
+fi
+
+if [ -f $PRI_FILENAME ] && [ $DO_PRI == 1 ]; then
+    PRI2ENSI=`awk -f $BINLOC/pf2ensi.var.awk $PRI_FILENAME`
+    if [ $NUM_TIME_STEPS -lt 0 ]; then
+	NUM_TIME_STEPS=$PRI2ENSI
+    fi
+    if [ $PRI2ENSI -ne $NUM_TIME_STEPS ]; then
+	echo "ERROR: The $PRI_FILENAME file does not have a matching number of time steps"
+    else
+	echo -e "scalar per node:\t1\tPrincipal_Stress_Max\t""$BASE_FILENAME"".ensi.PRIMX-******" >> $ENSI_CASE_FILENAME
+	echo -e "scalar per node:\t1\tPrincipal_Stress_2nd\t""$BASE_FILENAME"".ensi.PRISC-******" >> $ENSI_CASE_FILENAME
+	echo -e "scalar per node:\t1\tPrincipal_Stress_Min\t""$BASE_FILENAME"".ensi.PRIMI-******" >> $ENSI_CASE_FILENAME
+    fi
+fi
+
+if [ -f $REA_FILENAME ] && [ $DO_REA == 1 ]; then
+    REA2ENSI=`awk -f $BINLOC/pf2ensi.var.awk $REA_FILENAME`
+    if [ $NUM_TIME_STEPS -lt 0 ]; then
+	NUM_TIME_STEPS=$REA2ENSI
+    fi
+    if [ $REA2ENSI -ne $NUM_TIME_STEPS ]; then
+	echo "ERROR: The $REA_FILENAME file does not have a matching number of time steps"
+    else
+	echo -e "vector per node:\t1\tNodal_Reactions\t""$BASE_FILENAME"".ensi.NDREA-******" >> $ENSI_CASE_FILENAME
+    fi
+fi
+
+if [ -f $STR_FILENAME ] && [ $DO_STR == 1 ]; then
+    STR2ENSI=`awk -f $BINLOC/pf2ensi.var.awk $STR_FILENAME`
+    if [ $NUM_TIME_STEPS -lt 0 ]; then
+	NUM_TIME_STEPS=$STR2ENSI
+    fi
+    if [ $STR2ENSI -ne $NUM_TIME_STEPS ]; then
+	echo "ERROR: The $STR_FILENAME file does not have a matching number of time steps"
+    else
+	echo -e "tensor symm per node:\t1\tStress\t""$BASE_FILENAME"".ensi.STRESS-******" >> $ENSI_CASE_FILENAME
+    fi
+fi
+
+if [ -f $VMS_FILENAME ] && [ $DO_VMS == 1 ]; then
+    VMS2ENSI=`awk -f $BINLOC/pf2ensi.var.awk $VMS_FILENAME`
+    if [ $NUM_TIME_STEPS -lt 0 ]; then
+	NUM_TIME_STEPS=$VMS2ENSI
+    fi
+    if [ $VMS2ENSI -ne $NUM_TIME_STEPS ]; then
+	echo "ERROR: The $VMS_FILENAME file does not have a matching number of time steps"
+    else
+	echo -e "scalar per node:\t1\tMises_Stress\t""$BASE_FILENAME"".ensi.NDVMS-******" >> $ENSI_CASE_FILENAME
+    fi
+fi
+
+if [ -f $FIX_FILENAME ] && [ $DO_FIX == 1 ]; then
+    FIX2ENSI=`awk -f $BINLOC/pf2ensi.var.awk $FIX_FILENAME`
+    echo -e "vector per node:\t\tFixed_Displacement\t""$BASE_FILENAME"".ensi.NDFIX" >> $ENSI_CASE_FILENAME
+fi
+
+if [ -f $BND_FILENAME ] && [ $DO_BND == 1 ]; then
+    BND2ENSI=`awk -f $BINLOC/pf2ensi.var.awk $BND_FILENAME`
+    echo -e "scalar per node:\t\tBound_Nodes\t""$BASE_FILENAME"".ensi.NDBND" >> $ENSI_CASE_FILENAME
+fi
+
+if [ -f $LDS_FILENAME ] && [ $DO_LDS == 1 ]; then
+    LDS2ENSI=`awk -f $BINLOC/pf2ensi.var.awk $LDS_FILENAME`
+    echo -e "vector per node:\t\tLoaded_Nodes\t""$BASE_FILENAME"".ensi.NDLDS" >> $ENSI_CASE_FILENAME
+fi
+
+NSETID=1
+if [ -f $NSET_FILENAME ] && [ $DO_NSET == 1 ]; then
+    NSET2ENSI=`awk -f $BINLOC/pf2ensi.var.awk $NSET_FILENAME`
+    for NSETNAME in $NSET2ENSI; do
+	echo -e "scalar per node:\t\tNode_Set_$NSETID\t""$BASE_FILENAME"".ensi.NDSET_""$NSETID""_""$NSETNAME" >> $ENSI_CASE_FILENAME
+	(( NSETID++ ))
+    done
+fi
+
+# Append Material variable
+# NOTE: ParaView Ensight Gold Reader does not support the MATERIAL case parameter
+if [ $DO_MATI == 1 ]; then
+    echo -e "scalar per element:\t\tMaterial\t""$ENSI_MATID_FILENAME" >> $ENSI_CASE_FILENAME
+fi
+
+# Report number of time steps found
+echo "Number of time steps: $NUM_TIME_STEPS"
+
+# Add TIME to case file header if more than 1 step
+if [ $NUM_TIME_STEPS -gt 0 ]; then
+    echo "TIME" >> $ENSI_CASE_FILENAME
+    echo -e "time set:\t1" >> $ENSI_CASE_FILENAME
+    echo -e "number of steps:\t""$NUM_TIME_STEPS" >> $ENSI_CASE_FILENAME
+    echo -e "filename start number:\t1" >> $ENSI_CASE_FILENAME
+    echo -e "filename increment:\t1" >> $ENSI_CASE_FILENAME
+    echo "time values:" >> $ENSI_CASE_FILENAME
+
+    TS=1
+    while [ $TS -le $NUM_TIME_STEPS ]; do
+	printf "%10E " $TS >> $ENSI_CASE_FILENAME
+	(( TS++ ))
+    done
+fi    
+
+# Complete
+
+echo "Completed."
