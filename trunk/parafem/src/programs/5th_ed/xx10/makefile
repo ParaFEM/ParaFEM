@@ -23,39 +23,74 @@ include ../../../../build/$(MACHINE).inc
 
 MODULE	= ../../../../include/mpi
 LIB	= ../../../../lib
-.SUFFIXES: .o .f90
+.SUFFIXES: .o .f90 .c
+
+# No env var is available even if ATI/CUDA modules are loaded.
+# Ensure that the correct module *is* loaded in the job script
+# when running the xx10 code so that LD_LIBRARY_PATH points to
+# the required libOpenCL.so which we dynamically link in here.
+
+# AMD OpenCL
+#OCLROOT     = /export/ati-app-sdk/lnx64/2.5
+#OCLBLASROOT = $(HOME)/clAmdBlas-1.4.182
+#OCLBLASLIB  = -L$(OCLBLASROOT)/lib64 -lclAmdBlas
+#OCLINC      = -I$(OCLROOT)/include -I$(OCLBLASROOT)/include
+#OCLLIB      = -L$(OCLROOT)/lib/x86_64/ -lOpenCL $(OCLBLASLIB)
+#OCLFLAGS    = -DAMDBLAS
+
+# Nvidia OpenCL
+OCLROOT  = /export/cuda/cuda3.2.16
+OCLINC   = -I$(OCLROOT)/include
+OCLLIB   = -lOpenCL
+
+# C compiler flags not set in parafem included makefiles
+CC=mpicc
+XX10_MPI_REL_CFLAGS=-O3
+XX10_MPI_DBG_CFLAGS=-g
+
+COBJS = opencl_funcs.o
+EXES = xx10
 
 all:	release
 
 release:
 	@echo
-	@echo "Building xx10 RELEASE"
-	$(MAKE) xx10 \
+	@echo "Building $(EXES) RELEASE"
+	$(MAKE) $(EXES) \
 	FFLAGS="-c -I$(MODULE) $(XX10_MPI_REL_FFLAGS)" \
-	LDFLAGS="-L$(LIB) -lParaFEM_mpi.$(VERSION) $(XX10_MPI_REL_LDFLAGS)"
-	@echo "Done xx10 RELEASE"
+	CFLAGS="-c $(XX10_MPI_REL_CFLAGS) $(OCLINC) $(OCLFLAGS)" \
+	LDFLAGS="-L$(LIB) -lParaFEM_mpi.$(VERSION) $(XX10_MPI_REL_LDFLAGS) $(OCLLIB) -lm"
+	@echo "Done $(EXES) RELEASE"
 
 debug:
 	@echo
-	@echo "Building xx10 DEBUG"
-	$(MAKE) xx10 \
+	@echo "Building $(EXES) DEBUG"
+	$(MAKE) $(EXES) \
 	FFLAGS="-c -I$(MODULE) $(XX10_MPI_DBG_FFLAGS)" \
-	LDFLAGS="-L$(LIB) -lParaFEM_mpi_D.$(VERSION) $(XX10_MPI_DBG_LDFLAGS)"
-	@echo "Done xx10 DEBUG"
+	CFLAGS="-c $(XX10_MPI_DBG_CFLAGS) $(OCLINC) $(OCLFLAGS)" \
+	LDFLAGS="-L$(LIB) -lParaFEM_mpi_D.$(VERSION) $(XX10_MPI_DBG_LDFLAGS) $(OCLLIB) -lm"
+	@echo "Done $(EXES) DEBUG"
 
-xx10: xx10.o
-	$(FC) xx10.o -o xx10 $(LDFLAGS)
+xx10: $(COBJS) xx10.o
+	$(FC) xx10.o $(COBJS) -o $@ $(LDFLAGS)
 
+
+# Fortran files
 xx10.o: xx10.f90
-	$(FC) xx10.f90 $(FFLAGS)
+	$(FC) $(FFLAGS) $<
+
+
+# OpenCL C files (from xx4 directory)
+opencl_funcs.o: ../xx4/opencl_funcs.c
+	$(CC) -c $(CFLAGS) $<
 
 clean:
 	rm -f *.o
 
 execlean:
-	rm -f xx10 ../../../../bin/xx10
+	rm -f $(EXES) ../../../../bin/xx10
 
-relink: xx10
+relink: $(EXES)
 
 install:
-	cp xx10 ../../../../bin
+	cp $(EXES) ../../../../bin
