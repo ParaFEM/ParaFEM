@@ -71,7 +71,7 @@ PROGRAM xx4
   INTEGER       :: vsize_rhs               ! Temp working size of X vector
   INTEGER       :: memflag                 ! GPU mem type: 0 Read only, 1 write only, 2 read and write
   INTEGER       :: status                  ! OpenCL return flag
-  REAL(iwp)     :: misc_timers(2)          ! Time code around GPU work and matmuls
+  REAL(iwp)     :: misc_timers(4)          ! Time code around GPU work and matmuls
 
   ! Pointers to device memory (store a cl_mem as a void*)
   type (c_ptr)  :: device_matrix      = C_NULL_PTR
@@ -361,6 +361,7 @@ PROGRAM xx4
   d_pp  = diag_precon_pp*r_pp
   p_pp  = d_pp
   x_pp  = zero
+  misc_timers = zero
 
   ! Set up GPU
   IF ( mult_method > 0 ) THEN
@@ -369,8 +370,8 @@ PROGRAM xx4
      use_kernels = (mult_method==1 .OR. mult_method==2)
      use_amdblas = (mult_method==3 .OR. mult_method==4)
 
-     print *, "Initializing GPU"
-     misc_timers(1) = elap_time();
+     print *, "Initializing GPU in process ", numpe
+     misc_timers(1) = elap_time()
      
      ! Notation: vec_lhs = M . vec_rhs
      ! Single matrix and vector size
@@ -401,7 +402,7 @@ PROGRAM xx4
 
      ! Allocate read-only device memory (kernel won't write) for matrix data
      memflag = 0
-     status = allocate_memory_on_gpu( msize, dsize, memflag, device_matrix );
+     status = allocate_memory_on_gpu( msize, dsize, memflag, device_matrix )
      if ( status /= 1 ) then
         print *, "Failed to allocate device memory (matrix)"
         stop
@@ -431,7 +432,7 @@ PROGRAM xx4
      IF ( use_kernels ) THEN
 
         ! Use our own kernel (no build options used)
-        status = compile_kernel_from_file( srcfilename, kernelnames(mult_method), C_NULL_PTR );
+        status = compile_kernel_from_file( srcfilename, kernelnames(mult_method), C_NULL_PTR )
         IF ( status /= 1 ) THEN
            print *, "Error compiling kernel ", kernelnames(mult_method)
            stop
@@ -446,7 +447,7 @@ PROGRAM xx4
 
      END IF
 
-     misc_timers(2) = elap_time() - misc_timers(1);
+     misc_timers(2) = elap_time() - misc_timers(1)
      write(*,*) 'Time for GPU init + host-to-device copy: ', misc_timers(2)
 
   END IF
@@ -465,7 +466,7 @@ PROGRAM xx4
     CALL gather(p_pp,pmul_pp)
 
     IF ( mult_method == 0 ) THEN
-       misc_timers(1) = elap_time();
+       misc_timers(1) = elap_time()
 
        ! Original cpu version    
        elements_5: DO iel=1,nels_pp
@@ -473,20 +474,22 @@ PROGRAM xx4
        END DO elements_5
 
        ! Accumulate time for only the matmul code
-       misc_timers(2) = misc_timers(2) + (elap_time() - misc_timers(1));
+       misc_timers(2) = misc_timers(2) + (elap_time() - misc_timers(1))
 
     ELSE
        ! gpu versions
        ! ------------
 
-       misc_timers(1) = elap_time();
+       misc_timers(1) = elap_time()
 
        IF ( use_kernels ) THEN          
 
           ! Transfer the current RHS vectors to device, do matmul, transfer result vectors back
           status =          copy_data_to_gpu(vsize_rhs, dsize, pmul_pp, device_rhs_vectors )
+          misc_timers(3) = elap_time()
           status = status + matrix_vector_multiplies( nels_pp, vecsize_lhs, vecsize_rhs, &
                                                       device_matrix, device_rhs_vectors, device_lhs_vectors )
+          misc_timers(4) = misc_timers(4) + (elap_time() - misc_timers(3))
           status = status + copy_data_from_gpu(vsize_lhs, dsize, device_lhs_vectors, utemp_pp )
 
           IF ( status /= 3 ) THEN
@@ -506,7 +509,9 @@ PROGRAM xx4
              status = status + copy_data_to_gpu(vecsize_rhs, dsize, pmul_pp(:,iel),     device_rhs_vectors )
                 
              ! Multiply using AMD Blas
+             misc_timers(3) = elap_time()
              status = status + blas_dgemv( vecsize_lhs, vecsize_rhs, device_matrix, device_rhs_vectors, device_lhs_vectors )
+             misc_timers(4) = misc_timers(4) + (elap_time() - misc_timers(3))
              
              ! Transfer vector back from GPU (using a blocking read)
              status = status + copy_data_from_gpu(vecsize_lhs, dsize, device_lhs_vectors, utemp_pp(:,iel) )
@@ -521,7 +526,7 @@ PROGRAM xx4
           
           ! The transfer matrices and vector asynchronously and use CL BLAS to multiply.
           status = mem_copy_blas_dgemv_async( nels_pp, vecsize_lhs, vecsize_rhs, storkm_pp, pmul_pp, utemp_pp, &
-                                              device_matrix, device_rhs_vectors, device_lhs_vectors );
+                                              device_matrix, device_rhs_vectors, device_lhs_vectors )
           IF ( status /= 1 ) THEN
              print *, 'Error in mem_copy_blas_dgemv_async'
              stop
@@ -533,7 +538,7 @@ PROGRAM xx4
        END IF
        
        ! Only time the GPU work (roughly)
-       misc_timers(2) = misc_timers(2) + (elap_time()-misc_timers(1));
+       misc_timers(2) = misc_timers(2) + (elap_time()-misc_timers(1))
 
        ! Compare GPU matmul results to CPU results
        IF( check_gpu ) THEN             
@@ -569,7 +574,8 @@ PROGRAM xx4
 
   END DO iterations
 
-  write(*,*) 'Time for matmul sections of iteration loop: ', (misc_timers(2))
+  write(*,*) 'Total iterations timing: upload+matmul+download: ', (misc_timers(2))
+  write(*,*) 'Total iterations timing:                 matmul: ', (misc_timers(4))
 
   DEALLOCATE(p_pp,r_pp,x_pp,u_pp,d_pp,diag_precon_pp,storkm_pp,pmul_pp) 
 
