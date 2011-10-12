@@ -9,8 +9,74 @@ PROGRAM xx4
   USE input         ; USE output           ; USE loading
   USE timing        ; USE maths            ; USE gather_scatter
   USE partition     ; USE elements         ; USE steering        ; USE pcg
+
+  ! C types for GPU code
+  ! --------------------
+  USE iso_c_binding
   
   IMPLICIT NONE
+
+  ! C functions for GPU code
+  ! ------------------------
+  INTEGER, EXTERNAL :: init_opencl
+  INTEGER, EXTERNAL :: stop_opencl
+  INTEGER, EXTERNAL :: allocate_memory_on_gpu
+  INTEGER, EXTERNAL :: free_memory_on_gpu
+  INTEGER, EXTERNAL :: copy_data_to_gpu
+  INTEGER, EXTERNAL :: copy_data_from_gpu
+  INTEGER, EXTERNAL :: compile_kernel_from_file
+  INTEGER, EXTERNAL :: matrix_vector_multiplies
+  INTEGER, EXTERNAL :: blas_dgemv
+  INTEGER, EXTERNAL :: mem_copy_blas_dgemv_async
+  INTEGER, EXTERNAL :: c_compare_vecs
+
+  ! GPU Code config
+  ! ---------------
+  INTEGER       :: mult_method = 2       ! Method to use to do the matrix-vector mult
+                                         ! 0 - CPU: original code
+                                         ! 1 - GPU: our own matmul kernel 1 (naive)
+                                         ! 2 - GPU: our own matmul kernel 2 (local mem)
+                                         ! The next two are unsuitable for this code.
+                                         ! 3 - GPU: AMD clBlas (synchronously)
+                                         ! 4 - GPU: AMD clBlas (asynchronously, experimental)
+
+  LOGICAL       :: check_gpu = .false.   ! Compare GPU results to intrinsic matmul results (slow)
+  INTEGER       :: gpu_device = 1        ! Set to 0 to use OpenCL on CPU (AMD only)
+
+  ! Our own kernel source file (must be in current directory when executing xx4)
+  CHARACTER(LEN=32) :: srcfilename = "xx4.cl"//CHAR(0)
+
+  ! The mult_method indexes in to this array of kernel names (currently for methods 1 and 2)
+  CHARACTER(LEN=32), dimension(2) :: kernelnames = (/ &
+       "MultiMatVecMultiply_col_naive"//CHAR(0),      &
+       "MultiMatVecMultiply_col_local"//CHAR(0)       &
+  /)
+
+  ! End of GPU Code config
+  ! ----------------------
+
+  ! GPU related variables
+  ! ---------------------
+  ! Matrices are square so could use one var for x and y vectors but code here is general.
+  ! X,Y refers to the matrix, vector multiplication of the form Y = M.X
+  ! All sizes except dsize are in terms of number of elements, not bytes.
+  LOGICAL       :: use_kernels             ! Types of mat mul according to method above
+  LOGICAL       :: use_amdblas             ! Will be set later. Don't set here.
+  INTEGER       :: dsize = sizeof(0.0d0)   ! Size of matrix, vector elements (i.e, C double)
+  INTEGER       :: matsize                 ! Size of one matrix
+  INTEGER       :: vecsize_lhs             ! Size of one Y vector
+  INTEGER       :: vecsize_rhs             ! Size of one X vector
+  INTEGER       :: msize                   ! Temp working size of matrix
+  INTEGER       :: vsize_lhs               ! Temp working size of Y vector
+  INTEGER       :: vsize_rhs               ! Temp working size of X vector
+  INTEGER       :: memflag                 ! GPU mem type: 0 Read only, 1 write only, 2 read and write
+  INTEGER       :: status                  ! OpenCL return flag
+  REAL(iwp)     :: misc_timers(2)          ! Time code around GPU work and matmuls
+
+  ! Pointers to device memory (store a cl_mem as a void*)
+  type (c_ptr)  :: device_matrix      = C_NULL_PTR
+  type (c_ptr)  :: device_lhs_vectors = C_NULL_PTR
+  type (c_ptr)  :: device_rhs_vectors = C_NULL_PTR
 
 !------------------------------------------------------------------------------ 
 ! 1. Declare variables used in the main program
@@ -28,7 +94,7 @@ PROGRAM xx4
   REAL(iwp),PARAMETER   :: zero = 0.0_iwp
   REAL(iwp),PARAMETER   :: penalty = 1.0e20_iwp
   CHARACTER(LEN=15)     :: element
-  CHARACTER(LEN=50)     :: program_name='xx3'
+  CHARACTER(LEN=50)     :: program_name='xx4'
   CHARACTER(LEN=50)     :: fname,job_name,label
   LOGICAL               :: converged = .false.
 
@@ -49,6 +115,9 @@ PROGRAM xx4
   REAL(iwp),ALLOCATABLE :: principal(:),reacnodes_pp(:)  
   INTEGER,  ALLOCATABLE :: rest(:,:),g_num_pp(:,:),g_g_pp(:,:),node(:)
   INTEGER,  ALLOCATABLE :: no(:),no_pp(:),no_pp_temp(:),sense(:)
+
+  ! For OpenCL-testing
+  REAL(iwp),ALLOCATABLE :: check_utemp_pp(:,:)
 
 !------------------------------------------------------------------------------
 ! 3. Read job_name from the command line. 
@@ -105,6 +174,12 @@ PROGRAM xx4
            storkm_pp(ntot,ntot,nels_pp),eld(ntot),eps(nst),sigma(nst),        &
            pmul_pp(ntot,nels_pp),utemp_pp(ntot,nels_pp),                      &
            weights(nip),g_g_pp(ntot,nels_pp),fun(nod))
+
+! For C-testing
+  IF ( check_gpu ) THEN
+     ALLOCATE( check_utemp_pp(ntot,nels_pp) )
+     print *, "Will check GPU results against CPU results. This is SLOW!"
+  END IF
 
 !------------------------------------------------------------------------------
 ! 5. Loop the elements to find the steering array and the number of equations
@@ -287,6 +362,94 @@ PROGRAM xx4
   p_pp  = d_pp
   x_pp  = zero
 
+  ! Set up GPU
+  IF ( mult_method > 0 ) THEN
+
+     ! Flags for type of matmul based on method
+     use_kernels = (mult_method==1 .OR. mult_method==2)
+     use_amdblas = (mult_method==3 .OR. mult_method==4)
+
+     print *, "Initializing GPU"
+     misc_timers(1) = elap_time();
+     
+     ! Notation: vec_lhs = M . vec_rhs
+     ! Single matrix and vector size
+     matsize     = ntot**2
+     vecsize_lhs = ntot
+     vecsize_rhs = ntot
+
+     ! Create an OpenCL context on the device
+     status = init_opencl( gpu_device, numpe-1, use_amdblas )
+     !status = init_opencl( gpu_device, -1, use_amdblas )
+     if ( status /= 1 ) then
+        print *, "Failed to init OpenCL"
+        stop
+     end if
+
+     ! Set working sizes of device mem alloc according to matmul method
+     IF ( use_kernels ) THEN
+        ! Use own own kernel: try to transfer all arrays and vectors to device.
+        msize     = nels_pp * matsize
+        vsize_lhs = nels_pp * vecsize_lhs
+        vsize_rhs = nels_pp * vecsize_rhs
+     ELSE
+        ! Use AMD clBlas methods. Can only transfer single matrices to device.
+        msize     = matsize
+        vsize_lhs = vecsize_lhs
+        vsize_rhs = vecsize_rhs
+     END IF
+
+     ! Allocate read-only device memory (kernel won't write) for matrix data
+     memflag = 0
+     status = allocate_memory_on_gpu( msize, dsize, memflag, device_matrix );
+     if ( status /= 1 ) then
+        print *, "Failed to allocate device memory (matrix)"
+        stop
+     end if
+
+     ! Allocate read-only device memory (kernel won't write) for rhs vector 
+     memflag = 0
+     status = allocate_memory_on_gpu( vsize_rhs, dsize, memflag, device_rhs_vectors)
+     if ( status /= 1 ) then
+        print *, "Failed to allocate device memory (rhs vector)"
+        stop
+     end if
+
+     ! Allocate at least write (and possibly read) memory for lhs vector (the result vector)
+     IF ( use_kernels ) THEN
+        memflag = 1     ! Our own kernel only writes to the result vector
+     ELSE
+        memflag = 2     ! AMD clBlas can read and write the the result vector
+     END IF
+     status = allocate_memory_on_gpu( vsize_lhs, dsize, memflag, device_lhs_vectors)
+     IF ( status /= 1 ) THEN
+        print *, "Failed to allocate device memory (lhs vector)"
+        stop
+     END IF
+
+     ! Compile our own kernels, upload all matrix data
+     IF ( use_kernels ) THEN
+
+        ! Use our own kernel (no build options used)
+        status = compile_kernel_from_file( srcfilename, kernelnames(mult_method), C_NULL_PTR );
+        IF ( status /= 1 ) THEN
+           print *, "Error compiling kernel ", kernelnames(mult_method)
+           stop
+        END IF
+
+        ! Our kernels want all data on the device so transfer it now
+        status = copy_data_to_gpu(msize, dsize, storkm_pp, device_matrix )
+        IF ( status /= 1 ) THEN
+           print *, "Error copying entire storkm_pp array of matrices to the GPU."
+           stop
+        END IF
+
+     END IF
+
+     misc_timers(2) = elap_time() - misc_timers(1);
+     write(*,*) 'Time for GPU init + host-to-device copy: ', misc_timers(2)
+
+  END IF
 !------------------------------------------------------------------------------
 ! 14. Preconditioned conjugate gradient iterations
 !------------------------------------------------------------------------------
@@ -300,9 +463,90 @@ PROGRAM xx4
     utemp_pp = zero
 
     CALL gather(p_pp,pmul_pp)
-    elements_5: DO iel=1,nels_pp
-      utemp_pp(:,iel) = MATMUL(storkm_pp(:,:,iel),pmul_pp(:,iel))
-    END DO elements_5
+
+    IF ( mult_method == 0 ) THEN
+       misc_timers(1) = elap_time();
+
+       ! Original cpu version    
+       elements_5: DO iel=1,nels_pp
+          utemp_pp(:,iel) = MATMUL(storkm_pp(:,:,iel),pmul_pp(:,iel))
+       END DO elements_5
+
+       ! Accumulate time for only the matmul code
+       misc_timers(2) = misc_timers(2) + (elap_time() - misc_timers(1));
+
+    ELSE
+       ! gpu versions
+       ! ------------
+
+       misc_timers(1) = elap_time();
+
+       IF ( use_kernels ) THEN          
+
+          ! Transfer the current RHS vectors to device, do matmul, transfer result vectors back
+          status =          copy_data_to_gpu(vsize_rhs, dsize, pmul_pp, device_rhs_vectors )
+          status = status + matrix_vector_multiplies( nels_pp, vecsize_lhs, vecsize_rhs, &
+                                                      device_matrix, device_rhs_vectors, device_lhs_vectors )
+          status = status + copy_data_from_gpu(vsize_lhs, dsize, device_lhs_vectors, utemp_pp )
+
+          IF ( status /= 3 ) THEN
+             write(*,*) 'Error in OpenCL calls: ', status, ' of 3 succeeded'
+             stop
+          END IF
+          
+
+       ELSE IF ( mult_method == 3 ) THEN
+
+          ! Copy a matrix/vector to GPU, use CL Blas, copy result vector back
+
+          elements_5_clblas: DO iel=1,nels_pp
+                
+             ! Transfer current matrix and vector to GPU (using a blocking write)
+             status =          copy_data_to_gpu(matsize,     dsize, storkm_pp(:,:,iel), device_matrix )
+             status = status + copy_data_to_gpu(vecsize_rhs, dsize, pmul_pp(:,iel),     device_rhs_vectors )
+                
+             ! Multiply using AMD Blas
+             status = status + blas_dgemv( vecsize_lhs, vecsize_rhs, device_matrix, device_rhs_vectors, device_lhs_vectors )
+             
+             ! Transfer vector back from GPU (using a blocking read)
+             status = status + copy_data_from_gpu(vecsize_lhs, dsize, device_lhs_vectors, utemp_pp(:,iel) )
+                
+             IF( status /= 4 ) THEN
+                write(*,*) 'Error in OpenCL (clblas_sync) calls: ', status, ' of 4 succeeded'
+                stop
+             END IF
+          END DO elements_5_clblas
+
+       ELSE IF ( mult_method == 4 ) THEN
+          
+          ! The transfer matrices and vector asynchronously and use CL BLAS to multiply.
+          status = mem_copy_blas_dgemv_async( nels_pp, vecsize_lhs, vecsize_rhs, storkm_pp, pmul_pp, utemp_pp, &
+                                              device_matrix, device_rhs_vectors, device_lhs_vectors );
+          IF ( status /= 1 ) THEN
+             print *, 'Error in mem_copy_blas_dgemv_async'
+             stop
+          END IF
+      
+       ELSE
+          write(*,*) 'Must set mult_method to 0,1,2,3,4'
+          stop                
+       END IF
+       
+       ! Only time the GPU work (roughly)
+       misc_timers(2) = misc_timers(2) + (elap_time()-misc_timers(1));
+
+       ! Compare GPU matmul results to CPU results
+       IF( check_gpu ) THEN             
+          elements_5_check_gpu: DO iel=1,nels_pp
+             check_utemp_pp(:,iel) = MATMUL(storkm_pp(:,:,iel), pmul_pp(:,iel))
+             IF( c_compare_vecs(vecsize_lhs, check_utemp_pp(:,iel), utemp_pp(:,iel)) == 0 ) THEN
+                write(*,*) 'Iteration ', iters, ' Matrix/vector ', iel, ' Fortran and C vectors NOT equal'
+             END IF
+          END DO elements_5_check_gpu
+       END IF
+       
+    END IF
+
     CALL scatter(u_pp,utemp_pp)
 
     IF(fixed_freedoms_pp > 0) THEN
@@ -325,7 +569,24 @@ PROGRAM xx4
 
   END DO iterations
 
+  write(*,*) 'Time for matmul sections of iteration loop: ', (misc_timers(2))
+
   DEALLOCATE(p_pp,r_pp,x_pp,u_pp,d_pp,diag_precon_pp,storkm_pp,pmul_pp) 
+
+  ! Cleanup GPU
+  IF ( mult_method > 0 ) THEN
+     IF( check_gpu ) THEN
+        DEALLOCATE( check_utemp_pp )
+     END IF
+     status = free_memory_on_gpu( device_matrix )
+     status = status + free_memory_on_gpu( device_lhs_vectors )
+     status = status + free_memory_on_gpu( device_rhs_vectors )
+     status = status + stop_opencl()
+     IF( status /= 4 ) THEN
+        write(*,*) 'Error in OpenCL cleanup calls: ', status, ' of 4 succeeded'
+        stop
+     END IF
+  END IF
   
   timest(13) = elap_time()
 
