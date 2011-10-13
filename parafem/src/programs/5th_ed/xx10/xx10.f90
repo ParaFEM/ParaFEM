@@ -34,7 +34,7 @@ PROGRAM XX10
 
   ! GPU Code config
   ! ---------------
-  INTEGER       :: mult_method = 3       ! Method to use to do the matrix-matrix mult
+  INTEGER       :: mult_method = 2       ! Method to use to do the matrix-matrix mult
                                          ! 0 - CPU: original code
                                          ! 1 - GPU: our own matmul 1D kernel (naive)
                                          ! 2 - GPU: our own matmul 2D kernel (naive)

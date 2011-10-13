@@ -1117,35 +1117,47 @@ int matrix_vector_multiplies_(const int *num_mats, const int *num_rows, const in
  */
 int matrix_matrix_multiplies_2d_( const int *n_rowsA,		// Rows in matrix A
 				  const int *n_colsB,		// Cols in matrix B
-				  const int *n_colsArowsB,		// Cols in matrix A == Rows in matrix B
+				  const int *n_colsArowsB,	// Cols in matrix A == Rows in matrix B
 				  const void **A_device_ptr, 
 				  const void **B_device_ptr, 
 				  void **C_device_ptr )
 {
   cl_int err;
-  size_t global[2];	// global domain size  
+  size_t global[2];	 // global domain size  
+  size_t local[2];	 // local work-group size  
+  size_t num_workgroups[2]; // Temp var to calculate global work size
 
   SNAME( "matrix_matrix_multiplies_2d" );
 
   // Set the arguments to our compute kernel
-  err  = clSetKernelArg(g_oclinfo->kernel, 0, sizeof(int), (const void *)n_colsArowsB);
-  err |= clSetKernelArg(g_oclinfo->kernel, 1, sizeof(cl_mem),(cl_mem *)A_device_ptr );
-  err |= clSetKernelArg(g_oclinfo->kernel, 2, sizeof(cl_mem),(cl_mem *)B_device_ptr );
-  err |= clSetKernelArg(g_oclinfo->kernel, 3, sizeof(cl_mem),(cl_mem *)C_device_ptr );
+  err  = clSetKernelArg(g_oclinfo->kernel, 0, sizeof(int), (const void *)n_rowsA);
+  err |= clSetKernelArg(g_oclinfo->kernel, 1, sizeof(int), (const void *)n_colsArowsB);
+  err |= clSetKernelArg(g_oclinfo->kernel, 2, sizeof(int), (const void *)n_colsB);
+  err |= clSetKernelArg(g_oclinfo->kernel, 3, sizeof(cl_mem),(cl_mem *)A_device_ptr );
+  err |= clSetKernelArg(g_oclinfo->kernel, 4, sizeof(cl_mem),(cl_mem *)B_device_ptr );
+  err |= clSetKernelArg(g_oclinfo->kernel, 5, sizeof(cl_mem),(cl_mem *)C_device_ptr );
   if (err != CL_SUCCESS) {
     printf("Error: Failed to set kernel arguments (err %d)\n", err);
+    fflush(stdout);
     return 0;
   }
 
-  // Total amount of work. One work-item per result matrix element
-  global[0] = *n_colsB;
-  global[1] = *n_rowsA;
+  // Work-groups of threads
+  local[0]  = 16;
+  local[1]  = 16;
+
+  // Total amount of work. Must be divisible by work-group sizes.
+  num_workgroups[0] = ((*n_colsB)/local[0]) + ((((*n_colsB) % local[0])==0)?0:1);
+  global[0] = num_workgroups[0] * local[0];
+  num_workgroups[1] = ((*n_rowsA)/local[1]) + ((((*n_rowsA) % local[1])==0)?0:1);
+  global[1] = num_workgroups[1] * local[1];
 
   // Submit the kernel to the queue. Let OpenCL set the local work-group size.
-  err = clEnqueueNDRangeKernel(g_oclinfo->queue, g_oclinfo->kernel, 2, NULL, global, /*local*/NULL, 0, NULL, NULL);
+  err = clEnqueueNDRangeKernel(g_oclinfo->queue, g_oclinfo->kernel, 2, NULL, global, local, 0, NULL, NULL);
 
   if (err != CL_SUCCESS) {
     printf("Error: Failed to execute kernel (err %d)\n", err);
+    fflush(stdout);
     return 0;
   }
 
