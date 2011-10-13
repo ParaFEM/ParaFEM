@@ -47,8 +47,23 @@ PROGRAM XX9
   integer(kind=c_size_t) :: device_matrix
   integer(kind=c_size_t) :: device_lhs_vectors
   integer(kind=c_size_t) :: device_rhs_vectors
-  logical :: use_gpu = .false.
+  logical :: use_gpu = .true .
   character(len=20, kind=c_char) :: op
+
+  real(iwp) :: t_rawcomp
+  real(iwp) :: t_comp
+  real(iwp) :: t_start1
+  real(iwp) :: t_start2
+
+  ! Interface to function to set device
+  interface
+     integer(c_int) function set_gpu(device_id) bind(C)
+       
+       use iso_c_binding
+       
+       integer(c_int) :: device_id
+     end function set_gpu
+  end interface
  
 !------------------------------------------------------------------------------
 ! 2. Declare dynamic arrays
@@ -308,6 +323,15 @@ PROGRAM XX9
 
   ! Code to set up the gpu 
   if (use_gpu) then
+     
+     ! Execute this loop iff gpu not in exclusive mode
+     if (.true.) then
+        status = set_gpu(numpe-1)
+        if (status > 0) then
+           print *, "gpu memory failed to allocate!"
+           stop
+        end if
+     end if
 
      ! Initialize CUBLAS
      status = cublas_init
@@ -374,6 +398,8 @@ PROGRAM XX9
 !------------------------------------------------------------------------------
 
   iters = 0
+  t_rawcomp = 0
+  t_comp = 0
 
   iterations: DO 
     iters    = iters + 1
@@ -384,8 +410,11 @@ PROGRAM XX9
 
     CALL gather(p_pp,pmul_pp)
 
+    t_start1 = elap_time()
+
     ! matmul version
     if (.not. use_gpu) then
+   
        utemp_pp = MATMUL(km,pmul_pp)
 
        ! gpu version
@@ -404,7 +433,9 @@ PROGRAM XX9
           status = cublas_shutdown
           stop
        end if
-             
+
+       t_start2 = elap_time() 
+       
        ! Call CUBLAS 
        alpha = 1.d0
        beta = 0.d0
@@ -424,6 +455,9 @@ PROGRAM XX9
             device_rhs_vectors, &
             ndof_per_element)
 
+       ! Accumulate time for computation
+       t_rawcomp = t_rawcomp + (elap_time() - t_start2)
+       
        ! Copy result vectors back from gpu
        status = cublas_get_matrix( &
             ndof_per_element, & 
@@ -441,6 +475,8 @@ PROGRAM XX9
 
     end if
 
+    ! Accumulate total time for matrix multiply
+    t_comp = t_comp + (elap_time() - t_start1)
 
     CALL scatter(u_pp,utemp_pp)
 
@@ -463,6 +499,14 @@ PROGRAM XX9
     IF(converged.OR.iters==limit)EXIT
 
   END DO iterations
+
+  
+  write (*,*) "Total time in matrix-vector multiply:" , t_comp
+  if (use_gpu) then
+     write(*,*) &
+     "Time in matrix-vector multiply excluding vector transfer", &
+     t_rawcomp
+  end if
 
   DEALLOCATE(p_pp,r_pp,x_pp,u_pp,d_pp,diag_precon_pp,km,pmul_pp) 
 
