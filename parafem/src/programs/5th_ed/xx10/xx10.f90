@@ -27,23 +27,28 @@ PROGRAM XX10
   INTEGER, EXTERNAL :: copy_data_to_gpu
   INTEGER, EXTERNAL :: copy_data_from_gpu
   INTEGER, EXTERNAL :: compile_kernel_from_file
-  INTEGER, EXTERNAL :: matrix_matrix_multiplies
+  INTEGER, EXTERNAL :: matrix_matrix_multiplies_1d
+  INTEGER, EXTERNAL :: matrix_matrix_multiplies_2d
   INTEGER, EXTERNAL :: blas_dgemm
   INTEGER, EXTERNAL :: c_compare_vecs
 
   ! GPU Code config
   ! ---------------
-  INTEGER       :: mult_method = 0       ! Method to use to do the matrix-matrix mult
+  INTEGER       :: mult_method = 3       ! Method to use to do the matrix-matrix mult
                                          ! 0 - CPU: original code
-                                         ! 1 - GPU: our own matmul kernel (naive)
-                                         ! 2 - GPU: AMD clBlas
+                                         ! 1 - GPU: our own matmul 1D kernel (naive)
+                                         ! 2 - GPU: our own matmul 2D kernel (naive)
+                                         ! 3 - GPU: AMD clBlas
 
   LOGICAL       :: check_gpu = .false.   ! Compare GPU results to intrinsic matmul results (slow)
   INTEGER       :: gpu_device = 1        ! Set to 0 to use OpenCL on CPU (AMD only)
 
   ! Our own kernel source file (must be in current directory when executing xx10)
   CHARACTER(LEN=32) :: srcfilename = "xx10.cl"//CHAR(0)
-  CHARACTER(LEN=32) :: kernelname  = "MultiMatMatMultiply_col"//CHAR(0)
+  CHARACTER(LEN=32), dimension(2) :: kernelnames = (/ &
+       "MatMatMultiply_col_1d"//CHAR(0),      &
+       "MatMatMultiply_col_2d"//CHAR(0)       &
+  /)
 
   ! End of GPU Code config
   ! ----------------------
@@ -55,12 +60,12 @@ PROGRAM XX10
   ! All sizes except dsize are in terms of number of elements, not bytes.
   LOGICAL       :: use_amdblas             ! Will be set later. Don't set here.
   INTEGER       :: dsize = sizeof(0.0d0)   ! Size of matrix, vector elements (i.e, C double)
-  INTEGER       :: matsize                 ! Size of one matrix
-  INTEGER       :: vecsize_lhs             ! Size of one Y vector
-  INTEGER       :: vecsize_rhs             ! Size of one X vector
+  INTEGER       :: matsize                 ! Size of the single matrix
+  INTEGER       :: vecsize_lhs             ! Size of the entire Y vector array
+  INTEGER       :: vecsize_rhs             ! Size of the entire X vector array
   INTEGER       :: memflag                 ! GPU mem type: 0 Read only, 1 write only, 2 read and write
   INTEGER       :: status                  ! OpenCL return flag
-  REAL(iwp)     :: misc_timers(2)          ! Time code around GPU work and matmuls
+  REAL(iwp)     :: misc_timers(4)          ! Time code around GPU work and matmuls
 
   ! Pointers to device memory (store a cl_mem as a void*)
   type (c_ptr)  :: device_matrix      = C_NULL_PTR
@@ -351,14 +356,15 @@ PROGRAM XX10
   d_pp  = diag_precon_pp*r_pp
   p_pp  = d_pp
   x_pp  = zero
+  misc_timers = zero
 
   ! Set up GPU
   IF ( mult_method > 0 ) THEN
 
      ! Flags for type of matmul based on method
-     use_amdblas = (mult_method==2)
+     use_amdblas = (mult_method==3)
 
-     print *, "Initializing GPU. Using Blas: ", use_amdblas
+     print *, "Initializing GPU in process ", numpe, " Using Blas: ", use_amdblas
      misc_timers(1) = elap_time();
      
      ! Matrix and arrays-of-vectors sizes
@@ -368,6 +374,7 @@ PROGRAM XX10
 
      ! Create an OpenCL context on the device
      status = init_opencl( gpu_device, numpe-1, use_amdblas )
+     !status = init_opencl( gpu_device, -1, use_amdblas )
      if ( status /= 1 ) then
         print *, "Failed to init OpenCL"
         stop
@@ -410,9 +417,9 @@ PROGRAM XX10
 
      ! Compile our own kernels
      IF ( use_amdblas == 0 ) THEN
-        status = compile_kernel_from_file( srcfilename, kernelname, C_NULL_PTR );
+        status = compile_kernel_from_file( srcfilename, kernelnames(mult_method), C_NULL_PTR );
         IF ( status /= 1 ) THEN
-           print *, "Error compiling kernel ", kernelname
+           print *, "Error compiling kernel ", kernelnames(mult_method)
            stop
         END IF
      END IF
@@ -437,35 +444,43 @@ PROGRAM XX10
     CALL gather(p_pp,pmul_pp)
 
     IF ( mult_method == 0 ) THEN
-       misc_timers(1) = elap_time();
+       misc_timers(3) = elap_time();
 
        ! Original cpu version
        utemp_pp = MATMUL(km,pmul_pp)
 
        ! Accumulate time for only the matmul code
-       misc_timers(2) = misc_timers(2) + (elap_time() - misc_timers(1));
+       misc_timers(4) = misc_timers(4) + (elap_time() - misc_timers(3));
 
-    ELSE IF ( mult_method == 1 .OR. mult_method == 2 ) THEN
+    ELSE IF ( mult_method >= 1 .OR. mult_method <= 3 ) THEN
 
        ! gpu versions
        ! ------------
 
-       ! Only time the GPU work
+       ! Time GPU kernel and data upload/download
        misc_timers(1) = elap_time();
 
        ! Transfer the current RHS vectors to device, do matmul, transfer result vectors back
        status = copy_data_to_gpu(vecsize_rhs, dsize, pmul_pp, device_rhs_vectors )
-       IF ( use_amdblas ) THEN
+
+       ! Time only the GPU kernel
+       misc_timers(3) = elap_time()
+       IF ( mult_method == 1 ) THEN
+          ! Multiply using our own 1D kernel
+          status = status + matrix_matrix_multiplies_1d( ntot, nels_pp, ntot, &
+                                                         device_matrix, device_rhs_vectors, device_lhs_vectors )
+       ELSE IF ( mult_method == 2 ) THEN
+          ! Multiply using our own 2D kernel
+          status = status + matrix_matrix_multiplies_2d( ntot, nels_pp, ntot, &
+                                                         device_matrix, device_rhs_vectors, device_lhs_vectors )
+       ELSE
           ! Multiply using AMD Blas
           status = status + blas_dgemm( ntot, nels_pp, ntot, device_matrix, device_rhs_vectors, device_lhs_vectors )
-       ELSE
-          ! Multiply using our own kernel
-          status = status + matrix_matrix_multiplies( ntot, nels_pp, ntot, &
-                                                      device_matrix, device_rhs_vectors, device_lhs_vectors )
        END IF
+       misc_timers(4) = misc_timers(4) + (elap_time()-misc_timers(3));
+
        status = status + copy_data_from_gpu(vecsize_lhs, dsize, device_lhs_vectors, utemp_pp )
        
-       ! Only time the GPU work (roughly)
        misc_timers(2) = misc_timers(2) + (elap_time()-misc_timers(1));
 
        IF ( status /= 3 ) THEN
@@ -482,7 +497,7 @@ PROGRAM XX10
        END IF
 
     ELSE
-       write(*,*) 'Must set mult_method to 0,1,2'
+       write(*,*) 'Must set mult_method to 0,1,2,3'
        stop                
     END IF
 
@@ -508,7 +523,8 @@ PROGRAM XX10
 
   END DO iterations
 
-  write(*,*) 'Time for matmul sections of iteration loop: ', (misc_timers(2))
+  write(*,*) 'Total iters time CPU matmul() or GPU kernel: ', (misc_timers(4))
+  write(*,*) 'Total iters time GPU kernel+transfer:        ', (misc_timers(2))
 
   DEALLOCATE(p_pp,r_pp,x_pp,u_pp,d_pp,diag_precon_pp,km,pmul_pp) 
 
