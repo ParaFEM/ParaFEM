@@ -404,15 +404,12 @@ PROGRAM xx3
   if (use_gpu) then
 
      ! Execute this loop iff gpu not in exclusive mode
-
-     if (.true.) then
-
+     if (.false.) then
         status = set_gpu(numpe-1)
         if (status > 0) then
            print *, "gpu memory failed to allocate!"
            stop
         end if
-
      end if
      
      ndof_per_element = 3 * nod
@@ -478,22 +475,17 @@ PROGRAM xx3
  
     CALL gather(p_pp,pmul_pp)
 
+    t_start1 = elap_time()
+    
     ! matmul version
     if (.not. use_gpu) then
 
-       t_start1 = elap_time()
-       
        elements_5: DO iel=1,nels_pp
           utemp_pp(:,iel) = MATMUL(storkm_pp(:,:,iel),pmul_pp(:,iel))
        END DO elements_5
 
-       ! Accumulate time for matmul
-       t_comp = t_comp + (elap_time() - t_start1)
-
        ! gpu version    
     else
-
-       t_start1 = elap_time()
 
        ! Copy lhs vectors to gpu
        status = copy_2d_data_to_gpu( &
@@ -535,10 +527,10 @@ PROGRAM xx3
           stop
        end if
 
-       ! Accumulate time for matmul
-       t_comp = t_comp + (elap_time() - t_start1)
-
     end if
+
+    ! Accumulate time for matrix multiply
+    t_comp = t_comp + (elap_time() - t_start1)
 
     CALL scatter(u_pp,utemp_pp)
 
