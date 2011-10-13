@@ -20,8 +20,8 @@ __global__ void MultiMatVecMultiply3(int n_mat,
 				     double* matrix,
 				     double* rhs_vector)
 {
-  int global_row_id;
   int matrix_id;
+  int global_row_id;
   int row_id;
   int j;
   double tmp;
@@ -40,7 +40,7 @@ __global__ void MultiMatVecMultiply3(int n_mat,
       /* Variable to store partial row value */
       tmp = 0.0;
       
-      /* Each thread loop through a part of the row */
+      /* Each thread loops through a part of the row */
       for (j=threadIdx.y; j<n_col; j+= blockDim.y)
 	{
 	  tmp +=
@@ -49,22 +49,22 @@ __global__ void MultiMatVecMultiply3(int n_mat,
 	}
 
       /* Put values in shared memory array */
-      work_array[threadIdx.x + threadIdx.y*n_row] = tmp;
+      work_array[threadIdx.x + threadIdx.y*blockDim.x] = tmp;
 
       /* Sync threads */
       __syncthreads();
 
       /* Reduce array values */
-      j = threadIdx.y;
+      j = blockDim.y;
 
-      while ( j>1 )
+      while ( j > 1 )
 	{
 	  j >>= 1; /* Divide j by 2 */
 
-	  if (threadIdx.y<j)
+	  if ( threadIdx.y < j )
 	    {
-	      work_array[threadIdx.x + threadIdx.y*n_row]
-		+= work_array[threadIdx.x + threadIdx.y*(n_row+j)];
+	      work_array[threadIdx.x + threadIdx.y*blockDim.x]
+		+= work_array[threadIdx.x + (threadIdx.y+j)*blockDim.x];
 
 	      /* Sync threads */
 	      __syncthreads();
@@ -72,7 +72,7 @@ __global__ void MultiMatVecMultiply3(int n_mat,
 	}
       
       /* Copy reduced value to result vector */
-      rhs_vector[global_row_id] = work_array[j];
+      rhs_vector[global_row_id] = work_array[threadIdx.x];
     }
 }
 
@@ -92,7 +92,6 @@ __global__ void MultiMatVecMultiply2(int n_mat,
 				     double* rhs_vector)
 {
   int local_thread_id;
-  int block_id;
   int matrix_id;
   int global_thread_id;
   int row_id;
@@ -102,11 +101,8 @@ __global__ void MultiMatVecMultiply2(int n_mat,
   /* Get 1D thread index */
   local_thread_id = threadIdx.x;
   
-  /* Get 1D block index */
-  block_id = blockIdx.x;
-
   /* Global thread index */
-  global_thread_id = local_thread_id + block_id * blockDim.x; 
+  global_thread_id = local_thread_id + blockIdx.x * blockDim.x; 
 
   /* get matrix id */
   matrix_id = global_thread_id/n_row;
@@ -151,21 +147,13 @@ __global__ void MultiMatVecMultiply1(int n_mat,
 				     double* matrix,
 				     double* rhs_vector)
 {
-  int local_thread_id;
-  int block_id;
   int matrix_id;
   int global_thread_id;
   int row_id;
   int j; 
   double tmp;
   
-  /* Get 1D thread index */
-  local_thread_id = threadIdx.x;
-  
-  /* Get 1D block index */
-  block_id = blockIdx.x;
-
-  global_thread_id = local_thread_id + block_id * blockDim.x;  
+  global_thread_id =  threadIdx.x + blockIdx.x * blockDim.x;  
   
   if (global_thread_id < n_mat*n_row)
     {
@@ -189,6 +177,22 @@ __global__ void MultiMatVecMultiply1(int n_mat,
 
 
 /* Helper functions */
+
+/* Function to call cudaSetDevice */
+extern "C" int set_gpu(const int *device_id)
+{
+  cudaError_t cuda_status;
+
+  cuda_status = cudaSetDevice(*device_id);
+
+  if (cuda_status != cudaSuccess)
+    {
+      printf("Failed to set device!\n");
+      return EXIT_FAILURE;
+    }
+
+  return EXIT_SUCCESS;
+}
 
 /* Function to allocate memory on device */
 extern "C" int allocate_memory_on_gpu(const int *n_elements, 
@@ -285,13 +289,13 @@ extern "C" int matrix_vector_multiplies(int *n_mat,
   dim3 ThreadsPerBlock_2D;
   cudaError_t cuda_status;
 
-  int method = 2;
+  int method = 1;
 
   size_t shared_mem_size;
 
-  if (method == 3)
+  if (method == 1)
     {
-      ThreadsPerBlock_1D = 1024;
+      ThreadsPerBlock_1D = 128;
       NumBlocks = (*n_mat * *n_row)/ThreadsPerBlock_1D;
       
       if ( (*n_mat * *n_row)%ThreadsPerBlock_1D != 0)
@@ -330,9 +334,9 @@ extern "C" int matrix_vector_multiplies(int *n_mat,
       
       ThreadsPerBlock_2D.x = *n_row;
       ThreadsPerBlock_2D.y = 2;
-      ThreadsPerBlock_2D.y = 1;
+      ThreadsPerBlock_2D.z = 1;
       
-      shared_mem_size = sizeof(*d_matrix) * 
+      shared_mem_size = sizeof(double) * 
 	ThreadsPerBlock_2D.x * ThreadsPerBlock_2D.y;
 
       MultiMatVecMultiply3
