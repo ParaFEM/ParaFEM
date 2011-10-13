@@ -23,3 +23,17 @@ extern "C" int set_gpu(const int *device_id)
   return EXIT_SUCCESS;
 }
 
+/* Function to call cudaDeviceSynchronize */
+extern "C" int sync_gpu()
+{
+  cudaError_t cuda_status;  
+
+  cuda_status = cudaDeviceSynchronize();
+  if (cuda_status != cudaSuccess)
+    {
+      printf("Streams failed to synchronise!\n");
+      return EXIT_FAILURE;
+    }
+
+  return EXIT_SUCCESS;
+}

@@ -9,9 +9,9 @@
 extern __shared__ float work_array[];
 
 /* 
-  This kernel assumes matrix is stored column wise
+  This kernel assumes the matrix is stored column wise
 
-  This attempts 2D thread blocks
+  The kernel uses 2D thread blocks to try to improve performance
 */
 __global__ void MultiMatVecMultiply3(int n_mat,
 				     int n_row,
@@ -77,7 +77,8 @@ __global__ void MultiMatVecMultiply3(int n_mat,
 }
 
 
-/* This kernel used shared memory but assumes:
+/* This kernel used shared memory to store the lhs vector
+   and assumes:
 
    - the matrix is stored column wise 
    - the 1D thread block is of size 60
@@ -109,7 +110,6 @@ __global__ void MultiMatVecMultiply2(int n_mat,
 
   /* Shared memory to store copy of lhs vector */
   __shared__ double lhs_vector_shared[60];
- /*  double* lhs_vector_shared = (double*)work_array; */
   
   /* Get row id */
   row_id = global_thread_id%n_row; 
@@ -138,7 +138,8 @@ __global__ void MultiMatVecMultiply2(int n_mat,
 /* 
   This kernel assumes matrix is stored column wise
 
-  This is a naive implementation, no attempt at optimisation
+  This is a naive implementation using 1D thread blocks, 
+  each thread multiples one matrix row by 1 vector
 */
 __global__ void MultiMatVecMultiply1(int n_mat,
 				     int n_row,
@@ -280,7 +281,6 @@ extern "C" int matrix_vector_multiplies(int *n_mat,
 					void **d_matrix,
 					void **d_rhs_vector)
 {
-  /* Syntax <<<NumBlocks, ThreadsPerBlock>>> */
   /* Max no threads per dimension per block 1024 */
   /* Max size of grid in each dimension 65535 */
   /* Warp size 32 */
@@ -313,10 +313,7 @@ extern "C" int matrix_vector_multiplies(int *n_mat,
   else if (method == 2)
     {
       ThreadsPerBlock_1D = *n_row;
-      NumBlocks = *n_mat; /* (*n_mat * *n_row)/ThreadsPerBlock_1D;
-      
-      if ( (*n_mat * *n_row)%ThreadsPerBlock_1D != 0)
-      NumBlocks += 1; */
+      NumBlocks = *n_mat;
       
       /* Launch kernel */
       MultiMatVecMultiply2<<<NumBlocks, ThreadsPerBlock_1D>>>

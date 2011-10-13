@@ -47,7 +47,7 @@ PROGRAM XX9
   integer(kind=c_size_t) :: device_matrix
   integer(kind=c_size_t) :: device_lhs_vectors
   integer(kind=c_size_t) :: device_rhs_vectors
-  logical :: use_gpu = .true .
+  logical :: use_gpu = .true.
   character(len=20, kind=c_char) :: op
 
   real(iwp) :: t_rawcomp
@@ -63,6 +63,10 @@ PROGRAM XX9
        
        integer(c_int) :: device_id
      end function set_gpu
+     
+     integer(c_int) function sync_gpu() bind(C)
+     end function sync_gpu
+
   end interface
  
 !------------------------------------------------------------------------------
@@ -325,7 +329,7 @@ PROGRAM XX9
   if (use_gpu) then
      
      ! Execute this loop iff gpu not in exclusive mode
-     if (.true.) then
+     if (.false.) then
         status = set_gpu(numpe-1)
         if (status > 0) then
            print *, "gpu memory failed to allocate!"
@@ -435,7 +439,7 @@ PROGRAM XX9
        end if
 
        t_start2 = elap_time() 
-       
+
        ! Call CUBLAS 
        alpha = 1.d0
        beta = 0.d0
@@ -455,9 +459,20 @@ PROGRAM XX9
             device_rhs_vectors, &
             ndof_per_element)
 
+       ! Set to true to measure raw kernel execution time
+       if (.true.) then
+
+          status = sync_gpu()
+          if (status .ne. 0) then
+             print *, "Failed to sync gpu!"
+             status = cublas_shutdown
+             stop
+          end if
+       end if
+
        ! Accumulate time for computation
        t_rawcomp = t_rawcomp + (elap_time() - t_start2)
-       
+
        ! Copy result vectors back from gpu
        status = cublas_get_matrix( &
             ndof_per_element, & 
