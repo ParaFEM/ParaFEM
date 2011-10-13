@@ -466,7 +466,7 @@ PROGRAM xx4
     CALL gather(p_pp,pmul_pp)
 
     IF ( mult_method == 0 ) THEN
-       misc_timers(1) = elap_time()
+       misc_timers(3) = elap_time()
 
        ! Original cpu version    
        elements_5: DO iel=1,nels_pp
@@ -474,12 +474,13 @@ PROGRAM xx4
        END DO elements_5
 
        ! Accumulate time for only the matmul code
-       misc_timers(2) = misc_timers(2) + (elap_time() - misc_timers(1))
+       misc_timers(4) = misc_timers(4) + (elap_time() - misc_timers(3))
 
     ELSE
        ! gpu versions
        ! ------------
 
+       ! Time GPU kernel and data upload/download
        misc_timers(1) = elap_time()
 
        IF ( use_kernels ) THEN          
@@ -574,8 +575,8 @@ PROGRAM xx4
 
   END DO iterations
 
-  write(*,*) 'Total iterations timing: upload+matmul+download: ', (misc_timers(2))
-  write(*,*) 'Total iterations timing:                 matmul: ', (misc_timers(4))
+  write(*,*) 'Total iters time CPU matmul() or GPU kernel: ', (misc_timers(4))
+  write(*,*) 'Total iters time GPU kernel+transfer:        ', (misc_timers(2))
 
   DEALLOCATE(p_pp,r_pp,x_pp,u_pp,d_pp,diag_precon_pp,storkm_pp,pmul_pp) 
 
