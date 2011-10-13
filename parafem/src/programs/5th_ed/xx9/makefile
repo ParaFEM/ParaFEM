@@ -25,9 +25,12 @@ MODULE	= ../../../../include/mpi
 LIB	= ../../../../lib -L/export/cuda/cuda4.0.17/lib64 -lcublas
 .SUFFIXES: .o .f90 .c
 
-CUBLAS_INCLUDE=-I/export/cuda/cuda4.0.17/include
+CUDAINCLUDE=-I/export/cuda/cuda4.0.17/include
 CFLAGS=-O3
 CC=nvcc
+
+CU = nvcc
+CUFLAGS = -arch=sm_20 --ptxas-options=-v
 
 all:	release
 
@@ -48,10 +51,13 @@ debug:
 	@echo "Done xx9 DEBUG"
 
 fortran.o: fortran.c fortran.h
-	$(CC) -c fortran.c $(CFLAGS) $(CUBLAS_INCLUDE)
+	$(CC) -c fortran.c $(CFLAGS) $(CUDAINCLUDE)
 
-xx9: xx9.o fortran.o
-	$(FC) xx9.o fortran.o -o xx9 $(LDFLAGS)
+cuda_helpers.o: cuda_helpers.cu
+	$(CU) -c cuda_helpers.cu $(CUFLAGS) $(CUINCLUDES) 
+
+xx9: xx9.o cuda_helpers.o fortran.o
+	$(FC) xx9.o cuda_helpers.o fortran.o -o xx9 $(LDFLAGS)
 
 xx9.o: xx9.f90
 	$(FC) xx9.f90 $(FFLAGS)
