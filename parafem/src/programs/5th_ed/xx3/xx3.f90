@@ -44,8 +44,20 @@ PROGRAM xx3
   logical :: use_gpu = .true.
   integer :: status
   integer :: ndof_per_element
+  
+  real(iwp) :: t_rawcomp
+  real(iwp) :: t_comp
+  real(iwp) :: t_start1
+  real(iwp) :: t_start2
 
   interface
+     integer(c_int) function set_gpu(device_id) bind(C)
+       
+       use iso_c_binding
+       
+       integer(c_int) :: device_id
+     end function set_gpu
+
      integer(c_int) function allocate_memory_on_gpu( &
           n_elements, &
           element_size, &
@@ -390,6 +402,18 @@ PROGRAM xx3
 
   ! Code to set up the gpu 
   if (use_gpu) then
+
+     ! Execute this loop iff gpu not in exclusive mode
+
+     if (.true.) then
+
+        status = set_gpu(numpe-1)
+        if (status > 0) then
+           print *, "gpu memory failed to allocate!"
+           stop
+        end if
+
+     end if
      
      ndof_per_element = 3 * nod
 
@@ -433,14 +457,17 @@ PROGRAM xx3
         print *, "Failed to copy data to gpu!"
         stop
      end if
-     
-  end if
+
+   end if
   
 !------------------------------------------------------------------------------
 ! 14. Preconditioned conjugate gradient iterations
 !------------------------------------------------------------------------------
 
   iters = 0
+
+  t_comp = 0
+  t_rawcomp = 0
 
   iterations: DO
    
@@ -453,14 +480,21 @@ PROGRAM xx3
 
     ! matmul version
     if (.not. use_gpu) then
+
+       t_start1 = elap_time()
        
        elements_5: DO iel=1,nels_pp
           utemp_pp(:,iel) = MATMUL(storkm_pp(:,:,iel),pmul_pp(:,iel))
        END DO elements_5
 
+       ! Accumulate time for matmul
+       t_comp = t_comp + (elap_time() - t_start1)
+
        ! gpu version    
     else
-       
+
+       t_start1 = elap_time()
+
        ! Copy lhs vectors to gpu
        status = copy_2d_data_to_gpu( &
             nels_pp*ndof_per_element, &
@@ -471,6 +505,8 @@ PROGRAM xx3
           print *, "Failed to copy data to gpu!"
           stop
        end if
+
+       t_start2 = elap_time()
              
        ! Call matrix-vector multiply kernel
        status = matrix_vector_multiplies( &
@@ -485,6 +521,9 @@ PROGRAM xx3
           stop
        end if
 
+       ! Accumulate time for computation
+       t_rawcomp = t_rawcomp + (elap_time() - t_start2)
+
        ! Copy result vector back from gpu
        status = copy_data_from_gpu( &
             nels_pp*ndof_per_element, & 
@@ -495,6 +534,9 @@ PROGRAM xx3
           print *, "Failed to copy data from gpu!"
           stop
        end if
+
+       ! Accumulate time for matmul
+       t_comp = t_comp + (elap_time() - t_start1)
 
     end if
 
@@ -519,6 +561,13 @@ PROGRAM xx3
     IF(converged.OR.iters==limit)EXIT
 
   END DO iterations
+
+  write(*,*) "Total time in matrix-vector multiply:", t_comp
+  if (use_gpu) then
+     write(*,*) &
+     "Time in matrix-vector multiply excluding vector transfer", &
+     t_rawcomp
+  end if
 
   DEALLOCATE(p_pp,r_pp,x_pp,u_pp,d_pp,diag_precon_pp,storkm_pp,pmul_pp) 
  
