@@ -8,6 +8,7 @@
 # Generic settings for compilation
 # --------------------------------------------------------------------------------
 FC=mpif90
+CC=mpicc
 
 # --------------------------------------------------------------------------------
 # FLAGS for EXTERNAL LIBRARY compliation
@@ -22,7 +23,39 @@ EXT_LIB_METIS_COPTIONS=
 EXT_LIB_METIS_LDOPTIONS=
 EXT_LIB_METIS_AR=ar rv
 EXT_LIB_METIS_RANLIB=ranlib
-  
+
+# --------------------------------------------------------------------------------
+# FLAGS for GPU compliation
+# --------------------------------------------------------------------------------
+
+# Nvidia OpenCL
+GPU_OCL_NV_ROOT  = /export/cuda/cuda3.2.16
+GPU_OCL_NV_INC   = -I$(GPU_OCL_NV_ROOT)/include 
+GPU_OCL_NV_LIB   = -lOpenCL -lm
+GPU_OCL_NV_FLAGS = 
+
+# AMD OpenCL
+GPU_OCL_AMD_ROOT     = /export/ati-app-sdk/lnx64/2.5
+GPU_OCL_AMD_FLAGS    = -DAMDBLAS
+GPU_OCL_AMD_BLASROOT = $(HOME)/clAmdBlas-1.4.182
+GPU_OCL_AMD_BLASLIB  = -L$(GPU_OCL_AMD_BLASROOT)/lib64 -lclAmdBlas
+GPU_OCL_AMD_INC      = -I$(GPU_OCL_AMD_ROOT)/include -I$(GPU_OCL_AMD_BLASROOT)/include
+GPU_OCL_AMD_LIB      = -L$(GPU_OCL_AMD_ROOT)/lib/x86_64/ -lOpenCL $(GPU_OCL_AMD_BLASLIB) -lm
+
+# Select OpenCL to use by program makefiles
+GPU_OCL_ROOT  = $(GPU_OCL_NV_ROOT)
+GPU_OCL_FLAGS = $(GPU_OCL_NV_FLAGS)
+GPU_OCL_INC   = $(GPU_OCL_NV_INC)
+GPU_OCL_LIB   = $(GPU_OCL_NV_LIB)
+
+# Nvidia CUDA
+GPU_CU_ROOT  = /export/cuda/cuda4.0.17
+GPU_CU       = nvcc
+GPU_CU_FLAGS = -arch=sm_20 --ptxas-options=-v
+GPU_CU_INC   = -I$(GPU_CU_ROOT)/include
+GPU_CU_LIB   = -L$(GPU_CU_ROOT)/lib64 -lcudart
+
+
 # --------------------------------------------------------------------------------
 # FLAGS for MODULE/LIBRARY compliation
 # --------------------------------------------------------------------------------
