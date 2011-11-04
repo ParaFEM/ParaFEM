@@ -340,8 +340,6 @@ MODULE STEERING
       
     END SELECT
     
-    PRINT*, "NO =", no
-    
     RETURN
   
   END SUBROUTINE FIND_NO

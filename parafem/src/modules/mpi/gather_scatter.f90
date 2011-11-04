@@ -428,6 +428,9 @@ MODULE GATHER_SCATTER
     ALLOCATE(pesget(npes), pesput(npes))
     ALLOCATE(getpes(npes), putpes(npes))
 
+    ggl_pp = 0 ; lenget = 0; lenput = 0 ; lengetsum = 0
+    pesget = 0 ; pesput = 0; getpes = 0 ; putpes    = 0
+
 !------------------------------------------------------------------------------
 ! 1. Not obvious what are reasonable values for array dimensions. With 1000 
 !    element problem and 32 PEs, neq_pp1 = 413, but PE 31 requires 832 remote 
@@ -436,6 +439,8 @@ MODULE GATHER_SCATTER
 
     ALLOCATE(tempget(3*neq_pp1), tempput(3*neq_pp1), tempput1(3*neq_pp1,npes))
 
+    tempget = 0.0_iwp ; tempput = 0.0_iwp ; tempput1 = 0.0_iwp
+
 !------------------------------------------------------------------------------
 ! 2. Allocate temporary arrays for toget and toput, until actual size is known. 
 !    Reallocate later.
@@ -443,6 +448,8 @@ MODULE GATHER_SCATTER
 
     ALLOCATE(toget_temp(neq_pp1,npes_pp), toput_temp(neq_pp1,npes_pp))
     ALLOCATE(sumget(neq_pp1,npes_pp))
+
+    toget_temp = 0 ; toput_temp = 0 ; sumget = 0.0_iwp
 
   END SUBROUTINE ALLOCATE_GATHER_SCATTER
 
@@ -668,13 +675,15 @@ MODULE GATHER_SCATTER
     INTEGER,   ALLOCATABLE   :: vrequest(:), vstatus(:,:)
     REAL(iwp), ALLOCATABLE   :: ul_pp(:)
 
+    status     = 0 ; temp_status = 0
+    recbufsize = 0 ; ier         = 0 ; nstart = 0
+    pe_number  = 0 ; ibar        = 0
+
     ALLOCATE(vrequest(numpesget))
     ALLOCATE(vstatus(MPI_STATUS_SIZE,numpesgetput))
     ALLOCATE(ul_pp(0:len_pl_pp))
 
-    vrequest   = 0 ; vstatus = 0 ; ul_pp  = 0.0_iwp
-    recbufsize = 0 ; ier     = 0 ; nstart = 0
-    pe_number  = 0 ; ibar    = 0
+    vrequest   = 0 ; vstatus     = 0 ; ul_pp  = 0.0_iwp
 
 !------------------------------------------------------------------------------
 ! 1. Barrier to synchronise before scattering data (not always required, but 
@@ -682,7 +691,7 @@ MODULE GATHER_SCATTER
 !------------------------------------------------------------------------------
 
     ibar = 23
-    CALL MY_BARRIER(numpe,ibar,details,'First barrier in gather')
+    CALL MY_BARRIER(numpe,ibar,details,'First barrier in scatter')
 
 !------------------------------------------------------------------------------
 ! 2. Generate ul_pp vector
@@ -723,7 +732,8 @@ MODULE GATHER_SCATTER
 
     DO i = 1, numpesput
       CALL MPI_PROBE(MPI_ANY_SOURCE,MPI_ANY_TAG,MPI_COMM_WORLD,               &
-                     vstatus(1,i),ier)
+!                    vstatus(1,i),ier)
+                     vstatus(:,i),ier)
       IF (ier .NE. MPI_SUCCESS) THEN
         CALL MPERROR('Error in (B5) probe',ier)
       END IF
@@ -978,11 +988,10 @@ MODULE GATHER_SCATTER
     INTEGER, ALLOCATABLE :: preq_pp(:,:)
 
     ALLOCATE(preq_pp(neq_pp1,npes))
+    preq_pp = 0
 
-    preq_pp       = 0    
-    
     recbufsize    = 0       ; ier           = 0      ; pe_number = 0
-    bufid         = 0       ; count         = 0      ; preq_pp   = 0
+    bufid         = 0       ; count         = 0      
     position      = 0       ; rem_acc       = 0      ; loc_acc   = 0 
     sum_rem_acc   = 0       ; sum_numpesget = 0
     sum_numpesget = 0       
@@ -1241,7 +1250,8 @@ MODULE GATHER_SCATTER
         END IF
       ELSE
         count = count + 1
-        IF (count .EQ. 10) THEN
+        IF (count .EQ. 100) THEN  
+        ! See issue 20 http://code.google.com/p/parafem/issues/list
           EXIT
         END IF
       END IF
@@ -1289,9 +1299,13 @@ MODULE GATHER_SCATTER
 
     IF (local) THEN
       ALLOCATE ( toget(neq_pp1, numpesget + 1), toput(neq_pp1,numpesput) )      
+      toget = 0 
+      toput = 0
       toget = toget_temp(:, 1:numpesget + 1)
     ELSE
       ALLOCATE ( toget(neq_pp1, numpesget), toput(neq_pp1,numpesput) )      
+      toget = 0
+      toput = 0
       toget = toget_temp(:, 1:numpesget)
     END IF
     toput = toput_temp(:, 1:numpesput)
@@ -1394,6 +1408,7 @@ MODULE GATHER_SCATTER
     
     sizee = (nodes_pp+1)*numvar
     ALLOCATE( itemp(sizee), itempdest(sizee), temp(sizee) )
+    itemp = 0 ; itempdest = 0; temp = 0.0_iwp
 
 !------------------------------------------------------------------------------
 ! 2. Every process (first loop) sends the range of nodes assigned to that
@@ -1545,6 +1560,7 @@ MODULE GATHER_SCATTER
     
     sizee = (nodes_pp+1)*numvar
     ALLOCATE( itemp(sizee), itempdest(sizee), temp(sizee) )
+    itemp = 0 ; itempdest = 0 ; temp = 0.0_iwp
 
 !------------------------------------------------------------------------------
 ! 2. Every process (first loop) sends the range of nodes assigned to that
