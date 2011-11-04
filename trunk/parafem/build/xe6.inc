@@ -29,17 +29,17 @@ EXT_LIB_METIS_RANLIB=ranlib
 # Form is LIB_(MPI|SERIAL|OPENMP|GPU)_(REL|DBG)_(FFLAGS|LDFLAGS)
 # These flags are directly used by the module makefiles
 # ------------------------------------------------------------------------------
-LIB_MPI_REL_FFLAGS=-fastsse -Mlarge_arrays
-LIB_MPI_DBG_FFLAGS=-g -Mbounds -traceback
+LIB_MPI_REL_FFLAGS=-fastsse -Mlarge_arrays -r8
+LIB_MPI_DBG_FFLAGS=-g -Mbounds -traceback -r8
   
-LIB_SERIAL_REL_FFLAGS=-fastsse -Mlarge_arrays
-LIB_SERIAL_DBG_FFLAGS=-g -Mbounds -traceback
+LIB_SERIAL_REL_FFLAGS=-fastsse -Mlarge_arrays -r8
+LIB_SERIAL_DBG_FFLAGS=-g -Mbounds -traceback -r8
   
-LIB_BEM_REL_FFLAGS=-fastsse -Mlarge_arrays
-LIB_BEM_DBG_FFLAGS=-g -Mbounds -traceback
+LIB_BEM_REL_FFLAGS=-fastsse -Mlarge_arrays -r8
+LIB_BEM_DBG_FFLAGS=-g -Mbounds -traceback -r8
   
-LIB_BEM_P_REL_FFLAGS=-fastsse -Mlarge_arrays
-LIB_BEM_P_DBG_FFLAGS=-g -Mbounds -traceback
+LIB_BEM_P_REL_FFLAGS=-fastsse -Mlarge_arrays -r8
+LIB_BEM_P_DBG_FFLAGS=-g -Mbounds -traceback -r8
 
 # ------------------------------------------------------------------------------
 # DEFAULT FLAGS for all program groups
@@ -51,14 +51,14 @@ LIB_BEM_P_DBG_FFLAGS=-g -Mbounds -traceback
 # ------------------------------------------------------------------------------
 
 # generic P12 group FFLAGS and LDFLAGS
-DEFAULT_P12_MPI_REL_FFLAGS=-V -fastsse -Mlarge_arrays
-DEFAULT_P12_MPI_DBG_FFLAGS=-V -g -Mbounds -traceback
+DEFAULT_P12_MPI_REL_FFLAGS=-V -fastsse -Mlarge_arrays -r8
+DEFAULT_P12_MPI_DBG_FFLAGS=-V -g -Mbounds -traceback -r8
 DEFAULT_P12_MPI_REL_LDFLAGS=
 DEFAULT_P12_MPI_DBG_LDFLAGS=
 
 # generic XX group FFLAGS and LDFLAGS
-DEFAULT_XX_MPI_REL_FFLAGS=-V -fastsse -Mlarge_arrays
-DEFAULT_XX_MPI_DBG_FFLAGS=-V -g -Mbounds -traceback
+DEFAULT_XX_MPI_REL_FFLAGS=-V -fastsse -Mlarge_arrays -r8
+DEFAULT_XX_MPI_DBG_FFLAGS=-V -g -Mbounds -traceback -r8
 DEFAULT_XX_MPI_REL_LDFLAGS=
 DEFAULT_XX_MPI_DBG_LDFLAGS=
 
@@ -73,8 +73,8 @@ DEFAULT_PROG8_BEM_P_REL_LDFLAGS=
 DEFAULT_PROG8_BEM_P_DBG_LDFLAGS=
 
 # generic gaitfem group FFLAGS and LDFLAGS
-DEFAULT_GAITFEM_SERIAL_REL_FFLAGS=-V -fastsse -Mlarge_arrays
-DEFAULT_GAITFEM_SERIAL_DBG_FFLAGS=-V -g -Mbounds -traceback
+DEFAULT_GAITFEM_SERIAL_REL_FFLAGS=-V -fastsse -Mlarge_arrays -r8
+DEFAULT_GAITFEM_SERIAL_DBG_FFLAGS=-V -g -Mbounds -traceback -r8
 DEFAULT_GAITFEM_SERIAL_REL_LDFLAGS=
 DEFAULT_GAITFEM_SERIAL_DBG_LDFLAGS=
   
@@ -88,19 +88,19 @@ DEFAULT_GAITFEM_SERIAL_DBG_LDFLAGS=
 # ------------------------------------------------------------------------------
 
 # generic PREPROC group FFLAGS and LDFLAGS
-DEFAULT_PREPROC_MPI_REL_FFLAGS=-V -fastsse -Mlarge_arrays
-DEFAULT_PREPROC_MPI_DBG_FFLAGS=-V -g -Mbounds -traceback
+DEFAULT_PREPROC_MPI_REL_FFLAGS=-V -fastsse -Mlarge_arrays -r8
+DEFAULT_PREPROC_MPI_DBG_FFLAGS=-V -g -Mbounds -traceback -r8
 DEFAULT_PREPROC_MPI_REL_LDFLAGS=
 DEFAULT_PREPROC_MPI_DBG_LDFLAGS=
 
 DEFAULT_PREPROC_CC_REL_FFLAGS=-c -O2
 DEFAULT_PREPROC_CC_DBG_FFLAGS=-c -g
-DEFAULT_PREPROC_FC_REL_FFLAGS=-V -fastsse -Mlarge_arrays
-DEFAULT_PREPROC_FC_DBG_FFLAGS=-V -g -Mbounds -traceback
+DEFAULT_PREPROC_FC_REL_FFLAGS=-V -fastsse -Mlarge_arrays -r8
+DEFAULT_PREPROC_FC_DBG_FFLAGS=-V -g -Mbounds -traceback -r8
 
 # generic POSTPROC group FFLAGS and LDFLAGS
-DEFAULT_POSTPROC_MPI_REL_FFLAGS=-V -fastsse -Mlarge_arrays
-DEFAULT_POSTPROC_MPI_DBG_FFLAGS=-V -g -Mbounds -traceback
+DEFAULT_POSTPROC_MPI_REL_FFLAGS=-V -fastsse -Mlarge_arrays -r8
+DEFAULT_POSTPROC_MPI_DBG_FFLAGS=-V -g -Mbounds -traceback -r8
 DEFAULT_POSTPROC_MPI_REL_LDFLAGS=
 DEFAULT_POSTPROC_MPI_DBG_LDFLAGS=
 

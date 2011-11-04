@@ -94,7 +94,9 @@ PROGRAM p121
 
   CALL read_rest(job_name,numpe,rest)
   timest(6) = elap_time()
-    
+
+  IF(numpe==1) PRINT *, " *** Finished reading input data"   
+ 
 !------------------------------------------------------------------------------
 ! 4. Allocate dynamic arrays used in main program
 !------------------------------------------------------------------------------
@@ -104,6 +106,8 @@ PROGRAM p121
            storkm_pp(ntot,ntot,nels_pp),eld(ntot),eps(nst),sigma(nst),        &
            pmul_pp(ntot,nels_pp),utemp_pp(ntot,nels_pp),                      &
            weights(nip),g_g_pp(ntot,nels_pp),fun(nod))
+
+  IF(numpe==1) PRINT *, " *** Finished allocating dynamic arrays"   
 
 !------------------------------------------------------------------------------
 ! 5. Loop the elements to find the steering array and the number of equations
@@ -130,6 +134,8 @@ PROGRAM p121
  
   timest(7) = elap_time()
 
+  IF(numpe==1) PRINT *, " *** Computed steering array"   
+
 !------------------------------------------------------------------------------
 ! 6. Create interprocessor communication tables
 !------------------------------------------------------------------------------
@@ -141,6 +147,9 @@ PROGRAM p121
   timest(8) = elap_time()
 
   CALL MPI_BARRIER(MPI_COMM_WORLD,ier)
+
+  IF(numpe==1) PRINT *, " *** Created interprocessor communication tables"   
+
 !------------------------------------------------------------------------------
 ! 7. Allocate arrays dimensioned by neq_pp 
 !------------------------------------------------------------------------------
@@ -152,6 +161,8 @@ PROGRAM p121
   xnew_pp = zero  ;  u_pp = zero  ;  d_pp = zero  ; diag_precon_pp = zero
 
   timest(9) = elap_time()
+
+  IF(numpe==1) PRINT *, " *** Allocated arrays dimensioned by neq_pp"   
 
 !------------------------------------------------------------------------------
 ! 8. Element stiffness integration and storage
@@ -179,6 +190,8 @@ PROGRAM p121
   
   timest(10) = elap_time()
 
+  IF(numpe==1) PRINT *, " *** Computed element stiffness matrices"   
+
 !------------------------------------------------------------------------------
 ! 9. Build the diagonal preconditioner
 !------------------------------------------------------------------------------
@@ -197,6 +210,8 @@ PROGRAM p121
   DEALLOCATE(diag_precon_tmp)
 
   timest(11) = elap_time()
+
+  IF(numpe==1) PRINT *, " *** Built diagonal preconditioner"   
 
 !------------------------------------------------------------------------------
 ! 10. Read in fixed nodal displacements and assign to equations
@@ -286,6 +301,7 @@ PROGRAM p121
   p_pp  = d_pp
   x_pp  = zero
 
+  IF(numpe==1) PRINT *, " *** Initiallized preconditioned conjugate gradients"   
 !------------------------------------------------------------------------------
 ! 14. Preconditioned conjugate gradient iterations
 !------------------------------------------------------------------------------

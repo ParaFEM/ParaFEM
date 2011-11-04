@@ -100,7 +100,8 @@ MODULE PCG
   converged = ((maxdiff/maxloads)<=tol)
   oldlds    = loads
 
-  PRINT *, "MAXDIFF/MAXLOADS = ", maxdiff/maxloads
+! PRINT *, "MAXDIFF/MAXLOADS = ", maxdiff/maxloads
+! Need to modify this subroutine to output convergence history
  
   RETURN
 

@@ -2511,8 +2511,8 @@ MODULE INPUT
                                        numSteps,meshgen
     INTEGER                         :: bufsizer,position,bufsize
     INTEGER                         :: bufdecl,recbufsize,ier
-!   INTEGER, PARAMETER              :: ilength=4, rlength=8
-    INTEGER, PARAMETER              :: ilength=8, rlength=8
+    INTEGER, PARAMETER              :: ilength=4, rlength=8
+!   INTEGER, PARAMETER              :: ilength=8, rlength=8
     INTEGER, ALLOCATABLE            :: tempbuf(:)
     REAL(IWP),INTENT(INOUT)         :: plastol,cjtol,fftol,ltol
     CHARACTER(LEN=15),INTENT(INOUT) :: element

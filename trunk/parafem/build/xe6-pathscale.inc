@@ -32,7 +32,7 @@ FC=ftn
 # FLAGS for EXTERNAL LIBRARY compliation
 # ------------------------------------------------------------------------------
 EXT_LIB_ARPACK_FC=ftn
-EXT_LIB_ARPACK_FFLAGS=-v -Wall -O3 -r8 -i8
+EXT_LIB_ARPACK_FFLAGS=-v -Wall -O3 -r8 -march=auto
 EXT_LIB_ARPACK_LDFLAGS=
 
 EXT_LIB_METIS_CC=cc
@@ -48,16 +48,16 @@ EXT_LIB_METIS_RANLIB=ranlib
 # Form is LIB_(MPI|SERIAL|OPENMP|GPU)_(REL|DBG)_(FFLAGS|LDFLAGS)
 # These flags are directly used by the module makefiles
 # ------------------------------------------------------------------------------
-LIB_MPI_REL_FFLAGS=-v -Wall -O3 -r8 -i8
+LIB_MPI_REL_FFLAGS=-v -Wall -O3 -r8 -march=auto
 LIB_MPI_DBG_FFLAGS=-g
   
-LIB_SERIAL_REL_FFLAGS=-v -Wall -O3 -r8 -i8
+LIB_SERIAL_REL_FFLAGS=-v -Wall -O3 -r8 -march=auto
 LIB_SERIAL_DBG_FFLAGS=-g
   
-LIB_BEM_REL_FFLAGS=-v -Wall -O3 -r8 -i8
+LIB_BEM_REL_FFLAGS=-v -Wall -O3 -r8 -march=auto
 LIB_BEM_DBG_FFLAGS=-g
   
-LIB_BEM_P_REL_FFLAGS=-v -Wall -O3 -r8 -i8
+LIB_BEM_P_REL_FFLAGS=-v -Wall -O3 -r8 -march=auto
 LIB_BEM_P_DBG_FFLAGS=-g
 
 # ------------------------------------------------------------------------------
@@ -71,29 +71,29 @@ LIB_BEM_P_DBG_FFLAGS=-g
 # ------------------------------------------------------------------------------
 
 # generic P12 group FFLAGS and LDFLAGS
-DEFAULT_P12_MPI_REL_FFLAGS=-v -Wall -O3 -r8 -i8
+DEFAULT_P12_MPI_REL_FFLAGS=-v -Wall -O3 -r8 -march=auto
 DEFAULT_P12_MPI_DBG_FFLAGS=-g
 DEFAULT_P12_MPI_REL_LDFLAGS=
 DEFAULT_P12_MPI_DBG_LDFLAGS=
 
 # generic XX group FFLAGS and LDFLAGS
-DEFAULT_XX_MPI_REL_FFLAGS=-v -Wall -O3 -r8 -i8
+DEFAULT_XX_MPI_REL_FFLAGS=-v -Wall -O3 -r8 -march=auto
 DEFAULT_XX_MPI_DBG_FFLAGS=-g
 DEFAULT_XX_MPI_REL_LDFLAGS=
 DEFAULT_XX_MPI_DBG_LDFLAGS=
 
 # generic PROG8 group FFLAGS and LDFLAGS
-DEFAULT_PROG8_BEM_REL_FFLAGS=-v -Wall -O3 -r8 -i8
+DEFAULT_PROG8_BEM_REL_FFLAGS=-v -Wall -O3 -r8 -march=auto
 DEFAULT_PROG8_BEM_DBG_FFLAGS=-g
 DEFAULT_PROG8_BEM_REL_LDFLAGS=
 DEFAULT_PROG8_BEM_DBG_LDFLAGS=
-DEFAULT_PROG8_BEM_P_REL_FFLAGS=-v -Wall -O3 -r8 -i8
+DEFAULT_PROG8_BEM_P_REL_FFLAGS=-v -Wall -O3 -r8 -march=auto
 DEFAULT_PROG8_BEM_P_DBG_FFLAGS=-g
 DEFAULT_PROG8_BEM_P_REL_LDFLAGS=
 DEFAULT_PROG8_BEM_P_DBG_LDFLAGS=
 
 # generic gaitfem group FFLAGS and LDFLAGS
-DEFAULT_GAITFEM_SERIAL_REL_FFLAGS=-v -Wall -O3 -r8 -i8
+DEFAULT_GAITFEM_SERIAL_REL_FFLAGS=-v -Wall -O3 -r8 -march=auto
 DEFAULT_GAITFEM_SERIAL_DBG_FFLAGS=-g
 DEFAULT_GAITFEM_SERIAL_REL_LDFLAGS=
 DEFAULT_GAITFEM_SERIAL_DBG_LDFLAGS=
@@ -108,18 +108,18 @@ DEFAULT_GAITFEM_SERIAL_DBG_LDFLAGS=
 # ------------------------------------------------------------------------------
 
 # generic PREPROC group FFLAGS and LDFLAGS
-DEFAULT_PREPROC_MPI_REL_FFLAGS=-v -Wall -O3 -r8 -i8
+DEFAULT_PREPROC_MPI_REL_FFLAGS=-v -Wall -O3 -r8 -march=auto
 DEFAULT_PREPROC_MPI_DBG_FFLAGS=-g
 DEFAULT_PREPROC_MPI_REL_LDFLAGS=
 DEFAULT_PREPROC_MPI_DBG_LDFLAGS=
 
 DEFAULT_PREPROC_CC_REL_FFLAGS=-c -O2
 DEFAULT_PREPROC_CC_DBG_FFLAGS=-c -g
-DEFAULT_PREPROC_FC_REL_FFLAGS=-v -Wall -O3 -r8 -i8
+DEFAULT_PREPROC_FC_REL_FFLAGS=-v -Wall -O3 -r8 -march=auto
 DEFAULT_PREPROC_FC_DBG_FFLAGS=-g
 
 # generic POSTPROC group FFLAGS and LDFLAGS
-DEFAULT_POSTPROC_MPI_REL_FFLAGS=-v -Wall -O3 -r8 -i8
+DEFAULT_POSTPROC_MPI_REL_FFLAGS=-v -Wall -O3 -r8 -march=auto
 DEFAULT_POSTPROC_MPI_DBG_FFLAGS=-g 
 DEFAULT_POSTPROC_MPI_REL_LDFLAGS=
 DEFAULT_POSTPROC_MPI_DBG_LDFLAGS=
