@@ -13,13 +13,14 @@ MODULE STEERING
   !*    REARRANGE              Modifies REST array
   !*    FIND_G                 Finds g from node numbers and restraints "rest"
   !*    FIND_NO                Forms vector of loaded equations NO
+  !*    FIND_NO_PP_TEMP        Forms vector of loaded equations NO_PP_TEMP
   !*    ABAQUS2SG              Swaps node order from Abaqus to S&G convention
   !*
   !*  AUTHOR
   !*    F. Calvo
   !*    L. Margetts
   !*  COPYRIGHT
-  !*    2004-2010 University of Manchester
+  !*    2004-2011 University of Manchester
   !******
   !*  Place remarks that should not be included in the documentation here.
   !*
@@ -348,82 +349,163 @@ MODULE STEERING
 !------------------------------------------------------------------------------
 !------------------------------------------------------------------------------  
   
-    SUBROUTINE REINDEX_FIXED_NODES (ieq_start,no,no_local_temp,num_no,  &
+  SUBROUTINE FIND_NO_PP_TEMP(G_NUM_PP,G_G_PP,NDIM,NODE,SENSE,NREQ_PP,         &
+                             NO_PP_TEMP)
+
+    !/****f* steering/find_no_pp_temp
+    !*  NAME
+    !*    SUBROUTINE: find_no_pp_temp
+    !*  SYNOPSIS
+    !*    Usage:      CALL find_no_pp_temp(g_num_pp,g_g_pp,node,sense,        &
+    !*                                     no_pp_temp,nreq_pp)
+    !*  FUNCTION
+    !*    Forms vector of loaded equations NO_PP_TEMP from vector of loaded 
+    !*    nodes NODE using equation numbers stored in G_G_PP. The subroutine
+    !*    also returns the number of freedoms that have applied loads or fixed
+    !*    displacements on the calling processor. Will work for serial and 
+    !*    parallel programs.
+    !*  INPUTS
+    !*    Node numbers in NODE can be in any order.
+    !*  AUTHOR
+    !*    Lee Margetts
+    !*  CREATION DATE
+    !*    11.11.2011
+    !*  COPYRIGHT
+    !*    (c) University of Manchester 2011-2012
+    !******
+    !*  A much better strategy would be to know which elements the fixed nodes
+    !*  belong to. This could be provided in the input deck. The equation 
+    !*  numbers could then be found more quickly. At the moment this subroutine
+    !*  searches blindly to determine which element holds the node and then 
+    !*  picks the equation number from g_g_pp.
+    !*/
+
+    IMPLICIT NONE
+    INTEGER,INTENT(IN)    :: g_num_pp(:,:)
+    INTEGER,INTENT(IN)    :: g_g_pp(:,:)
+    INTEGER,INTENT(IN)    :: sense(:)
+    INTEGER,INTENT(IN)    :: node(:)
+    INTEGER,INTENT(IN)    :: ndim           
+    INTEGER,INTENT(INOUT) :: no_pp_temp(:)
+    INTEGER,INTENT(OUT)   :: nreq_pp        ! restrained freedoms per processor
+    INTEGER               :: i,iel,j        ! loop counters
+    INTEGER               :: nels_pp        ! number of elements per processor
+    INTEGER               :: nod            ! number of nodes per element
+    INTEGER               :: nr             ! number of restrained nodes
+    INTEGER               :: pos            ! position in g_g_pp array
+    
+!------------------------------------------------------------------------------
+! 1. Initiallize variables
+!------------------------------------------------------------------------------
+ 
+    nels_pp     = UBOUND(g_num_pp,2)
+    nod         = UBOUND(g_num_pp,1)
+    nr          = UBOUND(node,1)
+    nreq_pp     = 0
+    no_pp_temp  = 0
+    pos         = 0
+
+!------------------------------------------------------------------------------
+! 2. Loop over restrained nodes to find restrained equations
+!------------------------------------------------------------------------------    
+
+    outer:   DO i = 1,nr
+    middle:    DO iel = 1,nels_pp
+    inner:       DO j = 1,nod
+                   IF(node(i) == g_num_pp(k,iel) THEN
+                     nreq_pp             = nreq_pp + 1
+                     pos                 = ((j-1)*ndim) + sense(i)
+                     no_pp_temp(nreq_pp) = g_g_pp(pos,iel)
+                     EXIT middle ! found so look for next equation
+                   END IF
+                 END DO inner
+               END DO middle
+             END DO outer
+      
+    RETURN
+  
+  END SUBROUTINE FIND_NO_PP_TEMP
+  
+!------------------------------------------------------------------------------
+!------------------------------------------------------------------------------
+!------------------------------------------------------------------------------ 
+
+  SUBROUTINE REINDEX_FIXED_NODES (ieq_start,no,no_local_temp,num_no,          &
                                     no_index_start,neq_pp)
   
-      !/****f* steering/reindex_fixed_nodes
-      !*  NAME
-      !*    SUBROUTINE: reindex_fixed_nodes
-      !*  SYNOPSIS
-      !*    Usage:      CALL reindex_fixed_nodes(ieq_start,no,no_local_temp,  &
-      !*                                         num_no,no_index_start,neq_pp)
-      !*  FUNCTION
-      !*    Creates a local index of loaded equations. Will function in both
-      !*    serial and MPI based programs.
-      !*  INPUTS
-      !*    The following arguments have the INTENT(IN) attribute:
-      !*
-      !*    ieq_start           : Integer
-      !*                        : The starting equation number on the processor
-      !*
-      !*    neq_pp              : Integer
-      !*                          Number of equations per processor
-      !*
-      !*    no(:)               : Integer
-      !*                        : List of the nodes with some degree of freedom
-      !*                          loaded.
-      !*
-      !*    The following arguments have the INTENT(INOUT) attribute:    
-      !*
-      !*    no_local_temp(:)    : Integer
-      !*                        : A temporary array
-      !*
-      !*  OUTPUTS
-      !*    The following arguments have the INTENT(OUT) attribute:
-      !*
-      !*    num_no              : Integer
-      !*                        : The number of local fixed nodes
-      !*
-      !*    no_index_start      : Integer
-      !*                        : The starting position in the array no_local_temp
-      !*    
-      !*  AUTHOR
-      !*    Lee Margetts
-      !*  CREATION DATE
-      !*    24.04.2002
-      !*  COPYRIGHT
-      !*    (c) University of Manchester 2002-2010
-      !******
-      !*  Note: This looks more like REINDEX_FIXED_EQUATIONS. Rename?
-      !*
-      !*/
-      
-      IMPLICIT NONE
+    !/****f* steering/reindex_fixed_nodes
+    !*  NAME
+    !*    SUBROUTINE: reindex_fixed_nodes
+    !*  SYNOPSIS
+    !*    Usage:      CALL reindex_fixed_nodes(ieq_start,no,no_local_temp,  &
+    !*                                         num_no,no_index_start,neq_pp)
+    !*  FUNCTION
+    !*    Creates a local index of loaded equations. Will function in both
+    !*    serial and MPI based programs.
+    !*  INPUTS
+    !*    The following arguments have the INTENT(IN) attribute:
+    !*
+    !*    ieq_start           : Integer
+    !*                        : The starting equation number on the processor
+    !*
+    !*    neq_pp              : Integer
+    !*                          Number of equations per processor
+    !*
+    !*    no(:)               : Integer
+    !*                        : List of the nodes with some degree of freedom
+    !*                          loaded.
+    !*
+    !*    The following arguments have the INTENT(INOUT) attribute:    
+    !*
+    !*    no_local_temp(:)    : Integer
+    !*                        : A temporary array
+    !*
+    !*  OUTPUTS
+    !*    The following arguments have the INTENT(OUT) attribute:
+    !*
+    !*    num_no              : Integer
+    !*                        : The number of local fixed nodes
+    !*
+    !*    no_index_start      : Integer
+    !*                        : The starting position in the array no_local_temp
+    !*    
+    !*  AUTHOR
+    !*    Lee Margetts
+    !*  CREATION DATE
+    !*    24.04.2002
+    !*  COPYRIGHT
+    !*    (c) University of Manchester 2002-2010
+    !******
+    !*  Note: This looks more like REINDEX_FIXED_EQUATIONS. Rename?
+    !*
+    !*/
+    
+    IMPLICIT NONE
   
-      INTEGER, INTENT(IN)     :: ieq_start, neq_pp, no(:)
-      INTEGER, INTENT(INOUT)  :: no_local_temp(:)
-      INTEGER, INTENT(OUT)    :: num_no, no_index_start
-      INTEGER                 :: fixed_nodes, i
+    INTEGER, INTENT(IN)     :: ieq_start, neq_pp, no(:)
+    INTEGER, INTENT(INOUT)  :: no_local_temp(:)
+    INTEGER, INTENT(OUT)    :: num_no, no_index_start
+    INTEGER                 :: fixed_nodes, i
   
-      fixed_nodes    = UBOUND(no,1)
-      no_index_start = 0
-      num_no         = 0
+    fixed_nodes    = UBOUND(no,1)
+    no_index_start = 0
+    num_no         = 0
   
-      DO i = 1,fixed_nodes
-        IF (no(i) < ieq_start) THEN
-          CYCLE
-        ELSE IF (no(i) >= ieq_start + neq_pp) THEN
-          EXIT
-        ELSE IF (no_index_start==0) THEN
-          no_index_start   = i
-          no_local_temp(1) = no(i)
-          num_no           = 1
-        ELSE
-          num_no                = num_no + 1
-          no_local_temp(num_no) = no(i)
-        END IF
-      END DO
-   
+    DO i = 1,fixed_nodes
+      IF (no(i) < ieq_start) THEN
+        CYCLE
+      ELSE IF (no(i) >= ieq_start + neq_pp) THEN
+        EXIT
+      ELSE IF (no_index_start==0) THEN
+        no_index_start   = i
+        no_local_temp(1) = no(i)
+        num_no           = 1
+      ELSE
+        num_no                = num_no + 1
+        no_local_temp(num_no) = no(i)
+      END IF
+    END DO
+
   END SUBROUTINE REINDEX_FIXED_NODES
   
 !------------------------------------------------------------------------------
