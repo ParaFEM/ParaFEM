@@ -138,7 +138,7 @@ MODULE STEERING
         IF(first==last) EXIT ! silly array or converged
         half = (first + last)/2
         IF(l<=rest(half,1)) THEN
-          last = half  ! discard second half
+          last  = half      ! discard second half
         ELSE
           first = half + 1  ! discard first half
         END IF
@@ -148,25 +148,30 @@ MODULE STEERING
       found = (l==rest(only,1))
 
       IF(found) THEN
+        PRINT *, "Found node ", rest(only,1), " equations ", rest(only,2:)
         DO j = 1 , nodof
           g(nodof*i-nodof+j) = rest(only,j+1)  
         END DO
       ELSE
-!       k = 1
-!       DO
-!         s1 = only - k
-!         IF(sum(rest(s1,2:))/=0) EXIT
-!         k = k + 1
-!       END DO
-
-        s1 = only -1
-        s2 = maxval(rest(s1,2:))    
-        s3 = l - rest(s1,1)
-  
-        DO j=1,nodof
-          g(nodof*i-nodof+j) = s2+nodof*s3 - nodof + j
+        IF(only==ubound(rest,1)) THEN
+          k = 0
+        ELSE
+          k = 1
+        END IF 
+        DO
+          s1 = only - k
+          IF(sum(rest(s1,2:))/=0) EXIT
+          k = k + 1
         END DO
- 
+        s2 = maxval(rest(s1,2:))    
+        IF(only==ubound(rest,1)) THEN
+          s3 = l - rest(s1,1) - (k)
+        ELSE
+          s3 = l - rest(s1,1) - (k - 1)
+        END IF
+        DO j=1,nodof
+          g(nodof*i-nodof+j) = s2+(nodof*s3)-(nodof-j)
+        END DO
       END IF
 
     END DO
@@ -349,8 +354,8 @@ MODULE STEERING
 !------------------------------------------------------------------------------
 !------------------------------------------------------------------------------  
   
-  SUBROUTINE FIND_NO_PP_TEMP(G_NUM_PP,G_G_PP,NDIM,NODE,SENSE,NREQ_PP,         &
-                             NO_PP_TEMP)
+  SUBROUTINE FIND_NO_PP_TEMP(G_NUM_PP,G_G_PP,IEQ_START,NDIM,NEQ_PP,NODE,      &
+                             SENSE,NREQ_PP,NREQ_PP_START,NO_PP_TEMP)
 
     !/****f* steering/find_no_pp_temp
     !*  NAME
@@ -386,24 +391,32 @@ MODULE STEERING
     INTEGER,INTENT(IN)    :: sense(:)
     INTEGER,INTENT(IN)    :: node(:)
     INTEGER,INTENT(IN)    :: ndim           
+    INTEGER,INTENT(IN)    :: ieq_start
+    INTEGER,INTENT(IN)    :: neq_pp
     INTEGER,INTENT(INOUT) :: no_pp_temp(:)
     INTEGER,INTENT(OUT)   :: nreq_pp        ! restrained freedoms per processor
+    INTEGER,INTENT(OUT)   :: nreq_pp_start  
     INTEGER               :: i,iel,j        ! loop counters
     INTEGER               :: nels_pp        ! number of elements per processor
     INTEGER               :: nod            ! number of nodes per element
     INTEGER               :: nr             ! number of restrained nodes
     INTEGER               :: pos            ! position in g_g_pp array
-    
+    INTEGER,ALLOCATABLE   :: found(:)
+ 
 !------------------------------------------------------------------------------
 ! 1. Initiallize variables
 !------------------------------------------------------------------------------
  
-    nels_pp     = UBOUND(g_num_pp,2)
-    nod         = UBOUND(g_num_pp,1)
-    nr          = UBOUND(node,1)
-    nreq_pp     = 0
-    no_pp_temp  = 0
-    pos         = 0
+    nels_pp       = UBOUND(g_num_pp,2)
+    nod           = UBOUND(g_num_pp,1)
+    nr            = UBOUND(node,1)
+    nreq_pp       = 0
+    nreq_pp_start = 0
+    no_pp_temp    = 0
+    pos           = 0
+
+    ALLOCATE(found(nr))
+    found         = 0
 
 !------------------------------------------------------------------------------
 ! 2. Loop over restrained nodes to find restrained equations
@@ -412,7 +425,8 @@ MODULE STEERING
     outer:   DO i = 1,nr
     middle:    DO iel = 1,nels_pp
     inner:       DO j = 1,nod
-                   IF(node(i) == g_num_pp(k,iel) THEN
+                   IF(node(i) == g_num_pp(j,iel)) THEN
+                     found(i)            = 1
                      nreq_pp             = nreq_pp + 1
                      pos                 = ((j-1)*ndim) + sense(i)
                      no_pp_temp(nreq_pp) = g_g_pp(pos,iel)
@@ -421,6 +435,31 @@ MODULE STEERING
                  END DO inner
                END DO middle
              END DO outer
+
+!------------------------------------------------------------------------------
+! 3. Delete equations that are not present on the local processor
+!------------------------------------------------------------------------------
+
+   DO i = 1,nr
+     IF(no_pp_temp(i) < ieq_start) THEN
+       found(i) = 0
+     ELSE IF (no_pp_temp(i) >= ieq_start + neq_pp) THEN
+       found(i) = 0
+     END IF
+   END DO
+
+!------------------------------------------------------------------------------
+! 4. Find the starting fixed equation on the processor
+!------------------------------------------------------------------------------
+
+    find: DO i = 1, nr
+            IF(found(i) == 0) THEN
+              nreq_pp_start = nreq_pp_start + 1
+            ELSE IF(found(i) == 1) THEN
+              nreq_pp_start = nreq_pp_start + 1
+              EXIT find
+            END IF
+          END DO find
       
     RETURN
   
