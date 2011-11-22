@@ -16,7 +16,7 @@ install:
 	@echo "Installing TOOL RELEASE (PF2ENSI)"
 	cp pf2ensi.geo.awk ../../../../bin
 	cp pf2ensi.var.awk ../../../../bin
-	cp pf2ensi../../../../bin
+	cp pf2ensi ../../../../bin
 	chmod +x ../../../../bin/pf2ensi
 	@echo "Done TOOL RELEASE (PF2ENSI)"
 
