@@ -15,6 +15,7 @@
 
 VPATH = ../shared
 .SUFFIXES: .f90 .o
+%.o: %.mod
 
 include ../../../build/mk_defs.inc
 include ../../../build/$(MACHINE).inc
