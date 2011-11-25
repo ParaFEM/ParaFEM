@@ -148,7 +148,6 @@ MODULE STEERING
       found = (l==rest(only,1))
 
       IF(found) THEN
-        PRINT *, "Found node ", rest(only,1), " equations ", rest(only,2:)
         DO j = 1 , nodof
           g(nodof*i-nodof+j) = rest(only,j+1)  
         END DO
@@ -160,7 +159,7 @@ MODULE STEERING
         END IF 
         DO
           s1 = only - k
-          IF(sum(rest(s1,2:))/=0) EXIT
+          IF(sum(rest(s1,2:))/=0.OR.s1==1) EXIT
           k = k + 1
         END DO
         s2 = maxval(rest(s1,2:))    
@@ -352,8 +351,88 @@ MODULE STEERING
   
 !------------------------------------------------------------------------------
 !------------------------------------------------------------------------------
-!------------------------------------------------------------------------------  
+!------------------------------------------------------------------------------
+   
+  SUBROUTINE FIND_NO2(G_G_PP,G_NUM_PP,NODE,SENSE,FIXED_FREEDOMS_PP,           &
+                      FIXED_FREEDOMS_START,NO)
+
+    !/****f* steering/find_no2
+    !*  NAME
+    !*    SUBROUTINE: find_no2
+    !*  SYNOPSIS
+    !*    Usage:      CALL find_no2(g_g_pp,g_num_pp,node,sense,               &
+    !*                fixed_freedoms_pp,fixed_freedoms_start,no)
+    !*  FUNCTION
+    !*    Forms vector of loaded equations NO from vector of loaded nodes NODE
+    !*    using freedom information stored in REST.  Will work for serial and
+    !*    parallel programs.
+    !*  INPUTS
+    !*    It is assumed that the node numbers in NODE are arranged in
+    !*    ascending order.
+    !*  AUTHOR
+    !*    Lee Margetts
+    !*  CREATION DATE
+    !*    24.11.2011
+    !*  COPYRIGHT
+    !*    (c) University of Manchester 2009-2011
+    !******
+    !*  Needs fully testing
+    !*/
+
+    IMPLICIT NONE
+    INTEGER,INTENT(IN)    :: g_g_pp(:,:)
+    INTEGER,INTENT(IN)    :: g_num_pp(:,:)
+    INTEGER,INTENT(IN)    :: node(:)
+    INTEGER,INTENT(IN)    :: sense(:)
+    INTEGER,INTENT(OUT)   :: fixed_freedoms_pp
+    INTEGER,INTENT(OUT)   :: fixed_freedoms_start
+    INTEGER,INTENT(OUT)   :: no(:)
+    INTEGER               :: nodof          ! number of degrees of freedom
+    INTEGER               :: nod
+    INTEGER               :: nels_pp
+    INTEGER               :: i,iel,l
+    INTEGER               :: first,last,half,only
+    LOGICAL               :: found = .false.
+ 
+    no             = 0 
+    nod            = ubound(g_num_pp,1) 
+    nels_pp        = ubound(g_num_pp,2) 
+    nodof          = ubound(g_g_pp,1)/nod 
+
+    DO iel=1,nels_pp
+      DO i=1,nod 
+
+        l     = g_num_pp(i,iel)
+        first = 1 
+        last  = ubound(node,1)
+
+        DO
+          IF(first==last) EXIT ! silly array or converged
+          half = (first + last)/2
+          IF(l<=node(half)) THEN
+            last  = half      ! discard second half
+          ELSE
+            first = half + 1  ! discard first half
+          END IF
+        END DO
+
+        only  = first
+        found = (l==node(only))
+
+        IF(found) THEN
+          no(only) = g_g_pp(nodof*i - nodof+sense(only),iel)
+        END IF
+
+      END DO
+    END DO
+
+    RETURN
+ 
+  END SUBROUTINE FIND_NO2
   
+!------------------------------------------------------------------------------
+!------------------------------------------------------------------------------
+!------------------------------------------------------------------------------  
   SUBROUTINE FIND_NO_PP_TEMP(G_NUM_PP,G_G_PP,IEQ_START,NDIM,NEQ_PP,NODE,      &
                              SENSE,NREQ_PP,NREQ_PP_START,NO_PP_TEMP)
 
