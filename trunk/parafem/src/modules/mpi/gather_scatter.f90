@@ -53,6 +53,7 @@ MODULE GATHER_SCATTER
   REAL(iwp), ALLOCATABLE, PRIVATE :: sumget(:,:)
   INTEGER, PRIVATE                :: numpesget, numpesput, numpesgetput
   INTEGER, PRIVATE                :: len_pl_pp
+  INTEGER, ALLOCATABLE, PRIVATE   :: pesgetcount(:), pesputcount(:)
 
 !------------------------------------------------------------------------------
 ! 2. Variables also used in main program:
@@ -427,9 +428,11 @@ MODULE GATHER_SCATTER
     ALLOCATE(lenget(npes), lenput(npes), lengetsum(0:npes))
     ALLOCATE(pesget(npes), pesput(npes))
     ALLOCATE(getpes(npes), putpes(npes))
+    ALLOCATE(pesgetcount(npes),pesputcount(npes))
 
     ggl_pp = 0 ; lenget = 0; lenput = 0 ; lengetsum = 0
     pesget = 0 ; pesput = 0; getpes = 0 ; putpes    = 0
+    pesgetcount = 0; pesputcount = 0
 
 !------------------------------------------------------------------------------
 ! 1. Not obvious what are reasonable values for array dimensions. With 1000 
@@ -479,6 +482,7 @@ MODULE GATHER_SCATTER
     DEALLOCATE(pesget, pesput)
     DEALLOCATE(getpes, putpes)
     DEALLOCATE(tempget, tempput, tempput1)
+    DEALLOCATE(pesgetcount, pesputcount)
 
   END SUBROUTINE DEALLOCATE_GATHER_SCATTER
 
@@ -1321,6 +1325,388 @@ MODULE GATHER_SCATTER
     END IF
 
   END SUBROUTINE MAKE_GGL
+
+!---------------------------------------------------------------------------
+!---------------------------------------------------------------------------
+!---------------------------------------------------------------------------
+
+  SUBROUTINE MAKE_GGL2(npes_pp,npes,gg_pp)
+
+  !/****f* gather_scatter/make_ggl2
+  !*  NAME
+  !*    SUBROUTINE: make_ggl2
+  !*  SYNOPSIS
+  !*    Usage:      CALL make_ggl2(npes_pp,npes,gg_pp)
+  !*  FUNCTION
+  !*    Generates ggl_pp and associated arrays.
+  !*  INPUTS
+  !*    The following arguments have the INTENT(IN) attribute:
+  !*
+  !*
+  !*                  
+  !*  AUTHOR
+  !*    M.A. Pettipher
+  !*    Louise M. Lever
+  !*  COPYRIGHT
+  !*    (c) University of Manchester 1996-2011
+  !******
+  !*
+  !*     Version 1a, 16-12-2011, Louise M. Lever
+  !*                             Created alternative make_ggl2 based on make_ggl
+  !*                             Uses allreduce so that all PEs know how many
+  !*                             messages to receive, removes need for IProbe and
+  !*                             removes count triggered deadlock. Has also added
+  !*                             pesgetcount and pesputcount globals and (de)alloc
+  !*/
+  
+    IMPLICIT NONE
+
+    INTEGER, INTENT(IN)  :: npes_pp, npes, gg_pp(ntot,nels_pp)
+    INTEGER              :: i, j, k, ii, iii, ier, pe_number, bufid, count
+    INTEGER              :: position, recbufsize
+    INTEGER              :: vstatus(MPI_STATUS_SIZE,npes) 
+                          ! numpesget not yet known, use npes
+    INTEGER              :: vrequest(npes)      
+                          ! numpesget not yet known, so use npes
+    INTEGER              :: rem_acc, loc_acc, sum_rem_acc, sum_numpesget
+    REAL(iwp)            :: sumtemp1, sumtemp2, rem_loc, sum_rem_loc
+    LOGICAL              :: lflag, local, flag, newpe
+    INTEGER, ALLOCATABLE :: preq_pp(:,:)
+
+    ALLOCATE(preq_pp(neq_pp1,npes))
+    preq_pp = 0
+
+    recbufsize    = 0       ; ier           = 0      ; pe_number = 0
+    bufid         = 0       ; count         = 0      
+    position      = 0       ; rem_acc       = 0      ; loc_acc   = 0 
+    sum_rem_acc   = 0       ; sum_numpesget = 0
+    sum_numpesget = 0       
+ 
+    sumtemp1      = 0.0_iwp ; sumtemp2      = 0.0_iwp
+    rem_loc       = 0.0_iwp ; sum_rem_loc   = 0.0_iwp
+
+!------------------------------------------------------------------------------
+! 1. Call routine to allocate arrays for gather_scatter related operations:
+!------------------------------------------------------------------------------
+
+    CALL ALLOCATE_GATHER_SCATTER(npes_pp,npes)
+
+    preq_pp   = 0
+    threshold = num_neq_pp1*neq_pp1
+    DO j = 1,nels_pp
+      DO i = 1,ntot
+
+!------------------------------------------------------------------------------
+! 2. Convert index location, g, into location on specific PE. preq_pp(i,j) 
+!    refers to location j on ith PE. Do not bother if index = 0 
+!    (also prevents problem with assigning preq_pp(0, ))
+!------------------------------------------------------------------------------
+
+        IF (gg_pp(i,j).NE.0) THEN
+          IF (gg_pp(i,j) <= threshold .OR. threshold == 0) THEN
+            preq_pp(MOD((gg_pp(i,j)-1),neq_pp1)+1,(gg_pp(i,j)-1)/neq_pp1+1 ) = 1
+          ELSE
+            preq_pp(MOD((gg_pp(i,j)-threshold-1),(neq_pp1-1)) + 1,         &
+                        (gg_pp(i,j)-threshold-1)/(neq_pp1-1)+1+num_neq_pp1 ) = 1
+          ENDIF
+        ENDIF
+      END DO
+    END DO
+
+!------------------------------------------------------------------------------
+! 3. Find number of elements required from each processor (lenget(i))
+!    Also pesget and getpes - relating actual PE number, i,  to index, ii,
+!    of toget(:,ii).
+!    And numpesget - number of remote PEs from which data is required.
+!------------------------------------------------------------------------------
+
+    toget_temp = 0
+    lenget     = 0
+    lengetsum  = 0
+    numpesget  = 0
+    getpes     = 0
+    ii         = 0
+    local      = .FALSE.
+
+    DO_find_data_outer: DO i = 1,npes
+      newpe = .TRUE.
+      k = 1
+      DO_find_data_inner1: DO j = 1,neq_pp1
+        IF (preq_pp(j,i).EQ.1) THEN
+          IF (i == numpe) THEN             ! Save local until after all remote
+            local = .TRUE.
+            CYCLE DO_find_data_inner1
+          END IF
+          IF (newpe) THEN
+            ii = ii + 1
+          END IF
+          IF (ii > npes_pp) THEN
+            print *, 'PE: ',numpe,                                            &
+                     '1 Number of PEs to get exceeds dimension of toget:',    &
+                      ii, '>', npes_pp
+            WRITE(details,'(A)') 'Need to increase npes_pp in main program'
+            STOP
+          END IF
+          newpe            = .FALSE.
+          toget_temp(k,ii) = j
+          sumget(j,ii)     = k
+          k                = k + 1
+          lenget(i)        = lenget(i) + 1
+        END IF
+      END DO DO_find_data_inner1
+      lengetsum(i) = lengetsum(i-1) + lenget(i)
+      IF (.NOT. newpe) THEN
+        pesget(ii) = i
+        pesgetcount(i) = 1
+        getpes(i) = ii
+        WRITE(details,'("No. of elements of PE ",I4," required by PE ",I4,     &
+                       & ": ",I8," getpes(i) ",I8)') i, numpe, lenget(i), ii
+      END IF
+    END DO DO_find_data_outer
+
+    numpesget = ii
+    IF (local) THEN     ! For local data
+      newpe = .TRUE.    ! Could avoid using newpe, but be consistent with above.
+      i = numpe
+      k = 1
+      DO_find_data_inner2: DO j = 1, neq_pp1
+        IF (preq_pp(j,i).EQ.1) THEN
+          IF (newpe) THEN
+            ii = ii + 1
+          END IF
+          IF (ii > npes_pp) THEN
+            PRINT *, 'PE: ', numpe,                                            &
+                     '2 Number of PEs to get exceeds dimension of toget:',     &
+                      ii, '>', npes_pp
+            WRITE(details,'(A)') 'Need to increase npes_pp in main program'
+            STOP
+          END IF
+          newpe = .FALSE.
+          toget_temp(k,ii) = j
+          sumget(j,ii) = k
+          k = k + 1
+          lenget(i) = lenget(i) + 1
+        END IF
+      END DO DO_find_data_inner2
+      lengetsum(i) = lengetsum(i-1) + lenget(i)
+      DO iii = numpe + 1, npes
+        lengetsum(iii) = lengetsum(iii) + lenget(numpe)
+      END DO
+      IF (.NOT. newpe) THEN
+        pesget(ii) = i
+        getpes(i) = ii
+        WRITE(details,'("No. of elements of PE ",I4," required by PE ",I4,    &
+                       & ": ",I8," getpes(i) ",I8)') i, numpe, lenget(i), ii
+      END IF
+    END IF
+
+    len_pl_pp = lengetsum(npes)
+    WRITE(details,*)'Total number of unique elements required'
+    WRITE(details,*)'i.e. length of pl_pp required: ', len_pl_pp
+    WRITE(details,'("PE: ",I4," Number of remote PEs required: ",I8)') &
+                   numpe, numpesget
+    rem_acc = lengetsum(npes) - lenget(numpe)
+    loc_acc = lenget(numpe)
+    IF (loc_acc > 0) THEN
+      rem_loc = rem_acc/REAL(loc_acc,iwp)
+    ELSE
+      rem_loc = 0
+    ENDIF
+    WRITE(*,'("PE: ",I4," Accesses - remote, local, remote/local: ",2I6,F8.2, &
+              & " From ",I6, " PEs")') numpe, rem_acc, loc_acc, rem_loc,numpesget
+    CALL MPI_REDUCE(rem_loc,sum_rem_loc,1,MPI_REAL8,MPI_SUM,      &
+            npes-1,MPI_COMM_WORLD,ier)
+    IF(ier .NE. MPI_SUCCESS) THEN
+      CALL MPERROR('Error in REDUCE - rem_loc',ier)
+    END IF
+    CALL MPI_REDUCE(rem_acc,sum_rem_acc,1,MPI_INTEGER,MPI_SUM,    &
+            npes-1,MPI_COMM_WORLD,ier)
+    IF(ier .NE. MPI_SUCCESS) THEN
+      CALL MPERROR('Error in REDUCE - rem_acc',ier)
+    END IF
+    CALL MPI_REDUCE(numpesget,sum_numpesget,1,MPI_INTEGER,MPI_SUM,&
+      npes-1, MPI_COMM_WORLD,ier)
+    IF(ier .NE. MPI_SUCCESS) THEN
+      CALL MPERROR('Error in REDUCE - numpesget',ier)
+    END IF
+    IF (numpe == npes) THEN
+      WRITE(*,'("Average accesses ratio - remote/local: ", F8.2)')            &
+                sum_rem_loc/REAL(npes,iwp)
+      WRITE(*,'("Total remote accesses                : ", I8)') sum_rem_acc
+      IF (sum_numpesget > 0) THEN
+        WRITE(*,'("Average remote accesses per PE       : ", F8.2)')          &
+        sum_rem_acc/REAL(sum_numpesget,iwp)
+      END IF
+    ENDIF
+
+    DEALLOCATE(preq_pp)
+
+!------------------------------------------------------------------------------
+! 4. Calculate ggl_pp
+!    First find locations within preq_pp by summing (0 if element not required, 
+!    1 if element required).
+!------------------------------------------------------------------------------
+
+    DO j = 1, nels_pp
+      DO i = 1,ntot
+        IF (gg_pp(i,j) .EQ. 0) THEN
+          ggl_pp(i,j) = 0
+        ELSE
+          IF (gg_pp(i,j) <= threshold .OR. threshold == 0) THEN
+            pe_number = (gg_pp(i,j) - 1)/neq_pp1 + 1
+              k = gg_pp(i,j) - (pe_number - 1)*neq_pp1
+          ELSE
+            pe_number = num_neq_pp1 + (gg_pp(i,j) - threshold - 1)/           &
+                       (neq_pp1 - 1) + 1
+            k         = gg_pp(i,j) - threshold -                              &
+                       (pe_number - num_neq_pp1 - 1)*(neq_pp1 - 1)
+          ENDIF
+          sumtemp1 = lengetsum(pe_number - 1)
+          sumtemp2 = sumget(k,getpes(pe_number))
+          ggl_pp(i,j) = sumtemp1 + sumtemp2
+        END IF
+      END DO
+    END DO
+
+!------------------------------------------------------------------------------
+! 5a. Use AllReduce to get expected number of messages to be sent to each PE
+!------------------------------------------------------------------------------
+
+    CALL MPI_ALLREDUCE(pesgetcount, pesputcount, npes, MPI_INTEGER, MPI_SUM, MPI_COMM_WORLD, ier)
+    IF (ier .NE. MPI_SUCCESS) THEN
+      CALL MPERROR('Error in (5a) allreduce',ier)
+    END IF
+
+!------------------------------------------------------------------------------
+! 5. Send PE requirement request to each PE
+!------------------------------------------------------------------------------
+
+    DO ii = 1, numpesget
+      i = pesget(ii)
+      CALL MPI_ISEND (toget_temp(1,ii),lenget(i),MPI_INTEGER,i-1,numpe,  &
+            MPI_COMM_WORLD,vrequest(ii),ier)
+      IF (ier .NE. MPI_SUCCESS) THEN
+        CALL MPERROR('Error in (A4) isend',ier)
+      END IF
+      CALL MPI_TEST(vrequest(ii),lflag,vstatus(1,ii),ier)
+      WRITE(details,'("PE: ",I4," request sent to PE: ",I5)') numpe, i
+    END DO
+
+!------------------------------------------------------------------------------
+! 6. Receive PE request. Now receive corresponding data from other PEs
+!------------------------------------------------------------------------------
+
+    CALL MPI_BARRIER(MPI_COMM_WORLD,ier)
+    IF (ier .NE. MPI_SUCCESS) THEN
+      CALL MPERROR('Error in (A5) barrier before receives',ier)
+    END IF
+
+    toput_temp = 0
+
+!------------------------------------------------------------------------------
+! 7. Wait for expected number of messages
+!------------------------------------------------------------------------------
+
+    count     = 0
+    numpesput = 0
+    lenput    = 0
+    putpes    = 0
+    ii        = 0
+ 
+    DO count = 1,pesputcount(numpe)
+      CALL MPI_PROBE(MPI_ANY_SOURCE,MPI_ANY_TAG,MPI_COMM_WORLD,  &
+          vstatus(1,numpesput+1),ier)
+      IF (ier .NE. MPI_SUCCESS) THEN
+        CALL MPERROR('Error in (A5) probe',ier)
+      END IF
+      ii = ii + 1
+      numpesput = numpesput + 1
+      IF (numpesput > npes_pp) THEN
+         print *, 'PE: ', numpe, &
+              'Number of PEs to put to exceeds dimension of toput:',        &
+              numpesput, '>', npes_pp
+         STOP
+      END IF
+      
+      CALL MPI_GET_COUNT (vstatus(1,numpesput),MPI_INTEGER,recbufsize,ier)
+      IF (ier .NE. MPI_SUCCESS) THEN
+         CALL MPERROR('Error in (A5) get_count',ier)
+      END IF
+      pe_number = vstatus(MPI_tag,numpesput)
+      lenput(pe_number) = recbufsize 
+      pesput(ii) = pe_number
+      putpes(pe_number) = ii
+      CALL MPI_RECV (toput_temp(1,ii),lenput(pe_number),MPI_INTEGER,        &
+           MPI_ANY_SOURCE,MPI_ANY_TAG,MPI_COMM_WORLD,vstatus(1,numpesput),ier)
+      IF (ier .NE. MPI_SUCCESS) THEN
+         CALL MPERROR('Error in (A5) receive',ier)
+      END IF
+      
+   END DO
+   
+!------------------------------------------------------------------------------
+! 8. Make sure all ISENDs have completed and free up internal book-keeping 
+!    of requests
+!------------------------------------------------------------------------------
+   
+   CALL MPI_WAITALL(numpesget,vrequest,vstatus,ier)
+   IF (ier /= MPI_SUCCESS) THEN
+      CALL MPERROR ('Error in MPI_WAITALL', ier)
+   END IF
+   
+!------------------------------------------------------------------------------
+! 9. Set numpesgetput to max of numpesget and numpesput
+!------------------------------------------------------------------------------
+
+    numpesgetput = MAX(numpesget, numpesput)
+
+!------------------------------------------------------------------------------
+! 10. Print more information about required communication.
+!------------------------------------------------------------------------------
+
+    DO i = 1,numpesput
+      WRITE(details,'("Number of elements of PE ",I4," required by PE ",      &
+                     & I4,": ",I8)') numpe, pesput(i), lenput(pesput(i))
+    END DO
+    WRITE(details,'("PE: ", I4," Number of PEs to send data to: ", I4)')      &
+        numpe, numpesput
+    CALL MPI_BARRIER(MPI_COMM_WORLD,ier)
+    IF (ier .NE. MPI_SUCCESS) THEN
+      CALL MPERROR('Error in (A5) barrier',ier)
+    END IF
+
+!------------------------------------------------------------------------------
+! 11. Now numpesget, numpesput, toget and toput are known, reallocate toget 
+!     and toput. Note that numpesget is number of remote PEs required, but if 
+!     as would normally be expected, some of the data is local (on numpe), 
+!     toget requires an extra element for the local data. Numpesput is number 
+!     to be sent to (excluding numpe).
+!------------------------------------------------------------------------------
+
+    IF (local) THEN
+      ALLOCATE ( toget(neq_pp1, numpesget + 1), toput(neq_pp1,numpesput) )      
+      toget = 0 
+      toput = 0
+      toget = toget_temp(:, 1:numpesget + 1)
+    ELSE
+      ALLOCATE ( toget(neq_pp1, numpesget), toput(neq_pp1,numpesput) )      
+      toget = 0
+      toput = 0
+      toget = toget_temp(:, 1:numpesget)
+    END IF
+    toput = toput_temp(:, 1:numpesput)
+    DEALLOCATE ( toget_temp, toput_temp )
+
+!------------------------------------------------------------------------------
+! 12. The following barrier is probably necessary, but not checked thoroughly
+!------------------------------------------------------------------------------
+
+    CALL MPI_BARRIER(MPI_COMM_WORLD,ier)
+    IF (ier .NE. MPI_SUCCESS) THEN
+      CALL MPERROR('Error in last barrier in make_ggl2',ier)
+    END IF
+
+  END SUBROUTINE MAKE_GGL2
 
 !------------------------------------------------------------------------------
 !------------------------------------------------------------------------------
