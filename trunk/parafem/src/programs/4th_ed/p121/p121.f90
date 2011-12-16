@@ -120,8 +120,8 @@ PROGRAM p121
   g_g_pp = 0
 
   elements_1: DO iel = 1, nels_pp
-     CALL find_g3(g_num_pp(:,iel),g_g_pp(:,iel),rest)
-!    CALL find_g(g_num_pp(:,iel),g_g_pp(:,iel),rest)
+!     CALL find_g3(g_num_pp(:,iel),g_g_pp(:,iel),rest)
+    CALL find_g(g_num_pp(:,iel),g_g_pp(:,iel),rest)
   END DO elements_1
 
   CALL MPI_BARRIER(MPI_COMM_WORLD,ier)
@@ -143,7 +143,9 @@ PROGRAM p121
 
   CALL calc_neq_pp
   CALL calc_npes_pp(npes,npes_pp)
-  CALL make_ggl(npes_pp,npes,g_g_pp)
+!  CALL make_ggl(npes_pp,npes,g_g_pp)
+! LML: use fixed make_ggl2 to avoid deadlock
+  CALL make_ggl2(npes_pp,npes,g_g_pp)
  
   timest(8) = elap_time()
 
@@ -231,11 +233,11 @@ PROGRAM p121
     valf = zero
 
     CALL read_fixed(job_name,numpe,node,sense,valf)
-!   CALL find_no(node,rest,sense,no)
-    CALL find_no2(g_g_pp,g_num_pp,node,sense,fixed_freedoms_pp,               &
-                  fixed_freedoms_start,no)
-    CALL MPI_ALLREDUCE(no,no_global,fixed_freedoms,MPI_INTEGER,MPI_MAX,       &
-                       MPI_COMM_WORLD,ier)
+    CALL find_no(node,rest,sense,no)
+!   CALL find_no2(g_g_pp,g_num_pp,node,sense,fixed_freedoms_pp,               &
+!                 fixed_freedoms_start,no)
+!   CALL MPI_ALLREDUCE(no,no_global,fixed_freedoms,MPI_INTEGER,MPI_MAX,       &
+!                      MPI_COMM_WORLD,ier)
     CALL reindex_fixed_nodes(ieq_start,no_global,no_pp_temp,                  &
                              fixed_freedoms_pp,fixed_freedoms_start,neq_pp)
 
