@@ -34,6 +34,19 @@ The tables below give some performance figures for program p121 (3D small strain
 * Memory fault reported by the system.
 }}}
 
+== HECToR Phase 3 ==
+
+|| Number of processors || Number of cores || Time (s) in solver || Speed up || Efficiency || Total time (s) || Speed up || Efficiency ||
+||12||12||-||-||-||-||-||-||
+||2||24||2094||-||-||2228||-||-||
+||4||48||571||-||-||690||-||-||
+||8||96||263||-||-||375||-||-||
+||16||192||132||-||-||241||-||-||
+||32||384||66||-||-||172||-||-||
+||64||768||34||-||-||141||-||-||
+||128||1536||##||-||-||##||-||-||
+||256||3072||-||-||-||-||-||-||
+
 == CINECA IBM SP6 ==
 
 || Number of processors || Number of cores || Time (s) in solver || Speed up || Efficiency || Total time (s) || Speed up || Efficiency ||
