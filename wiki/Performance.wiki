@@ -36,6 +36,8 @@ The tables below give some performance figures for program p121 (3D small strain
 
 == HECToR Phase 3 ==
 
+Using 12 (of 32) cores per node to match Phase 2b job sizes
+
 || Number of processors || Number of cores || Time (s) in solver || Speed up || Efficiency || Total time (s) || Speed up || Efficiency ||
 ||12||12||-||-||-||-||-||-||
 ||2||24||2094||-||-||2228||-||-||
@@ -46,6 +48,25 @@ The tables below give some performance figures for program p121 (3D small strain
 ||64||768||34||-||-||141||-||-||
 ||128||1536||##||-||-||##||-||-||
 ||256||3072||-||-||-||-||-||-||
+
+== HECToR Phase 3 ==
+
+Using all 32 cores per node
+
+|| Number of processors || Number of cores || Time (s) in solver || Speed up || Efficiency || Total time (s) || Speed up || Efficiency ||
+||1{{{*}}}||32||-||-||-||-||-||-||
+||2||64||##||-||-||##||-||-||
+||4||128||198||-||-||311||-||-||
+||8||256||99||-||-||211||-||-||
+||16||512||50||-||-||159||-||-||
+||32||1024||##||-||-||##||-||-||
+||64||2048||##||-||-||##||-||-||
+||128||4096||##||-||-||##||-||-||
+||256||8192||##||-||-||##||-||-||
+
+{{{
+* Application terminated
+}}}
 
 == CINECA IBM SP6 ==
 
