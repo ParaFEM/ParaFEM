@@ -123,6 +123,24 @@ Using all 32 cores per node
 ||256||3072||1290||-||-||9477||-||-||
 ||512||6144||4116||-||-||10257||-||-||
 
+{{{
+125,000 twenty noded brick elements 
+522,801 nodes
+}}}
+
+== HECToR Phase 3 ==
+
+Time (s) in solver for various core/node combinations:
+
+|| *Number of Nodes * |||||||||||||||| *Number of PEs (total number of cores)*     ||
+||      || *1* || *2* || *4* || *8* || *16* || *32* || *64* || *128* ||
+|| * 1* ||-    ||-    ||242  ||206  ||103   ||52    ||X     ||X      ||
+|| * 2* ||X    ||-    ||-    ||-    ||-     ||52    ||26    ||X      ||
+|| * 4* ||X    ||X    ||-    ||-    ||-     ||52    ||26    ||13     ||
+|| * 8* ||X    ||X    ||X    ||-    ||-     ||31    ||26    ||13     ||
+|| *16* ||X    ||X    ||X    ||X    ||-     ||27    ||15    ||13     ||
+|| *32* ||X    ||X    ||X    ||X    ||X     ||18    ||13    ||8      ||
+
 ----
 
 = 3D Small Strain Elasticity using the Boundary Element Method =
