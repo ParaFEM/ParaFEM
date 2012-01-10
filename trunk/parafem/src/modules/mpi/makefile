@@ -82,6 +82,10 @@ lib-debug:	$(SHARED) $(MPI)
 clean:
 	rm -f *.o *.mod *.a
 
+execlean:
+	rm -f ../../../include/mpi/*.mod
+	rm -f ../../../lib/libParaFEM_mpi*.a
+
 install:
 	cp *.mod ../../../include/mpi
 	cp *.a ../../../lib

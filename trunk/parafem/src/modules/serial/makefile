@@ -67,6 +67,10 @@ lib-debug:	$(SHARED) $(SERIAL)
 clean:
 	rm -f *.o *.mod *.a
 
+execlean:
+	rm -f ../../../include/serial/*.mod
+	rm -f ../../../lib/libParaFEM_serial*.a
+
 install:
 	cp *.mod ../../../include/serial
 	cp *.a ../../../lib
