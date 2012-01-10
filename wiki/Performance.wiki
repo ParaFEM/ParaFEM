@@ -55,7 +55,7 @@ Using all 32 cores per node. Each node has two 16 core processors.
 
 || Number of processors || Number of cores || Time (s) in solver || Speed up || Efficiency || Total time (s) || Speed up || Efficiency ||
 ||2{{{*}}}||32||-||-||-||-||-||-||
-||4||64||417**||-||-||539**||-||-||
+||4||64||417{{{**}}}||-||-||{{{539**}}}||-||-||
 ||8||128||198||-||-||311||-||-||
 ||16||256||99||-||-||211||-||-||
 ||32||512||50||-||-||159||-||-||
