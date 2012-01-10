@@ -134,6 +134,11 @@ showusage() {
     echo "  (-)release will compile the selected libraries and programs with the debugging disabled"
     echo "  * the default mode is -release and does not require explicitly setting"
     echo
+    echo "CLEAN options:"
+    echo "  clean: will clean all the object files and any other temporary files from the build"
+    echo "  execlean: will remove all compiled libraries, modules and executables"
+    echo "  * both clean and execlean are restricted in their scope by the build options above"
+    echo
     echo "Limiting build options:"
     echo "  --only-libs will only build the external libraries"
     echo "  --only-modules will only build the module libraries"

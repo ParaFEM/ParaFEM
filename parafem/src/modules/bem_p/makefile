@@ -66,6 +66,10 @@ lib-debug:	$(SHARED) $(BEM)
 clean:
 	rm -f *.o *.mod *.a
 
+execlean:
+	rm -f ../../../include/bem_p/*.mod
+	rm -f ../../../libParaFEM_bem_p*.a
+
 install:
 	cp *.mod ../../../include/bem_p
 	cp *.a ../../../lib

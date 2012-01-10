@@ -77,8 +77,10 @@ clean:
 	@cd bem_p && $(MAKE) clean && cd ..
 
 execlean:
-	@rm -rf ../../include/*.mod
-	@rm -f ../../lib/libParaFEM_*.a
+	@cd mpi && $(MAKE) execlean && cd ..
+	@cd serial && $(MAKE) execlean && cd ..
+	@cd bem && $(MAKE) execlean && cd ..
+	@cd bem_p && $(MAKE) execlean && cd ..
 
 install:
 	@echo
