@@ -22,7 +22,8 @@
 
  INTEGER, PARAMETER   :: nodof=3,nst=6,ndim=3
  INTEGER, PARAMETER   :: nprops=3              ! no of material properties 
- INTEGER, PARAMETER   :: nod=20                ! no of nodes per element 
+!INTEGER, PARAMETER   :: nod=20                ! no of nodes per element 
+ INTEGER, PARAMETER   :: nod=8                 ! no of nodes per element 
 
  INTEGER              :: argc,iargc,meshgen
  INTEGER              :: cjiters
@@ -114,6 +115,7 @@
  INTEGER, ALLOCATABLE  :: g_g_pp(:,:)
  INTEGER, ALLOCATABLE  :: g_num_pp(:,:)
  INTEGER, ALLOCATABLE  :: no(:)             ! freedoms to be loaded/fixed 
+ INTEGER, ALLOCATABLE  :: no_global(:)      ! freedoms to be loaded/fixed 
  INTEGER, ALLOCATABLE  :: node(:)           ! loaded nodes vector
  INTEGER, ALLOCATABLE  :: no_pp(:)          ! freedoms on local processor
  INTEGER, ALLOCATABLE  :: no_pp_temp(:)     ! temporary array
@@ -270,7 +272,7 @@
   fname     = job_name(1:INDEX(job_name, " ")-1) // ".mat"
   CALL read_materialValue(prop,fname,numpe,npes)
 
-  CALL read_rest(job_name,numpe,rest)
+! CALL read_rest(job_name,numpe,rest)
 
   ! I/O error capture
   ! Will only work on master processor. Needs implementing properly
@@ -317,7 +319,7 @@
   g_g_pp = 0
 
   elements_0a: DO iel = 1, nels_pp
-    CALL find_g(g_num_pp(:,iel),g_g_pp(:,iel),rest)
+    CALL find_g3(g_num_pp(:,iel),g_g_pp(:,iel),rest)
   END DO elements_0a
 
   neq = 0
@@ -340,7 +342,7 @@
   IF(numpe==1) PRINT *, "calc_npes_pp"
   CALL calc_npes_pp(npes,npes_pp)
   IF(numpe==1) PRINT *, "make_ggl"
-  CALL make_ggl(npes_pp,npes,g_g_pp)
+  CALL make_ggl2(npes_pp,npes,g_g_pp)
 
 !------------------------------------------------------------------------------ 
 ! 10. Allocate and initialize arrays dimensioned by NEQ_PP 
@@ -499,11 +501,13 @@
     ALLOCATE(no_pp_temp(fixed_freedoms))
     ALLOCATE(sense(fixed_freedoms))
     ALLOCATE(val(fixed_freedoms))
+    ALLOCATE(no_global(fixed_freedoms))
 
     node        = 0
     no          = 0
     no_pp_temp  = 0
     sense       = 0
+    no_global   = 0
     val         = zero
 
     PRINT *, "Allocated and zeroed fixed_freedoms arrays"
@@ -513,9 +517,13 @@
             step(1:INDEX(step, " ")-1)  // ".fix"
     CALL read_fixed(fname,numpe,sense,node,val)
     PRINT *, "Read fixed freedoms"
-    CALL find_no(node,rest,sense,no)
+!   CALL find_no(node,rest,sense,no)
+    CALL find_no2(g_g_pp,g_num_pp,node,sense,fixed_freedoms_pp,                &
+                 fixed_freedoms_start,no)
+    CALL MPI_ALLREDUCE(no,no_global,fixed_freedoms,MPI_INTEGER,MPI_MAX,        &
+                       MPI_COMM_WORLD,ier)
     PRINT *, "Found no array"
-    CALL reindex_fixed_nodes(ieq_start,no,no_pp_temp,fixed_freedoms_pp,        &
+    CALL reindex_fixed_nodes(ieq_start,no_global,no_pp_temp,fixed_freedoms_pp, &
                              fixed_freedoms_start,neq_pp)
     PRINT *, "Reindexed fixed nodes"
     PRINT *, "Fixed_freedoms_pp = ", fixed_freedoms_pp
