@@ -515,7 +515,7 @@
     CALL getFileNumber(step,ii)
     fname = job_name(1:INDEX(job_name, " ")-1) // "_" //                       &
             step(1:INDEX(step, " ")-1)  // ".fix"
-    CALL read_fixed(fname,numpe,sense,node,val)
+    CALL read_fixed(fname,numpe,node,sense,val)
     PRINT *, "Read fixed freedoms"
 !   CALL find_no(node,rest,sense,no)
     CALL find_no2(g_g_pp,g_num_pp,node,sense,fixed_freedoms_pp,                &
