@@ -63,7 +63,7 @@ BUILD_PROGRAMS_GIVEN=0
 BUILD_TOOLS_GIVEN=0
 
 # MODULE build options:
-# - p12 group: for programs p121,p126,p129,p1210,p1211,p1212,p1213,(p121u)
+# - p12 group: for programs p121,p123,p126,p129,p1210,p1211,p1212,p1213,(p121u)
 #   options are: mpi(default), openmp, serial, gpu,
 # - prog8 group: for programs prog81, prog82, prog83
 #   options are: bem_lib, bem_lib_p
@@ -76,7 +76,7 @@ BUILD_LIBRARIES_OPT=
 # PROGRAM build options
 # options are: p12(default), prog8(default), gaitfem(default)
 BUILD_PROGRAMS_OPT=
-BUILD_GROUP_P12="p121 p126 p129 p1210"
+BUILD_GROUP_P12="p121 p123 p126 p129 p1210"
 BUILD_GROUP_XX="xx1 xx2 xx3 xx4 xx5 xx6 xx7 xx9 xx10" # + xx8
 BUILD_GROUP_PROG8="prog81 prog82 prog83"
 BUILD_GROUP_GAITFEM="gaitfem"
