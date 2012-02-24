@@ -51,7 +51,7 @@ LIB_BEM_P_DBG_FFLAGS=-g -em -s real64
 # ------------------------------------------------------------------------------
 
 # generic P12 group FFLAGS and LDFLAGS
-DEFAULT_P12_MPI_REL_FFLAGS=-V -O3 -em -s real64
+DEFAULT_P12_MPI_REL_FFLAGS=-V -O3 -em -s real64 -m 0 
 DEFAULT_P12_MPI_DBG_FFLAGS=-V -g -em -s real64
 DEFAULT_P12_MPI_REL_LDFLAGS=
 DEFAULT_P12_MPI_DBG_LDFLAGS=
