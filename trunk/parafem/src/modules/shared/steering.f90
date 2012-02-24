@@ -11,6 +11,7 @@ MODULE STEERING
   !*    Subroutine             Purpose
   !*    
   !*    REARRANGE              Modifies REST array
+  !*    REARRANGE_2            Modifies REST array
   !*    FIND_G                 Finds g from node numbers and restraints "rest"
   !*    FIND_NO                Forms vector of loaded equations NO
   !*    FIND_NO_PP_TEMP        Forms vector of loaded equations NO_PP_TEMP
@@ -88,6 +89,18 @@ MODULE STEERING
     END DO
 
   END SUBROUTINE rearrange
+
+!---------------------------------------------------------------------------
+!---------------------------------------------------------------------------
+!---------------------------------------------------------------------------
+
+  subroutine rearrange_2(rest)
+  implicit none; integer,intent(inout)::rest(:,:)
+  integer::nr,i,m; nr=ubound(rest,1)
+    DO i=1,nr ; rest(i,2) = rest(i,1) - i; END DO
+    DO i=1,nr;  IF(rest(i,2)/=0) THEN ; m=i-1; EXIT ; END IF; END DO
+    DO i=m,nr;  rest(i,2) = rest(i,2) + 1; END DO
+  end subroutine rearrange_2
 
 !---------------------------------------------------------------------------
 !---------------------------------------------------------------------------
