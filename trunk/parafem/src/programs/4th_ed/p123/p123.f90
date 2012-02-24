@@ -1,18 +1,32 @@
 PROGRAM p123         
 !------------------------------------------------------------------------------
-!      program 7.5 three dimensional analysis of Laplace's equation
+!      program 12.3 three dimensional analysis of Laplace's equation
 !      using 8-node brick elements, preconditioned conjugate gradient solver
 !      only integrate one element , diagonal preconditioner diag_precon
 !      parallel version  ;   central loaded or fixed freedom   ;  box_bc  
 !------------------------------------------------------------------------------
-  USE new_library; USE geometry_lib; USE precision; USE utility;USE mp_module
-  USE  timing    ; USE global_variables1;  USE gather_scatter6;  IMPLICIT NONE
- !  ndof, nels, neq , ntot  are now global variables - not declared
+
+  USE precision  ; USE global_variables ; USE mp_interface
+  USE input      ; USE output           ; USE loading
+  USE timing     ; USE maths            ; USE gather_scatter
+  USE partition  ; USE elements         ; USE steering       ; USE pcg
+
+  IMPLICIT NONE
+
+!------------------------------------------------------------------------------
+! 1. Declare variables used in the main program
+!------------------------------------------------------------------------------
+
+ !  neq , ntot  are now global variables - not declared
+
  INTEGER::nxe,nye,nze,nn,nr,nip,nodof=1,nod=8, nres, is , it ,       &
           i,j,k,ndim=3,iters,limit,iel,num_no,no_index_start,        &
-          neq_temp,nn_temp , loaded_freedoms, fixed_freedoms
+          neq_temp,nn_temp , loaded_freedoms, fixed_freedoms,        &
+          nels,ndof,partitioner,ielpe,npes_pp
  REAL(iwp)::aa,bb,cc,kx,ky,kz,det,tol,up,alpha,beta,q,penalty=1.e20_iwp 
- CHARACTER(LEN=15)::element= 'hexahedron';    LOGICAL :: converged          
+ REAL(iwp),PARAMETER :: zero = 0.0_iwp
+ CHARACTER(LEN=15):: element= 'hexahedron';    LOGICAL :: converged          
+ CHARACTER(LEN=50):: job_name
 !-------------------------- dynamic arrays-------------------------------------
  REAL(iwp),ALLOCATABLE :: points(:,:),kc(:,:),coord(:,:), weights(:),        &
                          p_g_co_pp(:,:,:), jac(:,:), der(:,:), deriv(:,:),   &
@@ -20,11 +34,16 @@ PROGRAM p123
                          diag_precon_pp(:),p_pp(:),r_pp(:),x_pp(:),          &
                          xnew_pp(:),u_pp(:),pmul_pp(:,:),utemp_pp(:,:),      &
                          d_pp(:),diag_precon_tmp(:,:),val(:),val_f(:),       &
-                         store_pp(:),eld(:)
+                         store_pp(:),eld(:),timest(:)
  INTEGER, ALLOCATABLE :: rest(:,:),g(:),num(:),g_num_pp(:,:),g_g_pp(:,:),no(:),&
                          no_f(:),no_local_temp(:),no_local_temp_f(:),no_local(:)
 !-------------------------input and initialisation---------------------------
- timest(1) = elap_time( )   ;    CALL find_pe_procs(numpe,npes)
+
+ ALLOCATE(timest(25))
+ timest = zero
+ timest(1) = elap_time( )
+
+ CALL find_pe_procs(numpe,npes)
  IF (numpe==npes) THEN
   OPEN (10,FILE='p123.dat',STATUS=    'OLD',ACTION='READ')
   READ (10,*) nels,nxe,nze,nip,aa,bb,cc,kx,ky,kz, tol,limit ,             &
@@ -32,7 +51,9 @@ PROGRAM p123
  END IF
  CALL bcast_inputdata_p123(numpe,npes,nels,nxe,nze,nip,aa,bb,cc,kx,ky,kz, &
                             tol,limit,loaded_freedoms,fixed_freedoms)
- CALL calc_nels_pp   ;   ndof=nod*nodof ; ntot=ndof ; nye = nels/nxe/nze  
+ CALL calc_nels_pp(job_name,nels,npes,numpe,partitioner,nels_pp)
+
+ ndof=nod*nodof ; ntot=ndof ; nye = nels/nxe/nze  
       neq_temp = 0; nn_temp = 0 ; nr=(nxe+1)*(nye+1)+(nxe+1)*nze+nye*nze  
  ALLOCATE (points(nip,ndim),coord(nod,ndim),jac(ndim,ndim),kc(ntot,ntot),    &
            der(ndim,nod),deriv(ndim,nod),rest(nr,nodof+1),kcx(ntot,ntot),    &
@@ -54,7 +75,10 @@ PROGRAM p123
              IF(i>neq_temp)neq_temp = i; IF(j>nn_temp)nn_temp = j
      END DO elements_0
    neq = reduce(neq_temp)  ;  nn = reduce(nn_temp)
-   CALL calc_neq_pp        ;  CALL make_ggl(g_g_pp); diag_precon_tmp = .0_iwp
+   CALL calc_neq_pp          
+   CALL calc_npes_pp(npes,npes_pp)
+   CALL make_ggl2(npes_pp,npes,g_g_pp)
+   diag_precon_tmp = .0_iwp
    DO i=1,neq_pp; IF(nres==ieq_start+i-1) THEN; it = numpe;is = i; END IF
    END DO
    ALLOCATE(p_pp(neq_pp),r_pp(neq_pp),x_pp(neq_pp),xnew_pp(neq_pp),         &
@@ -93,7 +117,8 @@ PROGRAM p123
      END IF
 !-------------------- get starting r-----------------------------------------
     IF(loaded_freedoms>0) THEN
-     CALL reindex_fixed_nodes(ieq_start,no,no_local_temp,num_no,no_index_start)
+     CALL reindex_fixed_nodes(ieq_start,no,no_local_temp,num_no,              &
+                              no_index_start,neq_pp)
      ALLOCATE(no_local(1:num_no)) ; no_local = no_local_temp(1:num_no)
      DEALLOCATE(no_local_temp)
         DO i = 1 , num_no
@@ -104,7 +129,7 @@ PROGRAM p123
     END IF
     IF(fixed_freedoms>0) THEN
      CALL reindex_fixed_nodes(ieq_start,no_f,no_local_temp_f,        &
-                              num_no,no_index_start)
+                              num_no,no_index_start,neq_pp)
      ALLOCATE(no_local(1:num_no)) ; no_local = no_local_temp_f(1:num_no)
      DEALLOCATE(no_local_temp_f)
         DO i = 1 , num_no        ; j=no_local(i) - ieq_start + 1
@@ -132,7 +157,7 @@ PROGRAM p123
            xnew_pp = x_pp + p_pp* alpha ; r_pp=r_pp - u_pp*alpha
            d_pp = diag_precon_pp*r_pp ;  beta=DOT_PRODUCT_P(r_pp,d_pp)/up
            p_pp=d_pp+p_pp*beta    
-           CALL checon_par(xnew_pp,x_pp,tol,converged,neq_pp)    
+           CALL checon_par(xnew_pp,tol,converged,x_pp)    
            IF(converged .OR. iters==limit) EXIT
      END DO iterations
      IF(numpe==it)THEN
