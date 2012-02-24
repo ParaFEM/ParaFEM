@@ -1643,9 +1643,11 @@ MODULE INPUT
   IMPLICIT NONE
   
   
-  integer, INTENT(INOUT)::numpe,npes,nels,nxe,nze,nip,limit,               &
-                          loaded_freedoms,fixed_freedoms
-  real, INTENT(INOUT)   ::aa,bb,cc,tol,kx,ky,kz
+  integer, INTENT(INOUT)   :: numpe,npes,nels,nxe,nze,nip,limit,             &
+                              loaded_freedoms,fixed_freedoms
+  INTEGER, PARAMETER       :: ilength=4, rlength=8
+  INTEGER                  :: bufsizer,bufdecl
+  REAL(iwp), INTENT(INOUT) :: aa,bb,cc,tol,kx,ky,kz
   !
   ! Assign temporary buffer for broadcast data
   !

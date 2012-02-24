@@ -9,7 +9,8 @@ PROGRAM p123
   USE precision  ; USE global_variables ; USE mp_interface
   USE input      ; USE output           ; USE loading
   USE timing     ; USE maths            ; USE gather_scatter
-  USE partition  ; USE elements         ; USE steering       ; USE pcg
+  USE partition  ; USE elements         ; USE steering       
+  USE geometry   ; USE pcg
 
   IMPLICIT NONE
 
@@ -62,7 +63,7 @@ PROGRAM p123
            num(nod),g_g_pp(ntot,nels_pp),no(1),kcy(ntot,ntot),val(1),       &
            no_local_temp(1),row(1,ntot),diag_precon_tmp(ntot,nels_pp),      &
            val_f(1),eld(ntot),no_f(1),no_local_temp_f(1),kcz(ntot,ntot))
-      CALL box_bc8(nxe,nye,nze,rest); ielpe=iel_start; nres=nxe*(nze-1)+1
+      CALL box_bc8(rest,nxe,nye,nze); ielpe=iel_start; nres=nxe*(nze-1)+1
       IF(loaded_freedoms>0) THEN; no = nres;   val = 10.; END IF
       IF(fixed_freedoms>0)THEN; no_f=nres; val_f = 100. ; END IF 
       CALL sample(element,points,weights); CALL rearrange_2(rest)  
