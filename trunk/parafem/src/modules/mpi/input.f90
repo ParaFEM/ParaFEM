@@ -24,6 +24,7 @@ MODULE INPUT
   !*    READ_MATERIALVALUE     Reads property values for each material ID
   !*    READ_NELS_PP           Reads number of elements assigned to processor
   !*    READ_P121              Reads the control data for program p121
+  !*    BCAST_INPUTDATA_P123   Reads the control data for program p123
   !*    READ_P126              Reads the control data for program p126
   !*    READ_P129              Reads the control data for program p129
   !*    READ_XX2               Reads the control data for program xx2
@@ -1631,6 +1632,121 @@ MODULE INPUT
 
   RETURN
   END SUBROUTINE READ_P121
+
+!------------------------------------------------------------------------------
+!------------------------------------------------------------------------------
+!------------------------------------------------------------------------------
+
+  SUBROUTINE bcast_inputdata_p123 (numpe,npes,nels,nxe,nze,nip,              &
+                aa,bb,cc,kx,ky,kz,tol,limit,loaded_freedoms,fixed_freedoms)
+  
+  IMPLICIT NONE
+  
+  
+  integer, INTENT(INOUT)::numpe,npes,nels,nxe,nze,nip,limit,               &
+                          loaded_freedoms,fixed_freedoms
+  real, INTENT(INOUT)   ::aa,bb,cc,tol,kx,ky,kz
+  !
+  ! Assign temporary buffer for broadcast data
+  !
+  
+  bufsizer=7*ilength + 7*rlength
+  
+  !------------------------------------------------------------------------------
+  !---- Broadcast buffersize to allow slaves to allocate tempbuf
+  !------------------------------------------------------------------------------
+  
+  call MPI_BCAST(bufsizer,1,MPI_INTEGER,npes-1,MPI_COMM_WORLD,ier)
+  
+  bufdecl=bufsizer/4
+  allocate(tempbuf(bufdecl))
+  
+  !------------------------------------------------------------------------------
+  !---- Pack all data ready for broadcast, broadcast, receive and unpack
+  !------------------------------------------------------------------------------
+  
+  if (numpe==npes) then
+  
+    position = 0
+  
+  !---- integers
+  
+  CALL MPI_PACK (nels,1,MPI_INTEGER,tempbuf,bufsizer,position,                  &
+       &      MPI_COMM_WORLD,ier) !
+  CALL MPI_PACK (nxe,1,MPI_INTEGER,tempbuf,bufsizer,position,                   &
+        &      MPI_COMM_WORLD,ier) !
+  CALL MPI_PACK (nze,1,MPI_INTEGER,tempbuf,bufsizer,position,                   &
+       &      MPI_COMM_WORLD,ier) !
+  CALL MPI_PACK (nip,1,MPI_INTEGER,tempbuf,bufsizer,position,                   &
+       &      MPI_COMM_WORLD,ier) !
+  CALL MPI_PACK (limit,1,MPI_INTEGER,tempbuf,bufsizer,position,                 &
+       &      MPI_COMM_WORLD,ier) !
+  CALL MPI_PACK (loaded_freedoms,1,MPI_INTEGER,tempbuf,bufsizer,position,       &
+       &      MPI_COMM_WORLD,ier) !
+  CALL MPI_PACK (fixed_freedoms,1,MPI_INTEGER,tempbuf,bufsizer,position,        &
+       &      MPI_COMM_WORLD,ier) !
+  
+  !----- reals
+  
+  CALL MPI_PACK (aa,1,MPI_REAL8,tempbuf,bufsizer,position,                   &
+       &      MPI_COMM_WORLD,ier) !
+  CALL MPI_PACK (bb,1,MPI_REAL8,tempbuf,bufsizer,position,                   &
+       &      MPI_COMM_WORLD,ier) !
+  CALL MPI_PACK (cc,1,MPI_REAL8,tempbuf,bufsizer,position,                   &
+       &      MPI_COMM_WORLD,ier) !
+  CALL MPI_PACK (tol,1,MPI_REAL8,tempbuf,bufsizer,position,                  &
+       &      MPI_COMM_WORLD,ier) !
+  CALL MPI_PACK (kx,1,MPI_REAL8,tempbuf,bufsizer,position,                   &
+       &      MPI_COMM_WORLD,ier) !
+  CALL MPI_PACK (ky,1,MPI_REAL8,tempbuf,bufsizer,position,                   &
+       &      MPI_COMM_WORLD,ier) !
+  CALL MPI_PACK (kz,1,MPI_REAL8,tempbuf,bufsizer,position,                   &
+       &      MPI_COMM_WORLD,ier) !
+  end if
+  
+  call MPI_BCAST(tempbuf,bufsizer,MPI_BYTE,npes-1,MPI_COMM_WORLD,ier)
+  
+  if (numpe/=npes) then
+  
+  position=0
+  
+  !---- integers
+  
+  CALL MPI_UNPACK (tempbuf,bufsizer,position,nels,1,MPI_INTEGER,                &
+       &      MPI_COMM_WORLD,ier) !
+  CALL MPI_UNPACK (tempbuf,bufsizer,position,nxe,1,MPI_INTEGER,                 &
+       &      MPI_COMM_WORLD,ier) !
+  CALL MPI_UNPACK (tempbuf,bufsizer,position,nze,1,MPI_INTEGER,                 &
+       &      MPI_COMM_WORLD,ier) !
+  CALL MPI_UNPACK (tempbuf,bufsizer,position,nip,1,MPI_INTEGER,                 &
+       &      MPI_COMM_WORLD,ier) !
+  CALL MPI_UNPACK (tempbuf,bufsizer,position,limit,1,MPI_INTEGER,               &
+       &      MPI_COMM_WORLD,ier) !
+  CALL MPI_UNPACK (tempbuf,bufsizer,position,loaded_freedoms,1,MPI_INTEGER,     &
+       &      MPI_COMM_WORLD,ier) !
+  CALL MPI_UNPACK (tempbuf,bufsizer,position,fixed_freedoms,1,MPI_INTEGER,      &
+       &      MPI_COMM_WORLD,ier) !
+  
+  !---- reals
+  
+  CALL MPI_UNPACK (tempbuf,bufsizer,position,aa,1,MPI_REAL8,                 &
+       &      MPI_COMM_WORLD,ier) !
+  CALL MPI_UNPACK (tempbuf,bufsizer,position,bb,1,MPI_REAL8,                 &
+       &      MPI_COMM_WORLD,ier) !
+  CALL MPI_UNPACK (tempbuf,bufsizer,position,cc,1,MPI_REAL8,                  &
+       &      MPI_COMM_WORLD,ier) !
+  CALL MPI_UNPACK (tempbuf,bufsizer,position,tol,1,MPI_REAL8,                &
+       &      MPI_COMM_WORLD,ier) !
+  CALL MPI_UNPACK (tempbuf,bufsizer,position,kx,1,MPI_REAL8,                 &
+       &      MPI_COMM_WORLD,ier) !
+  CALL MPI_UNPACK (tempbuf,bufsizer,position,ky,1,MPI_REAL8,                 &
+       &      MPI_COMM_WORLD,ier) !
+  CALL MPI_UNPACK (tempbuf,bufsizer,position,kz,1,MPI_REAL8,                  &
+       &      MPI_COMM_WORLD,ier) !
+  
+  end if
+  
+  END SUBROUTINE bcast_inputdata_p123
 
 !------------------------------------------------------------------------------
 !------------------------------------------------------------------------------
