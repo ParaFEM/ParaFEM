@@ -212,6 +212,34 @@ MODULE STEERING
 !------------------------------------------------------------------------------
 !------------------------------------------------------------------------------
 
+  subroutine find_g4(num,g,rest)
+ ! 4th try - binary search  for one degree of freedom per node
+  integer,intent(in)::rest(:,:),num(:); integer,intent(out)::g(:)
+  integer:: i,l,nod,only,first,last,half ,s1,s2,s3
+  logical::found       ; nod = ubound(num,1) ; nodof = ubound(rest,2) - 1
+  do i=1,nod ; l = num(i)
+   first = 1 ;  last = ubound(rest,1)
+    do
+     if(first==last) exit ! silly array
+     half = (first + last)/2
+     if(l<=rest(half,1)) then
+       last = half  ! discard second half
+     else
+       first = half + 1  ! discard first half
+     end if
+    end do
+   only = first; found = (l==rest(only,1))
+   IF(found) THEN ;  g(i) = 0
+   ELSE ; s1 = only -1; s2 = rest(s1,2); s3 = l - rest(s1,1)
+    g(i) = s2 + s3 - 1
+   END IF
+  end do
+  end subroutine find_g4
+
+!------------------------------------------------------------------------------
+!------------------------------------------------------------------------------
+!------------------------------------------------------------------------------
+
   SUBROUTINE g_t_g_ns(nod,g_t,g)
   
     !/****f* structure_dof/g_t_g_ns
