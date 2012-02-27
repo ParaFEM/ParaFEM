@@ -229,8 +229,6 @@ This specifies the memory required per core, thus ensuring dedicated access to t
 
 The table below gives some performance figures for program p123 (three dimensional Laplacian flow). Basic data about the problem are listed as follows:
 
-----
-
 {{{
 125,000,000 eight noded brick elements 
 125,000,000 equations
@@ -248,10 +246,12 @@ The table below gives some performance figures for program p123 (three dimension
 ||1024||16384||11||-||-||16||-||-||
 
 {{{
-* Memory fault reported by the system.
+* Not enough memory to run the job on a fully populated node (with 32 cores).
 }}}
 
-_Total time (s)_ includes the initialisation stage of the program. This does not need to be repeated in a transient analysis. The _Time in solver (s)_ is roughly equivalent to the time taken for one time step in a transient analysis.
+On HECToR Phase 3, each processor has 16 cores. 
+
+_Total time (s)_ includes the initialization stage of the program. Initialization does not need to be repeated in a transient analysis. _Time in solver (s)_ is roughly equivalent to the time taken for one time step in a transient analysis.
 
 = Direct Numerical Solution of the Navier Stokes Equations =
 
