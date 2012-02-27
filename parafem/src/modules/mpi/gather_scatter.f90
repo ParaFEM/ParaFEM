@@ -49,7 +49,8 @@ MODULE GATHER_SCATTER
   INTEGER, ALLOCATABLE, PRIVATE   :: pesget(:), pesput(:)
   INTEGER, ALLOCATABLE, PRIVATE   :: getpes(:), putpes(:)
   INTEGER, ALLOCATABLE, PRIVATE   :: toget_temp(:,:), toput_temp(:,:)
-  REAL(iwp), ALLOCATABLE, PRIVATE :: tempget(:), tempput(:), tempput1(:,:)
+! REAL(iwp), ALLOCATABLE, PRIVATE :: tempget(:), tempput(:), tempput1(:,:)
+  REAL(iwp), ALLOCATABLE, PRIVATE :: tempput(:)
   REAL(iwp), ALLOCATABLE, PRIVATE :: sumget(:,:)
   INTEGER, PRIVATE                :: numpesget, numpesput, numpesgetput
   INTEGER, PRIVATE                :: len_pl_pp
@@ -440,9 +441,10 @@ MODULE GATHER_SCATTER
 !    accesses, so array size must be more than 2*neq_pp1 - so set to 3*neq_pp1.
 !------------------------------------------------------------------------------
 
-    ALLOCATE(tempget(3*neq_pp1), tempput(3*neq_pp1), tempput1(3*neq_pp1,npes))
+!   ALLOCATE(tempget(3*neq_pp1), tempput(3*neq_pp1), tempput1(3*neq_pp1,npes))
+    ALLOCATE(tempput(3*neq_pp1))
 
-    tempget = 0.0_iwp ; tempput = 0.0_iwp ; tempput1 = 0.0_iwp
+    tempput = 0.0_iwp
 
 !------------------------------------------------------------------------------
 ! 2. Allocate temporary arrays for toget and toput, until actual size is known. 
@@ -481,7 +483,8 @@ MODULE GATHER_SCATTER
     DEALLOCATE(lenget, lenput, lengetsum)
     DEALLOCATE(pesget, pesput)
     DEALLOCATE(getpes, putpes)
-    DEALLOCATE(tempget, tempput, tempput1)
+!   DEALLOCATE(tempget, tempput, tempput1)
+    DEALLOCATE(tempput)
     DEALLOCATE(pesgetcount, pesputcount)
 
   END SUBROUTINE DEALLOCATE_GATHER_SCATTER
