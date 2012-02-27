@@ -23,7 +23,7 @@ PROGRAM p123
  INTEGER::nxe,nye,nze,nn,nr,nip,nodof=1,nod=8, nres, is , it ,       &
           i,j,k,ndim=3,iters,limit,iel,num_no,no_index_start,        &
           neq_temp,nn_temp , loaded_freedoms, fixed_freedoms,        &
-          nels,ndof,partitioner,ielpe,npes_pp
+          nels,ndof,partitioner=1,ielpe,npes_pp
  REAL(iwp)::aa,bb,cc,kx,ky,kz,det,tol,up,alpha,beta,q,penalty=1.e20_iwp 
  REAL(iwp),PARAMETER :: zero = 0.0_iwp
  CHARACTER(LEN=15):: element= 'hexahedron';    LOGICAL :: converged          
