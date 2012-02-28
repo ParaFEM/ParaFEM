@@ -7,7 +7,9 @@
 
     Usage: p123 <job_name>
 
-   
+  The original program from the book, p123.old.f90 has been modified slightly
+  to work with this version of ParaFEM.
+  
   AUTHOR
 
   lee.margetts@manchester.ac.uk
