@@ -8,7 +8,7 @@ PROGRAM mg2d
 !*  AUTHOR
 !*    Lee Margetts
 !*  COPYRIGHT
-!*    (c) University of Manchester 2007-2011
+!*    (c) University of Manchester 2007-2012
 !****
 !*/
 
@@ -22,7 +22,7 @@ PROGRAM mg2d
 ! 1. Declare variables used in the main program
 !------------------------------------------------------------------------------
 
-  INTEGER                :: nr,nn,nels,nle,nxe,nye,nze
+  INTEGER                :: nr,nn,nels,nres,nle,nxe,nye,nze
   INTEGER                :: nod,ndim,nodof,nip 
   INTEGER                :: nmodes,lalfa,leig,lx,lz
   INTEGER                :: i,j,iel,iargc,argc
@@ -33,6 +33,7 @@ PROGRAM mg2d
   INTEGER                :: meshgen,partitioner
   INTEGER                :: nstep,npri,count
   REAL(iwp)              :: aa,bb,cc
+  REAL(iwp)              :: kx,ky,kz
   REAL(iwp)              :: cjtol  
   REAL(iwp)              :: rho,visc,e,v   
   REAL(iwp)              :: el,er,acc  
@@ -46,8 +47,8 @@ PROGRAM mg2d
 !------------------------------------------------------------------------------
 ! 2. Declare dynamic arrays
 !------------------------------------------------------------------------------   
-  INTEGER, ALLOCATABLE   :: g_num(:,:),rest(:,:),nf(:,:),no(:),num(:)
-  REAL(iwp), ALLOCATABLE :: g_coord(:,:),coord(:,:),val(:)
+  INTEGER, ALLOCATABLE   :: g_num(:,:),rest(:,:),nf(:,:),no(:),no_f(:),num(:)
+  REAL(iwp), ALLOCATABLE :: g_coord(:,:),coord(:,:),val(:),val_f(:)
 
 !------------------------------------------------------------------------------
 ! 3. Read job_name from the command line
@@ -77,6 +78,8 @@ PROGRAM mg2d
   OPEN (10, file=fname, status='old', action='read')
 
   READ(10,*) program_name
+
+  PRINT *, "Read program name as: ", program_name
 
 !------------------------------------------------------------------------------
 ! 5. Select program using the SELECT CASE CONSTRUCT
@@ -374,7 +377,7 @@ PROGRAM mg2d
    END SELECT
   
 
-!------------------------------------------------------------------------------  
+!------------------------------------------------------------------------------ 
 !------------------------------------------------------------------------------
 ! 8. Program p122
 !------------------------------------------------------------------------------
@@ -389,19 +392,159 @@ PROGRAM mg2d
   STOP
 
 !------------------------------------------------------------------------------
+!------------------------------------------------------------------------------
 ! 9. Program p123
+!------------------------------------------------------------------------------
 !------------------------------------------------------------------------------
 
   CASE('p123')
 
-  PRINT*
-  PRINT*, "Program p123 not supported"
-  PRINT*
+    PRINT *, "Selected case p123"
 
-  STOP
+    READ(10,*) nels, nxe, nze, nip
+    READ(10,*) aa, bb, cc, kx, ky, kz
+    READ(10,*) tol, limit
+    READ(10,*) loaded_freedoms, fixed_freedoms
+ 
+    PRINT *, "Read mg file"
 
 !------------------------------------------------------------------------------
+! 9.1 Initialize variables
+!------------------------------------------------------------------------------
+
+    nye   = nels/nxe/nze
+    ndim  = 3
+    nod   = 8
+    nr    = (nxe+1)*(nye+1) + (nxe+1)*nze + nye*nze
+    nn    = (nxe+1)*(nye+1)*(nze+1)
+    nodof = 1
+    nres  = nxe*(nze-1)+1
+
+    PRINT *, "2. Initialized variables"
+
+!------------------------------------------------------------------------------
+! 9.2 Allocate dynamic arrays
+!------------------------------------------------------------------------------
+  
+    ALLOCATE(coord(nod,ndim),g_coord(ndim,nn),g_num(nod,nels),              &
+             rest(nr,nodof+1),val(loaded_freedoms),no(loaded_freedoms),     &
+             num(nod),val_f(fixed_freedoms),no_f(fixed_freedoms))
+    
+    coord    = 0.0_iwp ; g_coord = 0.0_iwp ;   val = 0.0_iwp
+    g_num    = 0       ; rest    = 0       ;   no  = 0       ; num = 0
+    val_f    = 0.0_iwp ; no_f    = 0
+  
+    PRINT *, "3. Allocated dynamic arrays"
+
+!------------------------------------------------------------------------------
+! 9.3 Find nodal coordinates and element steering array
+!     Write to file using Abaqus node numbering convention 
+!------------------------------------------------------------------------------
+
+    DO iel = 1, nels
+      CALL geometry_8bxz(iel,nxe,nze,aa,bb,cc,coord,g_num(:,iel))
+      g_coord(:,g_num(:,iel)) = TRANSPOSE(coord)
+    END DO
+    
+    fname = job_name(1:INDEX(job_name, " ")-1) // ".d" 
+    OPEN(11,FILE=fname,STATUS='REPLACE',ACTION='WRITE')
+    
+    WRITE(11,'(A)') "*THREE_DIMENSIONAL"
+    WRITE(11,'(A)') "*NODES"
+  
+    DO i = 1, nn
+      WRITE(11,'(I12,3E14.6)') i, g_coord(:,i)
+    END DO
+  
+    WRITE(11,'(A)') "*ELEMENTS"
+    
+    DO iel = 1, nels
+      WRITE(11,'(I12,A,8I12,A)') iel, " 3 8 1 ", g_num(1,iel),g_num(4,iel),  &
+                                   g_num(8,iel),g_num(5,iel),g_num(2,iel),   &
+                                   g_num(3,iel),g_num(7,iel),g_num(6,iel),   &
+                                    " 1"
+    END DO
+    
+    CLOSE(11)
+
+    PRINT *, "4. Found nodal coordinates and element steering array"
+
+!------------------------------------------------------------------------------
+! 9.4 Boundary conditions
+!------------------------------------------------------------------------------
+  
+    fname = job_name(1:INDEX(job_name, " ")-1) // ".bnd" 
+    OPEN(12,FILE=fname,STATUS='REPLACE',ACTION='WRITE')
+  
+    CALL box_bc8(rest,nxe,nye,nze)
+  
+    DO i = 1, nr
+      WRITE(12,'(I8,3I6)') rest(i,:) 
+    END DO
+  
+    CLOSE(12)
+
+    PRINT *, "5. Set boundary conditions"
+
+!------------------------------------------------------------------------------
+! 9.5 Loading conditions
+!------------------------------------------------------------------------------
+
+    IF(loaded_freedoms > 0) THEN
+     
+      fname = job_name(1:INDEX(job_name, " ")-1) // ".lds" 
+      OPEN(13,FILE=fname,STATUS='REPLACE',ACTION='WRITE')
+     
+      no   = nres
+      val  = 10.0_iwp
+  
+      DO i = 1, loaded_freedoms
+        WRITE(13,'(I10,E16.8)') no(i),val(i)
+      END DO
+
+       CLOSE(13)
+
+    END IF
+
+    IF(fixed_freedoms>0) THEN
+
+      fname = job_name(1:INDEX(job_name, " ")-1) // ".fix" 
+      OPEN(14,FILE=fname,STATUS='REPLACE',ACTION='WRITE')
+
+      no_f  = nres
+      val_f = 100.0_iwp
+
+      DO i = 1, fixed_freedoms
+        WRITE(14,'(I10,E16.8)') no_f(i),val_f(i)
+      END DO
+
+      CLOSE(14)
+
+    END IF
+
+    PRINT *, "6. Set loading conditions"
+
+!------------------------------------------------------------------------------
+! 9.6 New control data
+!------------------------------------------------------------------------------
+
+     fname = job_name(1:INDEX(job_name, " ")-1) // ".dat" 
+     OPEN(15,FILE=fname,STATUS='REPLACE',ACTION='WRITE')
+  
+     WRITE(15,'(A)') "'hexahedron'"
+     WRITE(15,'(A)') "2"              ! Abaqus node numbering scheme
+     WRITE(15,'(A)') "1"              ! Internal mesh partitioning
+     WRITE(15,'(7I9)') nels, nn, nr, nip, nod, loaded_freedoms, fixed_freedoms
+     WRITE(15,'(4E12.4,I8)') kx, ky, kz, tol, limit
+
+     CLOSE(15)
+
+     PRINT *, "7. Output new control data file"
+
+!------------------------------------------------------------------------------
+!------------------------------------------------------------------------------
 ! 10. Program p124
+!------------------------------------------------------------------------------
 !------------------------------------------------------------------------------
 
   CASE('p124')
@@ -638,8 +781,6 @@ PROGRAM mg2d
 
   CLOSE(15)
 
-!------------------------------------------------------------------------------
-!------------------------------------------------------------------------------
 !------------------------------------------------------------------------------
 ! 13. Program p127
 !------------------------------------------------------------------------------
