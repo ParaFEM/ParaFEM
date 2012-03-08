@@ -79,7 +79,9 @@ PROGRAM mg2d
 
   READ(10,*) program_name
 
-  PRINT *, "Read program name as: ", program_name
+  PRINT *
+  PRINT *, "Generating input deck for program ", program_name
+  PRINT *
 
 !------------------------------------------------------------------------------
 ! 5. Select program using the SELECT CASE CONSTRUCT
@@ -399,14 +401,12 @@ PROGRAM mg2d
 
   CASE('p123')
 
-    PRINT *, "Selected case p123"
-
     READ(10,*) nels, nxe, nze, nip
     READ(10,*) aa, bb, cc, kx, ky, kz
     READ(10,*) tol, limit
     READ(10,*) loaded_freedoms, fixed_freedoms
  
-    PRINT *, "Read mg file"
+    PRINT *, "Read .mg file"
 
 !------------------------------------------------------------------------------
 ! 9.1 Initialize variables
@@ -420,8 +420,6 @@ PROGRAM mg2d
     nodof = 1
     nres  = nxe*(nze-1)+1
 
-    PRINT *, "2. Initialized variables"
-
 !------------------------------------------------------------------------------
 ! 9.2 Allocate dynamic arrays
 !------------------------------------------------------------------------------
@@ -434,8 +432,6 @@ PROGRAM mg2d
     g_num    = 0       ; rest    = 0       ;   no  = 0       ; num = 0
     val_f    = 0.0_iwp ; no_f    = 0
   
-    PRINT *, "3. Allocated dynamic arrays"
-
 !------------------------------------------------------------------------------
 ! 9.3 Find nodal coordinates and element steering array
 !     Write to file using Abaqus node numbering convention 
@@ -467,7 +463,7 @@ PROGRAM mg2d
     
     CLOSE(11)
 
-    PRINT *, "4. Found nodal coordinates and element steering array"
+    PRINT *, "Output nodal coordinates and element steering array"
 
 !------------------------------------------------------------------------------
 ! 9.4 Boundary conditions
@@ -484,7 +480,7 @@ PROGRAM mg2d
   
     CLOSE(12)
 
-    PRINT *, "5. Set boundary conditions"
+    PRINT *, "Output boundary conditions"
 
 !------------------------------------------------------------------------------
 ! 9.5 Loading conditions
@@ -502,7 +498,9 @@ PROGRAM mg2d
         WRITE(13,'(I10,E16.8)') no(i),val(i)
       END DO
 
-       CLOSE(13)
+      CLOSE(13)
+
+      PRINT *, "Output fixed loads"
 
     END IF
 
@@ -520,9 +518,9 @@ PROGRAM mg2d
 
       CLOSE(14)
 
-    END IF
+      PRINT *, "Output fixed freedoms"
 
-    PRINT *, "6. Set loading conditions"
+    END IF
 
 !------------------------------------------------------------------------------
 ! 9.6 New control data
@@ -539,7 +537,9 @@ PROGRAM mg2d
 
      CLOSE(15)
 
-     PRINT *, "7. Output new control data file"
+     PRINT *, "Output new control data file"
+     PRINT *, "Job completed"
+     PRINT *
 
 !------------------------------------------------------------------------------
 !------------------------------------------------------------------------------
