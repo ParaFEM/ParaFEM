@@ -64,8 +64,8 @@ PROGRAM p123
 ! IF(argc /= 1) CALL job_name_error(numpe,program_name)
 ! CALL GETARG(1,job_name)
 
-! CALL read_p123(job_name,numpe,fixed_freedoms,kx,ky,kz,limit,loaded_nodes,   &
-!                meshgen,nels,nip,nn,nod,nr,partitioner,tol,v)
+! CALL read_p123(job_name,numpe,element,fixed_freedoms,kx,ky,kz,limit,        &
+!                loaded_nodes,meshgen,nels,nip,nn,nod,nr,partitioner,tol)
 
 !-- remove
 
