@@ -1,9 +1,9 @@
 #!/bin/sh
 
-# --------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 # Script to build and install ParaFEM
 # Author: Louise M. Lever
-# --------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 
 # To log build output, run using something like:
 # ./make-parafem 2>&1 | tee log
@@ -19,18 +19,18 @@ export PARAFEM_HOME
 MK_DEFS=$PARAFEM_HOME/build/mk_defs.inc
 if ! [ -f $MK_DEFS ]; then
     echo
-    echo "************************************************************************"
+    echo "*********************************************************************"
     echo "ERROR: ParaFEM MK_DEFS include file does not exist!"
-    echo "************************************************************************"
+    echo "*********************************************************************"
     exit
 fi
 . $MK_DEFS
 export VERSION
 
-# --------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 # These are the default build parameters for the script and are used unless
 # changed by calling the script with specific parameters.
-# --------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 
 # target flags - default release and install
 DO_RELEASE=1
@@ -45,9 +45,9 @@ BUILD_LIBRARIES=1
 BUILD_PROGRAMS=1
 BUILD_TOOLS=1
 
-# --------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 # Build type GROUPS and FLAGS
-# --------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 # BUILD_*_GIVEN denotes if command line arguments have been provided to specify
 #   what build groups should be processed.
 # BUILD_*_DEFAULTS list all the group that should be built if no command line
@@ -56,7 +56,7 @@ BUILD_TOOLS=1
 # BUILD_*_OPT are the actual groups that will be built. They are initialized to
 #   (null) here and either 1) set via command line arguments, or 2) set as the
 #   defaults above if no arguments are provided.
-# --------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 BUILD_MODULES_GIVEN=0
 BUILD_LIBRARIES_GIVEN=0
 BUILD_PROGRAMS_GIVEN=0
@@ -92,9 +92,9 @@ BUILD_MODULES_DEFAULTS="mpi serial bem_lib bem_lib_p"
 BUILD_PROGRAMS_DEFAULTS="p12 xx" # + prog8 + gaitfem
 BUILD_TOOLS_DEFAULTS="preproc postproc"
 
-# --------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 # Local functions
-# --------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 
 showusage() {
     echo "To capture a log file, please run the script as:"
@@ -152,24 +152,24 @@ showusage() {
 
 error() {
     echo
-    echo "^^^^^^^^^^ ERROR ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^"
+    echo "^^^^^^^^^^ ERROR ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^"
     echo
     BUILD_ERRORS="$BUILD_ERRORS\nERROR in $1";
 }
 
 separator() {
-    echo "--------------------------------------------------------------------------------"
+    echo "---------------------------------------------------------------------"
 }
 
-# --------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 # End of local functions
-# --------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 
-# --------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 # Process all command line arguments
-# --------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 # LML: Some build options are not implemented yet and are commented out below
-# --------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 
 while [ $# -gt 0 ]; do
     ARG=`echo $1 | tr "[:upper:]" "[:lower:]"`
@@ -186,36 +186,36 @@ while [ $# -gt 0 ]; do
 	clean) DO_RELEASE=0; DO_DEBUG=0; DO_CLEAN=1;;
 	execlean) DO_RELEASE=0; DO_DEBUG=0; DO_EXECLEAN=1;;
 
-	# ------------------------------------------------------------------------
+	# ----------------------------------------------------------------------
 	# library options
 	-arpack) BUILD_LIBRARIES_OPT="$BUILD_LIBRARIES_OPT arpack"; BUILD_LIBRARIES_GIVEN=1;;
 	-metis) BUILD_LIBRARIES_OPT="$BUILD_LIBRARIES_OPT metis"; BUILD_LIBRARIES_GIVEN=1;;
 
-	# ------------------------------------------------------------------------
+	# ----------------------------------------------------------------------
 	# p12 and xx group module options
 	-mpi) BUILD_MODULES_OPT="$BUILD_MODULES_OPT mpi"; BUILD_MODULES_GIVEN=1;;
 	-serial) BUILD_MODULES_OPT="$BUILD_MODULES_OPT serial"; BUILD_MODULES_GIVEN=1;;
 	#-openmp) BUILD_MODULES_OPT="$BUILD_MODULES_OPT openmp"; BUILD_MODULES_GIVEN=1;;
 	#-gpu) BUILD_MODULES_OPT="$BUILD_MODULES_OPT gpu"; BUILD_MODULES_GIVEN=1;;
 
-	# ------------------------------------------------------------------------
+	# ----------------------------------------------------------------------
 	# prog8 group module options
 	-bem_lib) BUILD_MODULES_OPT="$BUILD_MODULES_OPT bem_lib"; BUILD_MODULES_GIVEN=1;;
 	-bem_lib_p) BUILD_MODULES_OPT="%BUILD_MODULES_OPT bem_lib_p"; BUILD_MODULES_GIVEN=1;;
 
-	# ------------------------------------------------------------------------
+	# ----------------------------------------------------------------------
 	# program group options
 	-p12) BUILD_PROGRAMS_OPT="$BUILD_PROGRAMS_OPT p12"; BUILD_PROGRAMS_GIVEN=1;;
 	-xx) BUILD_PROGRAMS_OPT="$BUILD_PROGRAMS_OPT xx"; BUILD_PROGRAMS_GIVEN=1;;
 	-prog8) BUILD_PROGRAMS_OPT="$BUILD_PROGRAMS_OPT prog8"; BUILD_PROGRAMS_GIVEN=1;;
 	-gaitfem) BUILD_PROGRAMS_OPT="$BUILD_PROGRAMS_OPT gaitfem"; BUILD_PROGRAMS_GIVEN=1;;
 
-	# ------------------------------------------------------------------------
+	# ----------------------------------------------------------------------
 	# tool group module options
 	-preproc) BUILD_TOOLS_OPT="$BUILD_TOOLS_OPT preproc"; BUILD_TOOLS_GIVEN=1;;
 	-postproc) BUILD_TOOLS_OPT="%BUILD_TOOLS_OPT postproc"; BUILD_TOOLS_GIVEN=1;;
 
-	# ------------------------------------------------------------------------
+	# ----------------------------------------------------------------------
 	# build restriction options
 	--only-libs) BUILD_MODULES=0; BUILD_PROGRAMS=0; BUILD_TOOLS=0;;
 	--only-modules) BUILD_LIBRARIES=0; BUILD_PROGRAMS=0; BUILD_TOOLS=0;;
@@ -254,23 +254,23 @@ if [ $BUILD_TOOLS = 1 ] && [ $BUILD_TOOLS_GIVEN = 0 ]; then
     BUILD_TOOLS_OPT=$BUILD_TOOLS_DEFAULTS
 fi
 
-# --------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 # Check that env vars are set
-# --------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 
 if [ -z "$PARAFEM_HOME" ] ; then
     echo
-    echo "************************************************************************"
+    echo "*********************************************************************"
     echo "ERROR: PARAFEM_HOME not set!";
-    echo "************************************************************************"
+    echo "*********************************************************************"
     exit 2
 fi
 
 if [ -z "$MACHINE" ] ; then
     echo
-    echo "************************************************************************"
+    echo "*********************************************************************"
     echo "ERROR: MACHINE not set!"
-    echo "************************************************************************"
+    echo "*********************************************************************"
     exit 2
 else
     # convert MACHINE to lower case
@@ -280,14 +280,14 @@ fi
 export MK_PARAFEM_DEFS="$PARAFEM_HOME"/build/"$MACHINE".inc
 if ! [ -f $MK_PARAFEM_DEFS ]; then
     echo
-    echo "************************************************************************"
+    echo "*********************************************************************"
     echo "ERROR: Machine include file $MK_PARAFEM_DEFS does not exist!"
-    echo "************************************************************************"
+    echo "*******************************************************************"
 fi
 
-# --------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 # Setup targets for building MODULES and PROGRAMS
-# --------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 
 LIBRARIES_TARGET=
 MODULES_TARGET=
@@ -335,15 +335,15 @@ echo "LIBRARIES TARGET is $LIBRARIES_TARGET"
 echo "MODULES TARGET is $MODULES_TARGET"
 echo "TARGET is $TARGET for programs: $BUILD_PROGRAMS_OPT"
 
-# --------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 # Perform the requested builds
-# --------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 
 if [ $BUILD_LIBRARIES = 1 ]; then
     echo
-    echo "--------------------------------------------------------------------------------"
+    echo "---------------------------------------------------------------------"
     echo "Building LIBRARIES for $MACHINE"
-    echo "--------------------------------------------------------------------------------"
+    echo "---------------------------------------------------------------------"
     cd $PARAFEM_HOME
     cd src/libraries && make $LIBRARIES_TARGET && cd ../..
     if [ $? = 2 ]; then	error "LIBRARIES/$LIBRARIES_TARGET"; fi
@@ -352,9 +352,9 @@ fi
 
 if [ $BUILD_MODULES = 1 ]; then
     echo
-    echo "--------------------------------------------------------------------------------"
+    echo "---------------------------------------------------------------------"
     echo "Building MODULES for $MACHINE"
-    echo "--------------------------------------------------------------------------------"
+    echo "---------------------------------------------------------------------"
     cd $PARAFEM_HOME
     cd src/modules && make $MODULES_TARGET && cd ../..
     if [ $? = 2 ]; then	error "MODULES/$MODULES_TARGET"; fi
@@ -363,15 +363,15 @@ fi
 
 if [ $BUILD_PROGRAMS = 1 ]; then
     echo
-    echo "--------------------------------------------------------------------------------"
+    echo "---------------------------------------------------------------------"
     echo "Building PROGRAMS for $MACHINE"
-    echo "--------------------------------------------------------------------------------"
+    echo "---------------------------------------------------------------------"
     # build each program group selected
     for GROUP in $BUILD_PROGRAMS_OPT; do
 	echo
-	echo "--------------------------------------------------------------------------------"
+	echo "-----------------------------------------------------------------"
 	echo "Building GROUP $GROUP"
-	echo "--------------------------------------------------------------------------------"
+	echo "-----------------------------------------------------------------"
 	case $GROUP in
 	    p12)
 		echo "p12: $BUILD_GROUP_P12"
@@ -408,9 +408,9 @@ fi
 
 if [ $BUILD_TOOLS = 1 ]; then
     echo
-    echo "--------------------------------------------------------------------------------"
+    echo "---------------------------------------------------------------------"
     echo "Building TOOLS for $MACHINE"
-    echo "--------------------------------------------------------------------------------"
+    echo "---------------------------------------------------------------------"
     for GROUP in $BUILD_TOOLS_OPT; do
 	echo "Building GROUP $GROUP"
 	case $GROUP in
