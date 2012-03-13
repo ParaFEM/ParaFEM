@@ -1638,8 +1638,8 @@ MODULE INPUT
 !------------------------------------------------------------------------------
 !------------------------------------------------------------------------------
 
-  SUBROUTINE READ_P123(job_name,numpe,e,element,fixed_freedoms,limit,        &
-                       loaded_nodes,mesh,nels,nip,nn,nod,nr,partition,tol,v)
+  SUBROUTINE READ_P123(job_name,numpe,element,fixed_freedoms,kx,ky,kz,limit,  &
+                       loaded_nodes,mesh,nels,nip,nn,nod,nr,partition,tol)
 
   !/****f* input/read_p123
   !*  NAME
