@@ -77,7 +77,7 @@ BUILD_LIBRARIES_OPT=
 # options are: p12(default), prog8(default), gaitfem(default)
 BUILD_PROGRAMS_OPT=
 BUILD_GROUP_P12="p121 p123 p126 p129 p1210"
-BUILD_GROUP_XX="xx1 xx2 xx3 xx4 xx5 xx6 xx7 xx9 xx10" # + xx8
+BUILD_GROUP_XX="xx1 xx2 xx3 xx4 xx5 xx6 xx7 xx9 xx10 xx11" # + xx8
 BUILD_GROUP_PROG8="prog81 prog82 prog83"
 BUILD_GROUP_GAITFEM="gaitfem"
 
