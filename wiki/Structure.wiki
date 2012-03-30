@@ -38,6 +38,7 @@ _Note: Some of the programs here are under development._
 ||*xx8*||Two dimensional probabilistic foundation settlement. See RSETL2D in Fenton and Griffiths (Under development).||-||-||-||-||-||-||-||
 ||*xx9*||Three dimensional analysis of an elastic solid. GPU support using CUDA. Special case. See p121. (Under development). ||F||Y||F||F||-||-||-||
 ||*xx10*||Three dimensional analysis of an elastic solid. GPU support using OpenCL. Special case. See p121. (Under development). ||F||Y||F||F||-||-||-||
+||*xx11*||Three dimensional Lapacian flow - special case for heat flow. See p123. (Under development) ||F||Y||F||F||-||-||-||
 
 == Beer, Smith and Duenser ==
 
