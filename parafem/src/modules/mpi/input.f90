@@ -1807,14 +1807,16 @@ MODULE INPUT
 
   END IF
 
-  IF(fixed_freedoms > 0 .AND. loaded_nodes > 0) THEN
-    PRINT *
-    PRINT *, "Error - model has", fixed_freedoms, " fixed freedoms and"
-    PRINT *, loaded_nodes, " loaded nodes"
-    PRINT *, "Mixed displacement and load control not supported"
-    PRINT *
-    CALL shutdown()
-  END IF
+  !Commented out below lines to test whether loded nodes and fixed freedoms work together
+  
+  !IF(fixed_freedoms > 0 .AND. loaded_nodes > 0) THEN
+  !  PRINT *
+  !  PRINT *, "Error - model has", fixed_freedoms, " fixed freedoms and"
+  !  PRINT *, loaded_nodes, " loaded nodes"
+  !  PRINT *, "Mixed displacement and load control not supported"
+  !  PRINT *
+  !  CALL shutdown()
+  !END IF
 
   RETURN
   END SUBROUTINE READ_P123
