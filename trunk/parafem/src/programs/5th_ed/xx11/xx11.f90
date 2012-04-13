@@ -77,11 +77,11 @@ PROGRAM xx11
 
   ALLOCATE(g_num_pp(nod,nels_pp))
   ALLOCATE(g_coord_pp(nod,ndim,nels_pp))
-  ALLOCATE(rest(nr,nodof+1))
+  IF (nr>0) ALLOCATE(rest(nr,nodof+1))
 
-  g_num_pp   = 0
-  g_coord_pp = zero
-  rest       = 0
+  g_num_pp       = 0
+  g_coord_pp     = zero
+  IF (nr>0) rest = 0
 
   timest(2) = elap_time()
 
@@ -94,7 +94,7 @@ PROGRAM xx11
   CALL read_g_coord_pp(job_name,g_num_pp,nn,npes,numpe,g_coord_pp)
   timest(5) = elap_time()
 
-  CALL read_rest(job_name,numpe,rest)
+  IF (nr>0) CALL read_rest(job_name,numpe,rest)
   timest(6) = elap_time()
 
   IF(numpe==1) PRINT *, " *** Read input data in: ", timest(6)-timest(1)," s"
@@ -119,14 +119,19 @@ PROGRAM xx11
 !    to solve.
 !------------------------------------------------------------------------------
       
-  CALL rearrange_2(rest)  
+  IF (nr>0) CALL rearrange_2(rest)  
 
   g_g_pp = 0
 
-  elements_1: DO iel = 1, nels_pp
-    CALL find_g4(g_num_pp(:,iel),g_g_pp(:,iel),rest)
-  END DO elements_1
-   
+  ! When nr = 0, g_num_pp and g_g_pp are identical
+  IF(nr>0) THEN
+    elements_1: DO iel = 1, nels_pp
+      CALL find_g4(g_num_pp(:,iel),g_g_pp(:,iel),rest)
+    END DO elements_1
+  ELSE
+    g_g_pp = g_num_pp
+  END IF
+  
   neq = 0
 
   elements_2: DO iel = 1, nels_pp
@@ -261,7 +266,7 @@ PROGRAM xx11
 
   IF(fixed_freedoms == 0) fixed_freedoms_pp = 0
 
-  DEALLOCATE(rest)
+  IF (nr>0) DEALLOCATE(rest)
 
 !------------------------------------------------------------------------------
 ! 11. Read in loaded nodes and get starting r_pp
