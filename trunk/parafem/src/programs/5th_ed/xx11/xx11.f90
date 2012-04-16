@@ -49,7 +49,7 @@ PROGRAM xx11
   REAL(iwp),ALLOCATABLE :: g_coord_pp(:,:,:)
   INTEGER, ALLOCATABLE  :: rest(:,:),g(:),num(:),g_num_pp(:,:),g_g_pp(:,:),no(:)
   INTEGER, ALLOCATABLE  :: no_f(:),no_local_temp(:),no_local_temp_f(:)
-  INTEGER, ALLOCATABLE  :: no_local(:),no_pp(:),no_pp_temp(:),no_global(:)
+  INTEGER, ALLOCATABLE  :: no_local(:),no_pp(:),no_f_pp(:),no_pp_temp(:),no_global(:)
   INTEGER, ALLOCATABLE  :: sense(:),node(:)
  
 !------------------------------------------------------------------------------
@@ -160,10 +160,10 @@ PROGRAM xx11
 !------------------------------------------------------------------------------
 
   ALLOCATE(p_pp(neq_pp),r_pp(neq_pp),x_pp(neq_pp),xnew_pp(neq_pp),            &
-           u_pp(neq_pp),diag_precon_pp(neq_pp),d_pp(neq_pp),store_pp(neq_pp))
+           u_pp(neq_pp),diag_precon_pp(neq_pp),d_pp(neq_pp))
 
   r_pp           = zero ; p_pp     = zero ; x_pp = zero ; xnew_pp = zero
-  diag_precon_pp = zero ; store_pp = zero
+  diag_precon_pp = zero
 
   timest(9) = elap_time()
 
@@ -254,11 +254,11 @@ PROGRAM xx11
     CALL reindex_fixed_nodes(ieq_start,no_global,no_pp_temp,                  &
                              fixed_freedoms_pp,fixed_freedoms_start,neq_pp)
 
-    ALLOCATE(no_pp(fixed_freedoms_pp),store_pp(fixed_freedoms_pp))
+    ALLOCATE(no_f_pp(fixed_freedoms_pp),store_pp(fixed_freedoms_pp))
 
-    no_pp    = 0
+    no_f_pp    = 0
     store_pp = zero
-    no_pp    = no_pp_temp(1:fixed_freedoms_pp)
+    no_f_pp    = no_pp_temp(1:fixed_freedoms_pp)
 
     DEALLOCATE(node,no,sense,no_pp_temp)
 
@@ -267,6 +267,11 @@ PROGRAM xx11
   IF(fixed_freedoms == 0) fixed_freedoms_pp = 0
 
   IF (nr>0) DEALLOCATE(rest)
+  
+  timest(12) = elap_time()
+  
+  IF(numpe==1) PRINT *, " *** Applied fixed freedoms in:",                             &
+                          timest(12)-timest(11), " s"
 
 !------------------------------------------------------------------------------
 ! 11. Read in loaded nodes and get starting r_pp
@@ -317,7 +322,7 @@ PROGRAM xx11
 
   IF(fixed_freedoms_pp > 0) THEN
     DO i = 1,fixed_freedoms_pp
-       j =  no_pp(i) - ieq_start + 1
+       j =  no_f_pp(i) - ieq_start + 1
        diag_precon_pp(j) = diag_precon_pp(j) + penalty
        store_pp(i)       = diag_precon_pp(j)
     END DO
@@ -331,7 +336,7 @@ PROGRAM xx11
 
   IF(fixed_freedoms_pp>0) THEN
     DO i = 1, fixed_freedoms_pp
-      j       = no_pp(i) - ieq_start + 1
+      j       = no_f_pp(i) - ieq_start + 1
       k       = fixed_freedoms_start + i - 1
       r_pp(j) = store_pp(i) * val_f(k)
     END DO
@@ -366,7 +371,7 @@ PROGRAM xx11
 
       IF(fixed_freedoms_pp > 0) THEN
         DO i = 1, fixed_freedoms_pp
-          j       = no_pp(i) - ieq_start + 1
+          j       = no_f_pp(i) - ieq_start + 1
           u_pp(j) = p_pp(j) * store_pp(i)
         END DO
       END IF
@@ -386,24 +391,39 @@ PROGRAM xx11
     END DO iterations
 
     timest(13) = elap_time()
-
-    IF(numpe==1)THEN
     
-      WRITE(11,'(A,I5)')"The number of iterations to convergence was  ",iters 
-      WRITE(11,'(A,E12.4)')"The total load is                            ",q
-      WRITE(11,'(A)')   "The  potentials are   :"
-      WRITE(11,'(A)') "   Freedom       Potential"
+    IF(nels==1000000)THEN
+      IF(numpe==1)THEN
+    
+        WRITE(11,'(A,I5)')"The number of iterations to convergence was  ",iters 
+        WRITE(11,'(A,E12.4)')"The total load is                            ",q
+        WRITE(11,'(A)')   "The  potentials are   :"
+        WRITE(11,'(A)') "   Freedom       Potential"
   
-      WRITE(11,'(A,E12.4)') "9901     ", xnew_pp(9901)
-      WRITE(11,'(A,E12.4)') "9902     ", xnew_pp(9902)
-      WRITE(11,'(A,E12.4)') "9903     ", xnew_pp(9903)
-      WRITE(11,'(A,E12.4)') "9904     ", xnew_pp(9904)
+        WRITE(11,'(A,E12.4)') "9901     ", xnew_pp(9901)
+        WRITE(11,'(A,E12.4)') "9902     ", xnew_pp(9902)
+        WRITE(11,'(A,E12.4)') "9903     ", xnew_pp(9903)
+        WRITE(11,'(A,E12.4)') "9904     ", xnew_pp(9904)
 
+      END IF
     END IF
   IF(numpe==1) WRITE(11,*) "This analysis took   ", elap_time( ) - timest(1)
 
   timest(14) = elap_time()
 
+!------------------------------------------------------------------------------
+! 15. Write results file
+!------------------------------------------------------------------------------
+  
+  IF(numpe==1)THEN
+    WRITE(11,*)
+    WRITE(11,'(/A)')"  Node Nodal Temp"
+    DO k=1,nn
+       WRITE(11,'(I5,1E12.4)')k,xnew_pp(k)
+    END DO
+    
+  END IF
+  
 !------------------------------------------------------------------------------
 ! 17. Output performance data
 !------------------------------------------------------------------------------
