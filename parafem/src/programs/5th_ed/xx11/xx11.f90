@@ -392,11 +392,14 @@ PROGRAM xx11
 
     timest(13) = elap_time()
     
+    IF(numpe==1)THEN
+        WRITE(11,'(A,I5)')"The number of iterations to convergence was  ",iters 
+        WRITE(11,'(A,E12.4)')"The total load is                            ",q
+    END IF
+    
     IF(nels==1000000)THEN
       IF(numpe==1)THEN
     
-        WRITE(11,'(A,I5)')"The number of iterations to convergence was  ",iters 
-        WRITE(11,'(A,E12.4)')"The total load is                            ",q
         WRITE(11,'(A)')   "The  potentials are   :"
         WRITE(11,'(A)') "   Freedom       Potential"
   
