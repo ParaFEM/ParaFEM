@@ -23,6 +23,7 @@ PROGRAM xx11
   INTEGER, PARAMETER    :: ndim=3,nodof=1
   INTEGER               :: nod,nn,nr,nip
   INTEGER               :: i,j,k,iters,limit,iel,num_no,no_index_start
+  INTEGER               :: node_end,node_start,nodes_pp
   INTEGER               :: loaded_freedoms,fixed_freedoms,loaded_nodes
   INTEGER               :: fixed_freedoms_pp,fixed_freedoms_start
   INTEGER               :: loaded_freedoms_pp,loaded_freedoms_start
@@ -39,12 +40,12 @@ PROGRAM xx11
 ! 2. Declare dynamic arrays
 !------------------------------------------------------------------------------
 
-  REAL(iwp),ALLOCATABLE :: points(:,:),kc(:,:),coord(:,:), weights(:)
+  REAL(iwp),ALLOCATABLE :: points(:,:),kc(:,:),coord(:,:), weights(:),temp_pp(:)
   REAL(iwp),ALLOCATABLE :: p_g_co_pp(:,:,:), jac(:,:), der(:,:), deriv(:,:)
   REAL(iwp),ALLOCATABLE :: col(:,:),row(:,:),kcx(:,:),kcy(:,:),kcz(:,:)
   REAL(iwp),ALLOCATABLE :: diag_precon_pp(:),p_pp(:),r_pp(:),x_pp(:)
   REAL(iwp),ALLOCATABLE :: xnew_pp(:),u_pp(:),pmul_pp(:,:),utemp_pp(:,:)
-  REAL(iwp),ALLOCATABLE :: d_pp(:),diag_precon_tmp(:,:),val(:,:),val_f(:)
+  REAL(iwp),ALLOCATABLE :: d_pp(:),diag_precon_tmp(:,:),eld_pp(:,:),val(:,:),val_f(:)
   REAL(iwp),ALLOCATABLE :: store_pp(:),storkc_pp(:,:,:),eld(:),timest(:)
   REAL(iwp),ALLOCATABLE :: g_coord_pp(:,:,:)
   INTEGER, ALLOCATABLE  :: rest(:,:),g(:),num(:),g_num_pp(:,:),g_g_pp(:,:),no(:)
@@ -415,18 +416,81 @@ PROGRAM xx11
   timest(14) = elap_time()
 
 !------------------------------------------------------------------------------
-! 15. Write results file
+! 15. Print out results
 !------------------------------------------------------------------------------
   
-  IF(numpe==1)THEN
-    WRITE(11,*)
-    WRITE(11,'(/A)')"  Node Nodal Temp"
-    DO k=1,nn
-       WRITE(11,'(I5,1E12.4)')k,xnew_pp(k)
-    END DO
+!  IF(numpe==1)THEN
+!    WRITE(11,*)
+!    WRITE(11,'(/A)')"  Node Nodal Temp"
+!    DO k=1,nn
+!       WRITE(11,'(I5,1E12.4)')k,xnew_pp(k)
+!    END DO
+!  END IF
+  
+  CALL calc_nodes_pp(nn,npes,numpe,node_end,node_start,nodes_pp)
     
+  IF(numpe==1) THEN
+    fname = job_name(1:INDEX(job_name, " ")-1)//".tmp"
+    OPEN(24, file=fname, status='replace', action='write')
   END IF
   
+!------------------------------------------------------------------------------
+! 16a. Temperatures
+!------------------------------------------------------------------------------
+
+  !IF(numpe==1) PRINT *, "xnew_pp:"
+  !IF(numpe==1) PRINT *, xnew_pp
+  !IF(numpe==2) PRINT *, xnew_pp
+  !IF(numpe==3) PRINT *, xnew_pp
+  
+  ALLOCATE(eld_pp(ntot,nels_pp))
+  eld_pp = zero
+  CALL gather(xnew_pp(1:),eld_pp)
+  DEALLOCATE(xnew_pp)
+
+  !IF(numpe==1) PRINT *, "eld_pp:"
+  !IF(numpe==1) PRINT *, eld_pp
+  !IF(numpe==2) PRINT *, eld_pp
+  !IF(numpe==3) PRINT *, eld_pp
+
+  ALLOCATE(temp_pp(nodes_pp))
+  temp_pp = zero
+
+  label   = "*TEMPERATURE"
+
+  CALL scatter_nodes(npes,nn,nels_pp,g_num_pp,nod,ndim,nodes_pp,              &
+                     node_start,node_end,eld_pp,temp_pp,1)
+  CALL write_nodal_variable(label,24,1,nodes_pp,npes,numpe,ndim,temp_pp)
+
+  DEALLOCATE(temp_pp)
+
+  IF(numpe==1) CLOSE(24)  
+
+!------------------------------------------------------------------------------
+! 16e. Von Mises stress (rho_v)
+!      rho_v = sqrt( ( (rho1-rho2)^2 + (rho2-rho3)^2 + (rho1-rho3)^2 ) / 2 )
+!------------------------------------------------------------------------------
+  
+!  label = "*MISES STRESS"
+!  
+!  DO i = 1,nodes_pp
+!    j = ((i-1)*nodof)+1
+!    k = j + 1
+!    l = j + 2
+!    princinodes_pp(j) = SQRT(((princinodes_pp(j)-princinodes_pp(k)) **2 +     &
+!                              (princinodes_pp(k)-princinodes_pp(l)) **2 +     &
+!                              (princinodes_pp(j)-princinodes_pp(l)) **2)      &
+!                              * 0.5_iwp)
+!    princinodes_pp(k:l) = zero
+!  END DO
+!
+!  CALL write_nodal_variable(label,27,1,nodes_pp,npes,numpe,nodof,             &
+!                            princinodes_pp)
+!                            
+!  DEALLOCATE(princinodes_pp)
+!
+!  IF(numpe==1) CLOSE(27)
+ 
 !------------------------------------------------------------------------------
 ! 17. Output performance data
 !------------------------------------------------------------------------------
