@@ -40,7 +40,7 @@ PROGRAM xx11
 ! 2. Declare dynamic arrays
 !------------------------------------------------------------------------------
 
-  REAL(iwp),ALLOCATABLE :: points(:,:),kc(:,:),coord(:,:), weights(:),temp_pp(:)
+  REAL(iwp),ALLOCATABLE :: points(:,:),kc(:,:),coord(:,:), weights(:),disp_pp(:)
   REAL(iwp),ALLOCATABLE :: p_g_co_pp(:,:,:), jac(:,:), der(:,:), deriv(:,:)
   REAL(iwp),ALLOCATABLE :: col(:,:),row(:,:),kcx(:,:),kcy(:,:),kcz(:,:)
   REAL(iwp),ALLOCATABLE :: diag_precon_pp(:),p_pp(:),r_pp(:),x_pp(:)
@@ -430,7 +430,8 @@ PROGRAM xx11
   CALL calc_nodes_pp(nn,npes,numpe,node_end,node_start,nodes_pp)
     
   IF(numpe==1) THEN
-    fname = job_name(1:INDEX(job_name, " ")-1)//".tmp"
+    fname = job_name(1:INDEX(job_name, " ")-1)//".dis"
+    ! We need Temperature file extension
     OPEN(24, file=fname, status='replace', action='write')
   END IF
   
@@ -453,16 +454,17 @@ PROGRAM xx11
   !IF(numpe==2) PRINT *, eld_pp
   !IF(numpe==3) PRINT *, eld_pp
 
-  ALLOCATE(temp_pp(nodes_pp))
-  temp_pp = zero
+  ALLOCATE(disp_pp(nodes_pp*ndim))
+  disp_pp = zero
 
-  label   = "*TEMPERATURE"
+  label   = "*DISPLACEMENT"
+  ! We need a label for temperature
 
   CALL scatter_nodes(npes,nn,nels_pp,g_num_pp,nod,ndim,nodes_pp,              &
-                     node_start,node_end,eld_pp,temp_pp,1)
-  CALL write_nodal_variable(label,24,1,nodes_pp,npes,numpe,ndim,temp_pp)
+                     node_start,node_end,eld_pp,disp_pp,1)
+  CALL write_nodal_variable(label,24,1,nodes_pp,npes,numpe,ndim,disp_pp)
 
-  DEALLOCATE(temp_pp)
+  DEALLOCATE(disp_pp)
 
   IF(numpe==1) CLOSE(24)  
 
