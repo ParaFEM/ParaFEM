@@ -233,9 +233,9 @@ PROGRAM p121
     valf = zero
 
     CALL read_fixed(job_name,numpe,node,sense,valf)
-!   CALL find_no(node,rest,sense,no)
-    CALL find_no2(g_g_pp,g_num_pp,node,sense,fixed_freedoms_pp,               &
-                  fixed_freedoms_start,no)
+    CALL find_no(node,rest,sense,no)
+!   CALL find_no2(g_g_pp,g_num_pp,node,sense,fixed_freedoms_pp,               &
+!                  fixed_freedoms_start,no)
     CALL MPI_ALLREDUCE(no,no_global,fixed_freedoms,MPI_INTEGER,MPI_MAX,       &
                        MPI_COMM_WORLD,ier)
     CALL reindex_fixed_nodes(ieq_start,no_global,no_pp_temp,                  &

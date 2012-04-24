@@ -353,148 +353,95 @@ PROGRAM xx11
 ! 14. Preconditioned conjugate gradient iterations
 !------------------------------------------------------------------------------
 
-    iters = 0
+  iters = 0
 
-    iterations  :      DO 
+  iterations  :      DO 
 
-      iters    = iters + 1
-      u_pp     = zero
-      pmul_pp  = zero
-      utemp_pp = zero 
+    iters    = iters + 1
+    u_pp     = zero
+    pmul_pp  = zero
+    utemp_pp = zero 
 
-      CALL gather(p_pp,pmul_pp) 
+    CALL gather(p_pp,pmul_pp) 
 
-      elements_5 : DO iel = 1, nels_pp
-        utemp_pp(:,iel) = MATMUL(storkc_pp(:,:,iel),pmul_pp(:,iel)) 
-      END DO elements_5  
+    elements_5 : DO iel = 1, nels_pp
+      utemp_pp(:,iel) = MATMUL(storkc_pp(:,:,iel),pmul_pp(:,iel)) 
+    END DO elements_5  
 
-      CALL scatter(u_pp,utemp_pp)
+    CALL scatter(u_pp,utemp_pp)
 
-      IF(fixed_freedoms_pp > 0) THEN
-        DO i = 1, fixed_freedoms_pp
-          j       = no_f_pp(i) - ieq_start + 1
-          u_pp(j) = p_pp(j) * store_pp(i)
-        END DO
-      END IF
+    IF(fixed_freedoms_pp > 0) THEN
+      DO i = 1, fixed_freedoms_pp
+        j       = no_f_pp(i) - ieq_start + 1
+        u_pp(j) = p_pp(j) * store_pp(i)
+      END DO
+    END IF
 
-      up      = DOT_PRODUCT_P(r_pp,d_pp)
-      alpha   = up/ DOT_PRODUCT_P(p_pp,u_pp)
-      xnew_pp = x_pp + p_pp* alpha 
-      r_pp    = r_pp - u_pp*alpha
-      d_pp    = diag_precon_pp*r_pp 
-      beta    = DOT_PRODUCT_P(r_pp,d_pp)/up
-      p_pp    = d_pp+p_pp*beta    
+    up      = DOT_PRODUCT_P(r_pp,d_pp)
+    alpha   = up/ DOT_PRODUCT_P(p_pp,u_pp)
+    xnew_pp = x_pp + p_pp* alpha 
+    r_pp    = r_pp - u_pp*alpha
+    d_pp    = diag_precon_pp*r_pp 
+    beta    = DOT_PRODUCT_P(r_pp,d_pp)/up
+    p_pp    = d_pp+p_pp*beta    
 
-      CALL checon_par(xnew_pp,tol,converged,x_pp)    
+    CALL checon_par(xnew_pp,tol,converged,x_pp)    
 
-      IF(converged .OR. iters==limit) EXIT
+    IF(converged .OR. iters==limit) EXIT
 
-    END DO iterations
+  END DO iterations
 
-    timest(13) = elap_time()
+  timest(13) = elap_time()
     
+  IF(nels==1000000)THEN
     IF(numpe==1)THEN
-        WRITE(11,'(A,I5)')"The number of iterations to convergence was  ",iters 
-        WRITE(11,'(A,E12.4)')"The total load is                            ",q
-    END IF
     
-    IF(nels==1000000)THEN
-      IF(numpe==1)THEN
-    
-        WRITE(11,'(A)')   "The  potentials are   :"
-        WRITE(11,'(A)') "   Freedom       Potential"
+      WRITE(11,'(A,I5)')"The number of iterations to convergence was  ",iters 
+      WRITE(11,'(A,E12.4)')"The total load is                            ",q
+      WRITE(11,'(A)')   "The  potentials are   :"
+      WRITE(11,'(A)') "   Freedom       Potential"
   
-        WRITE(11,'(A,E12.4)') "9901     ", xnew_pp(9901)
-        WRITE(11,'(A,E12.4)') "9902     ", xnew_pp(9902)
-        WRITE(11,'(A,E12.4)') "9903     ", xnew_pp(9903)
-        WRITE(11,'(A,E12.4)') "9904     ", xnew_pp(9904)
+      WRITE(11,'(A,E12.4)') "9901     ", xnew_pp(9901)
+      WRITE(11,'(A,E12.4)') "9902     ", xnew_pp(9902)
+      WRITE(11,'(A,E12.4)') "9903     ", xnew_pp(9903)
+      WRITE(11,'(A,E12.4)') "9904     ", xnew_pp(9904)
 
-      END IF
     END IF
-  IF(numpe==1) WRITE(11,*) "This analysis took   ", elap_time( ) - timest(1)
+  END IF
 
   timest(14) = elap_time()
 
 !------------------------------------------------------------------------------
-! 15. Print out results
-!------------------------------------------------------------------------------
-  
-!  IF(numpe==1)THEN
-!    WRITE(11,*)
-!    WRITE(11,'(/A)')"  Node Nodal Temp"
-!    DO k=1,nn
-!       WRITE(11,'(I5,1E12.4)')k,xnew_pp(k)
-!    END DO
-!  END IF
-  
-  CALL calc_nodes_pp(nn,npes,numpe,node_end,node_start,nodes_pp)
-    
-  IF(numpe==1) THEN
-    fname = job_name(1:INDEX(job_name, " ")-1)//".dis"
-    ! We need Temperature file extension
-    OPEN(24, file=fname, status='replace', action='write')
-  END IF
-  
-!------------------------------------------------------------------------------
-! 16a. Temperatures
+! 15. Output nodal temperatures
 !------------------------------------------------------------------------------
 
-  !IF(numpe==1) PRINT *, "xnew_pp:"
-  !IF(numpe==1) PRINT *, xnew_pp
-  !IF(numpe==2) PRINT *, xnew_pp
-  !IF(numpe==3) PRINT *, xnew_pp
-  
+  CALL calc_nodes_pp(nn,npes,numpe,node_end,node_start,nodes_pp)
+
+  IF(numpe==1) THEN
+    fname = job_name(1:INDEX(job_name, " ")-1)//".ttr"
+    OPEN(24, file=fname, status='replace', action='write')
+  END IF
+
   ALLOCATE(eld_pp(ntot,nels_pp))
   eld_pp = zero
   CALL gather(xnew_pp(1:),eld_pp)
   DEALLOCATE(xnew_pp)
 
-  !IF(numpe==1) PRINT *, "eld_pp:"
-  !IF(numpe==1) PRINT *, eld_pp
-  !IF(numpe==2) PRINT *, eld_pp
-  !IF(numpe==3) PRINT *, eld_pp
-
-  ALLOCATE(disp_pp(nodes_pp*ndim))
+  ALLOCATE(disp_pp(nodes_pp))
   disp_pp = zero
 
-  label   = "*DISPLACEMENT"
-  ! We need a label for temperature
+  label = "*TEMPERATURE"
 
-  CALL scatter_nodes(npes,nn,nels_pp,g_num_pp,nod,ndim,nodes_pp,              &
+  CALL scatter_nodes(npes,nn,nels_pp,g_num_pp,nod,nodof,nodes_pp,            &
                      node_start,node_end,eld_pp,disp_pp,1)
-  CALL write_nodal_variable(label,24,1,nodes_pp,npes,numpe,ndim,disp_pp)
+  CALL write_nodal_variable(label,24,1,nodes_pp,npes,numpe,nodof,disp_pp)
 
   DEALLOCATE(disp_pp)
 
-  IF(numpe==1) CLOSE(24)  
+  IF(numpe==1) CLOSE(24)
 
 !------------------------------------------------------------------------------
-! 16e. Von Mises stress (rho_v)
-!      rho_v = sqrt( ( (rho1-rho2)^2 + (rho2-rho3)^2 + (rho1-rho3)^2 ) / 2 )
-!------------------------------------------------------------------------------
-  
-!  label = "*MISES STRESS"
-!  
-!  DO i = 1,nodes_pp
-!    j = ((i-1)*nodof)+1
-!    k = j + 1
-!    l = j + 2
-!    princinodes_pp(j) = SQRT(((princinodes_pp(j)-princinodes_pp(k)) **2 +     &
-!                              (princinodes_pp(k)-princinodes_pp(l)) **2 +     &
-!                              (princinodes_pp(j)-princinodes_pp(l)) **2)      &
-!                              * 0.5_iwp)
-!    princinodes_pp(k:l) = zero
-!  END DO
-!
-!  CALL write_nodal_variable(label,27,1,nodes_pp,npes,numpe,nodof,             &
-!                            princinodes_pp)
-!                            
-!  DEALLOCATE(princinodes_pp)
-!
-!  IF(numpe==1) CLOSE(27)
- 
-!------------------------------------------------------------------------------
-! 17. Output performance data
+! 16. Output performance data
 !------------------------------------------------------------------------------
 
   CALL WRITE_P123(fixed_freedoms,iters,job_name,loaded_freedoms,neq,nn,npes,  &
