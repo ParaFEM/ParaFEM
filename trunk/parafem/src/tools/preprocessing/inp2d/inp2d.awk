@@ -1,9 +1,16 @@
 # @(#) inp2d.awk - Basic conversion of Abaqus Input Deck .inp to ParaFEM input files .d .bnd .lds .dat
 # @(#) Usage:awk -f inp2d.awk <filename.inp>
 # Author: Louise M. Lever (louise.lever@manchester.ac.uk)
-# Version: 1.0.6
+# Version: 1.0.7
+# Date: 2012-04-25
 
 # CHANGES:
+# v1.0.7
+#   LML: Added support for C3D20R elements; includes field counting for element lines
+#   LML: Added element id renumbering - requires command line argument "-renumber" passing to inp2d script
+#        do_elements_renumber() added
+#        do_elements() or do_elements_renumber() called based on MODE set by command line argument
+#   LML: Changed do_node output to use printf to force empty values to 0.0
 # v1.0.6
 #   LML: Added support for nset export to single .nset file
 #   LML: Fixed missing Bound count from .dat export
@@ -18,6 +25,11 @@
 #   LML: Appended partition_mode to 4th line of .dat file; defaults to ParaFEM partitioning mode
 # v1.0.1:
 #   LML: Fixed building of node set arrays (was missing last index)
+
+# TODO:
+#   Use field counting for all element types
+#   Add support for more element types
+#   Add check to *Nodes processing to prevent empty *NODES fields in output
 
 # FUNCTIONS:
 #
@@ -86,8 +98,15 @@ BEGIN {
   # Open model file <name>.d and generate header
   print "*THREE_DIMENSIONAL" > d_file;
 
-  # Auto-increment default material id; ++ on additional *ELEMENTS
+  # Auto-increment replacement element id; ++ on each element line; no reset on additional *ELEMENTS block
+  elem_id = 1;
+  # Auto-increment replacement node id; ++ on each node line; no reset on additional *NODES block
+  node_id = 1;
+  # Auto-increment default material id; ++ on additional *ELEMENTS block
   mat_id = 1;
+
+  # old node to new id mapping LUT
+  # node_id_lut
 
   # some hard-coded ParaFEM values
   tol = 1.0e-06;
@@ -177,13 +196,25 @@ END {
 function start_nodes() {
   print "Processing Nodes";
   print "*NODES" > d_file;
-  mode = "NODE";
+  if( !renumber ) {
+      mode = "NODE";
+  } else {
+      mode = "NODE-RENUMBER";
+  }
 }
 
 function do_nodes() {
   gsub(/^ */,"");
-  print " ", $1, $2, $3, $4 > d_file;
+  printf "%d %g %g %g\n", $1, $2, $3, $4 > d_file;
   node_count++;
+}
+
+function do_nodes_renumber() {
+  gsub(/^ */,"");
+  printf "%d %g %g %g\n", node_id, $2, $3, $4 > d_file;
+  node_id_lut[$1] = node_id;
+  node_count++;
+  node_id++;
 }
 
 function start_elements() {
@@ -228,8 +259,25 @@ function start_elements() {
   }
   dat_order = 2; # abaqus ordering
 
-  mode = "ELEMENT";
+  if( !renumber ) {
+      mode = "ELEMENT";
+  } else {
+      mode = "ELEMENT-RENUMBER";
+  }
 }
+
+# ---------------------------------------------------------------------------------------------------------------------
+# do_elements()
+# do_elements_renumber()
+# ---------------------------------------------------------------------------------------------------------------------
+# For the given Abaqus element type, output 1) the given ID or new ID, 2) the ParaFEM element type code (e.g., 3 20 1),
+# 3) the given node indices and the current material ID.
+#
+# Notes: The ParaFEM element type codes comprise "NDIM NNODES 1" for standard types, and "NDIM NNODES 2" for those
+# ending with R. #LML: expand on this
+#
+# LML: TODO: Needs additional element type support
+# ---------------------------------------------------------------------------------------------------------------------
 
 function do_elements() {
   if( elem_type[2] == "C3D4" ) {
@@ -243,6 +291,73 @@ function do_elements() {
   } else if( elem_type[2] == "C3D8" ) {
     gsub(/^ */,"");
     print " ", $1, "3 8 1", $2, $3, $4, $5, $6, $7, $8, $9, mat_id > d_file;
+    element_count++;
+  } else if( elem_type[2] == "C3D20R" ) {
+    gsub(/^ */,"");
+    node_remain = 20;
+    field_remain = NF - 1; # subtract one for first line (the element id)
+    field = 2
+    printf "%d %s ", $1, "3 20 2" > d_file;
+    while( node_remain ) {
+	if( field_remain ) {
+	    if( $field ) {
+		printf "%d ", $field > d_file;
+		node_remain--;
+	    }
+	    field_remain--;
+	    field++;
+	} else {
+	    getline;
+	    gsub(/^ */,"");
+	    field_remain = NF;
+	    field = 1;
+	}
+    }
+    printf "%d\n", mat_id > d_file;
+    element_count++;
+  } else {
+    print "Element Type", elem_type[2], "Not Supported";
+  }
+}
+
+function do_elements_renumber() {
+  if( elem_type[2] == "C3D4" ) {
+    gsub(/^ */,"");
+    print " ", elem_id, "3 4 1", node_id_lut[$2], node_id_lut[$3], node_id_lut[$4], node_id_lut[$5], mat_id > d_file;
+    element_count++;
+    elem_id++;
+  } else if( elem_type[2] == "C3D8I" ) {
+    gsub(/^ */,"");
+    print " ", elem_id, "3 8 1", node_id_lut[$2], node_id_lut[$3], node_id_lut[$4], node_id_lut[$5], node_id_lut[$6], node_id_lut[$7], node_id_lut[$8], node_id_lut[$9], mat_id > d_file;
+    element_count++;
+    elem_id++;
+  } else if( elem_type[2] == "C3D8" ) {
+    gsub(/^ */,"");
+    print " ", elem_id, "3 8 1", node_id_lut[$2], node_id_lut[$3], node_id_lut[$4], node_id_lut[$5], node_id_lut[$6], node_id_lut[$7], node_id_lut[$8], node_id_lut[$9], mat_id > d_file;
+    element_count++;
+    elem_id++;
+  } else if( elem_type[2] == "C3D20R" ) {
+    gsub(/^ */,"");
+    node_remain = 20;
+    field_remain = NF - 1; # subtract one for first line (the element id)
+    field = 2
+    printf "%d %s ", $1, "3 20 2" > d_file;
+    while( node_remain ) {
+	if( field_remain ) {
+	    if( $field ) {
+		printf "%d ", node_id_lut[$field] > d_file;
+		node_remain--;
+	    }
+	    field_remain--;
+	    field++;
+	} else {
+	    getline;
+	    gsub(/^ */,"");
+	    field_remain = NF;
+	    field = 1;
+	}
+    }
+    printf "%d\n", mat_id > d_file;
     element_count++;
   } else {
     print "Element Type", elem_type[2], "Not Supported";
@@ -512,7 +627,9 @@ mode != "KEYWORD" && /^*[A-Z]/ { mode = "KEYWORD"; }
 
 # process non-keyword lines based on mode
 mode == "NODE" { do_nodes(); }
+mode == "NODE-RENUMBER" { do_nodes_renumber(); }
 mode == "ELEMENT" { do_elements(); }
+mode == "ELEMENT-RENUMBER" { do_elements_renumber(); }
 mode == "NSET" { do_nset(); }
 mode == "NSET-GEN" { do_nset_gen(); }
 mode == "BOUNDARY" { do_bc(); }
