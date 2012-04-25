@@ -1,13 +1,19 @@
 # @(#) pf2ensi.var.awk - Basic conversion of ParaFEM data file to EnSight Variable file
-# @(#) Usage:awk -f pf2ensi.var.awk <filename>.{bnd,dis,fix,lds,nset,pri,rea,str,vms}
+# @(#) Usage:awk -f pf2ensi.var.awk <filename>.{bnd,dis,fix,lds,nset,pri,rea,str,vms,ttr,flx}
 # Author: Louise M. Lever (louise.lever@manchester.ac.uk)
+# Version: 1.0.1
+# Date: 2012-04-25
+
+# CHANGES:
+# v1.0.1
+#   LML: Added support for .ttr and .flx (temperature-scalar, and flux-vector) files
 
 BEGIN {
     RS = "\r\n|\n";
     OFS = " ";
     
     # default parsing mode - mode determied by file-type and/or header
-    var_type = "NONE"; # NONE, NDBND, DISPL, NDFIX, NDLDS, NDSET, (PRIMAX, PRISC, PRIMI), NDREA, STRESS, NDVMS
+    var_type = "NONE"; # NONE, NDBND, DISPL, NDFIX, NDLDS, NDSET, (PRIMAX, PRISC, PRIMI), NDREA, STRESS, NDVMS, NDTTR, NDFLX
     mode = "NONE"; # NONE, NODE, ELEMENT
     time_mode = "NONE"; # NONE, STEPS
     dtype = "NONE"; # NONE, SCALAR, MULTISCALAR, BND-SCALAR, VECTOR, TENSOR
@@ -63,12 +69,24 @@ BEGIN {
 	time_mode = "STEPS";
 	dtype = "SCALAR";
 	dset = "FULL";
+    } else if( (file_ext_pos = match(vec_file,/.[tT][tT][rR]$/) - 1) != -1 ) {
+	var_type = "NDTTR";
+	mode = "NODE";
+	time_mode = "STEPS";
+	dtype = "SCALAR";
+	dset = "FULL";
     } else if( (file_ext_pos = match(vec_file,/.[fF][iI][xX]$/) - 1) != -1 ) {
 	var_type = "NDFIX";
 	mode = "NODE";
 	dtype = "VECTOR";
 	dset = "PARTIAL";
 	dopt = "FIX";
+    } else if( (file_ext_pos = match(vec_file,/.[fF][lL][xX]$/) - 1) != -1 ) {
+	var_type = "NDFLX";
+	mode = "NODE";
+	time_mode = "STEPS";
+	dtype = "VECTOR";
+	dset = "FULL";
     } else if( (file_ext_pos = match(vec_file,/.[nN][sS][eE][tT]$/) - 1) != -1 ) {
 	var_type = "NDSET";
 	mode = "NODE";
@@ -374,6 +392,28 @@ function start_vms() {
     getline; # LML: skip time step in file - assume increments by 1 each step
 }
 
+# ---- TTR ----------------------------------------------------------------------------
+
+function start_ttr() {
+    print "Processing TEMPERATURE scalar data" > "/dev/stderr";
+    if( time_step > 0 ) {
+	end_scalar();
+    }
+    start_scalar();
+    getline; # LML: skip time step in file - assume increments by 1 each step
+}
+
+# ---- FLX ----------------------------------------------------------------------------
+
+function start_flx() {
+    print "Processing FLUX vector data" > "/dev/stderr";
+    if( time_step > 0 ) {
+	end_vector();
+    }
+    start_vector();
+    getline; # LML: skip time step in file - assume increments by 1 each step
+}
+
 # --------------------------------------------------------------------------------
 # Data type specific functions:
 # --------------------------------------------------------------------------------
@@ -638,6 +678,8 @@ function report_unknown_type() {
 /^*PRINCIPAL STRESS/ { start_pri(); next; }
 /^*MISES STRESS/ { start_vms(); next; }
 /^*STRESS/ { start_str(); next; }
+/^*TEMPERATURE/ { start_ttr(); next; }
+/^*FLUX/ { start_flx(); next; }
 /^*NSET/ { start_nset(); next; }
 # no keywords for BND, FIX and LDS - are manually "started" in BEGIN
 
