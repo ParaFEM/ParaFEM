@@ -38,6 +38,8 @@ LDS_FILENAME="$BASE_FILENAME.lds"
 VMS_FILENAME="$BASE_FILENAME.vms"
 STR_FILENAME="$BASE_FILENAME.str"
 FIX_FILENAME="$BASE_FILENAME.fix"
+TTR_FILENAME="$BASE_FILENAME.ttr"
+FLX_FILENAME="$BASE_FILENAME.flx"
 NSET_FILENAME="$BASE_FILENAME.nset"
 
 # output Ensight filenames
@@ -55,6 +57,8 @@ DO_PRI=1
 DO_REA=1
 DO_VMS=1
 DO_STR=1
+DO_TTR=1
+DO_FLX=1
 
 DO_BND=1 # enable only if fixed ParaView has been installed/compiled
 DO_LDS=1 # "
@@ -175,6 +179,30 @@ if [ -f $VMS_FILENAME ] && [ $DO_VMS == 1 ]; then
 	echo "ERROR: The $VMS_FILENAME file does not have a matching number of time steps"
     else
 	echo -e "scalar per node:\t1\tMises_Stress\t""$BASE_FILENAME"".ensi.NDVMS-******" >> $ENSI_CASE_FILENAME
+    fi
+fi
+
+if [ -f $TTR_FILENAME ] && [ $DO_TTR == 1 ]; then
+    TTR2ENSI=`awk -f $BINLOC/pf2ensi.var.awk $TTR_FILENAME`
+    if [ $NUM_TIME_STEPS -lt 0 ]; then
+	NUM_TIME_STEPS=$TTR2ENSI
+    fi
+    if [ $TTR2ENSI -ne $NUM_TIME_STEPS ]; then
+	echo "ERROR: The $TTR_FILENAME file does not have a matching number of time steps"
+    else
+	echo -e "scalar per node:\t1\tTemperature\t""$BASE_FILENAME"".ensi.NDTTR-******" >> $ENSI_CASE_FILENAME
+    fi
+fi
+
+if [ -f $FLX_FILENAME ] && [ $DO_FLX == 1 ]; then
+    FLX2ENSI=`awk -f $BINLOC/pf2ensi.var.awk $FLX_FILENAME`
+    if [ $NUM_TIME_STEPS -lt 0 ]; then
+	NUM_TIME_STEPS=$FLX2ENSI
+    fi
+    if [ $FLX2ENSI -ne $NUM_TIME_STEPS ]; then
+	echo "ERROR: The $FLX_FILENAME file does not have a matching number of time steps"
+    else
+	echo -e "vector per node:\t1\tFlux\t""$BASE_FILENAME"".ensi.NDFLX-******" >> $ENSI_CASE_FILENAME
     fi
 fi
 
