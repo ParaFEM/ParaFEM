@@ -3,7 +3,7 @@
   
   KUBCgen is a very simple program that outputs various *.fix, *.bnd, and *.dat files for the purposes of determining bulk properties of cubes of material using FEA.
   
-  The program is designed to be run on output from simpleware includes 6 nsets, and has been run through inp2d.  
+  The program is designed to be run on output from simpleware includes 6 nsets, and has been run through inp2pf.  
   
     Usage: KUBCgen <jobname>
     
