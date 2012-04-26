@@ -1,17 +1,17 @@
 
-  PROGRAM: inp2d, inp2d.awk
+  PROGRAM: inp2pf, inp2pf.awk
 
-  inp2d and inp2d.awk are a simple SHELL script and AWK script that converts simple
+  inp2pf and inp2pf.awk are a simple SHELL script and AWK script that converts simple
   Abaqus Input Decks into the required ParaFEM files ready for job submission. The
   simple shell script can be used, or the AWK script can be called via AWK itself.
 
-    Usage: inp2d <filename.inp>
+    Usage: inp2pf <filename.inp>
   
-           e.g., inp2d cylinder.inp
+           e.g., inp2pf cylinder.inp
  
-    Alternative usage: awk -f inp2d.awk <filename.inp>
+    Alternative usage: awk -f inp2pf.awk <filename.inp>
   
-           e.g., awk -f inp2d.awk cylinder.inp
+           e.g., awk -f inp2pf.awk cylinder.inp
 
  NOTES 
 

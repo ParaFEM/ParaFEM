@@ -1,4 +1,4 @@
-# MAKEFILE src/tools/preprocessing/inp2d/makefile
+# MAKEFILE src/tools/preprocessing/inp2pf/makefile
 # Author: Louise M. Lever
 # -----------------------------------------------------------------------
 # Options:
@@ -13,11 +13,11 @@ all:	install
 
 install:
 	@echo
-	@echo "Installing TOOL RELEASE (INP2D)"
-	cp inp2d.awk ../../../../bin
-	cp inp2d ../../../../bin
-	chmod +x ../../../../bin/inp2d
-	@echo "Done TOOL RELEASE (INP2D)"
+	@echo "Installing TOOL RELEASE (INP2PF)"
+	cp inp2pf.awk ../../../../bin
+	cp inp2pf ../../../../bin
+	chmod +x ../../../../bin/inp2pf
+	@echo "Done TOOL RELEASE (INP2PF)"
 
 release:
 	@echo
@@ -32,5 +32,5 @@ clean:
 	@echo "Nothing to do for this tool"
 
 execlean:
-	@rm -rf ../../../../bin/inp2d.awk
-	@rm -rf ../../../../bin/inp2d
+	@rm -rf ../../../../bin/inp2pf.awk
+	@rm -rf ../../../../bin/inp2pf
