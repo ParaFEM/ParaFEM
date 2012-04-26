@@ -1,6 +1,6 @@
 #!/bin/bash
 
-BINLOC=`echo $0 | sed -e 's_inp2d$__g' -`
+BINLOC=`echo $0 | sed -e 's_inp2pf$__g' -`
 
 # --------------------------------------------------------------------------------
 # Process command line arguments
@@ -12,7 +12,7 @@ while [ $# -gt 0 ]; do
 	-usage) showusage; exit;;
 	-help) showusage; exit;;
 
-	-renumber) INP2D_ARGS="-v renumber=1";;
+	-renumber) INP2PF_ARGS="-v renumber=1";;
 
 	-*) unknown-arg; showusage; exit;;
 	*) INP_FILENAME=$1
@@ -21,11 +21,11 @@ while [ $# -gt 0 ]; do
 done
 
 echo "Converting $1 to ParaFEM Format"
-awk -f $BINLOC/inp2d.awk $INP2D_ARGS $INP_FILENAME
+awk -f $BINLOC/inp2pf.awk $INP2PF_ARGS $INP_FILENAME
 
 showusage() {
     echo "To capture a log file, please run the script as:"
-    echo "  ./inp2d <ARGS> 2>&1 | tee log"
+    echo "  ./inp2pf <ARGS> 2>&1 | tee log"
     echo
     echo "Modifying conversion options:"
     echo "  -renumber will renumber both node IDs and element IDs as ParaFEM requires contiguous IDs starting at 1"

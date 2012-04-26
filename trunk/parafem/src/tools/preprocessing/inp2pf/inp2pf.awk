@@ -1,13 +1,17 @@
-# @(#) inp2d.awk - Basic conversion of Abaqus Input Deck .inp to ParaFEM input files .d .bnd .lds .dat
-# @(#) Usage:awk -f inp2d.awk <filename.inp>
+# @(#) inp2pf.awk - Basic conversion of Abaqus Input Deck .inp to ParaFEM input files .d .bnd .lds .dat
+# @(#) Usage:awk -f inp2pf.awk <filename.inp>
 # Author: Louise M. Lever (louise.lever@manchester.ac.uk)
-# Version: 1.0.7
-# Date: 2012-04-25
+# Version: 1.1.0
+# Date: 2012-04-26
 
 # CHANGES:
+# v1.1.0
+#   LML: Renamed as inp2pf for consistency
+#   LML: Added support for DC3D8 elements; requires further support for thermal problems
+#   LML: Redirected all log messages to /dev/stderr
 # v1.0.7
 #   LML: Added support for C3D20R elements; includes field counting for element lines
-#   LML: Added element id renumbering - requires command line argument "-renumber" passing to inp2d script
+#   LML: Added element id renumbering - requires command line argument "-renumber" passing to inp2pf script
 #        do_elements_renumber() added
 #        do_elements() or do_elements_renumber() called based on MODE set by command line argument
 #   LML: Changed do_node output to use printf to force empty values to 0.0
@@ -87,13 +91,13 @@ BEGIN {
   dat_file = base_filename ".dat";
 
   # report filenames
-  print "Abaqus Input Deck:", abq_file;
-  print "Output model file:", d_file;
-  print "Output bnd file:", bnd_file;
-  print "Output lds file:", lds_file;
-  print "Output fix file:", fix_file;
-  print "Output nset file:", nset_file;
-  print "Output dat file:", dat_file;
+  print "Abaqus Input Deck:", abq_file > "/dev/stderr";
+  print "Output model file:", d_file > "/dev/stderr";
+  print "Output bnd file:", bnd_file > "/dev/stderr";
+  print "Output lds file:", lds_file > "/dev/stderr";
+  print "Output fix file:", fix_file > "/dev/stderr";
+  print "Output nset file:", nset_file > "/dev/stderr";
+  print "Output dat file:", dat_file > "/dev/stderr";
 
   # Open model file <name>.d and generate header
   print "*THREE_DIMENSIONAL" > d_file;
@@ -132,14 +136,14 @@ BEGIN {
 
 END {
     # report dat file values
-    print "Type:", dat_elem_type;
-    print "Order:", dat_order;
-    print "partition_mode: " partition_mode;
-    print "element_count: " element_count, "node_count: " node_count, "bound_count: " bound_count, "nip: " nip, "nod: " nod, "loaded_count: " loaded_count, "fixed_freedoms: " fixed_count;
-    print "youngs_mod: " youngs_mod, "poisson_ratio: " poisson_ratio, "tol: " tol, "limit: " limit; 
+    print "Type:", dat_elem_type > "/dev/stderr";
+    print "Order:", dat_order > "/dev/stderr";
+    print "partition_mode: " partition_mode > "/dev/stderr";
+    print "element_count: " element_count, "node_count: " node_count, "bound_count: " bound_count, "nip: " nip, "nod: " nod, "loaded_count: " loaded_count, "fixed_freedoms: " fixed_count > "/dev/stderr";
+    print "youngs_mod: " youngs_mod, "poisson_ratio: " poisson_ratio, "tol: " tol, "limit: " limit > "/dev/stderr"; 
     
     # output dat file based on fixed and calculated values
-    print "Generating .dat file";
+    print "Generating .dat file" > "/dev/stderr";
     print dat_elem_type > dat_file;
     print dat_order > dat_file;
     print partition_mode > dat_file;
@@ -147,12 +151,12 @@ END {
     printf "%e %e %e %d\n", youngs_mod, poisson_ratio, tol, limit > dat_file;
     
     # export NSET files
-    print node_set_count, "NSETS defined:";
+    print node_set_count, "NSETS defined:" > "/dev/stderr";
     if( node_set_count == 6 ) {
-	print "Assuming nset problem type of 'kubc' as there are SIX nsets defined";
+	print "Assuming nset problem type of 'kubc' as there are SIX nsets defined" > "/dev/stderr";
 	print "'kubc'" > nset_file;
     } else {
-	print "Assuming nset problem type of 'none'";
+	print "Assuming nset problem type of 'none'" > "/dev/stderr";
 	print "'none'" > nset_file;
     }
     print node_set_count > nset_file;
@@ -162,14 +166,13 @@ END {
 	nsnn = 0; # reset node count for this set
 	for( name in node_sets ) {
 	    if( node_sets[name] == ns ) {
-		print "Exporting NSET: ", ns, name;
+		print "Exporting NSET: ", ns, name > "/dev/stderr";
 		ns_id = ns;
 		ns_name = name;
 	    }
 	}
 	# export node indices for this nset
 	for( nd in node_list ) {
-	    # print ">> " nd "/" ns " " node_list[nd], match(node_list[nd],":" ns ":")?" MATCH":" -";
 	    if( match(node_list[nd],":" ns ":" ) ) {
 		print nd | "sort -n >> " tmp_nset_file;
 		nsnn++;
@@ -180,7 +183,7 @@ END {
 	system("cat " tmp_nset_file " >> " nset_file);
 	system("rm -f " tmp_nset_file);
     }
-    print "Complete."
+    print "Complete." > "/dev/stderr";
 }
 
 # Functions
@@ -194,7 +197,7 @@ END {
 # Enter NODE mode to trigger do_nodes() until new keyword found
 
 function start_nodes() {
-  print "Processing Nodes";
+  print "Processing Nodes" > "/dev/stderr";
   print "*NODES" > d_file;
   if( !renumber ) {
       mode = "NODE";
@@ -218,7 +221,7 @@ function do_nodes_renumber() {
 }
 
 function start_elements() {
-  print "Processing Elements";
+  print "Processing Elements" > "/dev/stderr";
     
   # Only want to output *ELEMENTS once in D FILE
   if( started_elements_output == 0 ) {
@@ -231,7 +234,7 @@ function start_elements() {
     mat_id++;	
   }
   split( $2,elem_type,"=" );
-  print "Element Type", elem_type[2];
+  print "Processing Element Type", elem_type[2] > "/dev/stderr";
   if( elem_type[2] == "C3D4" ) {
     dat_elem_type = "'tetrahedron'";
     nip = 1; nod = 4;
@@ -256,6 +259,9 @@ function start_elements() {
   } else if( elem_type[2] == "C3D20R") {
     dat_elem_type = "'hexahedron'";
     nip = 8; nod = 20;
+  } else if( elem_type[2] == "DC3D8") {
+    dat_elem_type = "'hexahedron'";
+    nip = 8; nod = 8;
   }
   dat_order = 2; # abaqus ordering
 
@@ -292,6 +298,10 @@ function do_elements() {
     gsub(/^ */,"");
     print " ", $1, "3 8 1", $2, $3, $4, $5, $6, $7, $8, $9, mat_id > d_file;
     element_count++;
+  } else if( elem_type[2] == "DC3D8" ) {
+    gsub(/^ */,"");
+    print " ", $1, "3 8 1", $2, $3, $4, $5, $6, $7, $8, $9, mat_id > d_file;
+    element_count++;
   } else if( elem_type[2] == "C3D20R" ) {
     gsub(/^ */,"");
     node_remain = 20;
@@ -316,7 +326,7 @@ function do_elements() {
     printf "%d\n", mat_id > d_file;
     element_count++;
   } else {
-    print "Element Type", elem_type[2], "Not Supported";
+    print "Element Type", elem_type[2], "Not Supported" > "/dev/stderr";
   }
 }
 
@@ -360,7 +370,7 @@ function do_elements_renumber() {
     printf "%d\n", mat_id > d_file;
     element_count++;
   } else {
-    print "Element Type", elem_type[2], "Not Supported";
+    print "Element Type", elem_type[2], "Not Supported" > "/dev/stderr";
   }
 }
 
@@ -368,7 +378,7 @@ function start_nset() {
   split($2,nset_name,"=");
   node_set_id = node_set_count++;
   node_sets[nset_name[2]] = node_set_id; 
-  print "Processing Nset", nset_name[2], node_sets[nset_name[2]], node_set_id;
+  print "Processing Nset", nset_name[2], node_sets[nset_name[2]], node_set_id > "/dev/stderr";
   mode = "NSET";
   for( of=3; of<=NF; of++ ) {
     if( $of == "generate" ) mode="NSET-GEN";
@@ -391,7 +401,7 @@ function do_nset() {
 
 function do_nset_gen() {
   gsub(/^ */,"");
-  print "Generating NSET " node_set_id "[" $1 "," $2 "];" $3;
+  print "Generating NSET " node_set_id "[" $1 "," $2 "];" $3 > "/dev/stderr";
   for( ind=$1; ind<=$2; ind+=$3 ) {
     if( ind ) {
       if(ind in node_list) {
@@ -405,9 +415,9 @@ function do_nset_gen() {
 
 function start_bc() {
   if( step_count == 0 ) {
-    print "Processing BC for Step 'Initial'";
+    print "Processing BC for Step 'Initial'" > "/dev/stderr";
   } else {
-    print "Processing BC for Step " step_count;
+    print "Processing BC for Step " step_count > "/dev/stderr";
   }
   mode = "BOUNDARY";
 }
@@ -425,16 +435,15 @@ function do_bc() {
       if(($2 <= 2) && ($3 >= 2)) mask = mask "Y";
       if($3 == 3) mask = mask "Z";
     }
-    print "Restraining " mask " in " $1 ":" bc_nset_id " node set";
+    print "Restraining " mask " in " $1 ":" bc_nset_id " node set" > "/dev/stderr";
     for( nd in node_list ) { # append mask to bound_list
-      # print ">> " nd "/" bc_nset_id " " node_list[nd], match(node_list[nd],":" bc_nset_id ":")?" MATCH":" -";
       if( match(node_list[nd],":" bc_nset_id ":" ) ) {
         bound_list[nd] = bound_list[nd] mask;
       }
     }
   } else { # Fixed Displacement -steps
     if($2 == 1) {
-      print "Fixing X in " $1 " node set";
+      print "Fixing X in " $1 " node set" > "/dev/stderr";
       for( nd in node_list ) {
         if( match(node_list[nd],":" bc_nset_id ":") ) {
           fix_i_list[nd] = $4;
@@ -442,7 +451,7 @@ function do_bc() {
       }
     }
     if(($2 <= 2) && ($3 >= 2)) {
-      print "Loading Y in " $1 " node set";
+      print "Loading Y in " $1 " node set" > "/dev/stderr";
       for( nd in node_list ) {
         if( match(node_list[nd],":" bc_nset_id ":") ) {
           fix_j_list[nd] = $4;
@@ -450,7 +459,7 @@ function do_bc() {
       }
     }
     if($3 == 3) {
-      print "Fixing Z in " $1 " node set";
+      print "Fixing Z in " $1 " node set" > "/dev/stderr";
       for( nd in node_list ) {
         if( match(node_list[nd],":" bc_nset_id ":") ) {
           fix_k_list[nd] = $4;
@@ -533,7 +542,7 @@ function start_material() {
 }
 
 function start_elastic() {
-  print "Processing ELASTIC properties for material " mat_name[2] ;
+  print "Processing ELASTIC properties for material " mat_name[2] > "/dev/stderr";
   mode = "ELASTIC";
 }
 
@@ -547,9 +556,9 @@ function do_elastic() {
 
 function start_cload() {
   if( step_count == 0 ) {
-    print "Processing CLOAD for Step 'Initial'";
+    print "Processing CLOAD for Step 'Initial'" > "/dev/stderr";
   } else {
-    print "Processing CLOAD for Step " step_count;
+    print "Processing CLOAD for Step " step_count > "/dev/stderr";
   }
   mode = "CLOAD";
 }
@@ -562,7 +571,7 @@ function do_cload() {
     if($2 == 1) mask = "X";
     if($2 == 2) mask = "Y";
     if($2 == 3) mask = "Z";
-    print "Concetrated Force " mask " in " $1 " node set";
+    print "Concetrated Force " mask " in " $1 " node set" > "/dev/stderr";
     for( nd in node_list ) { # append mask to bound_list
       if( match(node_list[nd],":" cload_nset_id ":") ) {
         bound_list[nd] = bound_list[nd] mask;
@@ -571,7 +580,7 @@ function do_cload() {
   } else { # load-steps; load IJK?
     print "STEP " step_count;
     if($2 == 1) {
-      print "Concentrated Force X in " $1 " node set";
+      print "Concentrated Force X in " $1 " node set" > "/dev/stderr";
       for( nd in node_list ) {
         if( match(node_list[nd],":" cload_nset_id ":") ) {
           load_i_list[nd] = -$3;
@@ -579,7 +588,7 @@ function do_cload() {
       }
     }
     if($2 == 2) {
-      print "Concentrated Force Y in " $1 " node set";
+      print "Concentrated Force Y in " $1 " node set" > "/dev/stderr";
       for( nd in node_list ) {
         if( match(node_list[nd],":" cload_nset_id ":") ) {
           load_j_list[nd] = -$3;
@@ -587,7 +596,7 @@ function do_cload() {
       }
     }
     if($2 == 3) {
-      print "Concentrated Force Z in " $1 " node set";
+      print "Concentrated Force Z in " $1 " node set" > "/dev/stderr";
       for( nd in node_list ) {
         if( match(node_list[nd],":" cload_nset_id ":") ) {
           load_k_list[nd] = $3;
@@ -620,7 +629,7 @@ function do_cload() {
 /^*(Cload|CLOAD)/ { start_cload(); next; }
 
 # bounce unhandled keywords
-mode == "KEYWORD" && /^*[A-Z]/ { print NF, $0; }
+mode == "KEYWORD" && /^*[A-Z]/ { printf "** Line Ignored (%d fields): %s\n", NF, $0 > "/dev/stderr"; }
 
 # revert to KEYWORD mode if unhandled keyword found
 mode != "KEYWORD" && /^*[A-Z]/ { mode = "KEYWORD"; }
