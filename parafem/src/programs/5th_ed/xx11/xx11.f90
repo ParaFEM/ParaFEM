@@ -40,17 +40,17 @@ PROGRAM xx11
 ! 2. Declare dynamic arrays
 !------------------------------------------------------------------------------
 
-  REAL(iwp),ALLOCATABLE :: points(:,:),kc(:,:),coord(:,:), weights(:),disp_pp(:)
+  REAL(iwp),ALLOCATABLE :: points(:,:),kc(:,:),coord(:,:), weights(:)
   REAL(iwp),ALLOCATABLE :: p_g_co_pp(:,:,:), jac(:,:), der(:,:), deriv(:,:)
   REAL(iwp),ALLOCATABLE :: col(:,:),row(:,:),kcx(:,:),kcy(:,:),kcz(:,:)
   REAL(iwp),ALLOCATABLE :: diag_precon_pp(:),p_pp(:),r_pp(:),x_pp(:)
   REAL(iwp),ALLOCATABLE :: xnew_pp(:),u_pp(:),pmul_pp(:,:),utemp_pp(:,:)
-  REAL(iwp),ALLOCATABLE :: d_pp(:),diag_precon_tmp(:,:),eld_pp(:,:),val(:,:),val_f(:)
+  REAL(iwp),ALLOCATABLE :: d_pp(:),diag_precon_tmp(:,:),val(:,:),val_f(:)
   REAL(iwp),ALLOCATABLE :: store_pp(:),storkc_pp(:,:,:),eld(:),timest(:)
-  REAL(iwp),ALLOCATABLE :: g_coord_pp(:,:,:),g_coord_store(:,:)
+  REAL(iwp),ALLOCATABLE :: g_coord_pp(:,:,:),disp_pp(:),eld_pp(:,:)
   REAL(iwp),ALLOCATABLE :: flux_pp(:,:),storeflux_pp(:),kay(:,:)
   INTEGER, ALLOCATABLE  :: rest(:,:),g(:),num(:),g_num_pp(:,:),g_g_pp(:,:),no(:)
-  INTEGER, ALLOCATABLE  :: no_f(:),no_local_temp(:),no_local_temp_f(:),g_num_store(:)
+  INTEGER, ALLOCATABLE  :: no_f(:),no_local_temp(:),no_local_temp_f(:)
   INTEGER, ALLOCATABLE  :: no_local(:),no_pp(:),no_f_pp(:),no_pp_temp(:),no_global(:)
   INTEGER, ALLOCATABLE  :: sense(:),node(:)
  
@@ -310,7 +310,7 @@ PROGRAM xx11
 
   END IF
 
-  DEALLOCATE(g_g_pp)
+  !DEALLOCATE(g_g_pp)
 
   timest(12) = elap_time()
 
@@ -430,7 +430,6 @@ PROGRAM xx11
   ALLOCATE(eld_pp(ntot,nels_pp))
   eld_pp = zero
   CALL gather(xnew_pp(1:),eld_pp)
-  DEALLOCATE(xnew_pp)
 
   ALLOCATE(disp_pp(nodes_pp))
   disp_pp = zero
@@ -440,6 +439,8 @@ PROGRAM xx11
   CALL scatter_nodes(npes,nn,nels_pp,g_num_pp,nod,nodof,nodes_pp,            &
                      node_start,node_end,eld_pp,disp_pp,1)
   CALL write_nodal_variable(label,24,1,nodes_pp,npes,numpe,nodof,disp_pp)
+  
+  DEALLOCATE(disp_pp)
 
   IF(numpe==1) CLOSE(24)
   
@@ -450,54 +451,32 @@ PROGRAM xx11
   ALLOCATE(flux_pp(0:nels*nip,ndim))
   ALLOCATE(storeflux_pp(ndim))
   ALLOCATE(kay(ndim,ndim))
-  ALLOCATE(g_coord_store(nod,ndim))
-  ALLOCATE(g_num_store(nod))
 
   flux_pp           = zero
   storeflux_pp      = zero
-  g_coord_store     = zero
-  g_num_store       = zero
   j                 = 1
-   
+  
   DO iel=1,nels_pp
    
     kay=zero
     kay(1,1)=kx
     kay(2,2)=ky
     kay(3,3)=kz
-    
-    g_coord_store(1,:)=g_coord_pp(1,:,iel)
-    g_coord_store(2,:)=g_coord_pp(4,:,iel)
-    g_coord_store(3,:)=g_coord_pp(8,:,iel)
-    g_coord_store(4,:)=g_coord_pp(5,:,iel)
-    g_coord_store(5,:)=g_coord_pp(2,:,iel)
-    g_coord_store(6,:)=g_coord_pp(3,:,iel)
-    g_coord_store(7,:)=g_coord_pp(7,:,iel)
-    g_coord_store(8,:)=g_coord_pp(6,:,iel)
-    
-    g_num_store(1)=g_num_pp(1,iel)
-    g_num_store(2)=g_num_pp(4,iel)
-    g_num_store(3)=g_num_pp(8,iel)
-    g_num_store(4)=g_num_pp(5,iel)
-    g_num_store(5)=g_num_pp(2,iel)
-    g_num_store(6)=g_num_pp(3,iel)
-    g_num_store(7)=g_num_pp(7,iel)
-    g_num_store(8)=g_num_pp(6,iel)
  
-    DO i=1,nip
+    DO i = 1, nip
       CALL shape_der(der,points,i)
-      jac   = MATMUL(der,g_coord_store(:,:))
+      jac   = MATMUL(der,g_coord_pp(:,:,iel))
       det   = DETERMINANT(jac)
       CALL invert(jac)
       deriv = MATMUL(jac,der)
 
-      storeflux_pp = -MATMUL(kay,MATMUL(deriv,disp_pp(g_num_store)))
+      storeflux_pp = -MATMUL(kay,MATMUL(deriv,xnew_pp(g_g_pp(:,iel))))
   
-      DO k = 1,ndim
+      DO k = 1, ndim
         flux_pp(j,k) = storeflux_pp(k)
       END DO
     
-      j=j+1
+      j = j + 1
     END DO !gauss
   END DO !elements
   
@@ -507,20 +486,19 @@ PROGRAM xx11
   IF(numpe==1) THEN
     WRITE(26,'(/A)')"  IP   Flux_x      Flux_y      Flux_z"
     DO k=1,nels_pp
-      WRITE(26,'(I5,3E12.4)')k,flux_pp(8*k-0,1),flux_pp(8*k-0,2),flux_pp(8*k-0,3)
-      WRITE(26,'(I5,3E12.4)')k,flux_pp(8*k-2,1),flux_pp(8*k-2,2),flux_pp(8*k-2,3)
-      WRITE(26,'(I5,3E12.4)')k,flux_pp(8*k-4,1),flux_pp(8*k-4,2),flux_pp(8*k-4,3)
-      WRITE(26,'(I5,3E12.4)')k,flux_pp(8*k-5,1),flux_pp(8*k-5,2),flux_pp(8*k-5,3)
-      WRITE(26,'(I5,3E12.4)')k,flux_pp(8*k-1,1),flux_pp(8*k-1,2),flux_pp(8*k-1,3)
-      WRITE(26,'(I5,3E12.4)')k,flux_pp(8*k-3,1),flux_pp(8*k-3,2),flux_pp(8*k-3,3)
-      WRITE(26,'(I5,3E12.4)')k,flux_pp(8*k-6,1),flux_pp(8*k-6,2),flux_pp(8*k-6,3)
-      WRITE(26,'(I5,3E12.4)')k,flux_pp(8*k-7,1),flux_pp(8*k-7,2),flux_pp(8*k-7,3)
+      WRITE(26,'(I5,3E16.8)')k,flux_pp(8*k-0,1),flux_pp(8*k-0,2),flux_pp(8*k-0,3)
+      WRITE(26,'(I5,3E16.8)')k,flux_pp(8*k-4,1),flux_pp(8*k-4,2),flux_pp(8*k-4,3)
+      WRITE(26,'(I5,3E16.8)')k,flux_pp(8*k-1,1),flux_pp(8*k-1,2),flux_pp(8*k-1,3)
+      WRITE(26,'(I5,3E16.8)')k,flux_pp(8*k-6,1),flux_pp(8*k-6,2),flux_pp(8*k-6,3)
+      WRITE(26,'(I5,3E16.8)')k,flux_pp(8*k-2,1),flux_pp(8*k-2,2),flux_pp(8*k-2,3)
+      WRITE(26,'(I5,3E16.8)')k,flux_pp(8*k-5,1),flux_pp(8*k-5,2),flux_pp(8*k-5,3)
+      WRITE(26,'(I5,3E16.8)')k,flux_pp(8*k-3,1),flux_pp(8*k-3,2),flux_pp(8*k-3,3)
+      WRITE(26,'(I5,3E16.8)')k,flux_pp(8*k-7,1),flux_pp(8*k-7,2),flux_pp(8*k-7,3)
     END DO
   END IF
   !------------------------------------------------------------------!
 
-  DEALLOCATE(flux_pp,storeflux_pp,g_coord_store,g_num_store)
-  DEALLOCATE(disp_pp)
+  DEALLOCATE(flux_pp,storeflux_pp,kay,g_g_pp,xnew_pp)
 
   IF(numpe==1) CLOSE(25)
   IF(numpe==1) CLOSE(26)
