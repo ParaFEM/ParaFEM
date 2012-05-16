@@ -23,8 +23,9 @@ kx ky kz tol limit
 ||{{{nod}}} || Integer || Number of nodes per element.||
 ||{{{loaded_nodes}}} || Integer || Number of nodes with externally applied loads.||
 ||{{{fixed_freedoms}}} || Integer || Number of freedoms with fixed displacements.||
-||{{{e}}} || Real || Young's modulus.||
-||{{{v}}} || Real || Poisson's ratio.||
+||{{{kx}}} || Real || Thermal conductivity in x-direction.||
+||{{{ky}}} || Real || Thermal conductivity in y-direction.||
+||{{{ky}}} || Real || Thermal conductivity in z-direction.||
 ||{{{tol}}} || Real || Convergence tolerance for PCG.||
 ||{{{limit}}} || Integer || Iteration ceiling for PCG.||
 ||{{{partitioner}}} || Integer || Partitioning strategy. Permitted values are {{{1}}} (Smith and Griffiths partitioning) or {{{2}}} (use external partitioner).||
@@ -35,8 +36,8 @@ A real example follows:
 hexahedron
 2
 1
-2560 12465 225 8 20 17 0
-100000. .3 1.e-5 5000
+64 125 0 8 8 25 25
+1.0000E+02 1.0000E+02 1.0000E+02 0.1000E-04 500
 }}}
 
-Compare with source code for SUBROUTINE READ_P121 in src/input.f90 
+Compare with source code for SUBROUTINE READ_P123 in src/input.f90 
