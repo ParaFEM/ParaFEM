@@ -1,9 +1,9 @@
-#summary xx11 control file data format.
+#summary xx12 control file data format.
 #sidebar TOC
 
-==xx11.dat==
+==xx12.dat==
 
-A typical xx11.dat file has the following format:
+A typical xx12.dat file has the following format:
 
 {{{
 element
@@ -50,4 +50,4 @@ hexahedron
 0.1000E-04 500
 }}}
 
-Compare with source code for SUBROUTINE READ_XX11 in src/input.f90 
+Compare with source code for SUBROUTINE READ_XX12 in src/input.f90 
