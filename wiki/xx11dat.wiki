@@ -9,8 +9,11 @@ A typical xx11.dat file has the following format:
 element
 mesh
 partitioner
+np_types
 nels nn nr nip nod loaded_nodes fixed_freedoms
-kx ky kz tol limit
+kx ky kz 
+rho cp cte te0
+tol limit
 }}}
 
 ||*Variable Name*||*Type*||*Meaning*||
@@ -26,6 +29,10 @@ kx ky kz tol limit
 ||{{{kx}}} || Real || Thermal conductivity in x-direction.||
 ||{{{ky}}} || Real || Thermal conductivity in y-direction.||
 ||{{{ky}}} || Real || Thermal conductivity in z-direction.||
+||{{{rho}}} || Real || Density.||
+||{{{cp}}} || Real || Specific heat capacity at constant pressure.||
+||{{{cte}}} || Real || Coefficient of thermal expansion.||
+||{{{te0}}} || Real || Initial temperature of whole model.||
 ||{{{tol}}} || Real || Convergence tolerance for PCG.||
 ||{{{limit}}} || Integer || Iteration ceiling for PCG.||
 ||{{{partitioner}}} || Integer || Partitioning strategy. Permitted values are {{{1}}} (Smith and Griffiths partitioning) or {{{2}}} (use external partitioner).||
@@ -36,8 +43,11 @@ A real example follows:
 hexahedron
 2
 1
+1
 64 125 0 8 8 25 25
-1.0000E+02 1.0000E+02 1.0000E+02 0.1000E-04 500
+1.0000E+02 1.0000E+02 1.0000E+02
+0.0 0.0 0.0 0.0 
+0.1000E-04 500
 }}}
 
-Compare with source code for SUBROUTINE READ_P123 in src/input.f90 
+Compare with source code for SUBROUTINE READ_XX11 in src/input.f90 
