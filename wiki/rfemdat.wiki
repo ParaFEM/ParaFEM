@@ -1,13 +1,29 @@
-#summary One-sentence summary of this page.
+#summary rfem control file data format.
+#sidebar TOC
 
-= Introduction =
+==rfem.dat==
 
-fAdd your content here.
+A typical rfem.dat file has the following format:
 
+{{{
+rfield
+nels nxe nye
+aa bb cc 
+}}}
 
-= Details =
+||*Variable Name*||*Type*||*Meaning*||
+||{{{rfield}}} || Character || The name of the random field to be generated. The only permitted value is {{{sim3de}}}, which creates a regular 3D random field of Young's modulus values.||
+||{{{nels}}} || Integer || Number of elements in the mesh.||
+||{{{nxe}}} || Integer || Number of elements in x-direction.||
+||{{{nze}}} || Integer || Number of element in z-direction.||
+||{{{aa}}} || Real || Element dimension in x-direction.||
+||{{{bb}}} || Real || Element dimension in y-direction.||
+||{{{cc}}} || Real || Element dimension in z-direction.||
 
-Add your content here.  Format your content with:
-  * Text in *bold* or _italic_
-  * Headings, paragraphs, and lists
-  * Automatic links to other wiki pages
+A real example follows:
+
+{{{
+sim3de
+250 5 5
+1.0 1.0 1.0
+}}}
