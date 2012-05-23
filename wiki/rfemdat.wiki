@@ -7,6 +7,7 @@ A typical rfem.dat file has the following format:
 
 {{{
 rfield
+output
 nels nxe nze
 aa bb cc
 thx thy thz
@@ -16,6 +17,7 @@ varfnc
 
 ||*Variable Name*||*Type*||*Meaning*||
 ||{{{rfield}}} || Character || The name of the random field to be generated. The only permitted value is {{{sim3de}}}, which creates a regular 3D random field of Young's modulus values.||
+||{{{output}}} || Integer || Type of output required. Accepted values are 1 = random field only or 2 = random field and dummy finite element mesh||
 ||{{{nels}}} || Integer || Number of elements in the mesh.||
 ||{{{nxe}}} || Integer || Number of elements in x-direction.||
 ||{{{nze}}} || Integer || Number of element in z-direction.||
