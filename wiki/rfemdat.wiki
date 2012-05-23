@@ -36,6 +36,7 @@ A real example follows:
 
 {{{
 sim3de
+2
 250 5 5
 1.0 1.0 1.0
 1.0 1.0 1.0
