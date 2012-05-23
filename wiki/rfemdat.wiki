@@ -27,7 +27,7 @@ varfnc
 ||{{{thz}}} || Real || Scale of fluctuation of log E in x-direction.||
 ||{{{emn}}} || Real || Target mean of E at a point.||
 ||{{{esd}}} || Real || Target standard deviation of E at a point.||
-||{{{varfnc}}} || Real || Name of the covariance function controlling the random field. Accepted values are {{{dlavx3}}},{{{dlafs3}}},{{{dlsep3}}},{{{dlsfr3}}},{{{dlspx3}}}||
+||{{{varfnc}}} || Real || Name of the covariance function controlling the random field. Accepted values are {{{dlavx3}}},{{{dlafs3}}},{{{dlsep3}}},{{{dlsfr3}}},{{{dlspx3}}}. See header in subroutine {{{sim3de}}} for further details.||
 
 
 A real example follows:
