@@ -7,8 +7,11 @@ A typical rfem.dat file has the following format:
 
 {{{
 rfield
-nels nxe nye
-aa bb cc 
+nels nxe nze
+aa bb cc
+thx thy thz
+emn esd
+varfnc 
 }}}
 
 ||*Variable Name*||*Type*||*Meaning*||
@@ -19,6 +22,13 @@ aa bb cc
 ||{{{aa}}} || Real || Element dimension in x-direction.||
 ||{{{bb}}} || Real || Element dimension in y-direction.||
 ||{{{cc}}} || Real || Element dimension in z-direction.||
+||{{{thx}}} || Real || Scale of fluctuation of log E in x-direction.||
+||{{{thy}}} || Real || Scale of fluctuation of log E in x-direction.||
+||{{{thz}}} || Real || Scale of fluctuation of log E in x-direction.||
+||{{{emn}}} || Real || Target mean of E at a point.||
+||{{{esd}}} || Real || Target standard deviation of E at a point.||
+||{{{varfnc}}} || Real || Name of the covariance function controlling the random field. Accepted values are {{{dlavx3}}},{{{dlafs3}}},{{{dlsep3}}},{{{dlsfr3}}},{{{dlspx3}}}||
+
 
 A real example follows:
 
@@ -26,4 +36,8 @@ A real example follows:
 sim3de
 250 5 5
 1.0 1.0 1.0
+1.0 1.0 1.0
+100.
+5.
+dlavx3
 }}}
