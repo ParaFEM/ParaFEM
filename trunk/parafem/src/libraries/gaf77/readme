@@ -1,0 +1,68 @@
+                       GAF77 Library Version 5.0
+
+                          by Gordon A. Fenton
+
+The GAF77 library is a set of math and utility routines written over the last
+several years. They are to be taken in an "as-is" condition, that is the
+author accepts no responsibility for their use (or misuse).  I am reasonably
+confident that the math routines are error-free (beyond round-off errors).
+Some of the routines, such as choll.f and facld.f are relatively simple and do
+not have as nice round-off error properties as do those available through
+linpack, eispack, etc -- so they probably shouldn't be used on nearly singular
+or otherwise pathological matrices. This library also includes
+a variety of routines to produce realizations of Gaussian 1, 2,
+and 3 dimensional random fields. In particular the FFT, Turning Bands Method
+(TBM), and Local Average Subdivision (LAS) methods are implemented here in
+the form of Fortran 77 subroutines. Users should print and read the
+PostScript file "RFGEN.ps" for a comparison of these three methods.
+
+If installed, all the modules here have man page descriptions. See also
+Summary.doc for a brief description of each module.
+
+Any comments, bug reports, corrections, or additions can be sent to
+
+     gordon.fenton@dal.ca (http://www.engmath.dal.ca)
+
+I cannot guarantee particularly swift response times but I'll do what I can.
+If you want to add something to the library, I would appreciate it if you
+could follow the format I use for the comments at the beginning of each
+module since I use this to automatically generate man pages (cat format)
+for each module. In particular you should preserve the PURPOSE line.
+
+To make and install this library, edit the Makefile to ensure that LIBDIR
+points to the directory where libGAF77.a is to be installed, then
+
+   1) type `make'
+
+NOTE: there are a number of system specific calls implemented in these
+      routines. These work fine for Sun's f77 V1.4 Fortran Compiler and DEC's
+      OSF/1 F77 V3.32 Compiler, but need to be reworked for other platforms
+      (such as HP). Linux needs some additional routines, namely etime, fdate,
+      getlog, and getpid.
+      In particular, the following modules contain system specific calls:
+
+	1) second.f - calls the function etime(.) to return elapsed time
+		      since the start of execution. It can also return wall
+                      clock time.
+
+        2) argfn.f, argfp.f, argin.f, argop.f, and openfl.f
+                    - call the routine getarg(i,str) to return the i'th
+                      command line argument in the character string "str".
+                      i = 0 for the executing program name itself, i = 1 for
+                      the first argument etc.
+
+        3) dlspx?.f - these employ the double precision error function derf()
+                      assumed to be resident in the compiler's math library.
+
+        4) iseed.f  - uses the function getpid() to generate a relatively
+                      unique integer for the run. Any function which does
+                      this is acceptable (avoid 0).
+
+In general, the best way to implement this library on machines that do not
+support identically the above commands is to include these modules in
+a library which translate what is expected to what is actually offered
+(see second.f for an example).
+
+Where possible, other non-standard Fortran 77 extensions have been avoided.
+Let me know if you discover any.
+
