@@ -1,0 +1,937 @@
+                                                                   GAF77(3f)
+
+NAME
+   libGAF77.a	- a set of fortran math, simulation, and i/o utilities
+
+DESCRIPTION
+   Man pages are provided for each of the following by the module name.
+
+AUTHOR
+    Gordon A. Fenton, Princeton University, TUNS, and DalTech, 1985-2000
+
+Module	Description
+======	==================================
+
+AtxB	to compute the matrix multiplication [A^t][B] = [C]
+
+AxB	to compute the matrix multiplication [A][B] = [C]
+
+AxBt	to compute the matrix multiplication [A][B^t] = [C]
+
+addot	forms the dot product of two vectors (LINPACK) (high precision
+	version)
+
+adfit	computes an Anderson-Darling goodness-of-fit test statistic
+
+adot	forms the dot product of two vectors (LINPACK)
+
+argfn	to obtain input file argument and create output file name
+
+argfp	to obtain input file names and options and create output names
+
+argin	to obtain a character string filename from the argument list
+
+argop	to obtain filenames and options from the command line
+
+aswap	interchanges two vectors (LINPACK)
+
+averg	returns the average of a series of values X(i), i = 1,2, ..., n
+
+axpy	constant times a vector plus a vector (LINPACK)
+
+best1	estimates intercept and slope by least squares of the straight line y
+	= a_1 + a_2*x given a set of data
+
+best2	estimates the least squares parameters of the quadratic equation y =
+	a_1 + a_2*x + a_3*x*x given a set of (x,y) data
+
+beta	returns the Beta distribution function for given x and parameters
+	alpha and beta.
+
+betnv	returns the inverse Beta distribution function for given probability p
+	and parameters alpha and beta.
+
+bsect	to obtain the roots of a user-supplied function via the Bisection
+	algorithm.
+
+cabs	to compute and return the real*4 modulus of a complex*8 value
+
+cgelu	to compute the complex determinant of a complex square matrix A
+	through its LU decomposition employing naive Gaussian Elimination. The
+	LU decomposition is stored directly in A.
+
+chdst	returns the Chi-square distribution function for a given x and dof n
+
+chifit	to estimate the Chi-squared goodness-of-fit critical significance
+	level
+
+chinv	returns the inverse Chi-square distribution function for a given
+	probability
+
+chol2	to compute the LL' factorization of a symmetric covariance matrix [A].
+	[A] need only be non-negative definite.
+
+chol2h	to compute the LL' factorization of a symmetric covariance matrix [A].
+	[A] need only be non-negative definite. High precision version.
+
+choll	to compute the Cholesky decomposition L according to L*L' = A and
+	return the determinant of A
+
+cholu	to compute the Cholesky decomposition U from U'*U = A and return the
+	determinant of A
+
+clear	sets a real vector of length n to zero
+
+cmplx	to convert two real arguments into a complex value
+
+condn	computes the 1-norm and infinite norm condition numbers of the
+	supplied matrix
+
+corn2d	creates the parameter matrices required for the corner cell
+	subdivisions of LAS2G (and LAS3G special case).
+
+corn3d	creates the parameter matrices required for the corner cell
+	subdivisions of LAS3G.
+
+cov1d	calculates the unbiased covariance function of a zero-mean 1-D process
+
+cpplu	to compute the complex determinant of a complex square matrix A
+	through its LU decomposition employing scaling and partial pivoting.
+	The LU decomposition of the row-permuted version of [A] is stored
+	directly in A.
+
+dAtxB	to compute the matrix multiplication [A^t][B] = [C]
+
+dAxB	to compute the matrix multiplication [A][B] = [C]
+
+dAxBt	to compute the matrix multiplication [A][B^t] = [C]
+
+dadfit	computes an Anderson-Darling goodness-of-fit test statistic
+
+daverg	returns the average of a series of values X(i), i = 1,2, ..., n
+
+daxpy	constant times a vector plus a vector.
+
+dbeta	returns the Beta distribution function for given x and parameters
+	alpha and beta.
+
+dbetnv	returns the inverse Beta distribution function for given probability p
+	and parameters alpha and beta.
+
+dbsect	to obtain the roots of a user-supplied function via the Bisection
+	algorithm.
+
+dcabs	to compute and return the real*8 modulus of a complex*16 value
+
+dcgelu	to compute the complex determinant of a complex square matrix A
+	through its LU decomposition employing naive Gaussian Elimination. The
+	LU decomposition is stored directly in A.
+
+dchdst	returns the Chi-square distribution function for a given x and dof n
+
+dchinv	returns the inverse Chi-square distribution function for a given
+	probability
+
+dchol2	to compute the LL' factorization of a symmetric covariance matrix [A].
+	[A] need only be non-negative definite.
+
+dcholl	to compute the Cholesky decomposition L according to L*L' = A and
+	return the determinant of A
+
+dcholu	to compute the Cholesky decomposition U from U'*U = A and return the
+	determinant of A
+
+dclear	sets a real vector of length n to zero
+
+dcmplx	to convert two double precision arguments into a single double
+	precision complex value.
+
+dcondn	computes the 1-norm and infinite norm condition numbers of the
+	supplied matrix
+
+dcor1d	computes the sample mean, variance, and correlation function from a
+	discrete sequence of observations taken from a 1-D random process.
+
+dcov1d	computes the sample mean, variance, and covariance function from a
+	discrete sequence of observations taken from a 1-D random process.
+
+dcpplu	to compute the complex determinant of a complex square matrix A
+	through its LU decomposition employing scaling and partial pivoting.
+	The LU decomposition of the row-permuted version of [A] is stored
+	directly in A.
+
+dcvaa2	returns the covariance between two 2-D local averages of equal area.
+	Used by LAS2G.
+
+dcvaa3	returns the covariance between two 3-D local averages of equal volume.
+	Used by LAS3G.
+
+dcvab2	returns the covariance between two 2-D local averages, one having four
+	times the area of the other. Used by LAS2G.
+
+dcvab3	returns the covariance between two 3-D local averages, one having
+	eight times the volume of the other. Used by LAS3G.
+
+dcvit1	computes the covariance vector between a sequence of equal-sized local
+	averages in 1-D. Used by LAS1G.
+
+dcvit2	computes the initial k1*k2 x k1*k2 covariance matrix (and a 9x9
+	submatrix) between local averages. Used by LAS2G. 
+
+dcvit3	computes the initial k1*k2*k3 x k1*k2*k3 covariance matrix (and a
+	27x27 submatrix) between local averages. Used by LAS3G. 
+
+dcvmt2	computes the covariance matrix between local averages needed by LAS2G.
+
+dcvmt3	computes the covariance matrices between local averages needed by
+	LAS3G for all stages of the subdivision.
+
+ddot	forms the dot product of two vectors.
+
+deigen	to compute the eigenvalues (and eigenvectors) of a real symmetric
+	matrix
+
+deignv	computes the inverse of a matrix given its eigenvalues and vectors.
+
+dexpnd	converts an n x n matrix to an (n+k) x (n+k) matrix.
+
+dfacld	to compute the LDL' factorization of a symmetric matrix A and return
+	its determinant.
+
+dfactr	factorizes a real symmetric submatrix A(n1:n2) into L*D*L'
+
+dfdinv	returns the inverse F-distribution function for given probability p
+	and degrees-of-freedom v1 and v2.
+
+dfdist	returns the F-distribution function for given x and degrees-of-freedom
+	v1 and v2.
+
+dfft1d	compute the fast Fourier transform (or inverse) of a 1-D vector
+
+dfft2d	compute the fast Fourier transform of a 2-D array using row-column 1-D
+	transforms.
+
+dfft3d	computes the fast Fourier transform of a 3-D array using
+	row-column-leaf 1-D transforms.
+
+dflpos	to obtain the roots of a user-supplied function via the False Position
+	algorithm.
+
+dfxpnt	to obtain the roots of a user-supplied function via the Fixed- Point
+	Iteration algorithm
+
+dgamln	returns the natural logarithm of the gamma function of the supplied
+	argument, z >= 0.
+
+dgamma	to return the Gamma (factorial) function
+
+dgausv	return a normally distributed N(0,var) random realization.
+
+dgjinv	to compute the inverse of a square matrix A through Gauss-Jordan
+	transformations employing row scaling and partial pivoting.
+
+dgmcdf	computes bounds on the cumulative distribution function of an
+	n-variate jointly normal random vector.
+
+dgmdst	returns the Gamma distribution function for given x and parameters
+	alpha and beta.
+
+dgminv	returns the inverse Gamma distribution function for given probability
+	p and parameters alpha and beta.
+
+dgselu	LU decompose a matrix A and return its determinant using naive
+	Gaussian Elimination.
+
+dgsint	estimate the integral of a user supplied function using Gaussian
+	quadrature.
+
+dimprv	to improve a solution to [A]{x} = {b} by residual correction.
+
+dinslv	solve [A]{x} = {b} given [A-inverse]
+
+dinvsm	compute the inverse of a real symmetric matrix
+
+dlace1	returns the variance of the local average of a 1-D exponentially
+	damped oscillatory noise.
+
+dlafr1	returns the variance of a local average of a 1-D fractional Gaussian
+	noise process.
+
+dlafr2	returns the variance of a local average of an isotropic 2-D fractional
+	Gaussian noise process.
+
+dlafs3	returns the variance of a local average of a partially separable 3-D
+	fractional Gaussian noise process.
+
+dlavx1	returns the variance of a local average of a 1-D Gauss-Markov process.
+
+dlavx2	returns the variance of a local average of a 2-D process having an
+	exponential covariance function.
+
+dlavx3	returns the variance of a local volume average for partially separable
+	exponential covariance function (3-D process).
+
+dlfsc1	returns variance of a local average of Fractal-Scale noise
+
+dllinv	to compute the inverse of a lower triangular matrix
+
+dlnvmp	compute the inverse of a matrix using its LU decomposition with
+	residual improvement
+
+dlsep2	returns the variance of a local average of a 2-D process having a
+	separable, exponential type, covariance function.
+
+dlsep3	returns the variance of a local average of a 3-D process having a
+	separable, exponential type, covariance function.
+
+dlsfr2	returns the variance of a local average of a separable 2-D fractional
+	Gaussian noise process.
+
+dlsfr3	returns the variance of a local average of a fully separable 3-D
+	fractional Gaussian noise process.
+
+dlsmp1	returns the variance of a local average of a 1-D simple variance
+	function process.
+
+dlspx1	returns the variance of a local average of a process having an
+	exponential (Gaussian) type covariance function in 1-D.
+
+dlspx2	returns the variance of a local average of a process having an
+	exponential (Gaussian) type covariance function (separable and
+	mean-square differentiable) in 2-D.
+
+dlspx3	returns the variance of a local average of a process having an
+	exponential (Gaussian) type covariance function (separable and
+	mean-square differentiable) in 3-D.
+
+dluinv	compute the inverse of a matrix using its LU decomposition
+
+dmaxnt	compute the maximum entropy power spectral estimate
+
+dminmx	finds the minimum and maximum values in a vector.
+
+dmodnr	to obtain a root of a user-supplied function via the modified
+	Newton-Raphson algorithm.
+
+dmodsc	to obtain a root of a user-supplied function via the modified Secant
+	algorithm.
+
+dnewtr	to obtain a root of a user-supplied function via the Newton- Raphson
+	algorithm.
+
+dnmprv	to improve a solution to [A]{x} = {b} by a residual correction
+	technique. (naive version)
+
+dnsolv	to compute the solution to the matrix equation [A]{x} = {b} given the
+	LU decomposition of A (Naive G.E. Version)
+
+dntddm	to compute the coefficients of an (n-1)th order polynomial via
+	Newton's Divided Difference algorithm.
+
+dnvgss	to compute the solution to the system of equations [A]{x} = {b}
+	through naive Gaussian Elimination.
+
+dodmax	returns the maximum off-diagonal element of a square matrix
+
+dorthH	creates an orthogonal transformation matrix from a given Nth row
+
+dot3d	a set of specialized dot product functions designed for use by LAS3G.
+
+dot3db	another set of specialized dot product functions designed for use by
+	LAS3G.
+
+dpder1	estimates the first partial derivative of a supplied function
+
+dpder2	estimates the second partial derivative of a supplied function
+
+dphi	to return the standard normal probability distribution function
+
+dphinv	to return the inverse of the standard normal cumulative distribution
+	function
+
+dpnorm	return the p-norm of a vector
+
+dpolyd	to return the result of an (n-1)th order polynomial in Newton's
+	divided difference format evaluated at the point z.
+
+dpolyn	to return the result of an (n-1)'th order polynomial f(x)
+
+dprtme	to print a matrix using e format
+
+dprtmt	to print a matrix using f format
+
+dpsolv	to compute the solution to the matrix equation [A]{x} = {b} given the
+	LU decomposition of PA where P is a permutation matrix.
+
+dpspct	estimates power spectral density using Fourier transforms
+
+dqrgde	to compute the QR decomposition of a matrix A using Given's rotations
+
+dqrgrs	solve the general least squares problem via QR decomposition
+
+dqrgsq	to solve the general least squares problem MIN|| b - Ac || for the
+	vector {c} using the QR decomposition of [A] and return the residual
+	sum of squared errors. (Given's version)
+
+dqrhde	to compute the QR decomposition of a matrix A using Householder
+	reflections
+
+dqrhim	to solve the general least squares problem MIN|| b - Ac || for the
+	vector {c} given the QR decomposition of [A] stored in [A] and return
+	the sum of squared errors. This routine performs interative
+	improvement.
+
+dqrhsq	to solve the general least squares problem MIN|| b - Ac || for the
+	vector {c} given the QR decomposition of [A] stored in [A] and return
+	the sum of squared errors. (Householder version)
+
+dqtran	to construct a matrix [Q] which rotates a vector {x} into {y}
+
+drdfpt	reads a real value from standard input (with default)
+
+dround	returns a real number rounded up or down in the specified digit
+
+dsdf1d	estimate the spectral density function of a real 1-D process
+
+dsecnt	to obtain a root of a user-supplied function via the Secant algorithm.
+
+dsifa	factors a double precision symmetric matrix by elimination with
+	symmetric pivoting
+
+dsisl	solves the double precision symmetric system [A]{X} = {B} using the
+	factors computed by DSIFA.
+
+dslvch	to compute the solution to the matrix equation [A]{x} = {b} given the
+	Cholesky LL' decomposition of A as produced by DCHOLL.
+
+dslvld	to compute the solution to the matrix equation [A]{x} = {b} given the
+	LDL' decomposition of A as produced by DFACLD.
+
+dsmall	return the machine epsilon (unit roundoff)
+
+dsmslv	solve [A]{x} = {b} given [A-inverse] for [A] symmetric
+
+dsort	sorts a sequence of numbers into ascending order
+
+dspgss	to compute the solution to the system of equations Ax = b through
+	Gaussian Elimination employing scaling and partial pivoting.
+
+dspint	returns the definite integral of a function through a cubic spline
+	approximation.
+
+dspln3	to produce a set of cubic splines interpolating n data points.
+
+dspplu	computes the LU decomposition of a square matrix [A] with row scaling
+	and partial pivoting and returns the determinant of A.
+
+dsqnml	to solve the general least squares problem via the normal equations
+	[A^t][A]{c} = [A^t]{b} and return the residual sum of squared errors.
+
+dstatm	estimates distribution parameters for a set of data by method of
+	moments and finds its range
+
+dstudi	returns the inverse Student-t distribution function for given
+	probability p and parameter k
+
+dstudt	returns the Student-t distribution function for given x and parameter
+	k
+
+dsvdec	to compute the singular value decomposition [A] = [U][W][V'] of an m x
+	n matrix [A] (m >= n).
+
+dswap	interchanges two vectors.
+
+dtoesv	to solve the matrix equation [A]{x} = {b} for [A] symmetric, positive
+	definite and Toeplitz.
+
+dtpint	returns the integral of a user supplied function by trapezoidal
+	peicewise approximation.
+
+dtridg	reduces a real symmetrix matrix to symmetric tridiagonal form
+
+dtrilu	to compute the LU decomposition of a tridiagonal matrix and return its
+	determinant.
+
+dtrisv	to solve a tridiagonal system of equations given the LU decomposition
+	of the tridiagonal coefficient matrix
+
+dvdots	a set of dot product functions
+
+dvfn1d	computes the sample variance function from a discrete sequence of
+	observations taken from a 1-D random process.
+
+dvgath	create a vector by selecting elements from another vector
+
+dvgaus	return a vector of N(0,v) independent randomly distributed
+	realizations
+
+dvnorm	return a vector of N(0,1) random distributed realizations
+
+dxspct	compute the power spectral and cross-spectral estimates of a pair of
+	time histories via Fourier transforms.
+
+dzmatx	zeroes the extra rows and columns created by DEXPND.
+
+edge3d	creates the parameter matrices required for the edge cell subdivisions
+	of LAS3G.
+
+eigen	to compute the eigenvalues (and eigenvectors) of a real symmetric
+	matrix
+
+eignv	computes the inverse of a matrix given its eigenvalues and vectors.
+
+expnd	converts an n x n matrix to an (n+k) x (n+k) matrix.
+
+facld	to compute the LDL' factorization of a symmetric matrix A and return
+	its determinant.
+
+factr	factorizes a real symmetric submatrix A(n1:n2) into L*D*L'
+
+fdinv	returns the inverse F-distribution function for given probability p
+	and degrees-of-freedom v1 and v2.
+
+fdist	returns the F-distribution function for given x and degrees-of-freedom
+	v1 and v2.
+
+fexps1	returns the power spectral density function of a 1-D random process
+	having an exponential covariance function.
+
+fexps2	returns the power spectral density of a 2-D random process having an
+	exponential covariance function.
+
+fexps3	returns the power spectral density of a 3-D random process having an
+	exponential covariance function.
+
+fft1d	compute the fast Fourier transform (or inverse) of a 1-D vector
+
+fft1g	generates a 1-D Gaussian random process using the Fast Fourier
+	Transform
+
+fft2d	compute the fast Fourier transform of a 2-D array using row-column 1-D
+	transforms.
+
+fft2g	generates a 2-D Gaussian quadrant symmetric random process using the
+	Fast Fourier Transform
+
+fft3d	computes the fast Fourier transform of a 3-D array using
+	row-column-leaf 1-D transforms.
+
+fft3g	generates a 3-D Gaussian quadrant symmetric random process using the
+	Fast Fourier Transform
+
+flpos	to obtain the roots of a user-supplied function via the False Position
+	algorithm.
+
+formc1	forms a covariance matrix for a 1-D process
+
+fosps1	returns the power spectral density of a 1-D exponentially damped
+	oscillatory noise.
+
+fxpnt	to obtain the roots of a user-supplied function via the Fixed- Point
+	Iteration algorithm
+
+gamln	returns the natural logarithm of the gamma function of the supplied
+	argument, z >= 0.
+
+gamma	to return the Gamma (factorial) function
+
+gausv	return a normally distributed N(0,var) random realization.
+
+gencmb	generates sequential elements in a combination
+
+getfsp	gets the format specification from the format string
+
+getop	to return the next option letter and argument from the command line.
+
+gjinv	to compute the inverse of a square matrix A through Gauss-Jordan
+	transformations employing row scaling and partial pivoting.
+
+gmcdf	computes bounds on the cumulative distribution function of an
+	n-variate jointly normal random vector using GRCDF.
+
+gmdst	returns the Gamma distribution function for given x and parameters
+	alpha and beta.
+
+gminv	returns the inverse Gamma distribution function for given probability
+	p and parameters alpha and beta.
+
+grcdf	computes the cumulative distribution function of an n-variate jointly
+	normal random vector having a correlation matrix with a special
+	multiplicative form.
+
+gselu	LU decompose a matrix A and return its determinant using naive
+	Gaussian Elimination.
+
+gsint	estimate the integral of a user supplied function using Gaussian
+	quadrature.
+
+histp	to compute a histogram for a given sequence of observations and set up
+	associated ideal cumulative distribution.
+
+hstbkt	creates histogram bucket centers corresponding to the frequency counts
+	created by histp
+
+hstprd	creates the predicted pdf corresponding to a histogram produced by
+	histp and hstbkt
+
+iamax	find the index of the maximum absolute element in a vector of length n
+	(LINPACK)
+
+ichrd	performs a free format real or integer read from an internal string
+
+idamax	find the index of the maximum absolute element in a double precision
+	vector of length n
+
+idchrd	performs a free format real or integer read from an internal string
+
+imprv	to improve a solution to [A]{x} = {b} by residual correction.
+
+inslv	solve [A]{x} = {b} given [A-inverse]
+
+intr2d	creates the parameter matrices required for the interior cell
+	subdivision of LAS2G.
+
+intr3d	creates the parameter matrices required for the interior cell
+	subdivision of LAS3G.
+
+invsm	compute the inverse of a real symmetric matrix
+
+iseed	initializes the system pseudo-random number generated using process ID
+	as default seed.
+
+izero	zeroes an integer vector of length n
+
+las1g	generates a realization of a 1-D Gaussian stationary random local
+	average process
+
+las1i	sets up initial intercell covariance parameters for LAS1G.
+
+las2g	produces a 2-D quadrant symmetric stationary Gaussian random field
+	using the Local Average Subdivision algorithm.
+
+las2i	initializes parameters for LAS2G
+
+las3g	produces a 3-D quadrant symmetric homogeneous Gaussian random field
+	using the Local Average Subdivision algorithm.
+
+las3i	initializes parameters for LAS3G
+
+lcomp	compare two strings and return true if str1 is contained in str2.
+
+lczer	to determine if the complex argument is algorithmically zero
+
+ldczer	to determine if the complex argument is algorithmically zero
+
+llinv	to compute the inverse of a lower triangular matrix
+
+lnblnk	returns the index of the last non-blank character in a string.
+
+lnvmp	compute the inverse of a matrix using its LU decomposition with
+	residual improvement
+
+luinv	compute the inverse of a matrix using its LU decomposition
+
+maxnt	compute the maximum entropy power spectral estimate
+
+minmx	finds the minimum and maximum values in a vector.
+
+modnr	to obtain a root of a user-supplied function via the modified
+	Newton-Raphson algorithm.
+
+modsc	to obtain a root of a user-supplied function via the modified Secant
+	algorithm.
+
+nchoos	returns number of combinations: n choose m
+
+nctarg	returns number of white-space or comma separated arguments found in a
+	character string
+
+ndigit	returns the number of digits in the supplied integer value
+
+newtr	to obtain a root of a user-supplied function via the Newton- Raphson
+	algorithm.
+
+nmprv	to improve a solution to [A]{x} = {b} by a residual correction
+	technique. (naive version)
+
+nrdarg	read a sequence of whitespace separated character strings from an
+	internal character string
+
+nrddp	read a sequence of real variables from an internal character string
+	using free format with provision for sequences
+
+nrdfp	read a sequence of real variables from an internal character string
+	using free format with provision for sequences
+
+nrdint	read a sequence of integer variables from an internal character string
+	using free format with special provision for sequences
+
+nrdlog	read a sequence of logical variables from an internal character string
+	using free format
+
+nsolv	to compute the solution to the matrix equation [A]{x} = {b} given the
+	LU decomposition of A (Naive G.E. Version)
+
+ntddm	to compute the coefficients of an (n-1)th order polynomial via
+	Newton's Divided Difference algorithm.
+
+ntwom	return M such that a given N = 2**M
+
+nvgss	to compute the solution to the system of equations [A]{x} = {b}
+	through naive Gaussian Elimination.
+
+odmax	returns the maximum off-diagonal element of a square matrix
+
+openfl	to open a data file given by an argument on the command line
+
+orthH	creates an orthogonal transformation matrix from a given Nth row
+
+pder1	estimates the first partial derivative of a supplied function with
+	respect to X_i.
+
+pder2	estimates the second partial derivative of a supplied function with
+	respect to (X_i,X_j).
+
+phi	to return the standard normal probability distribution function
+
+phinv	to return the inverse of the standard normal cumulative distribution
+	function
+
+plan3d	produces stage 1 of the 3-D LAS subdivision in the event that one or
+	two (but not three) of k1, k2, or k3 is equal to 1.
+
+pnorm	return the p-norm of a vector
+
+polydd	to return the result of an (n-1)th order polynomial in Newton's
+	divided difference format evaluated at the point z.
+
+polyn	to return the result of an (n-1)'th order polynomial f(x)
+
+prfmte	prints a number using e format
+
+prfmtf	prints a real number using f format
+
+prfmti	prints an integer to unit k according to an optional field width
+
+prins1	prints one values according to a C style format to an internal
+	character string.
+
+prins2	prints two values according to a C style format to an internal
+	character string.
+
+prins3	prints three values according to a C style format to an internal
+	character string.
+
+prins4	prints four values according to a C style format to an internal
+	character string.
+
+prins5	prints five values according to a C style format to an internal
+	character string.
+
+prins6	prints six values according to a C style format to an internal
+	character string.
+
+prins7	prints six values according to a C style format to an internal
+	character string.
+
+print1	prints one value according to a C style format
+
+print2	prints two values according to a C style format
+
+print3	prints three values according to a C style format
+
+print4	prints four values according to a C style format
+
+print5	prints five values according to a C style format
+
+print6	prints six values according to a C style format
+
+print7	prints seven values according to a C style format
+
+prints	prints real/integer values according to a C style format to an
+	internal character string.
+
+printv	prints real/integer values according to a C style format
+
+prtme	to print a matrix using e format
+
+prtmt	to print a matrix using f format
+
+psfmte	writes a number using e format to an internal character string
+
+psfmtf	prints a real number using f format to an internal character string
+
+psfmti	writes an integer to an internal character string using an optional
+	field width
+
+psolv	to compute the solution to the matrix equation [A]{x} = {b} given the
+	LU decomposition of PA where P is a permutation matrix.
+
+pspct	estimates power spectral density using Fourier transforms
+
+qrgde	to compute the QR decomposition of a matrix A using Given's rotations
+
+qrgrs	solve the general least squares problem via QR decomposition
+
+qrgsq	to solve the general least squares problem MIN|| b - Ac || for the
+	vector {c} using the QR decomposition of [A] and return the residual
+	sum of squared errors. (Given's version)
+
+qrhde	to compute the QR decomposition of a matrix A using Householder
+	reflections
+
+qrhim	to solve the general least squares problem MIN|| b - Ac || for the
+	vector {c} given the QR decomposition of [A] stored in [A] and return
+	the sum of squared errors. This routine performs interative
+	improvement.
+
+qrhsq	to solve the general least squares problem MIN|| b - Ac || for the
+	vector {c} given the QR decomposition of [A] stored in [A] and return
+	the sum of squared errors. (Householder version)
+
+qtran	to construct a matrix [Q] which rotates a vector {x} into {y}
+
+randf	returns a pseudo-random number uniformly distributed on the interval
+	(0,1)
+
+randu	returns a pseudo-random number uniformly distributed on the interval
+	(0,1)
+
+round	returns a real number rounded up or down in the specified digit
+
+scans1	read one real/integer value according to a C style `sscanf' format
+	from an internal character string.
+
+scans2	reads two real/integer values according to a C style `sscanf' format
+	from an internal character string.
+
+scans3	reads three real/integer values according to a C style `sscanf' format
+	from an internal character string.
+
+scans4	reads four real/integer values according to a C style `sscanf' format
+	from an internal character string.
+
+scans5	reads five real/integer values according to a C style `sscanf' format
+	from an internal character string.
+
+scans6	reads six real/integer values according to a C style `sscanf' format
+	from an internal character string.
+
+scansv	reads real/integer values according to a C style `sscanf' format from
+	an internal character string.
+
+secnt	to obtain a root of a user-supplied function via the Secant algorithm.
+
+second	returns elapsed user execution time in seconds.
+
+side2d	creates the parameter matrices required for the side cell subdivisions
+	of LAS2G.
+
+side3d	creates the parameter matrices required for the side cell subdivisions
+	of LAS3G.
+
+sifa	factors a single precision symmetric matrix by elimination with
+	symmetric pivoting (LINPACK)
+
+sisl	solves the single precision symmetric system [A]{X} = {B} using the
+	factors computed by sifa (LINPACK)
+
+slvch	to compute the solution to the matrix equation [A]{x} = {b} given the
+	Cholesky LL' decomposition of A as produced by CHOLL.
+
+slvld	to compute the solution to the matrix equation [A]{x} = {b} given the
+	LDL' decomposition of A as produced by FACLD.
+
+small	return the machine epsilon (unit roundoff)
+
+smslv	solve [A]{x} = {b} given [A-inverse] for [A] symmetric
+
+sort	sorts a sequence of numbers into ascending order
+
+spgss	to compute the solution to the system of equations Ax = b through
+	Gaussian Elimination employing scaling and partial pivoting.
+
+spint	returns the definite integral of a function through a cubic spline
+	approximation.
+
+spln3	to produce a set of cubic splines interpolating n data points.
+
+spplu	computes the LU decomposition of a square matrix [A] with row scaling
+	and partial pivoting and returns the determinant of A.
+
+sqnml	to solve the general least squares problem via the normal equations
+	[A^t][A]{c} = [A^t]{b} and return the residual sum of squared errors.
+
+statms	estimates distribution parameters for a set of data by method of
+	moments and finds its range
+
+studi	returns the inverse Student-t distribution function for given
+	probability p and parameter k
+
+studt	returns the Student-t distribution function for given x and parameter
+	k
+
+svdec	to compute the singular value decomposition [A] = [U][W][V'] of an m x
+	n matrix [A] (m >= n).
+
+tbm2g	generates a two-dimensional random field using the turning bands
+	method.
+
+tbm3g	generates a three-dimensional random field using the Turning Bands
+	Method.
+
+texp2d	returns the equivalent 1-d spectral density function corresponding to
+	the 2-d Gauss-Markov process (exponential correlation function)
+	required for the 2-D Turning Bands algorithm.
+
+texp3d	returns the equivalent 1-D spectral density function corresponding to
+	the 3-D Gauss-Markov process (exponential correlation function)
+	required for the 3-D Turning Bands algorithm.
+
+thin1d	creates the parameter matrices required for the interior cell
+	subdivisions of LAS2G for the case k1 or k2 = 1 and for LAS3G for
+	k1=k2=1, k1=k3=1, or k2=k3=1.
+
+toesv	to solve the matrix equation [A]{x} = {b} for [A] symmetric, positive
+	definite and Toeplitz.
+
+tpint	returns the integral of a user supplied function by trapezoidal
+	peicewise approximation.
+
+tridg	reduces a real symmetrix matrix to symmetric tridiagonal form
+
+trilu	to compute the LU decomposition of a tridiagonal matrix and return its
+	determinant.
+
+trisv	to solve a tridiagonal system of equations given the LU decomposition
+	of the tridiagonal coefficient matrix
+
+uuinv	to compute the inverse of an upper triangular matrix
+
+vcorel	simulates a set of correlated Gaussian random variables given its
+	covariance matrix
+
+vgath	create a vector by selecting elements from another vector
+
+vgaus	return a vector of N(0,v) independent randomly distributed
+	realizations
+
+vnorm	return a vector of N(0,1) random distributed realizations
+
+vregrs	performs a simple linear regression on a set of data
+
+xregrs	computes regression coefficients given the data sums
+
+xspct	compute the power spectral and cross-spectral estimates of a pair of
+	time histories via Fourier transforms.
+
+zmatx	zeroes the extra rows and columns created by EXPND.
+
+etime_	returns elapsed execution time (emulates BSD 3F's etime function)
+
+fdate_	returns ASCII string containing the current date and time
+
+getlog_	returns current user name
+
+getpid_	returns current process ID
+
