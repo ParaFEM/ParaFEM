@@ -91,8 +91,8 @@
 
 Version = 5.39
 
-FOR     = df
-FFLAGS  = /optimize:5
+FC      = ftn
+FFLAGS  = -V -O3 -s real64
 INSTALL = move
 DELETE  = del
 #				LIBNAME is the name of the library
@@ -154,68 +154,67 @@ FILES =	AtxB.f    AxB.f     AxBt.f    addot.f   adfit.f   adot.f    argfn.f   \
 	xspct.f   zmatx.f   derf.f    julian.f  dbest1.f  dbest2.f  ofile.f
 
 
-OBJS  =	AtxB.obj    AxB.obj     AxBt.obj    addot.obj   adfit.obj   adot.obj    argfn.obj   \
-	argfp.obj   argin.obj   argop.obj   aswap.obj   averg.obj   axpy.obj    best1.obj   \
-	best2.obj   beta.obj    betnv.obj   bsect.obj   cabs.obj    cgelu.obj   chdst.obj   \
-	chifit.obj  chinv.obj   chksd.obj   chol2.obj   chol2h.obj  choll.obj   cholu.obj   \
-	clear.obj   cmplx.obj   condn.obj   corn2d.obj  corn3d.obj  cov1d.obj   cpplu.obj   \
-	dAtxB.obj   dAxB.obj    dAxBt.obj   dadfit.obj  daverg.obj  daxpy.obj   dbeta.obj   \
-	dbetnv.obj  dbsect.obj  dcabs.obj   dcgelu.obj  dchdst.obj  dchinv.obj  dchol2.obj  \
-	dcholl.obj  dcholu.obj  dclear.obj  dcmplx.obj  dcondn.obj  dcor1d.obj  dcov1d.obj  \
-	dcpplu.obj  dcvaa1.obj  dcvaa2.obj  dcvaa3.obj  dcvab1.obj  dcvab2.obj  dcvab3.obj  \
-	dcvit1.obj  dcvit2.obj  dcvit3.obj  dcvmt2.obj  dcvmt3.obj  ddot.obj    deigen.obj  \
-	deignv.obj  dexpnd.obj  dfacld.obj  dfactr.obj  dfdinv.obj  dfdist.obj  dfft1d.obj  \
-	dfft2d.obj  dfft3d.obj  dflpos.obj  dfxpnt.obj  dgamln.obj  dgamma.obj  dgausv.obj  \
-	dgjinv.obj  dgmcdf.obj  dgmdst.obj  dgminv.obj  dgselu.obj  dgsint.obj  dimprv.obj  \
-	dinslv.obj  dinvsm.obj  dlace1.obj  dlafr1.obj  dlafr2.obj  dlafs3.obj  dlavx1.obj  \
-	dlavx2.obj  dlavx3.obj  dlfsc1.obj  dllinv.obj  dlnvmp.obj  dlsep2.obj  dlsep3.obj  \
-	dlsfr2.obj  dlsfr3.obj  dlsmp1.obj  dlspx1.obj  dlspx2.obj  dlspx3.obj  dluinv.obj  \
-	dmaxnt.obj  dminmx.obj  dmodnr.obj  dmodsc.obj  dnewtr.obj  dnmprv.obj  dnsolv.obj  \
-	dntddm.obj  dnvgss.obj  dodmax.obj  dorthH.obj  dot3d.obj   dot3db.obj  dpder1.obj  \
-	dpder2.obj  dphi.obj    dphinv.obj  dpnorm.obj  dpolyd.obj  dpolyn.obj  dprtme.obj  \
-	dprtmt.obj  dpsolv.obj  dpspct.obj  dqrgde.obj  dqrgrs.obj  dqrgsq.obj  dqrhde.obj  \
-	dqrhim.obj  dqrhsq.obj  dqtran.obj  drdfpt.obj  dround.obj  dsdf1d.obj  dsecnt.obj  \
-	dsifa.obj   dsisl.obj   dslvch.obj  dslvld.obj  dsmall.obj  dsmslv.obj  dsort.obj   \
-	dsorti.obj  dspgss.obj  dspint.obj  dspln3.obj  dspplu.obj  dsqnml.obj  dstatm.obj  \
-	dstudi.obj  dstudt.obj  dsvdec.obj  dswap.obj   dtoesv.obj  dtpint.obj  dtridg.obj  \
-	dtrilu.obj  dtrisv.obj  dvdots.obj  dvfn1d.obj  dvgath.obj  dvgaus.obj  dvnorm.obj  \
-	dxspct.obj  dzmatx.obj  edge3d.obj  eigen.obj   eignv.obj   expnd.obj   facld.obj   \
-	factr.obj   fdinv.obj   fdist.obj   fexps1.obj  fexps2.obj  fexps3.obj  fft1d.obj   \
-	fft1g.obj   fft2d.obj   fft2g.obj   fft3d.obj   fft3g.obj   flpos.obj   formc1.obj  \
-	fosps1.obj  fxpnt.obj   gamln.obj   gamma.obj   gausv.obj   gblck.obj   gencmb.obj  \
-	getfsp.obj  getop.obj   gjinv.obj   gmcdf.obj   gmdst.obj   gminv.obj   grcdf.obj   \
-	gselu.obj   gsint.obj   histp.obj   hstbkt.obj  hstprd.obj  iamax.obj   ichrd.obj   \
-	idamax.obj  idchrd.obj  imprv.obj   inslv.obj   intr2d.obj  intr3d.obj  invsm.obj   \
-	iseed.obj   isort.obj   isorti.obj  izero.obj   las1g.obj   las1i.obj   las2g.obj   \
-	las2i.obj   las3g.obj   las3i.obj   lcomp.obj   lczer.obj   ldczer.obj  ldigit.obj  \
-	llinv.obj   lnblnk.obj  lnvmp.obj   luinv.obj   maxnt.obj   minmx.obj   modnr.obj   \
-	modsc.obj   nchoos.obj  nctarg.obj  ndigit.obj  newtr.obj   nmprv.obj   nrdarg.obj  \
-	nrddp.obj   nrdfp.obj   nrdint.obj  nrdlog.obj  nscan1.obj  nscan2.obj  nscan3.obj  \
-	nscan4.obj  nscan5.obj  nscan6.obj  nscanv.obj  nsolv.obj   ntddm.obj   ntwom.obj   \
-	nvgss.obj   odmax.obj   openfl.obj  orthH.obj   pder1.obj   pder2.obj   phi.obj     \
-	phinv.obj   plan3d.obj  pnorm.obj   polydd.obj  polyn.obj   prfmte.obj  prfmtf.obj  \
-	prfmti.obj  prins0.obj  prins1.obj  prins2.obj  prins3.obj  prins4.obj  prins5.obj  \
-	prins6.obj  prins7.obj  prins8.obj  print0.obj  print1.obj  print2.obj  print3.obj  \
-	print4.obj  print5.obj  print6.obj  print7.obj  print8.obj  prints.obj  printv.obj  \
-	prtme.obj   prtmt.obj   psfmte.obj  psfmtf.obj  psfmti.obj  psolv.obj   pspct.obj   \
-	qrgde.obj   qrgrs.obj   qrgsq.obj   qrhde.obj   qrhim.obj   qrhsq.obj   qtran.obj   \
-	randf.obj   randu.obj   round.obj   secnt.obj   second.obj  side2d.obj  side3d.obj  \
-	sifa.obj    sisl.obj    slvch.obj   slvld.obj   small.obj   smslv.obj   sort.obj    \
-	sorti.obj   spgss.obj   spint.obj   spln3.obj   spplu.obj   sqnml.obj   srtgrp.obj  \
-	statms.obj  studi.obj   studt.obj   svdec.obj   tbm2g.obj   tbm3g.obj   texp2d.obj  \
-	texp3d.obj  thin1d.obj  toesv.obj   tpint.obj   tridg.obj   trilu.obj   trisv.obj   \
-	uuinv.obj   vcorel.obj  vgath.obj   vgaus.obj   vnorm.obj   vregrs.obj  xregrs.obj  \
-	xspct.obj   zmatx.obj   derf.obj    julian.obj  dbest1.obj  dbest2.obj  ofile.obj
+OBJS  =	AtxB.o    AxB.o     AxBt.o    addot.o   adfit.o   adot.o    argfn.o   \
+	argfp.o   argin.o   argop.o   aswap.o   averg.o   axpy.o    best1.o   \
+	best2.o   beta.o    betnv.o   bsect.o   cabs.o    cgelu.o   chdst.o   \
+	chifit.o  chinv.o   chksd.o   chol2.o   chol2h.o  choll.o   cholu.o   \
+	clear.o   cmplx.o   condn.o   corn2d.o  corn3d.o  cov1d.o   cpplu.o   \
+	dAtxB.o   dAxB.o    dAxBt.o   dadfit.o  daverg.o  daxpy.o   dbeta.o   \
+	dbetnv.o  dbsect.o  dcabs.o   dcgelu.o  dchdst.o  dchinv.o  dchol2.o  \
+	dcholl.o  dcholu.o  dclear.o  dcmplx.o  dcondn.o  dcor1d.o  dcov1d.o  \
+	dcpplu.o  dcvaa1.o  dcvaa2.o  dcvaa3.o  dcvab1.o  dcvab2.o  dcvab3.o  \
+	dcvit1.o  dcvit2.o  dcvit3.o  dcvmt2.o  dcvmt3.o  ddot.o    deigen.o  \
+	deignv.o  dexpnd.o  dfacld.o  dfactr.o  dfdinv.o  dfdist.o  dfft1d.o  \
+	dfft2d.o  dfft3d.o  dflpos.o  dfxpnt.o  dgamln.o  dgamma.o  dgausv.o  \
+	dgjinv.o  dgmcdf.o  dgmdst.o  dgminv.o  dgselu.o  dgsint.o  dimprv.o  \
+	dinslv.o  dinvsm.o  dlace1.o  dlafr1.o  dlafr2.o  dlafs3.o  dlavx1.o  \
+	dlavx2.o  dlavx3.o  dlfsc1.o  dllinv.o  dlnvmp.o  dlsep2.o  dlsep3.o  \
+	dlsfr2.o  dlsfr3.o  dlsmp1.o  dlspx1.o  dlspx2.o  dlspx3.o  dluinv.o  \
+	dmaxnt.o  dminmx.o  dmodnr.o  dmodsc.o  dnewtr.o  dnmprv.o  dnsolv.o  \
+	dntddm.o  dnvgss.o  dodmax.o  dorthH.o  dot3d.o   dot3db.o  dpder1.o  \
+	dpder2.o  dphi.o    dphinv.o  dpnorm.o  dpolyd.o  dpolyn.o  dprtme.o  \
+	dprtmt.o  dpsolv.o  dpspct.o  dqrgde.o  dqrgrs.o  dqrgsq.o  dqrhde.o  \
+	dqrhim.o  dqrhsq.o  dqtran.o  drdfpt.o  dround.o  dsdf1d.o  dsecnt.o  \
+	dsifa.o   dsisl.o   dslvch.o  dslvld.o  dsmall.o  dsmslv.o  dsort.o   \
+	dsorti.o  dspgss.o  dspint.o  dspln3.o  dspplu.o  dsqnml.o  dstatm.o  \
+	dstudi.o  dstudt.o  dsvdec.o  dswap.o   dtoesv.o  dtpint.o  dtridg.o  \
+	dtrilu.o  dtrisv.o  dvdots.o  dvfn1d.o  dvgath.o  dvgaus.o  dvnorm.o  \
+	dxspct.o  dzmatx.o  edge3d.o  eigen.o   eignv.o   expnd.o   facld.o   \
+	factr.o   fdinv.o   fdist.o   fexps1.o  fexps2.o  fexps3.o  fft1d.o   \
+	fft1g.o   fft2d.o   fft2g.o   fft3d.o   fft3g.o   flpos.o   formc1.o  \
+	fosps1.o  fxpnt.o   gamln.o   gamma.o   gausv.o   gblck.o   gencmb.o  \
+	getfsp.o  getop.o   gjinv.o   gmcdf.o   gmdst.o   gminv.o   grcdf.o   \
+	gselu.o   gsint.o   histp.o   hstbkt.o  hstprd.o  iamax.o   ichrd.o   \
+	idamax.o  idchrd.o  imprv.o   inslv.o   intr2d.o  intr3d.o  invsm.o   \
+	iseed.o   isort.o   isorti.o  izero.o   las1g.o   las1i.o   las2g.o   \
+	las2i.o   las3g.o   las3i.o   lcomp.o   lczer.o   ldczer.o  ldigit.o  \
+	llinv.o   lnblnk.o  lnvmp.o   luinv.o   maxnt.o   minmx.o   modnr.o   \
+	modsc.o   nchoos.o  nctarg.o  ndigit.o  newtr.o   nmprv.o   nrdarg.o  \
+	nrddp.o   nrdfp.o   nrdint.o  nrdlog.o  nscan1.o  nscan2.o  nscan3.o  \
+	nscan4.o  nscan5.o  nscan6.o  nscanv.o  nsolv.o   ntddm.o   ntwom.o   \
+	nvgss.o   odmax.o   openfl.o  orthH.o   pder1.o   pder2.o   phi.o     \
+	phinv.o   plan3d.o  pnorm.o   polydd.o  polyn.o   prfmte.o  prfmtf.o  \
+	prfmti.o  prins0.o  prins1.o  prins2.o  prins3.o  prins4.o  prins5.o  \
+	prins6.o  prins7.o  prins8.o  print0.o  print1.o  print2.o  print3.o  \
+	print4.o  print5.o  print6.o  print7.o  print8.o  prints.o  printv.o  \
+	prtme.o   prtmt.o   psfmte.o  psfmtf.o  psfmti.o  psolv.o   pspct.o   \
+	qrgde.o   qrgrs.o   qrgsq.o   qrhde.o   qrhim.o   qrhsq.o   qtran.o   \
+	randf.o   randu.o   round.o   secnt.o   second.o  side2d.o  side3d.o  \
+	sifa.o    sisl.o    slvch.o   slvld.o   small.o   smslv.o   sort.o    \
+	sorti.o   spgss.o   spint.o   spln3.o   spplu.o   sqnml.o   srtgrp.o  \
+	statms.o  studi.o   studt.o   svdec.o   tbm2g.o   tbm3g.o   texp2d.o  \
+	texp3d.o  thin1d.o  toesv.o   tpint.o   tridg.o   trilu.o   trisv.o   \
+	uuinv.o   vcorel.o  vgath.o   vgaus.o   vnorm.o   vregrs.o  xregrs.o  \
+	xspct.o   zmatx.o   derf.o    julian.o  dbest1.o  dbest2.o  ofile.o
 
+.SUFFIXES: .f .o
 
-all: lib install
+.f.o:
+	$(FC) -c $(FFLAGS) *.f
 
 lib: $(OBJS)
-	lib /out:$(LIBNAME).lib $(OBJS)
-
-install: lib
-	$(DELETE) $(LIBDIR)\$(LIBNAME).lib
-	$(INSTALL) $(LIBNAME).lib $(LIBDIR)
+	ar -r gaf77.a $(OBJS)
 
 clean:
-	$(DELETE) *.obj
+	rm *.o
+	rm *.a
