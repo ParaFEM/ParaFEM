@@ -15,6 +15,7 @@ OBJS  =	sim3de.o
 
 lib: $(OBJS)
 	ar -r rfield.a $(OBJS)
+	cp rfield.a ../../../bin
 	
 clean:
 	rm *.o

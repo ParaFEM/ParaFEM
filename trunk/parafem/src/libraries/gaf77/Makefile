@@ -151,7 +151,8 @@ FILES =	AtxB.f    AxB.f     AxBt.f    addot.f   adfit.f   adot.f    argfn.f   \
 	statms.f  studi.f   studt.f   svdec.f   tbm2g.f   tbm3g.f   texp2d.f  \
 	texp3d.f  thin1d.f  toesv.f   tpint.f   tridg.f   trilu.f   trisv.f   \
 	uuinv.f   vcorel.f  vgath.f   vgaus.f   vnorm.f   vregrs.f  xregrs.f  \
-	xspct.f   zmatx.f   derf.f    julian.f  dbest1.f  dbest2.f  ofile.f
+	xspct.f   zmatx.f   derf.f    julian.f  dbest1.f  dbest2.f  ofile.f   \
+        sim3de.f
 
 
 OBJS  =	AtxB.o    AxB.o     AxBt.o    addot.o   adfit.o   adot.o    argfn.o   \
@@ -205,7 +206,8 @@ OBJS  =	AtxB.o    AxB.o     AxBt.o    addot.o   adfit.o   adot.o    argfn.o   \
 	statms.o  studi.o   studt.o   svdec.o   tbm2g.o   tbm3g.o   texp2d.o  \
 	texp3d.o  thin1d.o  toesv.o   tpint.o   tridg.o   trilu.o   trisv.o   \
 	uuinv.o   vcorel.o  vgath.o   vgaus.o   vnorm.o   vregrs.o  xregrs.o  \
-	xspct.o   zmatx.o   derf.o    julian.o  dbest1.o  dbest2.o  ofile.o
+	xspct.o   zmatx.o   derf.o    julian.o  dbest1.o  dbest2.o  ofile.o   \
+        sim3de.o
 
 .SUFFIXES: .f .o
 
@@ -213,7 +215,9 @@ OBJS  =	AtxB.o    AxB.o     AxBt.o    addot.o   adfit.o   adot.o    argfn.o   \
 	$(FC) -c $(FFLAGS) *.f
 
 lib: $(OBJS)
-	ar -r gaf77.a $(OBJS)
+	ar -rc libgaf77.a $(OBJS)
+	ranlib libgaf77.a
+	cp libgaf77.a ../../../lib
 
 clean:
 	rm *.o
