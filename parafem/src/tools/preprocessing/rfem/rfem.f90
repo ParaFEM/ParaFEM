@@ -127,9 +127,9 @@ PROGRAM rfem
    fname = job_name(1:INDEX(job_name," ")-1) // ".efld"
    OPEN(12,FILE=fname,STATUS='REPLACE',ACTION='WRITE')
 
-!  CALL sim3de(efld,nxe,nye,nze,aa,bb,cc,thx,thy,thz,emn,esd,lunif,kseed, &
-!              shofld,ieplt,iefld,job,sub1,sub2,varfnc,debug,istat,dcheck,   &
-!              nxe,nye,nze,eavg,egeo,ehrm)
+   CALL sim3de(efld,nxe,nye,nze,aa,bb,cc,thx,thy,thz,emn,esd,lunif,kseed, &
+               shofld,ieplt,iefld,job,sub1,sub2,varfnc,debug,istat,dcheck,   &
+               nxe,nye,nze,eavg,egeo,ehrm)
 
    DO iel = 1,nels
      WRITE(12,'(I10,E12.4)') iel, efld(iel)

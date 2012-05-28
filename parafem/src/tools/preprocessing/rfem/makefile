@@ -33,7 +33,8 @@ release:
 	@echo "Building rfem RELEASE"
 	$(MAKE) rfem \
 	FFLAGS="-c -I$(MODULE) $(RFEM_MPI_REL_FFLAGS)" \
-	LDFLAGS="-L$(LIB) -lParaFEM_mpi.$(VERSION) $(RFEM_MPI_REL_LDFLAGS)"
+	LDFLAGS="-L$(LIB) -lParaFEM_mpi.$(VERSION) $(RFEM_MPI_REL_LDFLAGS) \
+	-l gaf77"
 	@echo "Done rfem RELEASE"
 
 debug:
@@ -41,11 +42,12 @@ debug:
 	@echo "Building rfem DEBUG"
 	$(MAKE) rfem \
 	FFLAGS="-c -I$(MODULE) $(RFEM_MPI_DBG_FFLAGS)" \
-	LDFLAGS="-L$(LIB) -lParaFEM_mpi_D.$(VERSION) $(RFEM_MPI_DBG_LDFLAGS)"
+	LDFLAGS="-L$(LIB) -lParaFEM_mpi_D.$(VERSION) $(RFEM_MPI_DBG_LDFLAGS) \
+	         -l gaf77"
 	@echo "Done rfem DEBUG"
 
 rfem: rfem.o
-	$(FC) rfem.o -o rfem $(LDFLAGS)
+	$(FC) rfem.o -o rfem $(LDFLAGS) 
 
 rfem.o: rfem.f90
 	$(FC) rfem.f90 $(FFLAGS)
