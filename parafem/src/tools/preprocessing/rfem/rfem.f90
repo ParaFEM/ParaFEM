@@ -23,7 +23,7 @@ PROGRAM rfem
 !------------------------------------------------------------------------------
 
   INTEGER                :: argc,iargc
-  INTEGER                :: iel,i
+  INTEGER                :: iel,i,j,k
   INTEGER                :: nels,nxe,nye,nze,ndim,nod,nn
   INTEGER                :: iefld,istat,kseed,output
   REAL(iwp)              :: aa,bb,cc
@@ -45,7 +45,7 @@ PROGRAM rfem
   INTEGER, ALLOCATABLE   :: num(:),g_num(:,:) 
   INTEGER, ALLOCATABLE   :: ieplt(:)
   REAL(iwp), ALLOCATABLE :: coord(:,:),g_coord(:,:)
-  REAL(iwp), ALLOCATABLE :: efld(:)   ! elastic modulus random field
+  REAL(iwp), ALLOCATABLE :: efld(:,:,:)   ! elastic modulus random field
 
 !------------------------------------------------------------------------------
 ! 3. Read job_name from the command line
@@ -105,7 +105,7 @@ PROGRAM rfem
 ! 6. Generate spatially random field for Young's modulus in a regular cuboid
 !------------------------------------------------------------------------------
 
-   ALLOCATE(efld(nels))
+   ALLOCATE(efld(nxe,nye,nze))
    ALLOCATE(ieplt(3))
 
    lunif  = .false.  ! not used
@@ -114,7 +114,7 @@ PROGRAM rfem
    job    = ""       ! not used
    sub1   = ""       ! not used
    sub2   = ""       ! not used 
-   debug  = .false.  ! not used
+   debug  = .true.   ! not used
    dcheck = .false.  ! not used
 
    istat  = 11       ! output debugging info to .res file
@@ -131,9 +131,22 @@ PROGRAM rfem
                shofld,ieplt,iefld,job,sub1,sub2,varfnc,debug,istat,dcheck,   &
                nxe,nye,nze,eavg,egeo,ehrm)
 
-   DO iel = 1,nels
-     WRITE(12,'(I10,E12.4)') iel, efld(iel)
+   WRITE(11,'(A,E12.4)') "eavg =", eavg
+   WRITE(11,'(A,E12.4)') "egeo =", egeo
+   WRITE(11,'(A,E12.4)') "Harmonic average =", ehrm
+
+   iel = 0
+
+   DO i = 1, nze
+     DO j = 1, nye
+       DO k = 1, nxe
+         iel = iel + 1
+         WRITE(12,'(I10,E12.4)') iel, efld(k,j,i)
+       END DO
+     END DO
    END DO
+
+   PRINT *, "EFLD = ", efld
 
    CLOSE(11)
    CLOSE(12)

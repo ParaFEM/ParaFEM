@@ -92,7 +92,7 @@
 Version = 5.39
 
 FC      = ftn
-FFLAGS  = -V -O3 -s real64
+FFLAGS  = -V -O3 -s real64 -e 0z
 INSTALL = move
 DELETE  = del
 #				LIBNAME is the name of the library
@@ -152,7 +152,7 @@ FILES =	AtxB.f    AxB.f     AxBt.f    addot.f   adfit.f   adot.f    argfn.f   \
 	texp3d.f  thin1d.f  toesv.f   tpint.f   tridg.f   trilu.f   trisv.f   \
 	uuinv.f   vcorel.f  vgath.f   vgaus.f   vnorm.f   vregrs.f  xregrs.f  \
 	xspct.f   zmatx.f   derf.f    julian.f  dbest1.f  dbest2.f  ofile.f   \
-        sim3de.f
+        sim3de.f  pltef3.f
 
 
 OBJS  =	AtxB.o    AxB.o     AxBt.o    addot.o   adfit.o   adot.o    argfn.o   \
@@ -207,7 +207,7 @@ OBJS  =	AtxB.o    AxB.o     AxBt.o    addot.o   adfit.o   adot.o    argfn.o   \
 	texp3d.o  thin1d.o  toesv.o   tpint.o   tridg.o   trilu.o   trisv.o   \
 	uuinv.o   vcorel.o  vgath.o   vgaus.o   vnorm.o   vregrs.o  xregrs.o  \
 	xspct.o   zmatx.o   derf.o    julian.o  dbest1.o  dbest2.o  ofile.o   \
-        sim3de.o
+        sim3de.o  pltef3.o
 
 .SUFFIXES: .f .o
 
