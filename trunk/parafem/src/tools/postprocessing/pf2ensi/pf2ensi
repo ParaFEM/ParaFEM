@@ -40,12 +40,16 @@ STR_FILENAME="$BASE_FILENAME.str"
 FIX_FILENAME="$BASE_FILENAME.fix"
 TTR_FILENAME="$BASE_FILENAME.ttr"
 FLX_FILENAME="$BASE_FILENAME.flx"
+MAT_FILENAME="$BASE_FILENAME.mat"
 NSET_FILENAME="$BASE_FILENAME.nset"
 
 # output Ensight filenames
 ENSI_CASE_FILENAME="$BASE_FILENAME.ensi.case"
 ENSI_GEO_FILENAME="$BASE_FILENAME.ensi.geo"
 ENSI_MATID_FILENAME="$BASE_FILENAME.ensi.MATID"
+
+# temporary output files
+ELEM_TMPL_FILE="tmp.$BASE_FILENAME.elem_tmpl"
 
 # --------------------------------------------------------------------------------
 # Set default flags
@@ -59,6 +63,7 @@ DO_VMS=1
 DO_STR=1
 DO_TTR=1
 DO_FLX=1
+DO_MAT=1
 
 DO_BND=1 # enable only if fixed ParaView has been installed/compiled
 DO_LDS=1 # "
@@ -101,6 +106,11 @@ echo "Alya Ensight Gold --- Scalar per-element variable file" > $ENSI_MATID_FILE
 echo "part" >> $ENSI_MATID_FILENAME
 echo -e "\t1" >> $ENSI_MATID_FILENAME
 
+# Determine if we have some element scalar output files to be processed
+if [ -f $MAT_FILENAME ] && [ $DO_MAT == 1 ]; then
+    D2GEO_ARGS="$D2GEO_ARGS -v gen_elem_tmpl=1"
+fi
+
 # --------------------------------------------------------------------------------
 # Convert the ParaFEM model file .d to Ensight GEO format
 # --------------------------------------------------------------------------------
@@ -120,7 +130,7 @@ NUM_TIME_STEPS=-1
 
 # --------------------------------------------------------------------------------
 # Process variables
-# --------------------------------------------------------------------------------0
+# --------------------------------------------------------------------------------
 
 # Add to case file header
 echo "VARIABLE" >> $ENSI_CASE_FILENAME
@@ -206,6 +216,15 @@ if [ -f $FLX_FILENAME ] && [ $DO_FLX == 1 ]; then
     fi
 fi
 
+PROPID=1
+if [ -f $MAT_FILENAME ] && [ $DO_MAT == 1 ]; then
+    MAT2ENSI=`awk -f $BINLOC/pf2ensi.var.awk $MAT_FILENAME`
+    for PROPNAME in $MAT2ENSI; do
+	echo -e "scalar per element:\t\tMaterial_""$PROPNAME""\t""$BASE_FILENAME"".ensi.ELMAT_""$PROPID""_""$PROPNAME" >> $ENSI_CASE_FILENAME
+	(( PROPID++ ))
+    done
+fi
+
 if [ -f $FIX_FILENAME ] && [ $DO_FIX == 1 ]; then
     FIX2ENSI=`awk -f $BINLOC/pf2ensi.var.awk $FIX_FILENAME`
     echo -e "vector per node:\t\tFixed_Displacement\t""$BASE_FILENAME"".ensi.NDFIX" >> $ENSI_CASE_FILENAME
@@ -255,6 +274,30 @@ if [ $NUM_TIME_STEPS -gt 0 ]; then
     done
 fi    
 
+# remove temporary files
+
+if [ -f $ELEM_TMPL_FILE ]; then
+    echo "Deleting temporary file $ELEM_TMPL_FILE"
+    rm -f $ELEM_TMPL_FILE
+fi
+
 # Complete
 
 echo "Completed."
+
+
+showusage() {
+    echo "To capture a log file, please run the script as:"
+    echo "  ./pf2ensi <ARGS> 2>&1 | tee log"
+    echo
+    echo "To convert ParaFEM input and output deck to EnSight Gold run:"
+    echo "  ./pf2ensi <base_filename>"
+    echo
+    echo "For example if you have cube.d (and cube.dis, cube.bnd etc) run:"
+    echo "  ./pf2ensi cube"
+    echo "in the same directory as the ParaFEM deck."
+    echo
+    echo "Modifying conversion options:"
+    echo "  -flip-normals will reorder (some) element vertices (BETA functionality)"
+    echo
+}
