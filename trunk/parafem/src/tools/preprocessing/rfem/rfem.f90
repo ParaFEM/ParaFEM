@@ -26,11 +26,13 @@ PROGRAM rfem
   INTEGER                :: iel,i,j,k
   INTEGER                :: nels,nxe,nye,nze,ndim,nod,nn
   INTEGER                :: iefld,istat,kseed,output
+  INTEGER                :: np_types=2,nprops
   REAL(iwp)              :: aa,bb,cc
   REAL(iwp)              :: eavg,egeo,ehrm
   REAL(iwp)              :: emn,esd
   REAL(iwp)              :: thx,thy,thz
   REAL(iwp),PARAMETER    :: zero=0.0_iwp
+  REAL(iwp)              :: v
   CHARACTER(LEN=6)       :: varfnc
   CHARACTER(LEN=15)      :: rfield,job,sub1,sub2
   CHARACTER(LEN=50)      :: job_name,fname,program_name
@@ -89,11 +91,13 @@ PROGRAM rfem
     READ(10,*) thx,thy,thz
     READ(10,*) emn,esd
     READ(10,*) varfnc
+    READ(10,*) v
 
-    nye  = nels/nxe/nze
-    nn   = (nxe+1)*(nye+1)*(nze+1)
-    ndim = 3
-    nod  = 8
+    nye    = nels/nxe/nze
+    nn     = (nxe+1)*(nye+1)*(nze+1)
+    nprops = nels
+    ndim   = 3
+    nod    = 8
 
     IF(output /= 1 .AND. output /=2) THEN
       PRINT *, output, " = Incorrect value for output. Accepted values are &
@@ -124,7 +128,7 @@ PROGRAM rfem
    fname = job_name(1:INDEX(job_name," ")-1) // ".res"
    OPEN(11,FILE=fname,STATUS='REPLACE',ACTION='WRITE')
 
-   fname = job_name(1:INDEX(job_name," ")-1) // ".efld"
+   fname = job_name(1:INDEX(job_name," ")-1) // ".mat"
    OPEN(12,FILE=fname,STATUS='REPLACE',ACTION='WRITE')
 
    CALL sim3de(efld,nxe,nye,nze,aa,bb,cc,thx,thy,thz,emn,esd,lunif,kseed, &
@@ -137,11 +141,14 @@ PROGRAM rfem
 
    iel = 0
 
+   WRITE(12,'(A,2I12)') '*MATERIAL', nprops, np_types
+   WRITE(12,'(3A)') "E"," ", "v"
+
    DO i = 1, nze
      DO j = 1, nye
        DO k = 1, nxe
          iel = iel + 1
-         WRITE(12,'(I10,E12.4)') iel, efld(k,j,i)
+         WRITE(12,'(I10,2E12.4)') iel, efld(k,j,i), v
        END DO
      END DO
    END DO
@@ -181,10 +188,10 @@ PROGRAM rfem
     WRITE(13,'(A)') "*ELEMENTS"
 
     DO iel = 1, nels
-      WRITE(13,'(I12,A,8I12,A)') iel, " 3 8 1 ",g_num(1,iel),g_num(4,iel),   &
+      WRITE(13,'(I12,A,8I12,I12)') iel, " 3 8 1 ",g_num(1,iel),g_num(4,iel),   &
                                    g_num(8,iel),g_num(5,iel),g_num(2,iel),   &
                                    g_num(3,iel),g_num(7,iel),g_num(6,iel),   &
-                                   " 1"   
+                                   iel  ! each element has its own material  
     END DO
 
     CLOSE(13)
