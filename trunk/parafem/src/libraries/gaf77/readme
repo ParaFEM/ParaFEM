@@ -66,3 +66,46 @@ a library which translate what is expected to what is actually offered
 Where possible, other non-standard Fortran 77 extensions have been avoided.
 Let me know if you discover any.
 
+_______________________________________________________________________________
+_______________________________________________________________________________
+
+
+  DETAILS ABOUT THIS VERSION
+
+  Comments added by Lee Margetts on 29 May 2012
+
+  This version of the GAF77 library is supplied as part of the suite of 
+  software that accompanies the book Fenton G.A. and Griffiths D.V. 
+  "Risk Assessment in Geotechnical Engineering", Wiley, 2008.
+
+  The driver programs and Smith and Griffiths libraries provided in the book 
+  are different to those provided here in ParaFEM. Therefore, to avoid
+  confusion and the need to write supporting documentation, we have stripped
+  out GAF77 from the rest of the software.
+
+  A new driver program has been written, RFEM.F90 and this has limited scope.
+  It currently only creates random fields using the subroutine SIM3DE.f
+
+  For simplification, the subroutine SIM3DE.f has been added to the GAF77
+  library. In the book, this subroutine is compiled elsewhere as part of a 
+  driver program. 
+
+  On compilation, a number of files were missing. These are
+  part of the full distribution and so for convenience, those procedures called
+  by GAF77 are now built within the library GAF77. It is now self-contained.
+
+  As noted in the original readme, SECOND.f is problematic. ETIME() is not
+  an intrinsic procedure in the version of CRAY FORTRAN being used. A hack
+  has been used, but not tested.
+
+  Variables and arrays are not initiallised to zero in the source code. This 
+  caused erroneous output on initial testing, but was rectified using a 
+  compiler switch.
+
+  Another issue was that mixed REAL*4 and REAL*8 precision was used in the 
+  subroutine SIM3DE.f. This caused problems when called by the driver 
+  program RFEM.f90. All reals are now REAL*8 at that level of the library. 
+  This may have unintended consequences and will be investigated later.
+ 
+
+
