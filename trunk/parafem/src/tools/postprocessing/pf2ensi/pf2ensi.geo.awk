@@ -2,6 +2,16 @@
 # @(#) Usage:awk -f [-v id_given=1] pf2ensi.geo.awk <filename.d> ;; as called by
 # @9#) Usage:pf2ensi [-id-given] <filename>
 # Author: Louise M. Lever (louise.lever@manchester.ac.uk)
+# Version: 1.0.2
+# Date: 2012-05-29
+
+# CHANGES:
+# v1.0.2
+#   LML: Added support for .mat and element-scalar output
+#   LML: Generates a temporary file with element type and element id lists. Used as
+#        input to any Variable processing that outputs element data.
+# v1.0.1
+#   LML: Added support for .ttr and .flx (temperature-scalar, and flux-vector) files
 
 # --------------------------------------------------------------------------------
 # ARGUMENTS:
@@ -51,6 +61,10 @@ BEGIN {
     geo_file = base_filename ".ensi.geo";
     matid_file = base_filename ".ensi.MATID";
 
+    if( gen_elem_tmpl ) {
+	elem_tmpl_file = "tmp." base_filename ".elem_tmpl"
+    }
+
     # --------------------------------------------------------------------------------
     # generate temporary filenames
     # --------------------------------------------------------------------------------
@@ -64,7 +78,7 @@ BEGIN {
     tmp_yord_file = "tmp.yord." geo_file;
     tmp_zord_file = "tmp.zord." geo_file;
     # elem id given lists for each elem type
-    if( id_given ) {
+    if( id_given || gen_elem_tmpl ) {
 	tmp_idtetra4_file = "tmp.idtetra4." geo_file;
 	tmp_idtetra10_file = "tmp.idtetra10." geo_file;
 	tmp_idhexa8_file = "tmp.idhexa8." geo_file;
@@ -98,7 +112,7 @@ END {
     close(tmp_xord_file);
     close(tmp_yord_file);
     close(tmp_zord_file);
-    if( id_given ) {
+    if( id_given || gen_elem_tmpl ) {
 	close(tmp_idtetra4_file);
 	close(tmp_idhexa8_file);
 	close(tmp_idtetra10_file);
@@ -126,10 +140,18 @@ END {
     if( elem_tetra4_count > 0 ) {
 	system("echo tetra4 >> " geo_file);
 	system("echo tetra4 >> " matid_file);
+	# append the tetra4 label to element template
+	if( gen_elem_tmpl ) {
+	    system("echo tetra4 >> " elem_tmpl_file);
+	}
 	# append the tetra4 elem count and list to the geo file
 	system("echo " elem_tetra4_count " >> " geo_file);
 	if( id_given ) {
 	    system("cat " tmp_idtetra4_file " >> " geo_file);
+	}
+	# append the tetra4 id list to element template
+	if( gen_elem_tmpl ) {
+	    system("cat " tmp_idtetra4_file " >> " elem_tmpl_file);
 	}
 	# append the tetra4 connectivity to the geo file
 	system("cat " tmp_tetra4_file " >> " geo_file);
@@ -140,10 +162,18 @@ END {
     if( elem_tetra10_count > 0 ) {
 	system("echo tetra10 >> " geo_file);
 	system("echo tetra10 >> " matid_file);
+	# append the tetra10 label to element template
+	if( gen_elem_tmpl ) {
+	    system("echo tetra10 >> " elem_tmpl_file);
+	}
 	# append the tetra10 elem count and list to the geo file
 	system("echo " elem_tetra10_count " >> " geo_file);
 	if( id_given ) {
 	    system("cat " tmp_idtetra10_file " >> " geo_file);
+	}
+	# append the tetra10 id list to element template
+	if( gen_elem_tmpl ) {
+	    system("cat " tmp_idtetra10_file " >> " elem_tmpl_file);
 	}
 	# append the tetra10 connectivity to the geo file
 	system("cat " tmp_tetra10_file " >> " geo_file);
@@ -154,10 +184,18 @@ END {
     if( elem_hexa8_count > 0 ) {
 	system("echo hexa8 >> " geo_file);
 	system("echo hexa8 >> " matid_file);
+	# append the hexa8 label to element template
+	if( gen_elem_tmpl ) {
+	    system("echo hexa8 >> " elem_tmpl_file);
+	}
 	# append the hexa8 elem count and list to the geo file
 	system("echo " elem_hexa8_count " >> " geo_file);
 	if( id_given ) {
 	    system("cat " tmp_idhexa8_file " >> " geo_file);
+	}
+	# append the hexa8 id list to element template
+	if( gen_elem_tmpl ) {
+	    system("cat " tmp_idhexa8_file " >> " elem_tmpl_file);
 	}
 	# append the hexa8 connectivity to the geo file
 	system("cat " tmp_hexa8_file " >> " geo_file);
@@ -168,10 +206,18 @@ END {
     if( elem_hexa20_count > 0 ) {
 	system("echo hexa20 >> " geo_file);
 	system("echo hexa20 >> " matid_file);
+	# append the hexa20 label to element template
+	if( gen_elem_tmpl ) {
+	    system("echo hexa20 >> " elem_tmpl_file);
+	}
 	# append the hexa20 elem count and list to the geo file
 	system("echo " elem_hexa20_count " >> " geo_file);
 	if( id_given ) {
 	    system("cat " tmp_idhexa20_file " >> " geo_file);
+	}
+	# append the hexa20 id list to element template
+	if( gen_elem_tmpl ) {
+	    system("cat " tmp_idhexa20_file " >> " elem_tmpl_file);
 	}
 	# append the hexa20 connectivity to the geo file
 	system("cat " tmp_hexa20_file " >> " geo_file);
@@ -182,6 +228,8 @@ END {
     # clean up and remove the tmp files
     if( id_given ) {
 	system("rm -f " tmp_idord_file);
+    }
+    if( id_given || gen_elem_tmpl ) {
 	system("rm -f " tmp_idtetra4_file " " tmp_idtetra10_file " " tmp_idhexa8_file " " tmp_idhexa20_file);
     }
     system("rm -f " tmp_xord_file " " tmp_yord_file " " tmp_zord_file);
@@ -237,7 +285,7 @@ function do_elements() {
     } else {
 	if( !flip_normals ) {
 	    if( $3 == "4" ) { # tetra4/tet2
-		if( id_given ) {
+		if( id_given || gen_elem_tmpl ) {
 		    print $1 > tmp_idtetra4_file;
 		}
 		print $5, $6, $7, $8 > tmp_tetra4_file;
@@ -245,7 +293,7 @@ function do_elements() {
 		mat_count[$9]++;
 		elem_tetra4_count++;
 	    } else if( $3 == "8" ) { #hexa8/hex
-		if( id_given ) {
+		if( id_given || gen_elem_tmpl ) {
 		    print $1 > tmp_idhexa8_file;
 		}
 		print $5, $6, $7, $8, $9, $10, $11, $12 > tmp_hexa8_file;
@@ -253,7 +301,7 @@ function do_elements() {
 		mat_count[$13]++;
 		elem_hexa8_count++;
 	    } else if( $3 == "10" ) { #tetra10/tet
-		if( id_given ) {
+		if( id_given || gen_elem_tmpl ) {
 		    print $1 > tmp_idtetra10_file;
 		}
 		print $5, $6, $7, $8, $9, $10, $11, $12, $13, $14 > tmp_tetra10_file;
@@ -261,7 +309,7 @@ function do_elements() {
 		mat_count[$15]++;
 		elem_tetra10_count++;
 	    } else if( $3 == "20" ) { #hexa20/hex2
-		if( id_given ) {
+		if( id_given || gen_elem_tmpl ) {
 		    print $1 > tmp_idhexa20_file;
 		}
 		print $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24 > tmp_hexa20_file;
@@ -271,7 +319,7 @@ function do_elements() {
 	    }
 	} else {
 	    if( $3 == "4" ) { # FLIP tetra4/tet2 ;; { 0,_2_,_1_,3 }
-		if( id_given ) {
+		if( id_given || gen_elem_tmpl ) {
 		    print $1 > tmp_idtetra4_file;
 		}
 		print $5, $7, $6, $8 > tmp_tetra4_file;
