@@ -1,10 +1,14 @@
 # @(#) pf2ensi.var.awk - Basic conversion of ParaFEM data file to EnSight Variable file
 # @(#) Usage:awk -f pf2ensi.var.awk <filename>.{bnd,dis,fix,lds,nset,pri,rea,str,vms,ttr,flx}
 # Author: Louise M. Lever (louise.lever@manchester.ac.uk)
-# Version: 1.0.1
-# Date: 2012-04-25
+# Version: 1.0.2
+# Date: 2012-05-29
 
 # CHANGES:
+# v1.0.2
+#   LML: Added support for .mat and element-scalar output
+#   LML: Uses temporary file of element type and element id lists. Replaces id with loaded values
+#        from .mat file into multiscalar ensi output files.
 # v1.0.1
 #   LML: Added support for .ttr and .flx (temperature-scalar, and flux-vector) files
 
@@ -13,7 +17,7 @@ BEGIN {
     OFS = " ";
     
     # default parsing mode - mode determied by file-type and/or header
-    var_type = "NONE"; # NONE, NDBND, DISPL, NDFIX, NDLDS, NDSET, (PRIMAX, PRISC, PRIMI), NDREA, STRESS, NDVMS, NDTTR, NDFLX
+    var_type = "NONE"; # NONE, NDBND, DISPL, NDFIX, NDLDS, NDSET, (PRIMAX, PRISC, PRIMI), NDREA, STRESS, NDVMS, NDTTR, NDFLX, ELMAT
     mode = "NONE"; # NONE, NODE, ELEMENT
     time_mode = "NONE"; # NONE, STEPS
     dtype = "NONE"; # NONE, SCALAR, MULTISCALAR, BND-SCALAR, VECTOR, TENSOR
@@ -87,6 +91,13 @@ BEGIN {
 	time_mode = "STEPS";
 	dtype = "VECTOR";
 	dset = "FULL";
+    } else if( (file_ext_pos = match(vec_file,/.[mM][aA][tT]$/) - 1) != -1 ) {
+	var_type = "ELMAT";
+	mode = "ELEMENT";
+	time_mode = "NONE";
+	dtype = "MULTISCALAR";
+	dset = "FULL";
+	dopt = "MAT";
     } else if( (file_ext_pos = match(vec_file,/.[nN][sS][eE][tT]$/) - 1) != -1 ) {
 	var_type = "NDSET";
 	mode = "NODE";
@@ -102,6 +113,8 @@ BEGIN {
 
     if( time_mode == "NONE" ) {
 	if( var_type == "NDSET" ) {
+	    var_base_filename = base_filename ".ensi." var_type "_";
+	} else if( var_type == "ELMAT" ) {
 	    var_base_filename = base_filename ".ensi." var_type "_";
 	} else {
 	    var_base_filename = base_filename ".ensi." var_type;
@@ -137,6 +150,9 @@ BEGIN {
 	tmp_ucomp_file = "tmp.ucomp." base_filename;
     }
 
+    # element template file - copy for element scalar data files and replace index with value
+    elem_tmpl_file = "tmp." base_filename ".elem_tmpl"
+
     # --------------------------------------------------------------------------------
     # initialize static (and non-keyword based) datasets
     # --------------------------------------------------------------------------------
@@ -161,27 +177,31 @@ BEGIN {
 }
 
 END {
-    # for NDFIX, output last node
+    # end specific types 
     if( var_type == "NDFIX" ) {
+	# for NDFIX, output last node
 	do_fix_vector_partial_cur();
-    }
-
-    # complete last time step and close files
-    if( dset == "PARTIAL" ) {
-	if( dtype == "SCALAR" ) {
-	    end_partial_scalar();
-	} else if( dtype == "VECTOR" ) {
-	    end_partial_vector();
-	}
-    } else { # dset == FULL
-	if( dtype == "SCALAR" ) {
-	    end_scalar();
-	} else if( dtype == "VECTOR" ) {
-	    end_vector();
-	} else if( dtype == "TENSOR" ) {
-	    end_tensor();
-	} else if( dtype == "MULTISCALAR" ) {
-	    end_multi_scalar();
+    } else if( var_type == "ELMAT" ) {
+	end_mat_element_multiscalar()
+    } else {
+	# end generic types
+	# complete last time step and close files
+	if( dset == "PARTIAL" ) {
+	    if( dtype == "SCALAR" ) {
+		end_partial_scalar();
+	    } else if( dtype == "VECTOR" ) {
+		end_partial_vector();
+	    }
+	} else { # dset == FULL
+	    if( dtype == "SCALAR" ) {
+		end_scalar();
+	    } else if( dtype == "VECTOR" ) {
+		end_vector();
+	    } else if( dtype == "TENSOR" ) {
+		end_tensor();
+	    } else if( dtype == "MULTISCALAR" ) {
+		end_multi_scalar();
+	    }
 	}
     }
 
@@ -193,6 +213,8 @@ END {
 
     if( var_type == "NDSET" ) {
 	print all_nset_names;
+    } if( var_type == "ELMAT" ) {
+	print all_prop_labels;
     } else {
 	print time_step;
     }
@@ -412,6 +434,64 @@ function start_flx() {
     }
     start_vector();
     getline; # LML: skip time step in file - assume increments by 1 each step
+}
+
+# ---- MAT ----------------------------------------------------------------------------
+
+function start_mat() {
+    print "Processing MAT multiscalar (element) data" > "/dev/stderr";
+    # no time steps
+
+    # get other values on *MATERIAL line
+    num_mats = $2;
+    num_props = $3;
+
+    # get labels
+    getline;
+    for( prop=1; prop<=num_props; prop++ ) {
+	mat_prop_label[prop] = $prop;
+	all_prop_labels = all_prop_labels " " $prop;
+    }
+
+    elem_count = 0;
+
+    # Open variable file for this element scalar data; no time step
+    for( prop=1; prop<=num_props; prop++ ) {
+	var_file[prop] = var_base_filename prop "_" mat_prop_label[prop];
+	print "Generating variable file: " var_file[prop] > "/dev/stderr";
+	
+	print "Alya Ensight Gold --- Scalar per-element variable file" > var_file[prop];
+	print "part" > var_file[prop];
+	print "1" > var_file[prop];
+    }
+}
+
+function do_mat_element_multiscalar_data() {
+    gsub(/^ */,"");
+    pfld = 2;
+    for( prop=1; prop<=num_props; prop++ ) {
+	elem_id = $1;
+	elem_prop[elem_id, prop] = $pfld;
+	pfld++;
+    }
+    elem_count++;
+}
+
+function end_mat_element_multiscalar() {
+    while( (getline < elem_tmpl_file) > 0 ) {
+	if( ($1 == "tetra4") || ($1 == "tetra10") || ($1 == "hexa8") || ($1 == "hexa20") ) {
+	    for( prop=1; prop<=num_props; prop++ ) {
+		print $1 > var_file[prop];
+	    }
+	} else {
+	    for( prop=1; prop<=num_props; prop++ ) {
+		print elem_prop[$1, prop] > var_file[prop];
+	    }
+	}
+    }
+    for( prop=1; prop<=num_props; prop++ ) {
+	close(var_file[prop]);
+    }
 }
 
 # --------------------------------------------------------------------------------
@@ -681,6 +761,7 @@ function report_unknown_type() {
 /^*TEMPERATURE/ { start_ttr(); next; }
 /^*FLUX/ { start_flx(); next; }
 /^*NSET/ { start_nset(); next; }
+/^*MATERIAL/ { start_mat(); next; }
 # no keywords for BND, FIX and LDS - are manually "started" in BEGIN
 
 # process non-keyword lines based on mode
@@ -691,6 +772,7 @@ mode == "NODE" && dtype == "SCALAR" && dset == "PARTIAL" && dopt == "BND" { do_b
 mode == "NODE" && dtype == "SCALAR" && dset == "PARTIAL" && dopt == "SET" { do_nset_scalar_partial_data(); }
 # multiscalar inputs
 mode == "NODE" && dtype == "MULTISCALAR" && dset == "FULL" && dopt == "NONE" { do_multi_scalar_data(); }
+mode == "ELEMENT" && dtype == "MULTISCALAR" && dset == "FULL" && dopt == "MAT" { do_mat_element_multiscalar_data(); }
 # vector inputs
 mode == "NODE" && dtype == "VECTOR" && dset == "FULL" { do_vector_data(); }
 mode == "NODE" && dtype == "VECTOR" && dset == "PARTIAL" && dopt == "NONE" { do_vector_partial_data(); }
