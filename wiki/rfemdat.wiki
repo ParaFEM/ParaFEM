@@ -12,7 +12,8 @@ nels nxe nze
 aa bb cc
 thx thy thz
 emn esd
-varfnc 
+varfnc
+v
 }}}
 
 ||*Variable Name*||*Type*||*Meaning*||
@@ -30,7 +31,7 @@ varfnc
 ||{{{emn}}} || Real || Target mean of E at a point.||
 ||{{{esd}}} || Real || Target standard deviation of E at a point.||
 ||{{{varfnc}}} || Real || Name of the covariance function controlling the random field. Accepted values are {{{dlavx3}}},{{{dlafs3}}},{{{dlsep3}}},{{{dlsfr3}}},{{{dlspx3}}}. See header in subroutine {{{sim3de}}} for further details.||
-
+||{{{v}}} || Real || Poisson's ratio. Assumed constant over the model.||
 
 A real example follows:
 
@@ -40,7 +41,7 @@ sim3de
 250 5 5
 1.0 1.0 1.0
 1.0 1.0 1.0
-100.
-5.
+100. 5.
 dlavx3
+0.3
 }}}
