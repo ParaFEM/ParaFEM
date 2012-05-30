@@ -158,10 +158,11 @@ PROGRAM rfem
    CLOSE(11)
    CLOSE(12)
 
+   DEALLOCATE(efld,ieplt)
+
 !------------------------------------------------------------------------------
 ! 7. Generate finite element mesh for a regular cuboid
 !------------------------------------------------------------------------------
-
 
   IF(output == 2 ) THEN
 
