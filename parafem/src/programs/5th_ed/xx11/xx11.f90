@@ -20,7 +20,7 @@ PROGRAM xx11
 
  !  neq , ntot  are now global variables - not declared
 
-  INTEGER, PARAMETER    :: ndim=3,nodof=1,nst=6
+  INTEGER, PARAMETER    :: ndim=3,nodof=1
   INTEGER               :: nod,nn,nr,nip
   INTEGER               :: i,j,k,iters,limit,iel,num_no,no_index_start
   INTEGER               :: l,idx1
@@ -49,10 +49,9 @@ PROGRAM xx11
   REAL(iwp),ALLOCATABLE :: d_pp(:),diag_precon_tmp(:,:),val(:,:),val_f(:)
   REAL(iwp),ALLOCATABLE :: store_pp(:),storkc_pp(:,:,:),eld(:),timest(:)
   REAL(iwp),ALLOCATABLE :: g_coord_pp(:,:,:),disp_pp(:),eld_pp(:,:)
-  REAL(iwp),ALLOCATABLE :: flux_pp(:,:),storeflux_pp(:),kay(:,:)
+  REAL(iwp),ALLOCATABLE :: flux_pp(:,:),storeflux_pp(:),kay(:,:),fun(:)
   REAL(iwp),ALLOCATABLE :: shape_integral_pp(:,:),flux_integral_pp(:,:),fluxnodes_pp(:)
-  REAL(iwp),ALLOCATABLE :: sigma(:),fun(:),eps(:),bee(:,:),dee(:,:)
-  REAL(iwp),ALLOCATABLE :: shape_integral2_pp(:,:),flux_integral2_pp(:,:),sigma2(:),eps2(:)
+  REAL(iwp),ALLOCATABLE :: shape_integral2_pp(:,:),flux_integral2_pp(:,:)
   INTEGER, ALLOCATABLE  :: rest(:,:),g(:),num(:),g_num_pp(:,:),g_g_pp(:,:),no(:)
   INTEGER, ALLOCATABLE  :: no_f(:),no_local_temp(:),no_local_temp_f(:)
   INTEGER, ALLOCATABLE  :: no_local(:),no_pp(:),no_f_pp(:),no_pp_temp(:),no_global(:)
@@ -455,33 +454,16 @@ PROGRAM xx11
   ALLOCATE(flux_pp(0:nels*nip,ndim))
   ALLOCATE(storeflux_pp(ndim))
   ALLOCATE(kay(ndim,ndim))
-  ALLOCATE(shape_integral_pp(nod,nels_pp),flux_integral_pp(nod*nst,nels_pp))
-!  ALLOCATE(fluxnodes_pp(nodes_pp*nst))
-  ALLOCATE(fluxnodes_pp(nodes_pp*3))
-  ALLOCATE(sigma(nst),fun(nod),eps(nst),bee(nst,ntot),dee(nst,nst))
-  ALLOCATE(shape_integral2_pp(nod,nels_pp),flux_integral2_pp(nod*ndim,nels_pp))
-  ALLOCATE(sigma2(ndim),eps2(ndim))
+  ALLOCATE(shape_integral_pp(nod,nels_pp),flux_integral_pp(nod*ndim,nels_pp))
+  ALLOCATE(fluxnodes_pp(nodes_pp*ndim))
+  ALLOCATE(fun(nod))
 
   flux_pp           = zero
   storeflux_pp      = zero
   shape_integral_pp = zero
   flux_integral_pp  = zero
-  shape_integral2_pp = zero
-  flux_integral2_pp  = zero
   fluxnodes_pp      = zero
   j                 = 1
-  
-  sigma2 = zero
-  eps2 = zero
-  
-  !--------- SECTION ADDED TO PROJECT NODES ---------!
-  ! Need replacements for young's modulus and poisson's ratio
-  dee = zero
-!  e = 100000
-!  v = 0.3
-!  CALL deemat(e,v,dee)
-  CALL deemat(100000.,0.3,dee)
-  !--------------------------------------------------!
   
   DO iel=1,nels_pp
    
@@ -503,125 +485,77 @@ PROGRAM xx11
         flux_pp(j,k) = storeflux_pp(k)
       END DO
 
-      !--------- SECTION ADDED TO PROJECT NODES ---------!
-      CALL beemat(deriv,bee)
-      eps   = MATMUL(bee,eld_pp(:,iel))
-      sigma = MATMUL(dee,eps)
-      eps2   = MATMUL(kay,eld_pp(:,iel))
-!      sigma2 = MATMUL(dee,eps2)
-      sigma2 = eps2
       CALL shape_fun(fun,points,i)
-    
-!      DO k = 1,nod
-!        idx1 = (k-1)*nst
-!	shape_integral_pp(j,iel) = shape_integral_pp(k,iel) +                 &
-!                                   fun(k)*det*weights(i)
-!        DO l = 1,nst
-!                 flux_integral_pp(idx1+l,iel) = flux_integral_pp(idx1+l,iel) +&
-!                                                fun(k)*sigma(l)*det*weights(i)
-!        END DO
-!      END DO
       
-!      DO k = 1,nod
-!        idx1 = (k-1)*ndim
-!	shape_integral2_pp(j,iel) = shape_integral2_pp(k,iel) +                 &
-!                                   fun(k)*det*weights(i)
-!        DO l = 1,ndim
-!                 flux_integral2_pp(idx1+l,iel) = flux_integral2_pp(idx1+l,iel) +&
-!                                                fun(k)*sigma2(l)*det*weights(i)
-!        END DO
-!      END DO
-      !--------------------------------------------------!
+      DO k = 1,nod
+        idx1 = (k-1)*ndim
+	shape_integral_pp(k,iel) = shape_integral_pp(k,iel) +                 &
+                                   fun(k)*det*weights(i)
+        DO l = 1,ndim
+                 flux_integral_pp(idx1+l,iel) = flux_integral_pp(idx1+l,iel) +&
+                                                fun(k)*storeflux_pp(l)*det*weights(i)
+        END DO
+      END DO
     
       j = j + 1
     END DO !gauss
   END DO !elements
   
-  DO k=1,nels_pp
-    DO l=1,ndim
-      flux_integral2_pp(8*l-7,k)=flux_pp(8*k-7,l)
-      flux_integral2_pp(8*l-6,k)=flux_pp(8*k-6,l)
-      flux_integral2_pp(8*l-5,k)=flux_pp(8*k-5,l)
-      flux_integral2_pp(8*l-4,k)=flux_pp(8*k-4,l)
-      flux_integral2_pp(8*l-3,k)=flux_pp(8*k-3,l)
-      flux_integral2_pp(8*l-2,k)=flux_pp(8*k-2,l)
-      flux_integral2_pp(8*l-1,k)=flux_pp(8*k-1,l)
-      flux_integral2_pp(8*l-0,k)=flux_pp(8*k-0,l)
-!      flux_integral2_pp(8*l-7,k)=(8*k-7)*l*1.
-!      flux_integral2_pp(8*l-6,k)=(8*k-6)*l*1.
-!      flux_integral2_pp(8*l-5,k)=(8*k-5)*l*1.
-!      flux_integral2_pp(8*l-4,k)=(8*k-4)*l*1.
-!      flux_integral2_pp(8*l-3,k)=(8*k-3)*l*1.
-!      flux_integral2_pp(8*l-2,k)=(8*k-2)*l*1.
-!      flux_integral2_pp(8*l-1,k)=(8*k-1)*l*1.
-!      flux_integral2_pp(8*l-0,k)=(8*k-0)*l*1.
-    END DO
-  END DO
-  
   label = "*HEATFLUX"
   
-!  IF(numpe==1)THEN
-!    PRINT *
-!    DO k=1,nels_pp
-!      WRITE(*,'(48E16.8)')flux_integral_pp(:,k)
-!    END DO
-!  END IF
-  
+  CALL nodal_projection(npes,nn,nels_pp,g_num_pp,nod,ndim,nodes_pp,           &
+                        node_start,node_end,shape_integral_pp,                &
+                        flux_integral_pp,fluxnodes_pp)
+  CALL write_nodal_variable(label,25,1,nodes_pp,npes,numpe,ndim,fluxnodes_pp)
+
   IF(numpe==1)THEN
     PRINT *
     DO k=1,nels_pp
-      WRITE(*,'(24E16.8)')flux_integral2_pp(:,k)
+      WRITE(*,'(I5,24E16.8)')k,flux_integral_pp(:,k)
     END DO
   END IF 
-  
-  !--------- SECTION ADDED TO PROJECT NODES ---------!
-!  CALL scatter_nodes(npes,nn,nels_pp,g_num_pp,nod,3,nodes_pp,            &
-!                     node_start,node_end,eld_pp,flux_pp,1)
-!  CALL write_nodal_variable(label,25,1,nodes_pp,npes,numpe,8,flux_pp)
-!  
-
-!  CALL nodal_projection(npes,nn,nels_pp,g_num_pp,nod,3,nodes_pp,            &
-!                        node_start,node_end,shape_integral_pp,                &
-!                        flux_pp,fluxnodes_pp)
-
-  CALL nodal_projection(npes,nn,nels_pp,g_num_pp,nod,ndim,nodes_pp,            &
-                        node_start,node_end,shape_integral2_pp,                &
-                        flux_integral2_pp,fluxnodes_pp)
 
   IF(numpe==1)THEN
     PRINT *
-    DO k=1,125
-      WRITE(*,'(3E16.8)')fluxnodes_pp(3*k-2),fluxnodes_pp(3*k-1),fluxnodes_pp(3*k-0)
+    DO k=1,nn
+      WRITE(*,'(I5,3E16.8)')k,fluxnodes_pp(3*k-2),fluxnodes_pp(3*k-1),fluxnodes_pp(3*k-0)
     END DO
   END IF 
-                        
-  CALL write_nodal_variable(label,25,1,nodes_pp,npes,numpe,ndim,fluxnodes_pp)
-
-
-!  CALL nodal_projection(npes,nn,nels_pp,g_num_pp,nod,nst,nodes_pp,            &
-!                        node_start,node_end,shape_integral_pp,                &
-!                        flux_integral_pp,fluxnodes_pp)
-!  CALL write_nodal_variable(label,25,1,nodes_pp,npes,numpe,nst,fluxnodes_pp)
-  !--------------------------------------------------!
+  
+!  !--------- SECTION TO WRITE FLUX WHEN IN SINGLE CORE MODE ---------!
+!  IF(numpe==1) THEN
+!    WRITE(26,'(/A)')"  IP   Flux_x      Flux_y      Flux_z"
+!    DO k=1,nels_pp
+!      WRITE(26,'(I5,3E16.8)')k,flux_pp(8*k-0,1),flux_pp(8*k-0,2),flux_pp(8*k-0,3)
+!      WRITE(26,'(I5,3E16.8)')k,flux_pp(8*k-4,1),flux_pp(8*k-4,2),flux_pp(8*k-4,3)
+!      WRITE(26,'(I5,3E16.8)')k,flux_pp(8*k-1,1),flux_pp(8*k-1,2),flux_pp(8*k-1,3)
+!      WRITE(26,'(I5,3E16.8)')k,flux_pp(8*k-6,1),flux_pp(8*k-6,2),flux_pp(8*k-6,3)
+!      WRITE(26,'(I5,3E16.8)')k,flux_pp(8*k-2,1),flux_pp(8*k-2,2),flux_pp(8*k-2,3)
+!      WRITE(26,'(I5,3E16.8)')k,flux_pp(8*k-5,1),flux_pp(8*k-5,2),flux_pp(8*k-5,3)
+!      WRITE(26,'(I5,3E16.8)')k,flux_pp(8*k-3,1),flux_pp(8*k-3,2),flux_pp(8*k-3,3)
+!      WRITE(26,'(I5,3E16.8)')k,flux_pp(8*k-7,1),flux_pp(8*k-7,2),flux_pp(8*k-7,3)
+!    END DO
+!  END IF
+!  !------------------------------------------------------------------!
   
   !--------- SECTION TO WRITE FLUX WHEN IN SINGLE CORE MODE ---------!
   IF(numpe==1) THEN
     WRITE(26,'(/A)')"  IP   Flux_x      Flux_y      Flux_z"
     DO k=1,nels_pp
-      WRITE(26,'(I5,3E16.8)')k,flux_pp(8*k-0,1),flux_pp(8*k-0,2),flux_pp(8*k-0,3)
-      WRITE(26,'(I5,3E16.8)')k,flux_pp(8*k-4,1),flux_pp(8*k-4,2),flux_pp(8*k-4,3)
-      WRITE(26,'(I5,3E16.8)')k,flux_pp(8*k-1,1),flux_pp(8*k-1,2),flux_pp(8*k-1,3)
-      WRITE(26,'(I5,3E16.8)')k,flux_pp(8*k-6,1),flux_pp(8*k-6,2),flux_pp(8*k-6,3)
-      WRITE(26,'(I5,3E16.8)')k,flux_pp(8*k-2,1),flux_pp(8*k-2,2),flux_pp(8*k-2,3)
-      WRITE(26,'(I5,3E16.8)')k,flux_pp(8*k-5,1),flux_pp(8*k-5,2),flux_pp(8*k-5,3)
-      WRITE(26,'(I5,3E16.8)')k,flux_pp(8*k-3,1),flux_pp(8*k-3,2),flux_pp(8*k-3,3)
       WRITE(26,'(I5,3E16.8)')k,flux_pp(8*k-7,1),flux_pp(8*k-7,2),flux_pp(8*k-7,3)
+      WRITE(26,'(I5,3E16.8)')k,flux_pp(8*k-6,1),flux_pp(8*k-6,2),flux_pp(8*k-6,3)
+      WRITE(26,'(I5,3E16.8)')k,flux_pp(8*k-5,1),flux_pp(8*k-5,2),flux_pp(8*k-5,3)
+      WRITE(26,'(I5,3E16.8)')k,flux_pp(8*k-4,1),flux_pp(8*k-4,2),flux_pp(8*k-4,3)
+      WRITE(26,'(I5,3E16.8)')k,flux_pp(8*k-3,1),flux_pp(8*k-3,2),flux_pp(8*k-3,3)
+      WRITE(26,'(I5,3E16.8)')k,flux_pp(8*k-2,1),flux_pp(8*k-2,2),flux_pp(8*k-2,3)
+      WRITE(26,'(I5,3E16.8)')k,flux_pp(8*k-1,1),flux_pp(8*k-1,2),flux_pp(8*k-1,3)
+      WRITE(26,'(I5,3E16.8)')k,flux_pp(8*k-0,1),flux_pp(8*k-0,2),flux_pp(8*k-0,3)
     END DO
   END IF
   !------------------------------------------------------------------!
 
   DEALLOCATE(flux_pp,storeflux_pp,kay,g_g_pp,xnew_pp)
-  DEALLOCATE(flux_integral_pp,sigma,fun,eps,bee,dee)
+  DEALLOCATE(flux_integral_pp,fun)
 
   IF(numpe==1) CLOSE(25)
   IF(numpe==1) CLOSE(26)
