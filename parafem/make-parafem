@@ -74,12 +74,13 @@ BUILD_MODULES_OPT=
 BUILD_LIBRARIES_OPT=
 
 # PROGRAM build options
-# options are: p12(default), prog8(default), gaitfem(default)
+# options are: p12(default), prog8(default), gaitfem(default), rfem(default)
 BUILD_PROGRAMS_OPT=
 BUILD_GROUP_P12="p121 p123 p126 p129 p1210"
 BUILD_GROUP_XX="xx1 xx2 xx3 xx4 xx5 xx6 xx7 xx9 xx10 xx11" # + xx8
 BUILD_GROUP_PROG8="prog81 prog82 prog83"
 BUILD_GROUP_GAITFEM="gaitfem"
+BUILD_GROUP_RFEM="rfem-solve"
 
 # TOOLS build options
 BUILD_TOOLS_OPT=
@@ -89,7 +90,7 @@ BUILD_GROUP_POSTPROC="d2off bnd2dis mat2numpe upvw2dis pf2ensi"
 # DEFAULT build options for LIBRARIES, MODULES, PROGRAMS and TOOLS
 BUILD_LIBRARIES_DEFAULTS="arpack" # + metis
 BUILD_MODULES_DEFAULTS="mpi serial bem_lib bem_lib_p"
-BUILD_PROGRAMS_DEFAULTS="p12 xx" # + prog8 + gaitfem
+BUILD_PROGRAMS_DEFAULTS="p12 xx rfem" # + prog8 + gaitfem
 BUILD_TOOLS_DEFAULTS="preproc postproc"
 
 # ------------------------------------------------------------------------------
@@ -112,7 +113,7 @@ showusage() {
     echo "  * If no library option is specified then the default builds are: $BUILD_LIBRARIES_DEFAULTS"
     echo
     echo "Building the MODULES:"
-    echo "  -mpi will build the MPI library for programs in the p12 and xx groups"
+    echo "  -mpi will build the MPI library for programs in the p12, xx and rfem groups"
     echo "  -bem_lib will build the BEM_LIB library for programs in the prog8 group"
     echo "  -bem_lib_p will build the BEM_LIB_P library for programs in the prog8 group"
     echo "  * If no module option is specified then the default builds are: $BUILD_MODULES_DEFAULTS"
@@ -122,6 +123,7 @@ showusage() {
     echo "  -xx will build the programs in the xx group: $BUILD_GROUP_XX"
     echo "  -prog8 will build the programs in the prog8 group: $BUILD_GROUP_PROG8"
     echo "  -gaitfem will build the programs in the gaitfem group: $BUILD_GROUP_GAITFEM"
+    echo "  -rfem will build the programs in the rfem group: $BUILD_GROUP_RFEM"
     echo "  * If no program option is specified then the default builds are: $BUILD_PROGRAMS_DEFAULTS"
     echo
     echo "Building the TOOLS:"
@@ -192,7 +194,7 @@ while [ $# -gt 0 ]; do
 	-metis) BUILD_LIBRARIES_OPT="$BUILD_LIBRARIES_OPT metis"; BUILD_LIBRARIES_GIVEN=1;;
 
 	# ----------------------------------------------------------------------
-	# p12 and xx group module options
+	# p12, xx and rfem group module options
 	-mpi) BUILD_MODULES_OPT="$BUILD_MODULES_OPT mpi"; BUILD_MODULES_GIVEN=1;;
 	-serial) BUILD_MODULES_OPT="$BUILD_MODULES_OPT serial"; BUILD_MODULES_GIVEN=1;;
 	#-openmp) BUILD_MODULES_OPT="$BUILD_MODULES_OPT openmp"; BUILD_MODULES_GIVEN=1;;
@@ -209,6 +211,7 @@ while [ $# -gt 0 ]; do
 	-xx) BUILD_PROGRAMS_OPT="$BUILD_PROGRAMS_OPT xx"; BUILD_PROGRAMS_GIVEN=1;;
 	-prog8) BUILD_PROGRAMS_OPT="$BUILD_PROGRAMS_OPT prog8"; BUILD_PROGRAMS_GIVEN=1;;
 	-gaitfem) BUILD_PROGRAMS_OPT="$BUILD_PROGRAMS_OPT gaitfem"; BUILD_PROGRAMS_GIVEN=1;;
+	-rfem) BUILD_PROGRAMS_OPT="$BUILD_PROGRAMS_OPT rfem"; BUILD_PROGRAMS_GIVEN=1;;
 
 	# ----------------------------------------------------------------------
 	# tool group module options
@@ -401,6 +404,13 @@ if [ $BUILD_PROGRAMS = 1 ]; then
 		    cd $PARAFEM_HOME
 		    cd src/programs/gaitfem && make $TARGET && cd ../../../..
 		    if [ $? = 2 ]; then	error "BUILD_GROUP_GAITFEM/$PROG/$TARGET"; fi
+		done;;
+	    rfem) 
+		for PROG in $BUILD_GROUP_RFEM; do
+		    separator
+		    cd $PARAFEM_HOME
+		    cd src/programs/gaitfem && make $TARGET && cd ../../../..
+		    if [ $? = 2 ]; then	error "BUILD_GROUP_RFEM/$PROG/$TARGET"; fi
 		done;;
 	esac
     done
