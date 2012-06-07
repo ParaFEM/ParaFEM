@@ -1,19 +1,19 @@
 # MAKEFILE src/programs/rfem/makefile
 # Author: Louise M. Lever
 # -----------------------------------------------------------------------
-# Compiles rfem-solve program executable as RELEASE or DEBUG
+# Compiles rfemsolve program executable as RELEASE or DEBUG
 # Links with RELEASE STATIC library libParaFEM_mpi.$(VERSION).a
 #    or with RELEASE STATIC library libParaFEM_mpi_D.$(VERSION).a
 # -----------------------------------------------------------------------
 # Available Rules:
 #   (default) : execute the release rule
 #
-#   release: Build rfem-solve executable as RELEASE edition
-#   debug: Build rfem-solve executable as DEBUG edition
-#   install: Copy rfem-solve executable into global bin directory
+#   release: Build rfemsolve executable as RELEASE edition
+#   debug: Build rfemsolve executable as DEBUG edition
+#   install: Copy rfemsolve executable into global bin directory
 #   clean: Remove .o object files
-#   execlean: Remove the local rfem-solve executable
-#   relink: Rebuild rfem-solve from object files and libraries
+#   execlean: Remove the local rfemsolve executable
+#   relink: Rebuild rfemsolve from object files and libraries
 # -----------------------------------------------------------------------
 # Notes:
 # -----------------------------------------------------------------------
@@ -29,33 +29,33 @@ all:	release
 
 release:
 	@echo
-	@echo "Building rfem-solve RELEASE"
-	$(MAKE) rfem-solve \
-	FFLAGS="-c -I$(MODULE) $(RFEM-SOLVE_MPI_REL_FFLAGS)" \
-	LDFLAGS="-L$(LIB) -lParaFEM_mpi.$(VERSION) $(RFEM-SOLVE_MPI_REL_LDFLAGS)"
-	@echo "Done rfem-solve RELEASE"
+	@echo "Building rfemsolve RELEASE"
+	$(MAKE) rfemsolve \
+	FFLAGS="-c -I$(MODULE) $(RFEMSOLVE_MPI_REL_FFLAGS)" \
+	LDFLAGS="-L$(LIB) -lParaFEM_mpi.$(VERSION) $(RFEMSOLVE_MPI_REL_LDFLAGS)"
+	@echo "Done rfemsolve RELEASE"
 
 debug:
 	@echo
-	@echo "Building rfem-solve DEBUG"
-	$(MAKE) rfem-solve \
-	FFLAGS="-c -I$(MODULE) $(RFEM-SOLVE_MPI_DBG_FFLAGS)" \
-	LDFLAGS="-L$(LIB) -lParaFEM_mpi_D.$(VERSION) $(RFEM-SOLVE_MPI_DBG_LDFLAGS)"
-	@echo "Done rfem-solve DEBUG"
+	@echo "Building rfemsolve DEBUG"
+	$(MAKE) rfemsolve \
+	FFLAGS="-c -I$(MODULE) $(RFEMSOLVE_MPI_DBG_FFLAGS)" \
+	LDFLAGS="-L$(LIB) -lParaFEM_mpi_D.$(VERSION) $(RFEMSOLVE_MPI_DBG_LDFLAGS)"
+	@echo "Done rfemsolve DEBUG"
 
-rfem-solve: rfem-solve.o
-	$(FC) rfem-solve.o -o rfem-solve $(LDFLAGS)
+rfemsolve: rfemsolve.o
+	$(FC) rfemsolve.o -o rfemsolve $(LDFLAGS)
 
-rfem-solve.o: rfem-solve.f90
-	$(FC) rfem-solve.f90 $(FFLAGS)
+rfemsolve.o: rfemsolve.f90
+	$(FC) rfemsolve.f90 $(FFLAGS)
 
 clean:
 	rm -f *.o
 
 execlean:
-	rm -f rfem-solve ../../../bin/rfem-solve
+	rm -f rfemsolve ../../../bin/rfemsolve
 
-relink: rfem-solve
+relink: rfemsolve
 
 install:
-	cp rfem-solve ../../../bin
+	cp rfemsolve ../../../bin
