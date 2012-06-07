@@ -1,10 +1,10 @@
 
-  PROGRAM: rfem.f90
+  PROGRAM: rfemfield.f90
 
-  rfem is a simple program that generates a simple box mesh and assigns each element
+  rfemfield is a simple program that generates a simple box mesh and assigns each element
   a Young's modulus according to a simple random field algorithm.
   
-    Usage: rfem <job_name>
+    Usage: rfemfield <job_name>
   
   NOTES 
 
