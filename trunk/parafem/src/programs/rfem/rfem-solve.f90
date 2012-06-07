@@ -1,6 +1,6 @@
-PROGRAM rfem-solve        
+PROGRAM rfem_solve        
 !------------------------------------------------------------------------------ 
-!      Program rfem-solve three dimensional analysis of an elastic solid
+!      Program rfem_solve three dimensional analysis of an elastic solid
 !                         load control or displacement control; multiple
 !                         material types; sequential version
 !------------------------------------------------------------------------------ 
@@ -517,4 +517,4 @@ PROGRAM rfem-solve
  
   CALL shutdown() 
  
-END PROGRAM rfem-solve
+END PROGRAM rfem_solve
