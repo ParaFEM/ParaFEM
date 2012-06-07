@@ -1,8 +1,8 @@
-PROGRAM rfem
+PROGRAM rfemfield
 
 !/****h* tools/preprocessing/rfem
 !*  NAME
-!*    PROGRAM rfem
+!*    PROGRAM rfemfield
 !*  FUNCTION
 !*    Creates box of finite elements and randomly generated field of elastic
 !*    properties. Applies field to loaded model and rewrites model and
@@ -70,7 +70,7 @@ PROGRAM rfem
   argc = iargc()
   IF (argc /= 2) THEN
      PRINT*
-     PRINT*, "Usage:  rfem <model_job_name> <rfem_job_name>"
+     PRINT*, "Usage:  rfemfield <model_job_name> <rfem_job_name>"
      PRINT*
      PRINT*, "        program expects <model_job_name> <rfem_job_name>.dat and outputs"
      PRINT*, "        <model_job_name>-rfem.d" 
@@ -348,5 +348,4 @@ PROGRAM rfem
   
   CLOSE(10)
   
-  
-END PROGRAM rfem
+END PROGRAM rfemfield
