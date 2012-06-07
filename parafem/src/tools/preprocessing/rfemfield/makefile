@@ -49,7 +49,7 @@ debug:
 rfemfield: rfemfield.o
 	$(FC) rfemfield.o -o rfemfield $(LDFLAGS) 
 
-rfem.o: rfemfield.f90
+rfemfield.o: rfemfield.f90
 	$(FC) rfemfield.f90 $(FFLAGS)
 
 clean:
