@@ -84,13 +84,13 @@ BUILD_GROUP_RFEM="rfemsolve"
 
 # TOOLS build options
 BUILD_TOOLS_OPT=
-BUILD_GROUP_PREPROC="inp2pf mg2d partitioner dinomesher fearfy KUBCgen rfem"
+BUILD_GROUP_PREPROC="inp2pf mg2d partitioner dinomesher fearfy KUBCgen rfemfield rfembc"
 BUILD_GROUP_POSTPROC="d2off bnd2dis mat2numpe upvw2dis pf2ensi"
 
 # DEFAULT build options for LIBRARIES, MODULES, PROGRAMS and TOOLS
 BUILD_LIBRARIES_DEFAULTS="arpack gaf77" # + metis
 BUILD_MODULES_DEFAULTS="mpi serial bem_lib bem_lib_p"
-BUILD_PROGRAMS_DEFAULTS="p12 xx rfemfield" # + prog8 + gaitfem
+BUILD_PROGRAMS_DEFAULTS="p12 xx rfem" # + prog8 + gaitfem
 BUILD_TOOLS_DEFAULTS="preproc postproc"
 
 # ------------------------------------------------------------------------------
