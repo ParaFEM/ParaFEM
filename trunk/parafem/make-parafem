@@ -88,7 +88,7 @@ BUILD_GROUP_PREPROC="inp2pf mg2d partitioner dinomesher fearfy KUBCgen rfem"
 BUILD_GROUP_POSTPROC="d2off bnd2dis mat2numpe upvw2dis pf2ensi"
 
 # DEFAULT build options for LIBRARIES, MODULES, PROGRAMS and TOOLS
-BUILD_LIBRARIES_DEFAULTS="arpack" # + metis
+BUILD_LIBRARIES_DEFAULTS="arpack gaf77" # + metis
 BUILD_MODULES_DEFAULTS="mpi serial bem_lib bem_lib_p"
 BUILD_PROGRAMS_DEFAULTS="p12 xx rfem" # + prog8 + gaitfem
 BUILD_TOOLS_DEFAULTS="preproc postproc"
@@ -402,14 +402,14 @@ if [ $BUILD_PROGRAMS = 1 ]; then
 		for PROG in $BUILD_GROUP_GAITFEM; do
 		    separator
 		    cd $PARAFEM_HOME
-		    cd src/programs/gaitfem && make $TARGET && cd ../../../..
+		    cd src/programs/gaitfem && make $TARGET && cd ../../..
 		    if [ $? = 2 ]; then	error "BUILD_GROUP_GAITFEM/$PROG/$TARGET"; fi
 		done;;
 	    rfem) 
 		for PROG in $BUILD_GROUP_RFEM; do
 		    separator
 		    cd $PARAFEM_HOME
-		    cd src/programs/gaitfem && make $TARGET && cd ../../../..
+		    cd src/programs/rfem && make $TARGET && cd ../../..
 		    if [ $? = 2 ]; then	error "BUILD_GROUP_RFEM/$PROG/$TARGET"; fi
 		done;;
 	esac
