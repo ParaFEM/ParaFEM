@@ -80,7 +80,7 @@ BUILD_GROUP_P12="p121 p123 p126 p129 p1210"
 BUILD_GROUP_XX="xx1 xx2 xx3 xx4 xx5 xx6 xx7 xx9 xx10 xx11" # + xx8
 BUILD_GROUP_PROG8="prog81 prog82 prog83"
 BUILD_GROUP_GAITFEM="gaitfem"
-BUILD_GROUP_RFEM="rfem-solve"
+BUILD_GROUP_RFEM="rfemsolve"
 
 # TOOLS build options
 BUILD_TOOLS_OPT=
