@@ -44,8 +44,14 @@ LIB_BEM_P_DBG_FFLAGS=-g -em -s real64
 # ------------------------------------------------------------------------------
 # DEFAULT FLAGS for all program groups
 # ------------------------------------------------------------------------------
-# Form is DEFAULT_(P12|XX|PROG8|GAITFEM)_(MPI|SERIAL|OPENMP|GPU)_(REL|DBG)_(FFLAGS|LDFLAGS)
-#   where applicable.
+# Form is:
+#   DEFAULT_
+#   + (P12|XX|PROG8|GAITFEM|RFEM)_
+#   + (MPI|SERIAL|OPENMP|GPU)_
+#   + (REL|DBG)_
+#   + (FFLAGS|LDFLAGS)
+# where applicable.
+# 
 # These are NOT directly used in any makefiles; specific program flags are assigned
 # these defaults below and may be overridden.
 # ------------------------------------------------------------------------------
@@ -72,11 +78,17 @@ DEFAULT_PROG8_BEM_P_DBG_FFLAGS=
 DEFAULT_PROG8_BEM_P_REL_LDFLAGS=
 DEFAULT_PROG8_BEM_P_DBG_LDFLAGS=
 
-# generic gaitfem group FFLAGS and LDFLAGS
+# generic GAITFEM group FFLAGS and LDFLAGS
 DEFAULT_GAITFEM_SERIAL_REL_FFLAGS=-V -O3 -em -s real64
 DEFAULT_GAITFEM_SERIAL_DBG_FFLAGS=-V -g -em -s real64
 DEFAULT_GAITFEM_SERIAL_REL_LDFLAGS=
 DEFAULT_GAITFEM_SERIAL_DBG_LDFLAGS=
+  
+# generic RFEM group FFLAGS and LDFLAGS
+DEFAULT_RFEM_MPI_REL_FFLAGS=-V -O3 -em -s real64
+DEFAULT_RFEM_MPI_DBG_FFLAGS=-V -g -em -s real64
+DEFAULT_RFEM_MPI_REL_LDFLAGS=
+DEFAULT_RFEM_MPI_DBG_LDFLAGS=
   
 # ------------------------------------------------------------------------------
 # DEFAULT FLAGS for all tool groups
@@ -163,6 +175,11 @@ GAITFEM_SERIAL_REL_FFLAGS=$(DEFAULT_GAITFEM_SERIAL_REL_FFLAGS)
 GAITFEM_SERIAL_REL_LDFLAGS=$(DEFAULT_GAITFEM_SERIAL_REL_LDFLAGS)
 GAITFEM_SERIAL_DBG_FFLAGS=$(DEFAULT_GAITFEM_SERIAL_DBG_FFLAGS)
 GAITFEM_SERIAL_DBG_LDFLAGS=$(DEFAULT_GAITFEM_SERIAL_DBG_LDFLAGS)
+  
+RFEM-SOLVE_MPI_REL_FFLAGS=$(DEFAULT_RFEM_MPI_REL_FFLAGS)
+RFEM-SOLVE_MPI_REL_LDFLAGS=$(DEFAULT_RFEM_MPI_REL_LDFLAGS)
+RFEM-SOLVE_MPI_DBG_FFLAGS=$(DEFAULT_RFEM_MPI_DBG_FFLAGS)
+RFEM-SOLVE_MPI_DBG_LDFLAGS=$(DEFAULT_RFEM_MPI_DBG_LDFLAGS)
   
 XX1_MPI_REL_FFLAGS=$(DEFAULT_XX_MPI_REL_FFLAGS)
 XX1_MPI_REL_LDFLAGS=$(DEFAULT_XX_MPI_REL_LDFLAGS)
