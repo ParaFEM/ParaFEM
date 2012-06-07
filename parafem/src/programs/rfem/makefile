@@ -18,11 +18,11 @@
 # Notes:
 # -----------------------------------------------------------------------
 
-include ../../../../build/mk_defs.inc
-include ../../../../build/$(MACHINE).inc
+include ../../../build/mk_defs.inc
+include ../../../build/$(MACHINE).inc
 
-MODULE	= ../../../../include/mpi
-LIB	= ../../../../lib
+MODULE	= ../../../include/mpi
+LIB	= ../../../lib
 .SUFFIXES: .o .f90
 
 all:	release
@@ -32,8 +32,7 @@ release:
 	@echo "Building rfem-solve RELEASE"
 	$(MAKE) rfem-solve \
 	FFLAGS="-c -I$(MODULE) $(RFEM-SOLVE_MPI_REL_FFLAGS)" \
-	LDFLAGS="-L$(LIB) -lParaFEM_mpi.$(VERSION) \
-	$(RFEM-SOLVE_MPI_REL_LDFLAGS)"
+	LDFLAGS="-L$(LIB) -lParaFEM_mpi.$(VERSION) $(RFEM-SOLVE_MPI_REL_LDFLAGS)"
 	@echo "Done rfem-solve RELEASE"
 
 debug:
@@ -41,8 +40,7 @@ debug:
 	@echo "Building rfem-solve DEBUG"
 	$(MAKE) rfem-solve \
 	FFLAGS="-c -I$(MODULE) $(RFEM-SOLVE_MPI_DBG_FFLAGS)" \
-	LDFLAGS="-L$(LIB) -lParaFEM_mpi_D.$(VERSION) \ 
-	$(RFEM-SOLVE_MPI_DBG_LDFLAGS)"
+	LDFLAGS="-L$(LIB) -lParaFEM_mpi_D.$(VERSION) $(RFEM-SOLVE_MPI_DBG_LDFLAGS)"
 	@echo "Done rfem-solve DEBUG"
 
 rfem-solve: rfem-solve.o
@@ -55,9 +53,9 @@ clean:
 	rm -f *.o
 
 execlean:
-	rm -f rfem-solve ../../../../bin/rfem-solve
+	rm -f rfem-solve ../../../bin/rfem-solve
 
 relink: rfem-solve
 
 install:
-	cp rfem-solve ../../../../bin
+	cp rfem-solve ../../../bin
