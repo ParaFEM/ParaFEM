@@ -183,23 +183,25 @@ END {
 	do_fix_vector_partial_cur();
     } else if( var_type == "ELMAT" ) {
 	end_mat_element_multiscalar()
-    } else {
-	# end generic types
-	# complete last time step and close files
-	if( dset == "PARTIAL" ) {
-	    if( dtype == "SCALAR" ) {
-		end_partial_scalar();
-	    } else if( dtype == "VECTOR" ) {
-		end_partial_vector();
-	    }
-	} else { # dset == FULL
-	    if( dtype == "SCALAR" ) {
-		end_scalar();
-	    } else if( dtype == "VECTOR" ) {
-		end_vector();
-	    } else if( dtype == "TENSOR" ) {
-		end_tensor();
-	    } else if( dtype == "MULTISCALAR" ) {
+    }
+
+    # end generic types
+    # complete last time step and close files
+    if( dset == "PARTIAL" ) {
+	if( dtype == "SCALAR" ) {
+	    end_partial_scalar();
+	} else if( dtype == "VECTOR" ) {
+	    end_partial_vector();
+	}
+    } else { # dset == FULL
+	if( dtype == "SCALAR" ) {
+	    end_scalar();
+	} else if( dtype == "VECTOR" ) {
+	    end_vector();
+	} else if( dtype == "TENSOR" ) {
+	    end_tensor();
+	} else if( dtype == "MULTISCALAR" ) {
+	    if( var_type != "ELMAT" ) {
 		end_multi_scalar();
 	    }
 	}
