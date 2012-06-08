@@ -915,7 +915,7 @@ MODULE OUTPUT
   !*  AUTHOR
   !*    L. Margetts
   !*  COPYRIGHT
-  !*    (c) University of Manchester 2007-2010
+  !*    (c) University of Manchester 2007-2012
   !******
   !*  Place remarks that should not be included in the documentation here.
   !*/
@@ -928,17 +928,31 @@ MODULE OUTPUT
  CHARACTER(LEN=50)             :: fname
 
  IF (numpe==1) THEN
-   fname   = program_name(1:INDEX(program_name, " ")-1)//".res"
-   OPEN (11, file=fname, status='replace', action='write')
-   WRITE(11,'(/4A/)') "Fatal error: ", TRIM(program_name), " did not run",     &
-                      " - job_name is missing."
-   WRITE(11,'(3A/)')  "Usage: ", TRIM(program_name), " job_name"
-   WRITE(11,'(4A)')   "       ", TRIM(program_name), " will read job_name,",   &
+   IF (TRIM(program_name)=='rfemsolve') THEN
+     fname   = program_name(1:INDEX(program_name, " ")-1)//".res"
+     OPEN (11, file=fname, status='replace', action='write')
+     WRITE(11,'(/4A/)') "Fatal error: ", TRIM(program_name), " did not run",   &
+                        " - one or more arguments missing."
+     WRITE(11,'(4A/)')"Usage: ", TRIM(program_name), " job_in", " job_out"
+     WRITE(11,'(4A)') "       ", TRIM(program_name), " will read job_in,",     &
+                      " job_out, <job_in>.dat,"       
+     WRITE(11,'(A)')  "       <job_in>.d, <job_in>.bnd, <job_in>.lds,"  
+     WRITE(11,'(A/)') "       and write <job_out>.dis"
+     WRITE(11,'(A/)') "       If analysis_type > 2, <job_in>.mat is expected."
+     CLOSE(11)
+   ELSE
+     fname   = program_name(1:INDEX(program_name, " ")-1)//".res"
+     OPEN (11, file=fname, status='replace', action='write')
+     WRITE(11,'(/4A/)') "Fatal error: ", TRIM(program_name), " did not run",   &
+                        " - job_name is missing."
+     WRITE(11,'(3A/)')"Usage: ", TRIM(program_name), " job_name"
+     WRITE(11,'(4A)') "       ", TRIM(program_name), " will read job_name,",   &
                       " <job_name>.dat,"       
-   WRITE(11,'(A)')    "       <job_name>.d, <job_name>.bnd, <job_name>.lds,"    
-   WRITE(11,'(A/)')   "       and write <job_name>.dis"
-   WRITE(11,'(A/)')   "       If analysis_type > 2, <job_name>.mat is expected."
-   CLOSE(11)
+     WRITE(11,'(A)')  "       <job_name>.d, <job_name>.bnd, <job_name>.lds,"  
+     WRITE(11,'(A/)') "       and write <job_name>.dis"
+     WRITE(11,'(A/)') "       If analysis_type > 2, <job_name>.mat is expected."
+     CLOSE(11)
+   END IF
  END IF
 
  CALL shutdown()

@@ -28,8 +28,8 @@ PROGRAM rfemsolve
   REAL(iwp),PARAMETER   :: zero = 0.0_iwp
   REAL(iwp),PARAMETER   :: penalty = 1.0e20_iwp
   CHARACTER(LEN=15)     :: element
-  CHARACTER(LEN=50)     :: program_name='p121'
-  CHARACTER(LEN=50)     :: fname,job_name,label
+  CHARACTER(LEN=50)     :: program_name='rfemsolve'
+  CHARACTER(LEN=50)     :: fname,job_in,job_out,label
   LOGICAL               :: converged = .false.
 
 !------------------------------------------------------------------------------
@@ -51,7 +51,7 @@ PROGRAM rfemsolve
   INTEGER,  ALLOCATABLE :: no(:),no_pp(:),no_pp_temp(:),sense(:),etype_pp(:)
 
 !------------------------------------------------------------------------------
-! 3. Read job_name from the command line. 
+! 3. Read job_in and job_out from the command line. 
 !    Read control data, mesh data, boundary and loading conditions. 
 !------------------------------------------------------------------------------
  
@@ -61,13 +61,14 @@ PROGRAM rfemsolve
   
   CALL find_pe_procs(numpe,npes)
   argc = iargc()
-  IF (argc /= 1) CALL job_name_error(numpe,program_name)
-  CALL GETARG(1, job_name) 
+  IF (argc /= 2) CALL job_name_error(numpe,program_name)
+  CALL GETARG(1, job_in) 
+  CALL GETARG(2, job_out) 
 
-  CALL read_xx2(job_name,numpe,element,fixed_freedoms,limit,loaded_nodes,     &
+  CALL read_xx2(job_in,numpe,element,fixed_freedoms,limit,loaded_nodes,     &
                 meshgen,nels,nip,nn,nod,np_types,nr,partitioner,tol)
 
-  CALL calc_nels_pp(job_name,nels,npes,numpe,partitioner,nels_pp)
+  CALL calc_nels_pp(job_in,nels,npes,numpe,partitioner,nels_pp)
 
   ndof = nod*nodof
   ntot = ndof
@@ -87,21 +88,21 @@ PROGRAM rfemsolve
 
   timest(2) = elap_time()
   
-  CALL read_elements(job_name,iel_start,nn,npes,numpe,etype_pp,g_num_pp)
+  CALL read_elements(job_in,iel_start,nn,npes,numpe,etype_pp,g_num_pp)
   timest(3) = elap_time()
 
-! CALL read_g_num_pp(job_name,iel_start,nels,nn,numpe,g_num_pp)
+! CALL read_g_num_pp(job_in,iel_start,nels,nn,numpe,g_num_pp)
 
   IF(meshgen == 2) CALL abaqus2sg(element,g_num_pp)
   timest(4) = elap_time()
 
-  CALL read_g_coord_pp(job_name,g_num_pp,nn,npes,numpe,g_coord_pp)
+  CALL read_g_coord_pp(job_in,g_num_pp,nn,npes,numpe,g_coord_pp)
   timest(5) = elap_time()
 
-  CALL read_rest(job_name,numpe,rest)
+  CALL read_rest(job_in,numpe,rest)
   timest(6) = elap_time()
   
-  fname = job_name(1:INDEX(job_name, " ")-1) // ".mat" ! Move to subroutine
+  fname = job_in(1:INDEX(job_in, " ")-1) // ".mat" ! Move to subroutine
   CALL read_materialValue(prop,fname,numpe,npes)       ! CALL read_prop? 
   
 !------------------------------------------------------------------------------
@@ -224,7 +225,7 @@ PROGRAM rfemsolve
 
     node = 0 ; no = 0 ; no_pp_temp = 0 ; sense = 0 ; valf = zero
 
-    CALL read_fixed(job_name,numpe,node,sense,valf)
+    CALL read_fixed(job_in,numpe,node,sense,valf)
     CALL find_no(node,rest,sense,no)
     CALL reindex_fixed_nodes(ieq_start,no,no_pp_temp,fixed_freedoms_pp,       &
                              fixed_freedoms_start,neq_pp)
@@ -253,7 +254,7 @@ PROGRAM rfemsolve
     
     val  = zero ; node = 0
 
-    CALL read_loads(job_name,numpe,node,val)
+    CALL read_loads(job_in,numpe,node,val)
     CALL load(g_g_pp,g_num_pp,node,val,r_pp(1:))
 
     tload = SUM_P(r_pp(1:))
@@ -350,15 +351,15 @@ PROGRAM rfemsolve
   CALL calc_nodes_pp(nn,npes,numpe,node_end,node_start,nodes_pp)
   
   IF(numpe==1) THEN
-    fname = job_name(1:INDEX(job_name, " ")-1)//".dis"
+    fname = job_out(1:INDEX(job_out, " ")-1)//".dis"
     OPEN(24, file=fname, status='replace', action='write')
-    fname = job_name(1:INDEX(job_name, " ")-1) // ".str"
+    fname = job_out(1:INDEX(job_out, " ")-1) // ".str"
     OPEN(25, file=fname, status='replace', action='write')
-    fname = job_name(1:INDEX(job_name, " ")-1) // ".pri"
+    fname = job_out(1:INDEX(job_out, " ")-1) // ".pri"
     OPEN(26, file=fname, status='replace', action='write')
-    fname = job_name(1:INDEX(job_name, " ")-1) // ".vms"
+    fname = job_out(1:INDEX(job_out, " ")-1) // ".vms"
     OPEN(27, file=fname, status='replace', action='write')
-    fname = job_name(1:INDEX(job_name, " ")-1) // ".rea"
+    fname = job_out(1:INDEX(job_out, " ")-1) // ".rea"
     OPEN(28, file=fname, status='replace', action='write')
   END IF
 
@@ -512,7 +513,7 @@ PROGRAM rfemsolve
 ! 17. Output performance data
 !------------------------------------------------------------------------------
 
-  CALL WRITE_P121(fixed_freedoms,iters,job_name,loaded_nodes,neq,nn,npes,nr,  &
+  CALL WRITE_P121(fixed_freedoms,iters,job_out,loaded_nodes,neq,nn,npes,nr,  &
                   numpe,timest,tload)
  
   CALL shutdown() 
