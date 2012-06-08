@@ -43,12 +43,11 @@ PROGRAM rfemfield
   LOGICAL                :: lunif=.false.
   LOGICAL                :: dcheck=.false.
 
-  INTEGER                :: m_nels,m_nn,m_nod
-  REAL(iwp)              :: m_v
-  CHARACTER(LEN=15)      :: element
-  INTEGER                :: idummy
-  REAL(iwp)              :: rdummy
-  INTEGER                :: ord, ind
+  CHARACTER(LEN=15)      :: m_element
+  INTEGER                :: m_nels,m_nn,m_nr,m_nod,m_nip,m_loaded_nodes
+  INTEGER                :: m_limit,m_mesh,m_fixed_freedoms,m_partition 
+  REAL(iwp)              :: m_e,m_v,m_tol
+  INTEGER                :: ord, ind, idummy
   REAL(iwp)              :: min_extents(3),max_extents(3),size_extents(3)
   REAL(iwp)              :: centroid(3)
 
@@ -136,12 +135,8 @@ PROGRAM rfemfield
      d_name = model_job_name(1:INDEX(model_job_name," ")-1) // ".d"
      
      OPEN (14, file=dat_name, status='old', action='read')
-     READ(14,*) element
-     READ(14,*) idummy
-     READ(14,*) idummy
-     READ(14,*) m_nels, m_nn, idummy, idummy, m_nod, idummy, idummy
-     READ(14,*) rdummy, m_v, rdummy, rdummy
-
+     READ(14,*) m_element,m_mesh,m_partition,m_nels,m_nn,m_nr,m_nip,m_nod,m_loaded_nodes,        &
+          m_fixed_freedoms,m_e,m_v,m_tol,m_limit
      CLOSE(14)
      
      ndim   = 3
@@ -332,6 +327,27 @@ PROGRAM rfemfield
 
      END IF
      
+!------------------------------------------------------------------------------
+! 10. Rewrite .dat file with updated loaded_nodes and fixed_freedoms
+!------------------------------------------------------------------------------
+
+     IF(output == 2 ) THEN
+
+        fname = model_job_name(1:INDEX(model_job_name," ")-1) // "-rfem.dat"
+        OPEN (14, file=fname, status='REPLACE', action='WRITE')
+        WRITE(14,*) m_element
+        WRITE(14,*) m_mesh
+        WRITE(14,*) m_partition
+        WRITE(14, '(I,I,I,I,I,I,I)') m_nels, m_nn, m_nr, m_nip, m_nod, m_loaded_nodes, m_fixed_freedoms
+        WRITE(14, '(E14.6,E14.6,E14.6,I)') m_e, m_v, m_tol, m_limit
+        CLOSE(14)
+
+     END IF
+  
+!------------------------------------------------------------------------------
+! 10. Cleanup
+!------------------------------------------------------------------------------
+
      DEALLOCATE(efld)
      DEALLOCATE(m_coord,m_num)
 
