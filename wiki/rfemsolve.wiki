@@ -35,8 +35,9 @@ A real example follows:
 hexahedron
 2
 1
-2560 12465 225 8 20 17 0
-100000. .3 1.e-5 5000
+91938
+91938 421405 14404 8 20 0 14404
+0.0001 5000
 }}}
 
 Compare with source code for SUBROUTINE READ_RFEMSOLVE in src/input.f90 
