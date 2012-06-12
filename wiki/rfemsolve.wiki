@@ -1,13 +1,42 @@
-#summary One-sentence summary of this page.
+#summary rfemsolve control file data format.
+#sidebar TOC
 
-= Introduction =
+==rfemsolve.dat==
 
-Add your content here la.
+A typical rfemsolve.dat file has the following format:
 
+{{{
+element
+mesh
+partitioner
+nels nn nr nip nod loaded_nodes fixed_freedoms
+e v tol limit
+}}}
 
-= Details =
+||*Variable Name*||*Type*||*Meaning*||
+||{{{element}}} || Character || The element type. Permitted values are {{{hexahedron}}} and {{{tetrahedron}}}.||
+||{{{mesh}}} || Integer || Element node ordering scheme. Permitted values are {{{1}}} (Smith and Griffiths scheme) or {{{2}}} (Abaqus scheme).||
+||{{{nels}}} || Integer || Number of elements in the mesh.||
+||{{{nn}}} || Integer || Number of nodes in the mesh.||
+||{{{nr}}} || Integer || Number of restrained nodes in the mesh.||
+||{{{nip}}} || Integer || Number of integration points.||
+||{{{nod}}} || Integer || Number of nodes per element.||
+||{{{loaded_nodes}}} || Integer || Number of nodes with externally applied loads.||
+||{{{fixed_freedoms}}} || Integer || Number of freedoms with fixed displacements.||
+||{{{e}}} || Real || Young's modulus.||
+||{{{v}}} || Real || Poisson's ratio.||
+||{{{tol}}} || Real || Convergence tolerance for PCG.||
+||{{{limit}}} || Integer || Iteration ceiling for PCG.||
+||{{{partitioner}}} || Integer || Partitioning strategy. Permitted values are {{{1}}} (Smith and Griffiths partitioning) or {{{2}}} (use external partitioner).||
 
-Add your content here.  Format your content with:
-  * Text in *bold* or _italic_
-  * Headings, paragraphs, and lists
-  * Automatic links to other wiki pages
+A real example follows:
+
+{{{
+hexahedron
+2
+1
+2560 12465 225 8 20 17 0
+100000. .3 1.e-5 5000
+}}}
+
+Compare with source code for SUBROUTINE READ_RFEMSOLVE in src/input.f90 
