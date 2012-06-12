@@ -40,4 +40,4 @@ hexahedron
 0.0001 5000
 }}}
 
-Compare with source code for SUBROUTINE READ_RFEMSOLVE in src/input.f90 
+Compare with source code for SUBROUTINE READ_XX2 in src/input.f90 
