@@ -12,6 +12,7 @@ partitioner
 np_types
 nels nn nr nip nod loaded_nodes fixed_freedoms
 tol limit
+mises
 }}}
 
 ||*Variable Name*||*Type*||*Meaning*||
@@ -28,7 +29,7 @@ tol limit
 ||{{{fixed_freedoms}}} || Integer || Number of freedoms with fixed displacements.||
 ||{{{tol}}} || Real || Convergence tolerance for PCG.||
 ||{{{limit}}} || Integer || Iteration ceiling for PCG.||
-
+||{{{mises}}} || Real || Threshold value for mises.||
 
 A real example follows:
 
@@ -39,6 +40,7 @@ hexahedron
 91938
 91938 421405 14404 8 20 0 14404
 0.0001 5000
+70.0
 }}}
 
 Compare with source code for SUBROUTINE READ_XX2 in src/input.f90 
