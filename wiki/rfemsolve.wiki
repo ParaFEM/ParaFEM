@@ -9,8 +9,9 @@ A typical rfemsolve.dat file has the following format:
 element
 mesh
 partitioner
+np_types
 nels nn nr nip nod loaded_nodes fixed_freedoms
-e v tol limit
+tol limit
 }}}
 
 ||*Variable Name*||*Type*||*Meaning*||
