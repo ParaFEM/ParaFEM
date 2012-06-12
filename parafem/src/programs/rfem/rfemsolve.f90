@@ -24,8 +24,11 @@ PROGRAM rfemsolve
   INTEGER               :: node_end,node_start,nodes_pp
   INTEGER               :: argc,iargc,meshgen,partitioner,np_types
   INTEGER               :: fixed_freedoms_pp,fixed_freedoms_start
+  INTEGER               :: nodecount_pp ! count of local nodes
+  INTEGER               :: nodecount    ! global count of nodes 
   REAL(iwp)             :: e,v,det,tol,up,alpha,beta,tload
-  REAL(iwp),PARAMETER   :: zero = 0.0_iwp
+  REAL(iwp)             :: mises        ! threshold for mises stress
+  REAL(iwp),PARAMETER   :: zero    = 0.0_iwp
   REAL(iwp),PARAMETER   :: penalty = 1.0e20_iwp
   CHARACTER(LEN=15)     :: element
   CHARACTER(LEN=50)     :: program_name='rfemsolve'
@@ -65,8 +68,8 @@ PROGRAM rfemsolve
   CALL GETARG(1, job_in) 
   CALL GETARG(2, job_out) 
 
-  CALL read_xx2(job_in,numpe,element,fixed_freedoms,limit,loaded_nodes,     &
-                meshgen,nels,nip,nn,nod,np_types,nr,partitioner,tol)
+  CALL read_rfemsolve(job_in,numpe,element,fixed_freedoms,limit,loaded_nodes, &
+                meshgen,mises,nels,nip,nn,nod,np_types,nr,partitioner,tol)
 
   CALL calc_nels_pp(job_in,nels,npes,numpe,partitioner,nels_pp)
 
@@ -489,7 +492,17 @@ PROGRAM rfemsolve
 
   CALL write_nodal_variable(label,27,1,nodes_pp,npes,numpe,nodof,             &
                             princinodes_pp)
-                            
+
+  ! count number of nodes with value above threshold
+
+  nodecount_pp = 0 ; nodecount = 0
+ 
+  DO i = 1,nodes_pp
+    IF(princinodes_pp(i) > mises) nodecount_pp = nodecount_pp + 1
+  END DO
+
+  nodecount = MAX_INTEGER_P(nodecount_pp) 
+                              
   DEALLOCATE(princinodes_pp)
 
   IF(numpe==1) CLOSE(27)
@@ -513,8 +526,8 @@ PROGRAM rfemsolve
 ! 17. Output performance data
 !------------------------------------------------------------------------------
 
-  CALL WRITE_P121(fixed_freedoms,iters,job_out,loaded_nodes,neq,nn,npes,nr,  &
-                  numpe,timest,tload)
+  CALL WRITE_RFEMSOLVE(fixed_freedoms,iters,job_out,loaded_nodes,mises,neq,   &
+                       nn,nodecount,npes,nr,numpe,timest,tload)
  
   CALL shutdown() 
  
