@@ -17,6 +17,7 @@ tol limit
 ||*Variable Name*||*Type*||*Meaning*||
 ||{{{element}}} || Character || The element type. Permitted values are {{{hexahedron}}} and {{{tetrahedron}}}.||
 ||{{{mesh}}} || Integer || Element node ordering scheme. Permitted values are {{{1}}} (Smith and Griffiths scheme) or {{{2}}} (Abaqus scheme).||
+||{{{np_types}}} || Integer || Number of property types.||
 ||{{{nels}}} || Integer || Number of elements in the mesh.||
 ||{{{nn}}} || Integer || Number of nodes in the mesh.||
 ||{{{nr}}} || Integer || Number of restrained nodes in the mesh.||
@@ -24,8 +25,6 @@ tol limit
 ||{{{nod}}} || Integer || Number of nodes per element.||
 ||{{{loaded_nodes}}} || Integer || Number of nodes with externally applied loads.||
 ||{{{fixed_freedoms}}} || Integer || Number of freedoms with fixed displacements.||
-||{{{e}}} || Real || Young's modulus.||
-||{{{v}}} || Real || Poisson's ratio.||
 ||{{{tol}}} || Real || Convergence tolerance for PCG.||
 ||{{{limit}}} || Integer || Iteration ceiling for PCG.||
 ||{{{partitioner}}} || Integer || Partitioning strategy. Permitted values are {{{1}}} (Smith and Griffiths partitioning) or {{{2}}} (use external partitioner).||
