@@ -23,13 +23,13 @@ PROGRAM rfembc
 
   INTEGER                :: argc,iargc
   INTEGER                :: ndim, i
-  CHARACTER(LEN=50)      :: job_name,res_name,dat_name,d_name
+  CHARACTER(LEN=50)      :: job_name,res_name,in_dat_name,out_dat_name,d_name
   CHARACTER(LEN=50)      :: bnd_name,fix_name
   CHARACTER(LEN=15)      :: fixed_value_arg
   CHARACTER(LEN=15)      :: element
   INTEGER                :: nels,nn,nr,nod,nip,loaded_nodes
-  INTEGER                :: limit,mesh,fixed_freedoms,partition 
-  REAL(iwp)              :: e,v,tol
+  INTEGER                :: limit,mesh,fixed_freedoms,partition,np_types=1
+  REAL(iwp)              :: e,v,tol,mises=70.0
   REAL(iwp)              :: fixed_value
   INTEGER                :: idummy
   REAL(iwp)              :: rdummy
@@ -53,8 +53,8 @@ PROGRAM rfembc
     PRINT*, "Usage:  rfembc <job_name> <fixed_value>"
     PRINT*
     PRINT*, "        program expects <job_name>.d and outputs"
-    PRINT*, "        <job_name>.dat,"
-    PRINT*, "        <job_name>.bnd and <job_name>.fix"
+    PRINT*, "        <job_name>-rfem.dat,"
+    PRINT*, "        <job_name>-rfem.bnd and <job_name>-rfem.fix"
     PRINT*
     STOP
   END IF
@@ -76,10 +76,11 @@ PROGRAM rfembc
   IF (INDEX(job_name,".dat") /= 0) THEN
      job_name = job_name(1:INDEX(job_name,".dat")-1)
   END IF
-  dat_name = job_name(1:INDEX(job_name," ")-1) // ".dat"
+  in_dat_name = job_name(1:INDEX(job_name," ")-1) // ".dat"
+  out_dat_name = job_name(1:INDEX(job_name," ")-1) // "-rfem.dat"
   d_name = job_name(1:INDEX(job_name," ")-1) // ".d"
-  
-  OPEN (14, file=dat_name, status='old', action='read')
+
+  OPEN (14, file=in_dat_name, status='old', action='read')
   READ(14,*) element,mesh,partition,nels,nn,nr,nip,nod,loaded_nodes,        &
              fixed_freedoms,e,v,tol,limit
   CLOSE(14)
@@ -116,8 +117,8 @@ PROGRAM rfembc
 ! 6. Write .bnd and .fix files where nodes match zmin/zmax respectively
 !------------------------------------------------------------------------------
 
-  bnd_name = job_name(1:INDEX(job_name," ")-1) // ".bnd"
-  fix_name = job_name(1:INDEX(job_name," ")-1) // ".fix"
+  bnd_name = job_name(1:INDEX(job_name," ")-1) // "-rfem.bnd"
+  fix_name = job_name(1:INDEX(job_name," ")-1) // "-rfem.fix"
 
   OPEN(16,FILE=bnd_name,STATUS='REPLACE',ACTION='WRITE')
   OPEN(17,FILE=fix_name,STATUS='REPLACE',ACTION='WRITE')
@@ -142,15 +143,17 @@ PROGRAM rfembc
   DEALLOCATE(m_coord)
 
 !------------------------------------------------------------------------------
-! 7. Rewrite .dat file with updated loaded_nodes and fixed_freedoms
+! 7. Rewrite .dat file with updated np_types(1), nr(num_bnd),
+!    fixed_freedoms(num_fix) and mises(70.0)
 !------------------------------------------------------------------------------
 
-  OPEN (14, file=dat_name, status='REPLACE', action='WRITE')
+  OPEN (14, file=out_dat_name, status='REPLACE', action='WRITE')
   WRITE(14,*) element
   WRITE(14,*) mesh
   WRITE(14,*) partition
-  WRITE(14, '(I,I,I,I,I,I,I)') nels, nn, nr, nip, nod, num_bnd, num_fix
-  WRITE(14, '(3E14.6,I)') e, v, tol, limit
+  WRITE(14,*) np_types
+  WRITE(14, '(6I)') nels, nn, num_bnd, nip, nod, loaded_nodes, num_fix
+  WRITE(14, '(E14.6,I, E14.6)') tol, limit, mises
   CLOSE(14)
   
 !------------------------------------------------------------------------------
