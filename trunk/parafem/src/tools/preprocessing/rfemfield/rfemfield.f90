@@ -43,10 +43,12 @@ PROGRAM rfemfield
   LOGICAL                :: lunif=.false.
   LOGICAL                :: dcheck=.false.
 
+  LOGICAL                :: do_model=.false.
   CHARACTER(LEN=15)      :: m_element
   INTEGER                :: m_nels,m_nn,m_nr,m_nod,m_nip,m_loaded_nodes
-  INTEGER                :: m_limit,m_mesh,m_fixed_freedoms,m_partition 
-  REAL(iwp)              :: m_e,m_v,m_tol
+  INTEGER                :: m_limit,m_mesh,m_fixed_freedoms,m_partition
+  INTEGER                :: m_np_types 
+  REAL(iwp)              :: m_tol,m_mises
   INTEGER                :: ord, ind, idummy
   REAL(iwp)              :: min_extents(3),max_extents(3),size_extents(3)
   REAL(iwp)              :: centroid(3)
@@ -67,19 +69,30 @@ PROGRAM rfemfield
 !------------------------------------------------------------------------------
 
   argc = iargc()
-  IF (argc /= 2) THEN
+  IF( (argc /= 2) .and. (argc /= 1) ) THEN
      PRINT*
-     PRINT*, "Usage:  rfemfield <model_job_name> <rfem_job_name>"
+     PRINT*, "Usage:  rfemfield <rfem_job_name> <model_job_name>"
+     PRINT*, "   Or:  rfemfield <rfem_job_name>"
      PRINT*
-     PRINT*, "        program expects <model_job_name> <rfem_job_name>.dat and outputs"
-     PRINT*, "        <model_job_name>-rfem.d" 
-     PRINT*, "        <model_job_name>-rfem.mat" 
-     PRINT*, "        <rfem_job_name>.d" 
+     PRINT*, "        program expects as input:"
+     PRINT*, "          <rfem_job_name>.dat"
+     PRINT*, "          <model_job_name>-rfem.dat"
+     PRINT*, "          <model_job_name>.d"
+     PRINT*
+     PRINT*, "        and outputs:"
+     PRINT*, "          <rfem_job_name>.d" 
+     PRINT*, "          <rfem_job_name>.mat" 
+     PRINT*, "          <model_job_name>-rfem.dat" 
+     PRINT*, "          <model_job_name>-rfem.d" 
+     PRINT*, "          <model_job_name>-rfem.mat" 
      PRINT*
      STOP
   END IF
-  CALL GETARG(1, model_job_name)
-  CALL GETARG(2, rfem_job_name)
+  CALL GETARG(1, rfem_job_name)
+  IF( argc == 2 ) THEN
+     CALL GETARG(2, model_job_name)
+     do_model = .true.
+  END IF
   
 !------------------------------------------------------------------------------
 ! 4. Read control data
@@ -121,64 +134,68 @@ PROGRAM rfemfield
         STOP
      END IF
      
+     fname = rfem_job_name(1:INDEX(rfem_job_name," ")-1) // ".res"
+     OPEN(11,FILE=fname,STATUS='REPLACE',ACTION='WRITE')
+
 !------------------------------------------------------------------------------
 ! 6. Read model dat, coords and elems; determine extents
 !------------------------------------------------------------------------------
+
+     IF( do_model ) THEN
      
-     fname = rfem_job_name(1:INDEX(rfem_job_name," ")-1) // ".res"
-     OPEN(11,FILE=fname,STATUS='REPLACE',ACTION='WRITE')
-     
-     IF (INDEX(model_job_name,".dat") /= 0) THEN
-        model_job_name = model_job_name(1:INDEX(model_job_name,".dat")-1)
-     END IF
-     dat_name = model_job_name(1:INDEX(model_job_name," ")-1) // ".dat"
-     d_name = model_job_name(1:INDEX(model_job_name," ")-1) // ".d"
-     
-     OPEN (14, file=dat_name, status='old', action='read')
-     READ(14,*) m_element,m_mesh,m_partition,m_nels,m_nn,m_nr,m_nip,m_nod,m_loaded_nodes,        &
-          m_fixed_freedoms,m_e,m_v,m_tol,m_limit
-     CLOSE(14)
-     
-     ndim   = 3
-     ALLOCATE(m_coord(ndim,m_nn))
-     ALLOCATE(m_num(m_nod,m_nels))
-     
-     OPEN (15, file=d_name, status='old', action='read')
-     READ(15,*)   !headers
-     READ(15,*)   !headers
-     READ(15,*) idummy,m_coord(:,1)
-     DO ord = 1,3
-        min_extents(ord) = m_coord(ord,1)
-        max_extents(ord) = m_coord(ord,1)
-     END DO
-     DO i = 2,m_nn
-        READ(15,*) idummy,m_coord(:,i)
+        IF (INDEX(model_job_name,".dat") /= 0) THEN
+           model_job_name = model_job_name(1:INDEX(model_job_name,".dat")-1)
+        END IF
+        dat_name = model_job_name(1:INDEX(model_job_name," ")-1) // "-rfem.dat"
+        d_name = model_job_name(1:INDEX(model_job_name," ")-1) // ".d"
+        
+        OPEN (14, file=dat_name, status='old', action='read')
+        READ(14,*) m_element,m_mesh,m_partition,m_np_types,      &
+             m_nels,m_nn,m_nr,m_nip,m_nod,m_loaded_nodes,        &
+             m_fixed_freedoms,m_tol,m_limit,m_mises
+        CLOSE(14)
+        
+        ndim   = 3
+        ALLOCATE(m_coord(ndim,m_nn))
+        ALLOCATE(m_num(m_nod,m_nels))
+        
+        OPEN (15, file=d_name, status='old', action='read')
+        READ(15,*)   !headers
+        READ(15,*)   !headers
+        READ(15,*) idummy,m_coord(:,1)
         DO ord = 1,3
-           IF ( m_coord(ord,i) < min_extents(ord) ) THEN
-              min_extents(ord) = m_coord(ord,i)
-           END IF
-           IF ( m_coord(ord,i) > max_extents(ord) ) THEN
-              max_extents(ord) = m_coord(ord,i)
-           END IF
+           min_extents(ord) = m_coord(ord,1)
+           max_extents(ord) = m_coord(ord,1)
         END DO
-     END DO
-     READ(15,*)   !headers
-     DO iel = 1,m_nels
-        READ(15,*) idummy,idummy,idummy,idummy,m_num(:,iel),idummy
-     END DO
-     CLOSE(15)
-
-     WRITE(11, '(A,I12)') "Number of model nodes = ", m_nn
-     WRITE(11, '(A,I12)') "Number of model elems = ", m_nels
-     WRITE(11, '(A,I12)') "Number of model nods = ", m_nod
-
-     size_extents = max_extents - min_extents
-     WRITE(11, '(A)') "Extents of model: (ord,min,max)"
-     DO ord = 1,3
-        WRITE(11,'(I1,2F)') ord, min_extents(ord), max_extents(ord)
-     END DO
-     WRITE(11, '(A)') "Size of Extents of model:"
-     WRITE(11,'(3F)') size_extents
+        DO i = 2,m_nn
+           READ(15,*) idummy,m_coord(:,i)
+           DO ord = 1,3
+              IF ( m_coord(ord,i) < min_extents(ord) ) THEN
+                 min_extents(ord) = m_coord(ord,i)
+              END IF
+              IF ( m_coord(ord,i) > max_extents(ord) ) THEN
+                 max_extents(ord) = m_coord(ord,i)
+              END IF
+           END DO
+        END DO
+        READ(15,*)   !headers
+        DO iel = 1,m_nels
+           READ(15,*) idummy,idummy,idummy,idummy,m_num(:,iel),idummy
+        END DO
+        CLOSE(15)
+        
+        WRITE(11, '(A,I12)') "Number of model nodes = ", m_nn
+        WRITE(11, '(A,I12)') "Number of model elems = ", m_nels
+        WRITE(11, '(A,I12)') "Number of model nods = ", m_nod
+        
+        size_extents = max_extents - min_extents
+        WRITE(11, '(A)') "Extents of model: (ord,min,max)"
+        DO ord = 1,3
+           WRITE(11,'(I1,2F)') ord, min_extents(ord), max_extents(ord)
+        END DO
+        WRITE(11, '(A)') "Size of Extents of model:"
+        WRITE(11,'(3F)') size_extents
+     END IF
      
 !------------------------------------------------------------------------------
 ! 7. Generate spatially random field for Young's modulus in a regular cuboid
@@ -277,7 +294,7 @@ PROGRAM rfemfield
 ! 9. Rewrite model dataset with new material IDs and material file
 !------------------------------------------------------------------------------
 
-     IF(output == 2 ) THEN
+     IF( do_model ) THEN
 
         fname = model_job_name(1:INDEX(model_job_name," ")-1) // "-rfem.d"
         OPEN(16,FILE=fname,STATUS='REPLACE',ACTION='WRITE')
@@ -328,18 +345,19 @@ PROGRAM rfemfield
      END IF
      
 !------------------------------------------------------------------------------
-! 10. Rewrite .dat file with updated loaded_nodes and fixed_freedoms
+! 10. Write new -rfem .dat file for RFEMSOLVE with updated np_types(m_nels)
 !------------------------------------------------------------------------------
 
-     IF(output == 2 ) THEN
+     IF( do_model ) THEN
 
         fname = model_job_name(1:INDEX(model_job_name," ")-1) // "-rfem.dat"
         OPEN (14, file=fname, status='REPLACE', action='WRITE')
         WRITE(14,*) m_element
         WRITE(14,*) m_mesh
         WRITE(14,*) m_partition
-        WRITE(14, '(I,I,I,I,I,I,I)') m_nels, m_nn, m_nr, m_nip, m_nod, m_loaded_nodes, m_fixed_freedoms
-        WRITE(14, '(E14.6,E14.6,E14.6,I)') m_e, m_v, m_tol, m_limit
+        WRITE(14,*) m_nels
+        WRITE(14, '(6I)') m_nels, m_nn, m_nr, m_nip, m_nod, m_loaded_nodes, m_fixed_freedoms
+        WRITE(14, '(E14.6,I,E14.6)') m_tol, m_limit, m_mises
         CLOSE(14)
 
      END IF
@@ -349,7 +367,9 @@ PROGRAM rfemfield
 !------------------------------------------------------------------------------
 
      DEALLOCATE(efld)
-     DEALLOCATE(m_coord,m_num)
+     IF( do_model ) THEN
+        DEALLOCATE(m_coord,m_num)
+     END IF
 
   CASE DEFAULT
      
