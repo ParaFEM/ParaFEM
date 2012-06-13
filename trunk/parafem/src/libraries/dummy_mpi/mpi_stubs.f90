@@ -2084,3 +2084,102 @@ subroutine timestring ( string )
 
   return
 end
+
+!
+
+subroutine mpi_probe(data,itag,comm,istatus,ierror)
+
+  implicit none
+  
+  integer comm
+  integer data
+  integer itag
+  integer istatus
+  integer ierror
+  
+  include 'mpi_stubs_f90.h'
+  
+  ierror = MPI_SUCCESS
+  
+  return
+
+end subroutine mpi_probe
+
+subroutine mpi_iprobe(data,itag,comm,flag,istatus,ierror)
+
+  implicit none
+  
+  integer comm
+  integer data
+  integer itag
+  integer istatus
+  integer ierror
+  logical flag
+  
+  include 'mpi_stubs_f90.h'
+  
+  ierror = MPI_SUCCESS
+  flag   = .false.
+  
+  return
+
+end subroutine mpi_iprobe
+
+subroutine mpi_pack(datain,icount,datatype,dataout,outsize,position,comm,ierror)
+  
+  implicit none
+  
+  integer datain
+  integer icount
+  integer datatype
+  integer dataout
+  integer outsize
+  integer position
+  integer comm
+  integer ierror
+
+  include 'mpi_stubs_f90.h'
+  
+  ierror = MPI_SUCCESS
+  
+  return
+
+end subroutine mpi_pack
+
+subroutine mpi_unpack(datain,insize,position,dataout,icount,datatype,comm,ierror)
+  
+  implicit none
+  
+  integer datain
+  integer icount
+  integer datatype
+  integer dataout
+  integer insize
+  integer position
+  integer comm
+  integer ierror
+
+  include 'mpi_stubs_f90.h'
+  
+  ierror = MPI_SUCCESS
+  
+  return
+
+end subroutine mpi_unpack
+
+subroutine mpi_test(request,flag,istatus,ierror)
+
+  implicit none
+  
+  integer request
+  integer flag
+  integer istatus
+  integer ierror
+
+  include 'mpi_stubs_f90.h'
+  
+  ierror = MPI_SUCCESS
+  
+  return
+  
+end subroutine mpi_test
