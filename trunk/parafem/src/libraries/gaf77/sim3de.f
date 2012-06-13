@@ -192,7 +192,7 @@ c				export parameters to variance function
 
    1  format(3a)
    2  format(a,i10)
-   3  format(a,e)
+   3  format(a,e12.4) ! (LM) g95 complained about e on its own
 
 c-------------------------------------- initialize -------------------------
 c					compute required field size (once)
