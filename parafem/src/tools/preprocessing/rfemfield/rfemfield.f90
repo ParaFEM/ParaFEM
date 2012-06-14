@@ -191,10 +191,10 @@ PROGRAM rfemfield
         size_extents = max_extents - min_extents
         WRITE(11, '(A)') "Extents of model: (ord,min,max)"
         DO ord = 1,3
-           WRITE(11,'(I1,2F)') ord, min_extents(ord), max_extents(ord)
+           WRITE(11,'(I1,2F14.6)') ord, min_extents(ord), max_extents(ord)
         END DO
         WRITE(11, '(A)') "Size of Extents of model:"
-        WRITE(11,'(3F)') size_extents
+        WRITE(11,'(3F14.6)') size_extents
      END IF
      
 !------------------------------------------------------------------------------
@@ -356,8 +356,8 @@ PROGRAM rfemfield
         WRITE(14,*) m_mesh
         WRITE(14,*) m_partition
         WRITE(14,*) m_nels
-        WRITE(14, '(6I)') m_nels, m_nn, m_nr, m_nip, m_nod, m_loaded_nodes, m_fixed_freedoms
-        WRITE(14, '(E14.6,I,E14.6)') m_tol, m_limit, m_mises
+        WRITE(14, '(6I12)') m_nels, m_nn, m_nr, m_nip, m_nod, m_loaded_nodes, m_fixed_freedoms
+        WRITE(14, '(E14.6,I12,E14.6)') m_tol, m_limit, m_mises
         CLOSE(14)
 
      END IF

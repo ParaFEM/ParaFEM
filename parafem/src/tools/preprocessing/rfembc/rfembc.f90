@@ -111,7 +111,7 @@ PROGRAM rfembc
   WRITE(11, '(A,I12)') "Number of model elems = ", nels
   WRITE(11, '(A,I12)') "Number of model nods = ", nod
   
-  WRITE(11, '(A,2F)') "ZMIN/ZMAX of model: ", zmin_extent, zmax_extent
+  WRITE(11, '(A,2F14.6)') "ZMIN/ZMAX of model: ", zmin_extent, zmax_extent
   
 !------------------------------------------------------------------------------
 ! 6. Write .bnd and .fix files where nodes match zmin/zmax respectively
@@ -152,8 +152,8 @@ PROGRAM rfembc
   WRITE(14,*) mesh
   WRITE(14,*) partition
   WRITE(14,*) np_types
-  WRITE(14, '(6I)') nels, nn, num_bnd, nip, nod, loaded_nodes, num_fix
-  WRITE(14, '(E14.6,I, E14.6)') tol, limit, mises
+  WRITE(14, '(6I12)') nels, nn, num_bnd, nip, nod, loaded_nodes, num_fix
+  WRITE(14, '(E14.6,I12, E14.6)') tol, limit, mises
   CLOSE(14)
   
 !------------------------------------------------------------------------------
