@@ -184,9 +184,9 @@ PROGRAM rfemfield
         END DO
         CLOSE(15)
         
-        WRITE(11, '(A,I12)') "Number of model nodes = ", m_nn
-        WRITE(11, '(A,I12)') "Number of model elems = ", m_nels
-        WRITE(11, '(A,I12)') "Number of model nods = ", m_nod
+        WRITE(11, '(A,I8)') "Number of model nodes = ", m_nn
+        WRITE(11, '(A,I8)') "Number of model elems = ", m_nels
+        WRITE(11, '(A,I8)') "Number of model nods = ", m_nod
         
         size_extents = max_extents - min_extents
         WRITE(11, '(A)') "Extents of model: (ord,min,max)"
@@ -230,14 +230,18 @@ PROGRAM rfemfield
      
      iel = 0
      
-     WRITE(12,'(A,2I12)') '*MATERIAL', nprops, np_types
+     PRINT *, nprops
+     PRINT *, np_types
+     PRINT *, "MATERIAL"
+     
+     WRITE(12,'(A,2I8)') "MATERIAL", nprops, np_types
      WRITE(12,'(3A)') "E"," ", "v"
      
      DO i = 1, nze
         DO j = 1, nye
            DO k = 1, nxe
               iel = iel + 1
-              WRITE(12,'(I10,2E12.4)') iel, efld(k,j,i), v
+              WRITE(12,'(I8,2E12.4)') iel, efld(k,j,i), v
            END DO
         END DO
      END DO
@@ -272,13 +276,13 @@ PROGRAM rfemfield
         WRITE(13,'(A)') "*NODES"
         
         DO i = 1,nn
-           WRITE(13,'(I12,3E14.6)') i, g_coord(:,i)
+           WRITE(13,'(I8,3E14.6)') i, g_coord(:,i)
         END DO
         
         WRITE(13,'(A)') "*ELEMENTS"
         
         DO iel = 1, nels
-           WRITE(13,'(I12,A,8I12,I12)') iel, " 3 8 1 ",g_num(1,iel),g_num(4,iel),   &
+           WRITE(13,'(I8,A,8I8,I8)') iel, " 3 8 1 ",g_num(1,iel),g_num(4,iel),   &
                 g_num(8,iel),g_num(5,iel),g_num(2,iel),   &
                 g_num(3,iel),g_num(7,iel),g_num(6,iel),   &
                 iel  ! each element has its own material  
@@ -305,18 +309,18 @@ PROGRAM rfemfield
         WRITE(16,'(A)') "*THREE_DIMENSIONAL"
         WRITE(16,'(A)') "*NODES"
         
-        WRITE(17,'(A,2I12)') '*MATERIAL', nprops, np_types
+        WRITE(17,'(A,2I8)') '*MATERIAL', nprops, np_types
         WRITE(17,'(3A)') "E"," ", "v"
      
         DO i = 1,m_nn
-           WRITE(16,'(I12,3E14.6)') i, m_coord(:,i)
+           WRITE(16,'(I8,3E14.6)') i, m_coord(:,i)
         END DO
         
         WRITE(16,'(A)') "*ELEMENTS"
 
         ! TODO: m_nod is fixed here; needs to be dynamic
         DO iel = 1, m_nels
-           WRITE(16,'(I12,A,20I12,I12)') iel, " 3 20 1 ",m_num(:,iel), iel
+           WRITE(16,'(I8,A,20I12,I12)') iel, " 3 20 1 ",m_num(:,iel), iel
            !get k,j,i based on centroid of element
 
            ! sum and average x,y,z
@@ -336,7 +340,7 @@ PROGRAM rfemfield
            k = min(int(centroid(1)),nxe-1) + 1
            j = min(int(centroid(2)),nye-1) + 1
            i = min(int(centroid(3)),nze-1) + 1
-           WRITE(17,'(I10,2E12.4)') iel, efld(k,j,i), v
+           WRITE(17,'(I8,2E12.4)') iel, efld(k,j,i), v
         END DO
         
         CLOSE(16)
@@ -356,8 +360,8 @@ PROGRAM rfemfield
         WRITE(14,*) m_mesh
         WRITE(14,*) m_partition
         WRITE(14,*) m_nels
-        WRITE(14, '(6I12)') m_nels, m_nn, m_nr, m_nip, m_nod, m_loaded_nodes, m_fixed_freedoms
-        WRITE(14, '(E14.6,I12,E14.6)') m_tol, m_limit, m_mises
+        WRITE(14, '(6I8)') m_nels, m_nn, m_nr, m_nip, m_nod, m_loaded_nodes, m_fixed_freedoms
+        WRITE(14, '(E14.6,I8,E14.6)') m_tol, m_limit, m_mises
         CLOSE(14)
 
      END IF
