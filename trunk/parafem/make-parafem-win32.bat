@@ -8,17 +8,24 @@ set AR=c:\MinGW\g95\bin\ar
 set VER=1
 rem
 rem 
-rem *** BUILD DUMMY_MPI LIBRARY ***
+rem *** CLEAN ***
 rem
 rem
 cd /D %PARAFEM%\bin
-del *.a *.o *.mod rfemsolve.exe
+del *.a *.o *.mod *.exe
+cd /D %PARAFEM%\lib
+del *.a
+rem
+rem
+rem *** BUILD DUMMY_MPI LIBRARY ***
+rem
+rem
 cd /D %PARAFEM%\src\libraries\dummy_mpi
 del *.a *.o *.mod
 %G95% -c -r8 mpi_stubs.f90
 %AR% -r libmpi_stubs.a mpi_stubs.o 
-move libmpi_stubs.a %PARAFEM%\bin
-move *.o %PARAFEM%\bin
+move libmpi_stubs.a %PARAFEM%\lib
+del *.o
 rem
 rem
 rem *** BUILD GAF77 LIBRARY ***
@@ -27,9 +34,9 @@ rem
 cd /D %PARAFEM%\src\libraries\gaf77
 del *.a *.o *.mod
 %G95% -c -r8 *.f
-%AR% -r gaf77.a *.o
-move gaf77.a %PARAFEM%\bin
-move *.o %PARAFEM%\bin
+%AR% -r libgaf77.a *.o
+move libgaf77.a %PARAFEM%\lib
+del *.o
 rem
 rem *** BUILD PARAFEM LIBRARY ***
 rem
@@ -60,16 +67,34 @@ cd /D %PARAFEM%\src\modules\mpi
 %G95% -c -r8 pcg.f90
 %G95% -c -r8 bicg.f90
 %AR% -r libparafem.a *.o
-move libparafem.a %PARAFEM%\bin
-move *.mod %PARAFEM%\src\programs\rfem
+move libparafem.a %PARAFEM%\lib
+move *.mod %PARAFEM%\include
 del *.o 
+rem
+rem
+rem *** BUILD RFEMBC ***
+rem
+rem
+cd /D %PARAFEM%\src\tools\preprocessing\rfembc
+del rfembc.exe rfembc.o
+%G95% -r8 rfembc.f90 -L%PARAFEM%\lib -lparafem -I%PARAFEM%\include -o rfembc.exe
+del *.o *.a
+move rfembc.exe %PARAFEM%\bin
+rem
 rem 
 rem *** BUILD RFEMFIELD ***
+rem
+rem
+cd /D %PARAFEM%\src\tools\preprocessing\rfemfield
+del rfemfield.exe rfemfield.o
+%G95% -r8 rfemfield.f90 -L%PARAFEM%\lib -lgaf77 -lparafem -I%PARAFEM%\include -o rfemfield.exe
+del *.o *.a
+move rfemfield.exe %PARAFEM%\bin
 rem
 rem *** BUILD RFEMSOLVE ***
 rem
 cd /D %PARAFEM%\src\programs\rfem
-%G95% -r8 rfemsolve.f90 -L%PARAFEM%\bin\ -lmpi_stubs -lparafem -I%PARAFEM%\src\programs\rfem -o rfemsolve.exe
+%G95% -r8 rfemsolve.f90 -L%PARAFEM%\lib -lmpi_stubs -lparafem -I%PARAFEM%\include -o rfemsolve.exe
 del *.o *.a
 move rfemsolve.exe %PARAFEM%\bin
 cd /D %PARAFEM%
