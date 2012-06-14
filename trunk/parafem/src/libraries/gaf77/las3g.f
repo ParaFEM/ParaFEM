@@ -179,12 +179,17 @@ c ==========================================================================
       common/LASTYM/ ti, ts
       data ifirst/1/, zero/0.0/, eight/8.0/
       data tol/1.e-3/
+      
+   1  format(3a)
+   2  format(a,i10)
+   3  format(a,e12.4) ! (LM) g95 complained about e on its own
+   
 c-----------------------------------------------------------------------------
 c-------------------------------------- initialize LAS generator -------------
 
       if( ifirst .eq. 1 .or. iabs(init) .eq. 1 ) then
 c						start timer
-         ti = second()
+      ti = second()
          call las3i( dvfn, N1, N2, N3, XL, YL, ZL, kseed, MXM,
      >               C0, CC, CE, CS, CI, AC, AE, AS, AI,
      >               ATC, ATS, ATI, CTC, CTS, CTI,
@@ -196,6 +201,9 @@ c						all done, set timers
          ti   = second() - ti
          if( init .eq. -1 ) return
       endif
+      
+      write(istat,1)'LAS3G: initialize LAS generator...'
+      
 c-----------------------------------------------------------------------------
 c-------------------------------------- generate realization -----------------
       tt = second()
@@ -216,6 +224,9 @@ c					generate stage 0 field
   10     continue
          L = L + i
   20  continue
+
+      write(istat,1)'LAS3G: generate stage 0 field...'
+
 c					generate stage 1, 2, ..., M sub-fields
       if( M .eq. 0 ) return
       if( (k1 .eq. 1) .or. (k2 .eq. 1) .or. (k3 .eq. 1) ) then
@@ -234,11 +245,17 @@ c					generate stage 1, 2, ..., M sub-fields
          ms = 1
       endif
 
+      write(istat,1)'LAS3G: generate stage 1, 2, ..., M sub-fields '
+
       do 160 i = ms, M
 c						swap current and prev fields
          it = jq
          jq = iq
          iq = it
+         
+
+      write(istat,1)'LAS3G: swap current and prev fields... '
+      
 c						new field dimensions
          ix  = 2*jx
          iy  = 2*jy
@@ -910,7 +927,16 @@ c								corner #8
          jz = iz
  160  continue
 c						all done, compute elapsed time
+
+
+      write(istat,1)'LAS3G: all done... ' 
+      write(istat,3)'LAS3G: ts ...', ts
+      write(istat,3)'LAS3G: tt ...', tt
+      
       ts = ts + (second() - tt)
 
+      write(istat,3)'LAS3G: ts ...', ts
+      write(istat,3)'LAS3G: tt ...', tt
+      
       return
       end
