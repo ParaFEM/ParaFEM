@@ -164,7 +164,7 @@ c  3.41	replaced dummy dimensions with a (*) for GNU's compiler (Jun 9/99)
 c  3.42	saved k1, k2, k3, kk, NN, and M from initialization (Jun 21/00)
 c ==========================================================================
       subroutine las3g( Z, N1, N2, N3, XL, YL, ZL, dvfn, kseed, init,
-     >                  iout )
+     >                  istat )
       parameter( MXM = 6, MXK = 512, NGS = 32000 )
       real Z(*)
       real C0(MXK*(MXK + 1)/2), U(NGS)
@@ -193,7 +193,7 @@ c						start timer
          call las3i( dvfn, N1, N2, N3, XL, YL, ZL, kseed, MXM,
      >               C0, CC, CE, CS, CI, AC, AE, AS, AI,
      >               ATC, ATS, ATI, CTC, CTS, CTI,
-     >               M, k1, k2, k3, kk, iout, tol )
+     >               M, k1, k2, k3, kk, istat, tol )
          NN = N1*N2*N3
          ifirst = 0
 c						all done, set timers
@@ -234,7 +234,7 @@ c					generate stage 1, 2, ..., M sub-fields
          it = jq
          jq = iq
          iq = it
-         call plan3d(Z,iq,jq,k1,k2,k3,ATC,ATS,ATI,CTC,CTS,CTI,U,iout)
+         call plan3d(Z,iq,jq,k1,k2,k3,ATC,ATS,ATI,CTC,CTS,CTI,U,istat)
          jx = 2*k1
          jy = 2*k2
          jz = 2*k3
