@@ -101,7 +101,7 @@ PROGRAM rfemfield
   IF (INDEX(rfem_job_name,".dat") /= 0) THEN
      rfem_job_name = rfem_job_name(1:INDEX(rfem_job_name,".dat")-1)
   END IF
-  fname = rfem_job_name(1:INDEX(rfem_job_name," ")-1) // ".dat"
+  fname = rfem_job_name(1:INDEX(rfem_job_name," ")-1) // ".rf"
   OPEN (10, file=fname, status='old', action='read')
   
   READ(10,*) rfield
