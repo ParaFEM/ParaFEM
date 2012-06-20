@@ -81,8 +81,9 @@ PROGRAM rfembc
   d_name = job_name(1:INDEX(job_name," ")-1) // ".d"
 
   OPEN (14, file=in_dat_name, status='old', action='read')
-  READ(14,*) element,mesh,partition,nels,nn,nr,nip,nod,loaded_nodes,        &
-             fixed_freedoms,e,v,tol,limit
+  READ(14,*) element,mesh,partition,np_types,   &
+       nels,nn,nr,nip,nod,loaded_nodes,        &
+       fixed_freedoms,e,v,tol,limit
   CLOSE(14)
   
   ndim = 3
