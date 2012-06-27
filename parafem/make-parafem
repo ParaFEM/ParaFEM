@@ -84,7 +84,7 @@ BUILD_GROUP_RFEM="rfemsolve"
 
 # TOOLS build options
 BUILD_TOOLS_OPT=
-BUILD_GROUP_PREPROC="inp2pf mg2d partitioner dinomesher fearfy KUBCgen rfemfield rfembc"
+BUILD_GROUP_PREPROC="inp2pf mg2d partitioner dinomesher fearfy KUBCgen rfemfield rfembc rfemcube"
 BUILD_GROUP_POSTPROC="d2off bnd2dis mat2numpe upvw2dis pf2ensi"
 
 # DEFAULT build options for LIBRARIES, MODULES, PROGRAMS and TOOLS
