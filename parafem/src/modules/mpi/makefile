@@ -20,7 +20,8 @@ VPATH = ../shared
 include ../../../build/mk_defs.inc
 include ../../../build/$(MACHINE).inc
 
-MPI=	mp_interface.o \
+MPI=	mpi_wrapper.o \
+	mp_interface.o \
 	input.o \
 	output.o \
 	maths.o \
@@ -69,6 +70,7 @@ lib-debug:	$(SHARED) $(MPI)
 	$(FC) -c $(FFLAGS) ../shared/plasticity.f90
 	$(FC) -c $(FFLAGS) ../shared/geometry.f90
 	$(FC) -c $(FFLAGS) ../shared/fluid.f90
+	$(FC) -c $(FFLAGS) mpi_wrapper.f90
 	$(FC) -c $(FFLAGS) mp_interface.f90
 	$(FC) -c $(FFLAGS) input.f90
 	$(FC) -c $(FFLAGS) output.f90
