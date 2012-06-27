@@ -8,6 +8,8 @@ cd src/libraries/dummy_mpi
 rm -f *.o libmpi_stubs.a
 $FC $FFLAGS mpi_stubs.f90
 $AR libmpi_stubs.a mpi_stubs.o
+cp *.mod ../../modules/mpi
+mv *.mod ../../../include
 mv libmpi_stubs.a ../../../lib
 cd ../../..
 
@@ -29,21 +31,25 @@ $FC $FFLAGS timing.f90
 $FC $FFLAGS partition.f90
 $FC $FFLAGS plasticity.f90
 $FC $FFLAGS fluid.f90
-mv *.o ../mpi
-mv *.mod ../mpi
 cd ../mpi
-$FC $FFLAGS mp_interface.f90
+rm -f *.o *.mod
+mv ../shared/*.o .
+mv ../shared/*.mod .
+cp ../../../include/mpi_stubs.mod .
+$FC $FFLAGS mpi_wrapper.f90
+$FC $FFLAGS mp_interface.f90 -I../../libraries/dummy_mpi/include
 $FC $FFLAGS maths.f90
 $FC $FFLAGS input.f90
 $FC $FFLAGS output.f90
 $FC $FFLAGS gather_scatter.f90
 $FC $FFLAGS loading.f90
-$FC $FFLAGS large_strain.f90
+# $FC $FFLAGS large_strain.f90
 $FC $FFLAGS pcg.f90
 $FC $FFLAGS bicg.f90
 $AR libparafem.a *.o
 mv libparafem.a ../../../lib
-mv *.mod ../../../include
+# mv *.mod ../../../include
+cp *.mod ../../../include
 cd ../../..
 
 cd src/tools/preprocessing/rfemcube
