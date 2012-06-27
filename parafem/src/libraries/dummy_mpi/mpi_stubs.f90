@@ -1,350 +1,826 @@
-subroutine mpi_abort ( comm, errorcode, ierror )
+MODULE mpi_stubs
+  
+  interface mpi_allgather
+     module procedure mpi_allgather_int_r1
+     module procedure mpi_allgather_real_r1
+  end interface mpi_allgather
+  
+  interface mpi_allgatherv
+     module procedure mpi_allgatherv_int_r1
+     module procedure mpi_allgatherv_real_r1
+  end interface mpi_allgatherv
+  
+  interface mpi_allreduce
+     module procedure mpi_allreduce_int_r0
+     module procedure mpi_allreduce_int_r1
+     module procedure mpi_allreduce_real_r0
+     module procedure mpi_allreduce_real_r1
+  end interface mpi_allreduce
+  
+  interface mpi_reduce
+     module procedure mpi_reduce_int_r0
+     module procedure mpi_reduce_int_r1
+     module procedure mpi_reduce_real_r0
+     module procedure mpi_reduce_real_r1
+  end interface mpi_reduce
+  
+  interface mpi_reduce_scatter
+     module procedure mpi_reduce_scatter_int_r1
+     module procedure mpi_reduce_scatter_real_r1
+  end interface mpi_reduce_scatter
+  
+  interface mpi_bcast
+     module procedure mpi_bcast_int_r0
+     module procedure mpi_bcast_int_r1
+     module procedure mpi_bcast_int_r2
+     module procedure mpi_bcast_real_r1
+     module procedure mpi_bcast_real_r2
+     module procedure mpi_bcast_char
+  end interface mpi_bcast
 
-!*****************************************************************************80
-!
-!! MPI_ABORT shuts down the processes in a given communicator.
-!
-!  Modified:
-!
-!    08 February 2007
-!
-!  Author:
-!
-!    John Burkardt
-!
-!  Reference:
-!
-!    William Gropp, Ewing Lusk, Anthony Skjellum,
-!    Using MPI: Portable Parallel Programming with the
-!    Message-Passing Interface,
-!    Second Edition,
-!    MIT Press, 1999,
-!    ISBN: 0262571323.
-!
-!  Parameters:
-!
-!    Input, integer COMM, the MPI communicator.
-!
-!    Input, integer ERRORCODE, the error code to be returned.
-!
-!    Output, integer IERROR, is nonzero if an error occurred.
-!
-  implicit none
+  interface mpi_isend
+     module procedure mpi_isend_int_r0
+     module procedure mpi_isend_int_r1
+     module procedure mpi_isend_real_r0
+     module procedure mpi_isend_real_r1
+  end interface mpi_isend
+  
+  interface mpi_send
+     module procedure mpi_send_int_r0
+     module procedure mpi_send_int_r1
+     module procedure mpi_send_int_r2
+     module procedure mpi_send_int_r2_fixedstatus
+     module procedure mpi_send_real_r0
+     module procedure mpi_send_real_r1
+  end interface mpi_send
+  
+  interface mpi_recv
+     module procedure mpi_recv_int_r0
+     module procedure mpi_recv_int_r0_fixedstatus
+     module procedure mpi_recv_int_r1
+     module procedure mpi_recv_int_r2
+     module procedure mpi_recv_real_r0
+     module procedure mpi_recv_real_r1
+  end interface mpi_recv
+  
+  interface mpi_pack
+     module procedure mpi_pack_int_r0
+     module procedure mpi_pack_int_r1
+     module procedure mpi_pack_real_r0
+     module procedure mpi_pack_real_r1
+  end interface mpi_pack
 
-  integer comm
-  integer errorcode
-  integer ierror
-  integer, parameter :: MPI_FAILURE = 1
-  integer, parameter :: MPI_SUCCESS = 0
+  interface mpi_unpack
+     module procedure mpi_unpack_int_r0
+     module procedure mpi_unpack_int_r1
+     module procedure mpi_unpack_real_r0
+     module procedure mpi_unpack_real_r1
+  end interface mpi_unpack
 
-  ierror = MPI_SUCCESS
+CONTAINS
+  
+  !*****************************************************************************
+  !
+  ! MPI_ABORT shuts down the processes in a given communicator.
+  !
+  !*****************************************************************************
+  
+  subroutine mpi_abort ( comm, errorcode, ierror )
+    
+    implicit none
+    
+    integer comm, errorcode, ierror
+    integer, parameter :: MPI_FAILURE = 1
+    integer, parameter :: MPI_SUCCESS = 0
+    
+    !ierror = MPI_SUCCESS
+    
+    write ( *, '(a)' ) ' '
+    write ( *, '(a)' ) 'MPI_ABORT:'
+    write ( *, '(a,i12)' ) '  Shut down with error code = ', errorcode
+    
+    stop
+  end subroutine mpi_abort
+  
+  !*****************************************************************************
+  !
+  ! MPI_ALLGATHER gathers data from all the processes in a communicator.
+  !
+  !*****************************************************************************
+  
+  subroutine mpi_allgather_int_r1( data1, nsend, sendtype, data2, nrecv, recvtype, comm, ierror )
+    implicit none
+    
+    include "mpi_stubs_f90.h"
+    
+    integer :: data1(nsend), data2(nsend)
+    integer nsend, nrecv, sendtype, recvtype, comm, ierror
+    
+    ierror = MPI_SUCCESS
+    
+    call mpi_copy_integer( data1, data2, nsend, ierror )
+    
+  end subroutine mpi_allgather_int_r1
+  
+  subroutine mpi_allgather_real_r1( data1, nsend, sendtype,data2, nrecv, recvtype, comm, ierror )
+    implicit none
+    
+    include "mpi_stubs_f90.h"
+    
+    real :: data1(nsend), data2(nsend)
+    integer nsend, nrecv, sendtype, recvtype, comm, ierror
+    
+    ierror = MPI_SUCCESS
+    
+    call mpi_copy_real( data1, data2, nsend, ierror )
+    
+  end subroutine mpi_allgather_real_r1
 
-  write ( *, '(a)' ) ' '
-  write ( *, '(a)' ) 'MPI_ABORT:'
-  write ( *, '(a,i12)' ) '  Shut down with error code = ', errorcode
+  !*****************************************************************************80
+  !
+  !! MPI_ALLGATHERV gathers data from all the processes in a communicator.
+  !
+  !*****************************************************************************80
+  
+  subroutine mpi_allgatherv_int_r1 ( data1, nsend, sendtype, data2, nrecv, ndispls, recvtype, comm, ierror )
+    implicit none
+    
+    include "mpi_stubs_f90.h"
+    
+    integer :: nsend
+    integer :: data1(nsend), data2(nsend)
+    integer :: comm, ierror, ndispls, nrecv, recvtype, sendtype
+    
+    ierror = MPI_SUCCESS
+    
+    call mpi_copy_integer( data1, data2, nsend, ierror )
+    
+  end subroutine mpi_allgatherv_int_r1
+  
+  subroutine mpi_allgatherv_real_r1 ( data1, nsend, sendtype, data2, nrecv, ndispls, recvtype, comm, ierror )
+    implicit none
+    
+    include "mpi_stubs_f90.h"
+    
+    integer :: nsend
+    real :: data1(nsend), data2(nsend)
+    integer :: comm, ierror, ndispls, nrecv, recvtype, sendtype
+    
+    ierror = MPI_SUCCESS
+    
+    call mpi_copy_real( data1, data2, nsend, ierror )
+    
+  end subroutine mpi_allgatherv_real_r1
+  
+  !*****************************************************************************
+  !
+  ! MPI_ALLREDUCE carries out a reduction operation.
+  !
+  !*****************************************************************************
+  
+  subroutine mpi_allreduce_int_r0( data1, data2, n, datatype, operation, comm, ierror )
+    implicit none
+    
+    include "mpi_stubs_f90.h"
+    
+    integer :: n
+    integer :: data1, data2
+    integer :: comm, datatype, ierror, operation
+    
+    ierror = MPI_SUCCESS
 
-  stop
-end
-subroutine mpi_allgather ( data1, nsend, sendtype,data2, nrecv, recvtype, &
-  comm, ierror )
+    data2 = data1
+    
+  end subroutine mpi_allreduce_int_r0
+  
+  subroutine mpi_allreduce_int_r1( data1, data2, n, datatype, operation, comm, ierror )
+    implicit none
+    
+    include "mpi_stubs_f90.h"
+    
+    integer :: n
+    integer :: data1(n), data2(n)
+    integer :: comm, datatype, ierror, operation
+    
+    ierror = MPI_SUCCESS
 
-!*****************************************************************************80
-!
-!! MPI_ALLGATHER gathers data from all the processes in a communicator.
-!
-!  Discussion:
-!
-!    Copy values from DATA1 to DATA2.
-!
-!    The data to be transferred can be integer, real, or double precision.
-!    In this routine, it is declared and documented as INTEGER type, 
-!    but using the other types should generally not cause a problem.
-!
-!  Modified:
-!
-!    05 February 2007
-!
-!  Author:
-!
-!    John Burkardt
-!
-!  Reference:
-!
-!    William Gropp, Ewing Lusk, Anthony Skjellum,
-!    Using MPI: Portable Parallel Programming with the
-!    Message-Passing Interface,
-!    Second Edition,
-!    MIT Press, 1999,
-!    ISBN: 0262571323.
-!
-!  Parameters:
-!
-!    Input, integer COMM, the MPI communicator.
-!
-!    Output, integer IERROR, is nonzero if an error occurred.
-!
-  implicit none
+    data2 = data1
+    
+  end subroutine mpi_allreduce_int_r1
+  
+  subroutine mpi_allreduce_real_r0( data1, data2, n, datatype, operation, comm, ierror )
+    implicit none
+    
+    include "mpi_stubs_f90.h"
+    
+    integer :: n
+    real :: data1, data2
+    integer :: comm, datatype, ierror, operation
+    
+    ierror = MPI_SUCCESS
+    
+    data2 = data1
 
-  include "mpi_stubs_f90.h"
+  end subroutine mpi_allreduce_real_r0
+  
+  subroutine mpi_allreduce_real_r1( data1, data2, n, datatype, operation, comm, ierror )
+    implicit none
+    
+    include "mpi_stubs_f90.h"
+    
+    integer :: n
+    real :: data1(n), data2(n)
+    integer :: comm, datatype, ierror, operation
+    
+    ierror = MPI_SUCCESS
 
-  integer nsend
+    data2 = data1
+    
+  end subroutine mpi_allreduce_real_r1
+  
+  !*****************************************************************************
+  !
+  ! MPI_BARRIER forces processes within a communicator to wait together.
+  !
+  !*****************************************************************************
+  
+  subroutine mpi_barrier ( comm, ierror )
+    implicit none
+    
+    integer comm, ierror
+    integer, parameter :: MPI_FAILURE = 1
+    integer, parameter :: MPI_SUCCESS = 0
+    
+    ierror = MPI_SUCCESS
+    
+    return
+  end subroutine mpi_barrier
+  
 
-  integer comm
-  integer data1(nsend)
-  integer data2(nsend)
-  integer ierror
-  integer nrecv
-  integer recvtype
-  integer sendtype
+  !*****************************************************************************
+  !
+  ! MPI_REDUCE
+  !
+  !*****************************************************************************
+  
+  subroutine mpi_reduce_int_r0( data1, data2, n, datatype, operation, receiver, comm, ierror )
+    implicit none
+    
+    include "mpi_stubs_f90.h"
+    
+    integer :: data1, data2
+    integer :: n, datatype, operation, receiver, comm, ierror
+    
+    ierror = MPI_SUCCESS
+    
+    data2 = data1
+    
+    return
+  end subroutine mpi_reduce_int_r0
+  
+  subroutine mpi_reduce_int_r1( data1, data2, n, datatype, operation, receiver, comm, ierror )
+    implicit none
+    
+    include "mpi_stubs_f90.h"
+    
+    integer :: data1(n), data2(n)
+    integer :: n, datatype, operation, receiver, comm, ierror
+    
+    ierror = MPI_SUCCESS
 
-  ierror = MPI_SUCCESS
+    data2 = data1
+    
+    return
+  end subroutine mpi_reduce_int_r1
+  
+  subroutine mpi_reduce_real_r0( data1, data2, n, datatype, operation, receiver, comm, ierror )
+    implicit none
+    
+    include "mpi_stubs_f90.h"
+    
+    real :: data1, data2
+    integer :: n, datatype, operation, receiver, comm, ierror
+    
+    ierror = MPI_SUCCESS
 
-  if ( sendtype == mpi_double_precision ) then
-    call mpi_copy_double_precision ( data1, data2, nsend, ierror )
-  else if ( sendtype == mpi_integer ) then
-    call mpi_copy_integer ( data1, data2, nsend, ierror )
-  else if ( sendtype == mpi_real ) then
-    call mpi_copy_real ( data1, data2, nsend, ierror )
-  else
-    ierror = MPI_FAILURE
-  end if
+    data2 = data1
 
-  return
-end
-subroutine mpi_allgatherv ( data1, nsend, sendtype, data2, nrecv, ndispls, &
-  recvtype, comm, ierror )
+    return
+  end subroutine mpi_reduce_real_r0
+  
+  subroutine mpi_reduce_real_r1 ( data1, data2, n, datatype, operation, receiver, comm, ierror )
+    implicit none
+    
+    include "mpi_stubs_f90.h"
+    
+    real :: data1(n), data2(n)
+    integer :: n, datatype, operation, receiver, comm, ierror
+    
+    ierror = MPI_SUCCESS
+    
+    data2 = data1
 
-!*****************************************************************************80
-!
-!! MPI_ALLGATHERV gathers data from all the processes in a communicator.
-!
-!  Discussion:
-!
-!    Copy values from DATA1 to DATA2.
-!
-!    The data to be transferred can be integer, real, or double precision.
-!    In this routine, it is declared and documented as INTEGER type, 
-!    but using the other types should generally not cause a problem.
-!
-!  Modified:
-!
-!    05 February 2007
-!
-!  Author:
-!
-!    John Burkardt
-!
-!  Reference:
-!
-!    William Gropp, Ewing Lusk, Anthony Skjellum,
-!    Using MPI: Portable Parallel Programming with the
-!    Message-Passing Interface,
-!    Second Edition,
-!    MIT Press, 1999,
-!    ISBN: 0262571323.
-!
-!  Parameters:
-!
-!    Input, integer COMM, the MPI communicator.
-!
-!    Output, integer IERROR, is nonzero if an error occurred.
-!
-  implicit none
+    return
+  end subroutine mpi_reduce_real_r1
+  
+  
+  !*****************************************************************************
+  !
+  ! MPI_REDUCE_SCATTER collects a message of the same length from each process.
+  !
+  !*****************************************************************************
+  
+  subroutine mpi_reduce_scatter_int_r1( data1, data2, n, datatype, operation, comm, ierror )
+    implicit none
+    
+    include "mpi_stubs_f90.h"
+    
+    integer :: n
+    integer :: data1(n), data2(n)
+    integer comm, datatype, ierror, operation
+    
+    ierror = MPI_SUCCESS
+    
+    data2(1:n) = data1(1:n)
+    
+  end subroutine mpi_reduce_scatter_int_r1
+  
+  subroutine mpi_reduce_scatter_real_r1( data1, data2, n, datatype, operation, comm, ierror )
+    implicit none
+    
+    include "mpi_stubs_f90.h"
+    
+    integer :: n
+    real :: data1(n), data2(n)
+    integer comm, datatype, ierror, operation
+    
+    ierror = MPI_SUCCESS
+    
+    data2(1:n) = data1(1:n)
+    
+  end subroutine mpi_reduce_scatter_real_r1
+  
+  
+  
+  !*****************************************************************************
+  !
+  ! MPI_WAITALL waits until all I/O requests have completed.
+  !
+  !*****************************************************************************
+  
+  subroutine mpi_waitall ( icount, irequest, istatus, ierror )
+    implicit none
+    
+    integer icount, ierror
+    integer irequest(icount), istatus(icount)
+    integer, parameter :: MPI_FAILURE = 1
+    integer, parameter :: MPI_SUCCESS = 0
+    
+    ierror = MPI_SUCCESS
+  end subroutine mpi_waitall
+  
+  !*****************************************************************************
+  !
+  ! MPI_ISEND sends data from one process to another using nonblocking transmission.
+  !
+  !*****************************************************************************
 
-  include "mpi_stubs_f90.h"
+  subroutine mpi_isend_int_r0 ( data, n, datatype, iproc, itag, comm, request, ierror )
+    implicit none
+    
+    include "mpi_stubs_f90.h"
+    
+    integer :: n
+    integer :: data
+    integer :: comm, datatype, ierror, iproc, itag, request
+    
+    request = 0
+    ierror = MPI_SUCCESS
+    
+    return
+  end subroutine mpi_isend_int_r0
+  
+  subroutine mpi_isend_int_r1 ( data, n, datatype, iproc, itag, comm, request, ierror )
+    implicit none
+    
+    include "mpi_stubs_f90.h"
+    
+    integer :: n
+    integer :: data(n)
+    integer :: comm, datatype, ierror, iproc, itag, request
+    
+    request = 0
+    ierror = MPI_SUCCESS
+    
+    return
+  end subroutine mpi_isend_int_r1
+  
+  subroutine mpi_isend_real_r0 ( data, n, datatype, iproc, itag, comm, request, ierror )
+    implicit none
+    
+    include "mpi_stubs_f90.h"
+    
+    integer :: n
+    real :: data
+    integer :: comm, datatype, ierror, iproc, itag, request
+    
+    request = 0
+    ierror = MPI_SUCCESS
+    
+    return
+  end subroutine mpi_isend_real_r0
+  
+  subroutine mpi_isend_real_r1 ( data, n, datatype, iproc, itag, comm, request, ierror )
+    implicit none
+    
+    include "mpi_stubs_f90.h"
+    
+    integer :: n
+    real :: data(n)
+    integer :: comm, datatype, ierror, iproc, itag, request
+    
+    request = 0
+    ierror = MPI_SUCCESS
+    
+    return
+  end subroutine mpi_isend_real_r1
+  
+  !*****************************************************************************
+  !
+  ! MPI_SEND
+  !
+  !*****************************************************************************
 
-  integer nsend
+  subroutine mpi_send_int_r0 ( buf, count, datatype, dest, tag, comm, ierror )
+    implicit none
+    
+    include "mpi_stubs_f90.h"
+    
+    integer :: count
+    integer :: buf
+    integer :: datatype, dest, tag, comm, ierror
+    
+    ierror = MPI_SUCCESS
+    
+    return
+  end subroutine mpi_send_int_r0
+  
+  subroutine mpi_send_int_r1 ( buf, count, datatype, dest, tag, comm, ierror )
+    implicit none
+    
+    include "mpi_stubs_f90.h"
+    
+    integer :: count
+    integer :: buf(count)
+    integer :: datatype, dest, tag, comm, ierror
+    
+    ierror = MPI_SUCCESS
+    
+    return
+  end subroutine mpi_send_int_r1
+  
+  subroutine mpi_send_int_r2 ( buf, count, datatype, dest, tag, comm, ierror )
+    implicit none
+    
+    include "mpi_stubs_f90.h"
+    
+    integer :: count
+    integer :: buf(:,:)
+    integer :: datatype, dest, tag, comm, ierror
+    
+    ierror = MPI_SUCCESS
+    
+    return
+  end subroutine mpi_send_int_r2
+  
+  subroutine mpi_send_int_r2_fixedstatus ( buf, count, datatype, dest, tag, comm, status, ierror )
+    implicit none
+    
+    include "mpi_stubs_f90.h"
+    
+    integer :: count
+    integer :: buf(:,:)
+    integer :: status(MPI_STATUS_SIZE)
+    integer :: datatype, dest, tag, comm, ierror
+    
+    ierror = MPI_SUCCESS
+    
+    return
+  end subroutine mpi_send_int_r2_fixedstatus
+  
+  subroutine mpi_send_real_r0 ( buf, count, datatype, dest, tag, comm, ierror )
+    implicit none
+    
+    include "mpi_stubs_f90.h"
+    
+    integer :: count
+    real :: buf
+    integer :: datatype, dest, tag, comm, ierror
 
-  integer comm
-  integer data1(nsend)
-  integer data2(nsend)
-  integer ierror
-  integer ndispls
-  integer nrecv
-  integer recvtype
-  integer sendtype
+    ierror = MPI_SUCCESS
+    
+    return
+  end subroutine mpi_send_real_r0
+  
+  subroutine mpi_send_real_r1 ( buf, count, datatype, dest, tag, comm, ierror )
+    implicit none
+    
+    include "mpi_stubs_f90.h"
+    
+    integer :: count
+    real :: buf(count)
+    integer :: datatype, dest, tag, comm, ierror
 
-  ierror = MPI_SUCCESS
+    ierror = MPI_SUCCESS
+    
+    return
+  end subroutine mpi_send_real_r1
+  
+  !*****************************************************************************
+  !
+  ! MPI_RECV receives data from another process within a communicator.
+  !
+  !*****************************************************************************
+  
+  subroutine mpi_recv_int_r0_fixedstatus( data, n, datatype, iproc, itag, comm, istatus, ierror )
+    implicit none
+    
+    include "mpi_stubs_f90.h"
+    
+    integer :: n
+    integer :: data, istatus(MPI_STATUS_SIZE)
+    integer datatype, iproc, itag, comm, ierror
+    
+    ierror = MPI_SUCCESS
+    
+    return
+  end subroutine mpi_recv_int_r0_fixedstatus
+  
+  subroutine mpi_recv_int_r0( data, n, datatype, iproc, itag, comm, istatus, ierror )
+    implicit none
+    
+    include "mpi_stubs_f90.h"
+    
+    integer :: n
+    integer :: data, istatus
+    integer datatype, iproc, itag, comm, ierror
+    
+    ierror = MPI_SUCCESS
+    
+    return
+  end subroutine mpi_recv_int_r0
+  
+  subroutine mpi_recv_int_r1( data, n, datatype, iproc, itag, comm, istatus, ierror )
+    implicit none
+    
+    include "mpi_stubs_f90.h"
+    
+    integer :: n
+    integer :: data(:), istatus(:)
+    integer datatype, iproc, itag, comm, ierror
+    
+    ierror = MPI_SUCCESS
+    
+    return
+  end subroutine mpi_recv_int_r1
+  
+  subroutine mpi_recv_int_r2( data, n, datatype, iproc, itag, comm, istatus, ierror )
+    implicit none
+    
+    include "mpi_stubs_f90.h"
+    
+    integer :: n
+    integer :: data(:,:), istatus(*)
+    integer datatype, iproc, itag, comm, ierror
+    
+    ierror = MPI_SUCCESS
+    
+    return
+  end subroutine mpi_recv_int_r2
 
-  if ( sendtype == mpi_double_precision ) then
-    call mpi_copy_double_precision ( data1, data2, nsend, ierror )
-  else if ( sendtype == mpi_integer ) then
-    call mpi_copy_integer ( data1, data2, nsend, ierror )
-  else if ( sendtype == mpi_real ) then
-    call mpi_copy_real ( data1, data2, nsend, ierror )
-  else
-    ierror = MPI_FAILURE
-  end if
+  subroutine mpi_recv_real_r0( data, n, datatype, iproc, itag, comm, istatus, ierror )
+    implicit none
+    
+    include "mpi_stubs_f90.h"
+    
+    integer :: n
+    real :: data
+    integer :: istatus
+    integer datatype, iproc, itag, comm, ierror
+    
+    ierror = MPI_SUCCESS
+    
+    return
+  end subroutine mpi_recv_real_r0
 
-  return
-end
-subroutine mpi_allreduce ( data1, data2, n, datatype, operation, comm, ierror )
+  subroutine mpi_recv_real_r1( data, n, datatype, iproc, itag, comm, istatus, ierror )
+    implicit none
+    
+    include "mpi_stubs_f90.h"
+    
+    integer :: n
+    real :: data(n)
+    integer :: istatus(n)
+    integer datatype, iproc, itag, comm, ierror
+    
+    ierror = MPI_SUCCESS
+    
+    return
+  end subroutine mpi_recv_real_r1
 
-!*****************************************************************************80
-!
-!! MPI_ALLREDUCE carries out a reduction operation.
-!
-!  Discussion:
-!
-!    The reduction operations are MAXIMUM, MINIMUM, PRODUCT and SUM.
-!
-!    The data to be transferred can be integer, real, or double precision.
-!    In this routine, it is declared and documented as INTEGER type, 
-!    but using the other types should generally not cause a problem.
-!
-!  Modified:
-!
-!    07 February 2007
-!
-!  Author:
-!
-!    John Burkardt
-!
-!  Reference:
-!
-!    William Gropp, Ewing Lusk, Anthony Skjellum,
-!    Using MPI: Portable Parallel Programming with the
-!    Message-Passing Interface,
-!    Second Edition,
-!    MIT Press, 1999,
-!    ISBN: 0262571323.
-!
-!  Parameters:
-!
-!    Input, DATATYPE DATA1(N), the data to be processed.
-!
-!    Output, DATATYPE DATA2, the value of the reduction operation.
-!
-!    Input, integer N, the number of items in DATA1.
-!
-!    Input, integer DATATYPE, indicates the datatype of DATA1 and DATA2.
-!
-!    Input, integer OPERATION, should have the value of one of the symbolic
-!    constants MPI_MAX, MPI_MIN, MPI_PRODUCT or MPI_SUM.
-!
-!    Input, integer COMM, the MPI communicator.
-!
-!    Output, integer IERROR, is nonzero if an error occurred.
-!
-  implicit none
+  !*****************************************************************************
+  !
+  ! MPI_PACK
+  !
+  !*****************************************************************************
+  
+  subroutine mpi_pack_int_r0 ( inbuf, incount, datatype, outbuf, outcount, position, comm, ierror )
+    
+    implicit none
+    
+    integer incount, outcount
+    integer inbuf
+    integer outbuf(outcount)
+    integer datatype
+    integer position
+    integer comm
+    integer ierror
+    
+    include 'mpi_stubs_f90.h'
+    
+    ierror = MPI_SUCCESS
+    
+    return
+  end subroutine mpi_pack_int_r0
 
-  include "mpi_stubs_f90.h"
+  subroutine mpi_pack_int_r1 ( inbuf, incount, datatype, outbuf, outcount, position, comm, ierror )
+    
+    implicit none
+    
+    integer incount, outcount
+    integer inbuf(incount)
+    integer outbuf(outcount)
+    integer datatype
+    integer position
+    integer comm
+    integer ierror
+    
+    include 'mpi_stubs_f90.h'
+    
+    ierror = MPI_SUCCESS
+    
+    return
+  end subroutine mpi_pack_int_r1
 
-  integer n
+  subroutine mpi_pack_real_r0 ( inbuf, incount, datatype, outbuf, outcount, position, comm, ierror )
+    
+    implicit none
+    
+    integer incount, outcount
+    real inbuf
+    integer outbuf(outcount)
+    integer datatype
+    integer position
+    integer comm
+    integer ierror
+    
+    include 'mpi_stubs_f90.h'
+    
+    ierror = MPI_SUCCESS
+    
+    return
+  end subroutine mpi_pack_real_r0
 
-  integer comm
-  integer data1(n)
-  integer data2(n)
-  integer datatype
-  integer ierror
-  integer operation
+  subroutine mpi_pack_real_r1 ( inbuf, incount, datatype, outbuf, outcount, position, comm, ierror )
+    
+    implicit none
+    
+    integer incount, outcount
+    real inbuf(incount)
+    integer outbuf(outcount)
+    integer datatype
+    integer position
+    integer comm
+    integer ierror
+    
+    include 'mpi_stubs_f90.h'
+    
+    ierror = MPI_SUCCESS
+    
+    return
+  end subroutine mpi_pack_real_r1
 
-  ierror = MPI_SUCCESS
+  !*****************************************************************************
+  !
+  ! MPI_UNPACK
+  !
+  !*****************************************************************************
+  
+  subroutine mpi_unpack_int_r0( inbuf, insize, position, outbuf, outcount, datatype, comm, ierror )
+    
+    implicit none
+    
+    integer insize, outcount
+    integer inbuf(insize)
+    integer outbuf
+    integer datatype
+    integer position
+    integer comm
+    integer ierror
+    
+    include 'mpi_stubs_f90.h'
+    
+    ierror = MPI_SUCCESS
+    
+    return
+    
+  end subroutine mpi_unpack_int_r0
 
-  if ( datatype == mpi_double_precision ) then
+  subroutine mpi_unpack_int_r1( inbuf, insize, position, outbuf, outcount, datatype, comm, ierror )
+    
+    implicit none
+    
+    integer insize, outcount
+    integer inbuf(insize)
+    integer outbuf(outcount)
+    integer datatype
+    integer position
+    integer comm
+    integer ierror
+    
+    include 'mpi_stubs_f90.h'
+    
+    ierror = MPI_SUCCESS
+    
+    return
+    
+  end subroutine mpi_unpack_int_r1
 
-    call mpi_reduce_double_precision ( data1, data2, n, operation, ierror )
+  subroutine mpi_unpack_real_r0( inbuf, insize, position, outbuf, outcount, datatype, comm, ierror )
+    
+    implicit none
+    
+    integer insize, outcount
+    integer inbuf(insize)
+    real outbuf
+    integer datatype
+    integer position
+    integer comm
+    integer ierror
+    
+    include 'mpi_stubs_f90.h'
+    
+    ierror = MPI_SUCCESS
+    
+    return
+    
+  end subroutine mpi_unpack_real_r0
 
-  else if ( datatype == mpi_integer ) then
-
-    call mpi_reduce_integer ( data1, data2, n, operation, ierror )
-
-  else if ( datatype == mpi_real ) then
-
-    call mpi_reduce_real ( data1, data2, n, operation, ierror )
-
-  else
-
-    ierror = MPI_FAILURE
-
-  end if
-
-  return
-end
-subroutine mpi_barrier ( comm, ierror )
-
-!*****************************************************************************80
-!
-!! MPI_BARRIER forces processes within a communicator to wait together.
-!
-!  Modified:
-!
-!    05 February 2007
-!
-!  Author:
-!
-!    John Burkardt
-!
-!  Reference:
-!
-!    William Gropp, Ewing Lusk, Anthony Skjellum,
-!    Using MPI: Portable Parallel Programming with the
-!    Message-Passing Interface,
-!    Second Edition,
-!    MIT Press, 1999,
-!    ISBN: 0262571323.
-!
-!  Parameters:
-!
-!    Input, integer COMM, the MPI communicator.
-!
-!    Output, integer IERROR, is nonzero if an error occurred.
-!
-  implicit none
-
-  integer comm
-  integer ierror
-  integer, parameter :: MPI_FAILURE = 1
-  integer, parameter :: MPI_SUCCESS = 0
-
-  ierror = MPI_SUCCESS
-
-  return
-end
-subroutine mpi_bcast ( data, n, datatype, node, comm, ierror )
+  subroutine mpi_unpack_real_r1( inbuf, insize, position, outbuf, outcount, datatype, comm, ierror )
+    
+    implicit none
+    
+    integer insize, outcount
+    integer inbuf(insize)
+    real outbuf(outcount)
+    integer datatype
+    integer position
+    integer comm
+    integer ierror
+    
+    include 'mpi_stubs_f90.h'
+    
+    ierror = MPI_SUCCESS
+    
+    return
+    
+  end subroutine mpi_unpack_real_r1
 
 !*****************************************************************************80
 !
 !! MPI_BCAST broadcasts data from one process to all others.
 !
-!  Discussion:
-!
-!    The data to be transferred can be integer, real, or double precision.
-!    In this routine, it is declared and documented as INTEGER type, 
-!    but using the other types should generally not cause a problem.
-!
-!  Modified:
-!
-!    05 February 2007
-!
-!  Author:
-!
-!    John Burkardt
-!
-!  Reference:
-!
-!    William Gropp, Ewing Lusk, Anthony Skjellum,
-!    Using MPI: Portable Parallel Programming with the
-!    Message-Passing Interface,
-!    Second Edition,
-!    MIT Press, 1999,
-!    ISBN: 0262571323.
-!
-!  Parameters:
-!
-!    Input, datatype DATA(N), the data to be broadcast.
-!
-!    Input, integer N, the number of items of data.
-!
-!    Input, integer DATATYPE, the MPI code for the datatype of the data.
-!
-!    Input, integer NODE, the rank of the sending process within the
-!    given communicator.
-!
-!    Input, integer COMM, the MPI communicator.
-!
-!    Output, integer IERROR, is nonzero if an error occurred.
-!
+!*****************************************************************************80
+
+subroutine mpi_bcast_int_r0( data, n, datatype, node, comm, ierror )
+  implicit none
+
+  integer n
+
+  integer comm
+  integer data
+  integer datatype
+  integer ierror
+  integer, parameter :: MPI_FAILURE = 1
+  integer, parameter :: MPI_SUCCESS = 0
+  integer node
+
+  ierror = MPI_SUCCESS
+
+  return
+end subroutine mpi_bcast_int_r0
+
+subroutine mpi_bcast_int_r1( data, n, datatype, node, comm, ierror )
   implicit none
 
   integer n
@@ -360,8 +836,156 @@ subroutine mpi_bcast ( data, n, datatype, node, comm, ierror )
   ierror = MPI_SUCCESS
 
   return
-end
-subroutine mpi_bsend ( data, n, datatype, iproc, itag, comm, ierror )
+end subroutine mpi_bcast_int_r1
+
+subroutine mpi_bcast_int_r2( data, n, datatype, node, comm, ierror )
+  implicit none
+
+  integer n
+
+  integer comm
+  integer data(:,:)
+  integer datatype
+  integer ierror
+  integer, parameter :: MPI_FAILURE = 1
+  integer, parameter :: MPI_SUCCESS = 0
+  integer node
+
+  ierror = MPI_SUCCESS
+
+  return
+end subroutine mpi_bcast_int_r2
+
+subroutine mpi_bcast_real_r1( data, n, datatype, node, comm, ierror )
+  implicit none
+
+  integer n
+
+  integer comm
+  real data(n)
+  integer datatype
+  integer ierror
+  integer, parameter :: MPI_FAILURE = 1
+  integer, parameter :: MPI_SUCCESS = 0
+  integer node
+
+  ierror = MPI_SUCCESS
+
+  return
+end subroutine mpi_bcast_real_r1
+
+subroutine mpi_bcast_real_r2( data, n, datatype, node, comm, ierror )
+  implicit none
+
+  integer n
+
+  integer comm
+  real data(:,:)
+  integer datatype
+  integer ierror
+  integer, parameter :: MPI_FAILURE = 1
+  integer, parameter :: MPI_SUCCESS = 0
+  integer node
+
+  ierror = MPI_SUCCESS
+
+  return
+end subroutine mpi_bcast_real_r2
+
+subroutine mpi_bcast_char( data, n, datatype, node, comm, ierror )
+  implicit none
+
+  integer n
+
+  integer comm
+  character(LEN=n) data
+  integer datatype
+  integer ierror
+  integer, parameter :: MPI_FAILURE = 1
+  integer, parameter :: MPI_SUCCESS = 0
+  integer node
+
+  ierror = MPI_SUCCESS
+
+  return
+end subroutine mpi_bcast_char
+
+
+
+!
+
+
+
+
+subroutine mpi_probe(data,itag,comm,istatus,ierror)
+
+  implicit none
+  
+  integer comm
+  integer data
+  integer itag
+  integer istatus(*)
+  integer ierror
+  
+  include 'mpi_stubs_f90.h'
+  
+  ierror = MPI_SUCCESS
+  
+  return
+
+end subroutine mpi_probe
+
+subroutine mpi_iprobe(data,itag,comm,flag,istatus,ierror)
+
+  implicit none
+  
+  integer comm
+  integer data
+  integer itag
+  integer istatus
+  integer ierror
+  logical flag
+  
+  include 'mpi_stubs_f90.h'
+  
+  ierror = MPI_SUCCESS
+  flag   = .false.
+  
+  return
+
+end subroutine mpi_iprobe
+
+
+subroutine mpi_test(request,flag,istatus,ierror)
+
+  implicit none
+  
+  integer request
+  logical flag
+  integer istatus
+  integer ierror
+
+  include 'mpi_stubs_f90.h'
+  
+  ierror = MPI_SUCCESS
+  
+  return
+  
+end subroutine mpi_test
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 !*****************************************************************************80
 !
@@ -409,6 +1033,7 @@ subroutine mpi_bsend ( data, n, datatype, iproc, itag, comm, ierror )
 !
 !    Output, integer IERROR, is nonzero if an error occurred.
 !
+subroutine mpi_bsend ( data, n, datatype, iproc, itag, comm, ierror )
   implicit none
 
   integer n
@@ -429,9 +1054,7 @@ subroutine mpi_bsend ( data, n, datatype, iproc, itag, comm, ierror )
   write ( *, '(a)' )  '  Should not send message to self.'
 
   return
- end
-subroutine mpi_cart_create ( comm, ndims, dims, periods, reorder, comm_cart, &
-  ierror )
+end subroutine mpi_bsend
 
 !*****************************************************************************80
 !
@@ -460,6 +1083,9 @@ subroutine mpi_cart_create ( comm, ndims, dims, periods, reorder, comm_cart, &
 !
 !    Output, integer IERROR, is nonzero if an error occurred.
 !
+subroutine mpi_cart_create ( comm, ndims, dims, periods, reorder, comm_cart, &
+  ierror )
+
   implicit none
 
   integer ndims
@@ -476,8 +1102,7 @@ subroutine mpi_cart_create ( comm, ndims, dims, periods, reorder, comm_cart, &
   ierror = MPI_SUCCESS
 
   return
-end
-subroutine mpi_cart_get ( comm, ndims, dims, periods, coords, ierror )
+end subroutine mpi_cart_create
 
 !*****************************************************************************80
 !
@@ -510,6 +1135,7 @@ subroutine mpi_cart_get ( comm, ndims, dims, periods, coords, ierror )
 !
 !    Output, integer IERROR, is nonzero if an error occurred.
 !
+subroutine mpi_cart_get ( comm, ndims, dims, periods, coords, ierror )
   implicit none
 
   integer ndims
@@ -527,8 +1153,8 @@ subroutine mpi_cart_get ( comm, ndims, dims, periods, coords, ierror )
   coords(1:ndims) = 0
 
   return
-end
-subroutine mpi_cart_shift ( comm, idir, idisp, isource, idest, ierror )
+end subroutine mpi_cart_get
+
 
 !*****************************************************************************80
 !
@@ -561,6 +1187,7 @@ subroutine mpi_cart_shift ( comm, idir, idisp, isource, idest, ierror )
 !
 !    Output, integer IERROR, is nonzero if an error occurred.
 !
+subroutine mpi_cart_shift ( comm, idir, idisp, isource, idest, ierror )
   implicit none
 
   integer comm
@@ -577,8 +1204,7 @@ subroutine mpi_cart_shift ( comm, idir, idisp, isource, idest, ierror )
   idest = 0
 
   return
-end
-subroutine mpi_comm_dup ( comm, comm_out, ierror )
+end subroutine mpi_cart_shift
 
 !*****************************************************************************80
 !
@@ -607,6 +1233,7 @@ subroutine mpi_comm_dup ( comm, comm_out, ierror )
 !
 !    Output, integer IERROR, is nonzero if an error occurred.
 !
+subroutine mpi_comm_dup ( comm, comm_out, ierror )
   implicit none
 
   integer comm
@@ -618,8 +1245,8 @@ subroutine mpi_comm_dup ( comm, comm_out, ierror )
   ierror = MPI_SUCCESS
 
   return
-end
-subroutine mpi_comm_free ( comm, ierror )
+end subroutine mpi_comm_dup
+
 
 !*****************************************************************************80
 !
@@ -648,6 +1275,7 @@ subroutine mpi_comm_free ( comm, ierror )
 !
 !    Output, integer IERROR, is nonzero if an error occurred.
 !
+subroutine mpi_comm_free ( comm, ierror )
   implicit none
 
   integer comm
@@ -658,8 +1286,8 @@ subroutine mpi_comm_free ( comm, ierror )
   ierror = MPI_SUCCESS
 
   return
-end
-subroutine mpi_comm_rank ( comm, me, ierror )
+end subroutine mpi_comm_free
+
 
 !*****************************************************************************80
 !
@@ -688,6 +1316,7 @@ subroutine mpi_comm_rank ( comm, me, ierror )
 !
 !    Output, integer IERROR, is nonzero if an error occurred.
 !
+subroutine mpi_comm_rank ( comm, me, ierror )
   implicit none
 
   integer comm
@@ -700,8 +1329,8 @@ subroutine mpi_comm_rank ( comm, me, ierror )
   me = 0
 
   return
-end
-subroutine mpi_comm_size ( comm, nprocs, ierror )
+end subroutine mpi_comm_rank
+
 
 !*****************************************************************************80
 !
@@ -734,6 +1363,7 @@ subroutine mpi_comm_size ( comm, nprocs, ierror )
 !
 !    Output, integer IERROR, is nonzero if an error occurred.
 !
+subroutine mpi_comm_size ( comm, nprocs, ierror )
   implicit none
 
   integer comm
@@ -746,8 +1376,8 @@ subroutine mpi_comm_size ( comm, nprocs, ierror )
   nprocs = 1
 
   return
-end
-subroutine mpi_comm_split ( comm, icolor, ikey, comm_new, ierror )
+end subroutine mpi_comm_size
+
 
 !*****************************************************************************80
 !
@@ -776,6 +1406,7 @@ subroutine mpi_comm_split ( comm, icolor, ikey, comm_new, ierror )
 !
 !    Output, integer IERROR, is nonzero if an error occurred.
 !
+subroutine mpi_comm_split ( comm, icolor, ikey, comm_new, ierror )
   implicit none
 
   integer comm
@@ -789,8 +1420,8 @@ subroutine mpi_comm_split ( comm, icolor, ikey, comm_new, ierror )
   ierror = MPI_SUCCESS
 
   return
-end
-subroutine mpi_copy_double_precision ( data1, data2, n, ierror )
+end subroutine mpi_comm_split
+
 
 !*****************************************************************************80
 !
@@ -828,6 +1459,7 @@ subroutine mpi_copy_double_precision ( data1, data2, n, ierror )
 !
 !    Output, integer IERROR, is nonzero if an error occurred.
 !
+subroutine mpi_copy_double_precision ( data1, data2, n, ierror )
   implicit none
 
   integer n
@@ -843,8 +1475,8 @@ subroutine mpi_copy_double_precision ( data1, data2, n, ierror )
   data2(1:n) = data1(1:n)
 
   return
-end
-subroutine mpi_copy_integer ( data1, data2, n, ierror )
+end subroutine mpi_copy_double_precision
+
 
 !*****************************************************************************80
 !
@@ -882,6 +1514,7 @@ subroutine mpi_copy_integer ( data1, data2, n, ierror )
 !
 !    Output, integer IERROR, is nonzero if an error occurred.
 !
+subroutine mpi_copy_integer ( data1, data2, n, ierror )
   implicit none
 
   integer n
@@ -897,8 +1530,8 @@ subroutine mpi_copy_integer ( data1, data2, n, ierror )
   data2(1:n) = data1(1:n)
 
   return
-end
-subroutine mpi_copy_real ( data1, data2, n, ierror )
+end subroutine mpi_copy_integer
+
 
 !*****************************************************************************80
 !
@@ -936,6 +1569,7 @@ subroutine mpi_copy_real ( data1, data2, n, ierror )
 !
 !    Output, integer IERROR, is nonzero if an error occurred.
 !
+subroutine mpi_copy_real ( data1, data2, n, ierror )
   implicit none
 
   integer n
@@ -951,8 +1585,8 @@ subroutine mpi_copy_real ( data1, data2, n, ierror )
   data2(1:n) = data1(1:n)
 
   return
-end
-subroutine mpi_finalize ( ierror )
+end subroutine mpi_copy_real
+
 
 !*****************************************************************************80
 !
@@ -979,6 +1613,7 @@ subroutine mpi_finalize ( ierror )
 !
 !    Output, integer IERROR, is nonzero if an error occurred.
 !
+subroutine mpi_finalize ( ierror )
   implicit none
 
   integer ierror
@@ -988,8 +1623,8 @@ subroutine mpi_finalize ( ierror )
   ierror = MPI_SUCCESS
 
   return
-end
-subroutine mpi_get_count ( istatus, datatype, icount, ierror )
+end subroutine mpi_finalize
+
 
 !*****************************************************************************80
 !
@@ -1020,12 +1655,13 @@ subroutine mpi_get_count ( istatus, datatype, icount, ierror )
 !
 !    Output, integer IERROR, is nonzero if an error occurred.
 !
+subroutine mpi_get_count ( istatus, datatype, icount, ierror )
   implicit none
 
   integer datatype
   integer icount
   integer ierror
-  integer istatus
+  integer istatus(icount)
   integer, parameter :: MPI_FAILURE = 1
   integer, parameter :: MPI_SUCCESS = 0
 
@@ -1036,8 +1672,8 @@ subroutine mpi_get_count ( istatus, datatype, icount, ierror )
   write ( *, '(a)' ) '  Should not query message from self.'
 
   return
-end
-subroutine mpi_init ( ierror )
+end subroutine mpi_get_count
+
 
 !*****************************************************************************80
 !
@@ -1064,6 +1700,7 @@ subroutine mpi_init ( ierror )
 !
 !    Output, integer IERROR, is nonzero if an error occurred.
 !
+subroutine mpi_init ( ierror )
   implicit none
 
   integer ierror
@@ -1073,8 +1710,8 @@ subroutine mpi_init ( ierror )
   ierror = MPI_SUCCESS
 
   return
-end
-subroutine mpi_irecv ( data, n, datatype, iproc, itag, comm, irequest, ierror )
+end subroutine mpi_init
+
 
 !*****************************************************************************80
 !
@@ -1111,6 +1748,7 @@ subroutine mpi_irecv ( data, n, datatype, iproc, itag, comm, irequest, ierror )
 !
 !    Output, integer IERROR, is nonzero if an error occurred.
 !
+subroutine mpi_irecv ( data, n, datatype, iproc, itag, comm, irequest, ierror )
   implicit none
 
   integer n
@@ -1132,537 +1770,8 @@ subroutine mpi_irecv ( data, n, datatype, iproc, itag, comm, irequest, ierror )
   write ( *, '(a)' ) '  Should not recv message from self.'
 
   return
-end
-subroutine mpi_isend ( data, n, datatype, iproc, itag, comm, request, ierror )
+end subroutine mpi_irecv
 
-!*****************************************************************************80
-!
-!! MPI_ISEND sends data from one process to another using nonblocking transmission.
-!
-!  Discussion:
-!
-!    Warn against sending message to self, since no data copy is done.
-!
-!    The data to be transferred can be integer, real, or double precision.
-!    In this routine, it is declared and documented as INTEGER type, 
-!    but using the other types should generally not cause a problem.
-!
-!  Modified:
-!
-!    15 August 2008
-!
-!  Author:
-!
-!    John Burkardt
-!
-!  Reference:
-!
-!    William Gropp, Ewing Lusk, Anthony Skjellum,
-!    Using MPI: Portable Parallel Programming with the
-!    Message-Passing Interface,
-!    Second Edition,
-!    MIT Press, 1999,
-!    ISBN: 0262571323.
-!
-!  Parameters:
-!
-!    Input, datatype DATA(N), the data to be sent.
-!
-!    Input, integer N, the number of data items to send.
-!
-!    Input, integer DATAYTPE, the MPI code for the datatype.
-!
-!    Input, integer IPROC, the rank of the process within the communicator
-!    that is to receive the message.
-!
-!    Input, integer ITAG, a tag for the message.
-!
-!    Input, integer COMM, the MPI communicator.
-!
-!    Output, integer REQUEST, a handle.  To determine if the data has been received
-!    yet, call MPI_Test or MPI_Wait, including the value of REQUEST.
-!
-!    Output, integer IERROR, is nonzero if an error occurred.
-!
-  implicit none
-
-  integer n
-
-  integer comm
-  integer data(n)
-  integer datatype
-  integer ierror
-  integer iproc
-  integer itag
-  integer, parameter :: MPI_FAILURE = 1
-  integer, parameter :: MPI_SUCCESS = 0
-  integer request
-
-  request = 0
-  ierror = MPI_FAILURE
-
-  write ( *, '(a)' ) ' '
-  write ( *, '(a)' ) 'MPI_ISEND - Error!'
-  write ( *, '(a)' )  '  Should not send message to self.'
-
-  return
-end
-subroutine mpi_recv ( data, n, datatype, iproc, itag, comm, istatus, ierror )
-
-!*****************************************************************************80
-!
-!! MPI_RECV receives data from another process within a communicator.
-!
-!  Discussion:
-!
-!    Warn against receiving message from self, since no data copy is done.
-!
-!    The data to be transferred can be integer, real, or double precision.
-!    In this routine, it is declared and documented as INTEGER type, 
-!    but using the other types should generally not cause a problem.
-!
-!  Modified:
-!
-!    05 February 2007
-!
-!  Author:
-!
-!    John Burkardt
-!
-!  Reference:
-!
-!    William Gropp, Ewing Lusk, Anthony Skjellum,
-!    Using MPI: Portable Parallel Programming with the
-!    Message-Passing Interface,
-!    Second Edition,
-!    MIT Press, 1999,
-!    ISBN: 0262571323.
-!
-!  Parameters:
-!
-!    Input, integer COMM, the MPI communicator.
-!
-!    Output, integer IERROR, is nonzero if an error occurred.
-!
-  implicit none
-
-  integer n
-
-  integer comm
-  integer data(n)
-  integer datatype
-  integer ierror
-  integer iproc
-  integer istatus
-  integer itag
-  integer, parameter :: MPI_FAILURE = 1
-  integer, parameter :: MPI_SUCCESS = 0
-
-  ierror = MPI_FAILURE
-
-  write ( *, '(a)' ) ' '
-  write ( *, '(a)' ) 'MPI_RECV - Error!'
-  write ( *, '(a)' ) '  Should not recv message from self.'
-
-  return
-end
-subroutine mpi_reduce ( data1, data2, n, datatype, operation, receiver, &
-  comm, ierror )
-
-!*****************************************************************************80
-!
-!! MPI_REDUCE carries out a reduction operation.
-!
-!  Discussion:
-!
-!    The reduction operations are sum, maximum, minimum, product.
-!
-!    The first two arguments must not overlap or share memory in any way.
-!
-!    The data to be transferred can be integer, real, or double precision.
-!    In this routine, it is declared and documented as INTEGER type, 
-!    but using the other types should generally not cause a problem.
-!
-!  Modified:
-!
-!    05 February 2007
-!
-!  Author:
-!
-!    John Burkardt
-!
-!  Reference:
-!
-!    William Gropp, Ewing Lusk, Anthony Skjellum,
-!    Using MPI: Portable Parallel Programming with the
-!    Message-Passing Interface,
-!    Second Edition,
-!    MIT Press, 1999,
-!    ISBN: 0262571323.
-!
-!  Parameters:
-!
-!    Input, DATATYPE DATA1(N), the data to be processed.
-!
-!    Output (to RECEIVER only), DATATYPE DATA2, the value of the
-!    reduction operation.
-!
-!    Input, integer N, the number of items in DATA1.
-!
-!    Input, integer DATATYPE, indicates the datatype of DATA1 and DATA2.
-!
-!    Input, integer OPERATION, should have the value of one of the symbolic
-!    constants MPI_MAX, MPI_MIN, MPI_PRODUCT or MPI_SUM.
-!
-!    Input, integer RECEIVER, the the process that is to receive the
-!    result.
-!
-!    Input, integer COMM, the MPI communicator.
-!
-!    Output, integer IERROR, is nonzero if an error occurred.
-!
-  implicit none
-
-  include "mpi_stubs_f90.h"
-
-  integer n
-
-  integer comm
-  integer data1(n)
-  integer data2
-  integer datatype
-  integer ierror
-  integer operation
-  integer receiver
-
-  if ( datatype == mpi_double_precision ) then
-
-    call mpi_reduce_double_precision ( data1, data2, n, operation, ierror )
-
-  else if ( datatype == mpi_integer ) then
-
-    call mpi_reduce_integer ( data1, data2, n, operation, ierror )
-
-  else if ( datatype == mpi_real ) then
-
-    call mpi_reduce_real ( data1, data2, n, operation, ierror )
-
-  else
-
-    ierror = MPI_FAILURE
-
-  end if
-
-  return
-end
-subroutine mpi_reduce_double_precision ( data1, data2, n, operation, ierror )
-
-!*****************************************************************************80
-!
-!! MPI_REDUCE_DOUBLE_PRECISION carries out a reduction operation on double precision values.
-!
-!  Discussion:
-!
-!    The reduction operations are sum, maximum, minimum, product.
-!
-!  Modified:
-!
-!    05 February 2007
-!
-!  Author:
-!
-!    John Burkardt
-!
-!  Reference:
-!
-!    William Gropp, Ewing Lusk, Anthony Skjellum,
-!    Using MPI: Portable Parallel Programming with the
-!    Message-Passing Interface,
-!    Second Edition,
-!    MIT Press, 1999,
-!    ISBN: 0262571323.
-!
-!  Parameters:
-!
-!    Input, double precision DATA1(N), the data to be processed.
-!
-!    Output, double precision DATA2, the value of the reduction operation.
-!
-!    Input, integer N, the number of items in DATA1.
-!
-!    Input, integer OPERATION, should have the value of one of the symbolic
-!    constants MPI_MAX, MPI_MIN, MPI_PRODUCT or MPI_SUM.
-!
-!    Output, integer IERROR, is nonzero if an error occurred.
-!
-  implicit none
-
-  include "mpi_stubs_f90.h"
-
-  integer n
-
-  double precision data1(n)
-  double precision data2
-  integer ierror
-  integer operation
-
-  ierror = MPI_SUCCESS
-
-  if ( operation == mpi_max ) then
-
-    data2 = maxval ( data1(1:n) )
-
-  else if ( operation == mpi_min ) then
-
-    data2 = minval ( data1(1:n) )
-
-  else if ( operation == mpi_product ) then
-
-    data2 = product ( data1(1:n) )
-
-  else if ( operation == mpi_sum ) then
-
-    data2 = sum ( data1(1:n) )
-
-  else
-
-    ierror = MPI_FAILURE
-
-  end if
-
-  return
-end
-subroutine mpi_reduce_integer ( data1, data2, n, operation, ierror )
-
-!*****************************************************************************80
-!
-!! MPI_REDUCE_INTEGER carries out a reduction operation on integers.
-!
-!  Discussion:
-!
-!    The reduction operations are sum, maximum, minimum, product.
-!
-!  Modified:
-!
-!    05 February 2007
-!
-!  Author:
-!
-!    John Burkardt
-!
-!  Reference:
-!
-!    William Gropp, Ewing Lusk, Anthony Skjellum,
-!    Using MPI: Portable Parallel Programming with the
-!    Message-Passing Interface,
-!    Second Edition,
-!    MIT Press, 1999,
-!    ISBN: 0262571323.
-!
-!  Parameters:
-!
-!    Input, integer DATA1(N), the data to be processed.
-!
-!    Output, integer DATA2, the value of the reduction operation.
-!
-!    Input, integer N, the number of items in DATA1.
-!
-!    Input, integer OPERATION, should have the value of one of the symbolic
-!    constants MPI_MAX, MPI_MIN, MPI_PRODUCT or MPI_SUM.
-!
-!    Output, integer IERROR, is nonzero if an error occurred.
-!
-  implicit none
-
-  include "mpi_stubs_f90.h"
-
-  integer n
-
-  integer data1(n)
-  integer data2
-  integer ierror
-  integer operation
-
-  ierror = MPI_SUCCESS
-
-  if ( operation == mpi_max ) then
-
-    data2 = maxval ( data1(1:n) )
-
-  else if ( operation == mpi_min ) then
-
-    data2 = minval ( data1(1:n) )
-
-  else if ( operation == mpi_product ) then
-
-    data2 = product ( data1(1:n) )
-
-  else if ( operation == mpi_sum ) then
-
-    data2 = sum ( data1(1:n) )
-
-  else
-
-    ierror = MPI_FAILURE
-
-  end if
-
-  return
-end
-subroutine mpi_reduce_real ( data1, data2, n, operation, ierror )
-
-!*****************************************************************************80
-!
-!! MPI_REDUCE_REAL carries out a reduction operation on reals.
-!
-!  Discussion:
-!
-!    The reduction operations are sum, maximum, minimum, product.
-!
-!  Modified:
-!
-!    05 February 2007
-!
-!  Author:
-!
-!    John Burkardt
-!
-!  Reference:
-!
-!    William Gropp, Ewing Lusk, Anthony Skjellum,
-!    Using MPI: Portable Parallel Programming with the
-!    Message-Passing Interface,
-!    Second Edition,
-!    MIT Press, 1999,
-!    ISBN: 0262571323.
-!
-!  Parameters:
-!
-!    Input, real DATA1(N), the data to be processed.
-!
-!    Output, real DATA2, the value of the reduction operation.
-!
-!    Input, integer N, the number of items in DATA1.
-!
-!    Input, integer OPERATION, should have the value of one of the symbolic
-!    constants MPI_MAX, MPI_MIN, MPI_PRODUCT or MPI_SUM.
-!
-!    Output, integer IERROR, is nonzero if an error occurred.
-!
-  implicit none
-
-  include "mpi_stubs_f90.h"
-
-  integer n
-
-  real data1(n)
-  real data2
-  integer ierror
-  integer operation
-
-  ierror = MPI_SUCCESS
-
-  if ( operation == mpi_max ) then
-
-    data2 = maxval ( data1(1:n) )
-
-  else if ( operation == mpi_min ) then
-
-    data2 = minval ( data1(1:n) )
-
-  else if ( operation == mpi_product ) then
-
-    data2 = product ( data1(1:n) )
-
-  else if ( operation == mpi_sum ) then
-
-    data2 = sum ( data1(1:n) )
-
-  else
-
-    ierror = MPI_FAILURE
-
-  end if
-
-  return
-end
-subroutine mpi_reduce_scatter ( data1, data2, n, datatype, operation, comm, &
-  ierror )
-
-!*****************************************************************************80
-!
-!! MPI_REDUCE_SCATTER collects a message of the same length from each process.
-!
-!  Discussion:
-!
-!    Copy values from DATA1 to DATA2.
-!
-!    The data to be transferred can be integer, real, or double precision.
-!    In this routine, it is declared and documented as INTEGER type, 
-!    but using the other types should generally not cause a problem.
-!
-!  Modified:
-!
-!    05 February 2007
-!
-!  Author:
-!
-!    John Burkardt
-!
-!  Reference:
-!
-!    William Gropp, Ewing Lusk, Anthony Skjellum,
-!    Using MPI: Portable Parallel Programming with the
-!    Message-Passing Interface,
-!    Second Edition,
-!    MIT Press, 1999,
-!    ISBN: 0262571323.
-!
-!  Parameters:
-!
-!    Input, DATATYPE DATA1(N), the data to be processed.
-!
-!    Output, DATATYPE DATA2, the value of the reduction operation.
-!
-!    Input, integer N, the number of items in DATA1.
-!
-!    Input, integer DATATYPE, indicates the datatype of DATA1 and DATA2.
-!
-!    Input, integer OPERATION, should have the value of one of the symbolic
-!    constants MPI_MAX, MPI_MIN, MPI_PRODUCT or MPI_SUM.
-!
-!    Input, integer COMM, the MPI communicator.
-!
-!    Output, integer IERROR, is nonzero if an error occurred.
-!
-  implicit none
-
-  include "mpi_stubs_f90.h"
-
-  integer n
-
-  integer comm
-  integer data1(n)
-  integer data2(n)
-  integer datatype
-  integer ierror
-  integer operation
-
-  ierror = MPI_SUCCESS
-
-  if ( datatype == mpi_double_precision ) then
-    call mpi_copy_double_precision ( data1, data2, n, ierror )
-  else if ( datatype == mpi_integer ) then
-    call mpi_copy_integer ( data1, data2, n, ierror )
-  else if ( datatype == mpi_real ) then
-    call mpi_copy_real ( data1, data2, n, ierror )
-  else
-    ierror = MPI_FAILURE
-  end if
-
-  return
-end
-subroutine mpi_rsend ( data, n, datatype, iproc, itag, comm, ierror )
 
 !*****************************************************************************80
 !
@@ -1699,6 +1808,7 @@ subroutine mpi_rsend ( data, n, datatype, iproc, itag, comm, ierror )
 !
 !    Output, integer IERROR, is nonzero if an error occurred.
 !
+subroutine mpi_rsend ( data, n, datatype, iproc, itag, comm, ierror )
   implicit none
 
   integer n
@@ -1719,8 +1829,8 @@ subroutine mpi_rsend ( data, n, datatype, iproc, itag, comm, ierror )
   write ( *, '(a)' ) '  Should not send message to self.'
 
   return
-end
-subroutine mpi_send ( data, n, datatype, iproc, itag, comm, ierror )
+end subroutine mpi_rsend
+
 
 !*****************************************************************************80
 !
@@ -1768,6 +1878,7 @@ subroutine mpi_send ( data, n, datatype, iproc, itag, comm, ierror )
 !
 !    Output, integer IERROR, is nonzero if an error occurred.
 !
+subroutine mpi_send ( data, n, datatype, iproc, itag, comm, ierror )
   implicit none
 
   integer n
@@ -1788,8 +1899,7 @@ subroutine mpi_send ( data, n, datatype, iproc, itag, comm, ierror )
   write ( *, '(a)' )  '  Should not send message to self.'
 
   return
-end
-subroutine mpi_wait ( irequest, istatus, ierror )
+end subroutine mpi_send
 
 !*****************************************************************************80
 !
@@ -1816,6 +1926,7 @@ subroutine mpi_wait ( irequest, istatus, ierror )
 !
 !    Output, integer IERROR, is nonzero if an error occurred.
 !
+subroutine mpi_wait ( irequest, istatus, ierror )
   implicit none
 
   integer ierror
@@ -1831,56 +1942,8 @@ subroutine mpi_wait ( irequest, istatus, ierror )
   write ( *, '(a)' ) '  Should not wait on message from self.'
 
   return
- end
-subroutine mpi_waitall ( icount, irequest, istatus, ierror )
+end subroutine mpi_wait
 
-!*****************************************************************************80
-!
-!! MPI_WAITALL waits until all I/O requests have completed.
-!
-!  Discussion:
-!
-!    Warn against waiting on message from self, since no data copy is done.
-!
-!  Modified:
-!
-!    05 February 2007
-!
-!  Author:
-!
-!    John Burkardt
-!
-!  Reference:
-!
-!    William Gropp, Ewing Lusk, Anthony Skjellum,
-!    Using MPI: Portable Parallel Programming with the
-!    Message-Passing Interface,
-!    Second Edition,
-!    MIT Press, 1999,
-!    ISBN: 0262571323.
-!
-!  Parameters:
-!
-!    Output, integer IERROR, is nonzero if an error occurred.
-!
-  implicit none
-
-  integer icount
-  integer ierror
-  integer irequest
-  integer istatus
-  integer, parameter :: MPI_FAILURE = 1
-  integer, parameter :: MPI_SUCCESS = 0
-
-  ierror = MPI_FAILURE
-
-  write ( *, '(a)' ) ' '
-  write ( *, '(a)' ) 'MPI_WAITALL - Error!'
-  write ( *, '(a)' ) '  Should not wait on message from self.'
-
-  return
-end
-subroutine mpi_waitany ( icount, array_of_requests, index, istatus, ierror )
 
 !*****************************************************************************80
 !
@@ -1911,6 +1974,7 @@ subroutine mpi_waitany ( icount, array_of_requests, index, istatus, ierror )
 !
 !    Output, integer IERROR, is nonzero if an error occurred.
 !
+subroutine mpi_waitany ( icount, array_of_requests, index, istatus, ierror )
   implicit none
 
   integer array_of_requests(*)
@@ -1928,8 +1992,7 @@ subroutine mpi_waitany ( icount, array_of_requests, index, istatus, ierror )
   write ( *, '(a)' ) '  Should not wait on message from self.'
 
   return
-end
-function mpi_wtick ( )
+end subroutine mpi_waitany
 
 !*****************************************************************************80
 !
@@ -1960,6 +2023,7 @@ function mpi_wtick ( )
 !
 !    Output, real ( kind = 8 ) MPI_WTICK, the number of seconds per clock tick.
 !
+function mpi_wtick ( )
   implicit none
 
   real ( kind = 8 ) mpi_wtick
@@ -1967,8 +2031,8 @@ function mpi_wtick ( )
   mpi_wtick = 1.0D+00
   
   return
-end
-function mpi_wtime ( )
+end function mpi_wtick
+
 
 !*****************************************************************************80
 !
@@ -1995,6 +2059,7 @@ function mpi_wtime ( )
 !
 !    Output, real ( kind = 8 ) MPI_WTIME, the elapsed wall clock time.
 !
+function mpi_wtime ( )
   implicit none
 
   integer count
@@ -2007,8 +2072,7 @@ function mpi_wtime ( )
   mpi_wtime = real ( count, kind = 8 ) / real ( count_rate, kind = 8 )
   
   return
-end
-subroutine timestring ( string )
+end function mpi_wtime
 
 !*****************************************************************************80
 !
@@ -2031,6 +2095,7 @@ subroutine timestring ( string )
 !    Output, character ( len = * ) STRING, contains the date information.
 !    A character length of 40 should always be sufficient.
 !
+subroutine timestring ( string )
   implicit none
 
   character ( len = 8 ) ampm
@@ -2083,103 +2148,6 @@ subroutine timestring ( string )
     d, trim ( month(m) ), y, h, ':', n, ':', s, '.', mm, trim ( ampm )
 
   return
-end
+end subroutine timestring
 
-!
-
-subroutine mpi_probe(data,itag,comm,istatus,ierror)
-
-  implicit none
-  
-  integer comm
-  integer data
-  integer itag
-  integer istatus
-  integer ierror
-  
-  include 'mpi_stubs_f90.h'
-  
-  ierror = MPI_SUCCESS
-  
-  return
-
-end subroutine mpi_probe
-
-subroutine mpi_iprobe(data,itag,comm,flag,istatus,ierror)
-
-  implicit none
-  
-  integer comm
-  integer data
-  integer itag
-  integer istatus
-  integer ierror
-  logical flag
-  
-  include 'mpi_stubs_f90.h'
-  
-  ierror = MPI_SUCCESS
-  flag   = .false.
-  
-  return
-
-end subroutine mpi_iprobe
-
-subroutine mpi_pack(datain,icount,datatype,dataout,outsize,position,comm,ierror)
-  
-  implicit none
-  
-  integer datain
-  integer icount
-  integer datatype
-  integer dataout
-  integer outsize
-  integer position
-  integer comm
-  integer ierror
-
-  include 'mpi_stubs_f90.h'
-  
-  ierror = MPI_SUCCESS
-  
-  return
-
-end subroutine mpi_pack
-
-subroutine mpi_unpack(datain,insize,position,dataout,icount,datatype,comm,ierror)
-  
-  implicit none
-  
-  integer datain
-  integer icount
-  integer datatype
-  integer dataout
-  integer insize
-  integer position
-  integer comm
-  integer ierror
-
-  include 'mpi_stubs_f90.h'
-  
-  ierror = MPI_SUCCESS
-  
-  return
-
-end subroutine mpi_unpack
-
-subroutine mpi_test(request,flag,istatus,ierror)
-
-  implicit none
-  
-  integer request
-  integer flag
-  integer istatus
-  integer ierror
-
-  include 'mpi_stubs_f90.h'
-  
-  ierror = MPI_SUCCESS
-  
-  return
-  
-end subroutine mpi_test
+end module mpi_stubs
