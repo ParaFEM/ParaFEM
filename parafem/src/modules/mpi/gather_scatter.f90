@@ -34,6 +34,7 @@ MODULE GATHER_SCATTER
   !*
   !*/
 
+  USE mpi_wrapper
   USE precision
   USE mp_interface
   USE global_variables
