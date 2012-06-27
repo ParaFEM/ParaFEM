@@ -4,7 +4,8 @@ PROGRAM rfemsolve
 !                        load control or displacement control; multiple
 !                        material types; sequential version
 !------------------------------------------------------------------------------ 
-                                 
+                      
+  USE mpi_stubs
   USE precision     ; USE global_variables ; USE mp_interface
   USE input         ; USE output           ; USE loading
   USE timing        ; USE maths            ; USE gather_scatter
@@ -32,7 +33,7 @@ PROGRAM rfemsolve
   REAL(iwp),PARAMETER   :: penalty = 1.0e20_iwp
   CHARACTER(LEN=15)     :: element
   CHARACTER(LEN=50)     :: program_name='rfemsolve'
-  CHARACTER(LEN=50)     :: fname,job_in,job_out,label
+  CHARACTER(LEN=50)     :: fname,inst_in,job_in,label,instance_id
   LOGICAL               :: converged = .false.
 
 !------------------------------------------------------------------------------
@@ -54,7 +55,7 @@ PROGRAM rfemsolve
   INTEGER,  ALLOCATABLE :: no(:),no_pp(:),no_pp_temp(:),sense(:),etype_pp(:)
 
 !------------------------------------------------------------------------------
-! 3. Read job_in and job_out from the command line. 
+! 3. Read job_in and instance_id from the command line. 
 !    Read control data, mesh data, boundary and loading conditions. 
 !------------------------------------------------------------------------------
  
@@ -66,12 +67,13 @@ PROGRAM rfemsolve
   argc = iargc()
   IF (argc /= 2) CALL job_name_error(numpe,program_name)
   CALL GETARG(1, job_in) 
-  CALL GETARG(2, job_out) 
+  CALL GETARG(2, instance_id) 
 
-  CALL read_rfemsolve(job_in,numpe,element,fixed_freedoms,limit,loaded_nodes, &
+  inst_in = job_in(1:LEN_TRIM(job_in)) // "-" // instance_id(1:LEN_TRIM(instance_id))
+  CALL read_rfemsolve(inst_in,numpe,element,fixed_freedoms,limit,loaded_nodes, &
                 meshgen,mises,nels,nip,nn,nod,np_types,nr,partitioner,tol)
 
-  CALL calc_nels_pp(job_in,nels,npes,numpe,partitioner,nels_pp)
+  CALL calc_nels_pp(inst_in,nels,npes,numpe,partitioner,nels_pp)
 
   ndof = nod*nodof
   ntot = ndof
@@ -91,7 +93,7 @@ PROGRAM rfemsolve
 
   timest(2) = elap_time()
   
-  CALL read_elements(job_in,iel_start,nn,npes,numpe,etype_pp,g_num_pp)
+  CALL read_elements(inst_in,iel_start,nn,npes,numpe,etype_pp,g_num_pp)
   timest(3) = elap_time()
 
 ! CALL read_g_num_pp(job_in,iel_start,nels,nn,numpe,g_num_pp)
@@ -99,13 +101,13 @@ PROGRAM rfemsolve
   IF(meshgen == 2) CALL abaqus2sg(element,g_num_pp)
   timest(4) = elap_time()
 
-  CALL read_g_coord_pp(job_in,g_num_pp,nn,npes,numpe,g_coord_pp)
+  CALL read_g_coord_pp(inst_in,g_num_pp,nn,npes,numpe,g_coord_pp)
   timest(5) = elap_time()
 
   CALL read_rest(job_in,numpe,rest)
   timest(6) = elap_time()
   
-  fname = job_in(1:INDEX(job_in, " ")-1) // ".mat" ! Move to subroutine
+  fname = inst_in(1:LEN_TRIM(inst_in)) // ".mat" ! Move to subroutine
   CALL read_materialValue(prop,fname,numpe,npes)       ! CALL read_prop? 
   
 !------------------------------------------------------------------------------
@@ -354,15 +356,15 @@ PROGRAM rfemsolve
   CALL calc_nodes_pp(nn,npes,numpe,node_end,node_start,nodes_pp)
   
   IF(numpe==1) THEN
-    fname = job_out(1:INDEX(job_out, " ")-1)//".dis"
+    fname = inst_in(1:LEN_TRIM(inst_in)) // ".dis"
     OPEN(24, file=fname, status='replace', action='write')
-    fname = job_out(1:INDEX(job_out, " ")-1) // ".str"
+    fname = inst_in(1:LEN_TRIM(inst_in)) // ".str"
     OPEN(25, file=fname, status='replace', action='write')
-    fname = job_out(1:INDEX(job_out, " ")-1) // ".pri"
+    fname = inst_in(1:LEN_TRIM(inst_in)) // ".pri"
     OPEN(26, file=fname, status='replace', action='write')
-    fname = job_out(1:INDEX(job_out, " ")-1) // ".vms"
+    fname = inst_in(1:LEN_TRIM(inst_in)) // ".vms"
     OPEN(27, file=fname, status='replace', action='write')
-    fname = job_out(1:INDEX(job_out, " ")-1) // ".rea"
+    fname = inst_in(1:LEN_TRIM(inst_in)) // ".rea"
     OPEN(28, file=fname, status='replace', action='write')
   END IF
 
@@ -526,7 +528,7 @@ PROGRAM rfemsolve
 ! 17. Output performance data
 !------------------------------------------------------------------------------
 
-  CALL WRITE_RFEMSOLVE(fixed_freedoms,iters,job_out,loaded_nodes,mises,neq,   &
+  CALL WRITE_RFEMSOLVE(fixed_freedoms,iters,inst_in,loaded_nodes,mises,neq,   &
                        nn,nodecount,npes,nr,numpe,timest,tload)
  
   CALL shutdown() 
