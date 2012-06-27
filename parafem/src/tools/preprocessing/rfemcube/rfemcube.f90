@@ -29,11 +29,13 @@ PROGRAM rfemcube
   REAL(iwp)              :: eavg,egeo,ehrm
   REAL(iwp)              :: emn,esd
   REAL(iwp)              :: thx,thy,thz
-  REAL(iwp),PARAMETER    :: zero=0.0_iwp
   REAL(iwp)              :: v
+  REAL(iwp),PARAMETER    :: zero=0.0_iwp
+  REAL(iwp)              :: tol=1.000000e-06,mises=70.0
+  INTEGER                :: limit=2000
   CHARACTER(LEN=6)       :: varfnc
   CHARACTER(LEN=15)      :: rfield
-  CHARACTER(LEN=50)      :: job_name,fname
+  CHARACTER(LEN=50)      :: in_rfem_name, out_model_name,fname
 
 !------------------------------------------------------------------------------
 ! 2. Declare dynamic arrays
@@ -42,33 +44,36 @@ PROGRAM rfemcube
   REAL(iwp), ALLOCATABLE :: coord(:,:),g_coord(:,:)
 
 !------------------------------------------------------------------------------
-! 3. Read model_job_name and rfem_job_name from the command line
+! 3. Read in_rfem_name and out_model_name from the command line
 !------------------------------------------------------------------------------
 
   argc = iargc()
-  IF( (argc /= 1) ) THEN
+  IF( (argc /= 2) ) THEN
      PRINT*
-     PRINT*, "Usage:  rfemcube <job_name>"
+     PRINT*, "Usage:  rfemcube <in_rfem_name> <out_model_name>"
      PRINT*
      PRINT*, "        program expects as input:"
-     PRINT*, "          <job_name>.rf"
+     PRINT*, "          <in_rfem_name>.rf"
      PRINT*
      PRINT*, "        and outputs:"
-     PRINT*, "          <job_name>.d" 
-     PRINT*, "          <job_name>.dat" 
+     PRINT*, "          <out_model_name>.d" 
+     PRINT*, "          <out_model_name>.dat" 
+     PRINT*, "          <in_rfem_name>.res" 
      PRINT*
      STOP
   END IF
-  CALL GETARG(1, job_name)
+  CALL GETARG(1, in_rfem_name)
+  CALL GETARG(2, out_model_name)
   
 !------------------------------------------------------------------------------
 ! 4. Read control data
 !------------------------------------------------------------------------------
 
-  IF (INDEX(job_name,".rf") /= 0) THEN
-     job_name = job_name(1:INDEX(job_name,".rf")-1)
+  IF (INDEX(in_rfem_name,".rf") /= 0) THEN
+     in_rfem_name = in_rfem_name(1:INDEX(in_rfem_name,".rf")-1)
   END IF
-  fname = job_name(1:INDEX(job_name," ")-1) // ".rf"
+
+  fname = in_rfem_name(1:INDEX(in_rfem_name," ")-1) // ".rf"
   OPEN (10, file=fname, status='old', action='read')
   
   READ(10,*) rfield
@@ -95,74 +100,60 @@ PROGRAM rfemcube
      nip    = 8
      nod    = 8
      
-     IF(output /= 1 .AND. output /=2) THEN
-        PRINT *, output, " = Incorrect value for output. Accepted values are &
-             &'1' or '2'"
-        STOP
-     END IF
-     
-     fname = job_name(1:INDEX(job_name," ")-1) // ".res"
+     fname = in_rfem_name(1:INDEX(in_rfem_name," ")-1) // ".res"
      OPEN(11,FILE=fname,STATUS='REPLACE',ACTION='WRITE')
 
 !------------------------------------------------------------------------------
 ! 8. Generate finite element mesh for a regular cuboid
 !------------------------------------------------------------------------------
     
-     IF(output == 2 ) THEN
-        
-        ALLOCATE(coord(nod,ndim),g_coord(ndim,nn),num(nod),g_num(nod,nels))
-        
-        coord = zero ; g_coord = zero
-        num   = 0    ; g_num   = 0
-        
-        DO iel = 1, nels
-           CALL geometry_8bxz(iel,nxe,nze,aa,bb,cc,coord,g_num(:,iel))
-           g_coord(:, g_num(:,iel)) = TRANSPOSE(coord)
-        END DO
-        
-        fname = job_name(1:INDEX(job_name," ")-1) // ".d"
-        OPEN(13,FILE=fname,STATUS='REPLACE',ACTION='WRITE')
-        
-        WRITE(13,'(A)') "*THREE_DIMENSIONAL"
-        WRITE(13,'(A)') "*NODES"
-        
-        DO i = 1,nn
-           WRITE(13,'(I8,3E14.6)') i, g_coord(:,i)
-        END DO
-        
-        WRITE(13,'(A)') "*ELEMENTS"
-        
-        DO iel = 1, nels
-           WRITE(13,'(I8,A,8I8,I8)') iel, " 3 8 1 ",g_num(1,iel),g_num(4,iel),   &
-                g_num(8,iel),g_num(5,iel),g_num(2,iel),   &
-                g_num(3,iel),g_num(7,iel),g_num(6,iel),   &
-                iel  ! each element has its own material  
-        END DO
-        
-        CLOSE(13)
-        
-        DEALLOCATE(coord,g_coord,num,g_num)
-
-     END IF
+     ALLOCATE(coord(nod,ndim),g_coord(ndim,nn),num(nod),g_num(nod,nels))
+     
+     coord = zero ; g_coord = zero
+     num   = 0    ; g_num   = 0
+     
+     DO iel = 1, nels
+        CALL geometry_8bxz(iel,nxe,nze,aa,bb,cc,coord,g_num(:,iel))
+        g_coord(:, g_num(:,iel)) = TRANSPOSE(coord)
+     END DO
+     
+     fname = out_model_name(1:INDEX(out_model_name," ")-1) // ".d"
+     OPEN(13,FILE=fname,STATUS='REPLACE',ACTION='WRITE')
+     
+     WRITE(13,'(A)') "*THREE_DIMENSIONAL"
+     WRITE(13,'(A)') "*NODES"
+     
+     DO i = 1,nn
+        WRITE(13,'(I8,3E14.6)') i, g_coord(:,i)
+     END DO
+     
+     WRITE(13,'(A)') "*ELEMENTS"
+     
+     DO iel = 1, nels
+        WRITE(13,'(I8,A,8I8,I8)') iel, " 3 8 1 ",g_num(1,iel),g_num(4,iel),   &
+             g_num(8,iel),g_num(5,iel),g_num(2,iel),   &
+             g_num(3,iel),g_num(7,iel),g_num(6,iel),   &
+             iel  ! each element has its own material  
+     END DO
+     
+     CLOSE(13)
+     
+     DEALLOCATE(coord,g_coord,num,g_num)
      
 !------------------------------------------------------------------------------
 ! 10. Write .dat file for RFEMBC
 !------------------------------------------------------------------------------
 
-     IF( output == 2 ) THEN
+     fname = out_model_name(1:INDEX(out_model_name," ")-1) // ".dat"
+     OPEN (14, file=fname, status='REPLACE', action='WRITE')
+     WRITE(14,*) "hexahedron"
+     WRITE(14,*) "1"
+     WRITE(14,*) "1"
+     WRITE(14,*) nels
+     WRITE(14, '(7I8)') nels, nn, 0, nip, nod, 0, 0
+     WRITE(14, '(E14.6,I12, E14.6)') tol, limit, mises
+     CLOSE(14)
 
-        fname = job_name(1:INDEX(job_name," ")-1) // ".dat"
-        OPEN (14, file=fname, status='REPLACE', action='WRITE')
-        WRITE(14,*) "hexahedron"
-        WRITE(14,*) "1"
-        WRITE(14,*) "1"
-        WRITE(14,*) nels
-        WRITE(14, '(7I8)') nels, nn, 0, nip, nod, 0, 0
-        WRITE(14, '(3E14.6,I8)') 0.0, 0.0, 1.000000e-06, 2000
-        CLOSE(14)
-
-     END IF
-  
 !------------------------------------------------------------------------------
 ! 10. Cleanup
 !------------------------------------------------------------------------------

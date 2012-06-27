@@ -36,8 +36,9 @@ PROGRAM rfemfield
   REAL(iwp)              :: v
   CHARACTER(LEN=6)       :: varfnc
   CHARACTER(LEN=15)      :: rfield,job,sub1,sub2
-  CHARACTER(LEN=50)      :: model_job_name,rfem_job_name,fname,program_name
-  CHARACTER(LEN=50)      :: dat_name,d_name
+  CHARACTER(LEN=100)     :: model_job_name,rfem_job_name,fname,program_name
+  CHARACTER(LEN=100)     :: dat_name,d_name
+  CHARACTER(LEN=100)     :: instance_id_arg,instance_id
   LOGICAL                :: debug=.false.
   LOGICAL                :: shofld=.false.
   LOGICAL                :: lunif=.false.
@@ -69,37 +70,42 @@ PROGRAM rfemfield
 !------------------------------------------------------------------------------
 
   argc = iargc()
-  IF( (argc /= 2) .and. (argc /= 1) ) THEN
+  IF( (argc /= 3) .and. (argc /= 1) ) THEN
      PRINT*
-     PRINT*, "Usage:  rfemfield <rfem_job_name> <model_job_name>"
+     PRINT*, "Usage:  rfemfield <rfem_job_name> <model_job_name> <instance-id>"
      PRINT*, "   Or:  rfemfield <rfem_job_name>"
      PRINT*
      PRINT*, "        program expects as input:"
-     PRINT*, "          <rfem_job_name>.dat"
-     PRINT*, "          <model_job_name>-rfem.dat"
+     PRINT*, "          <rfem_job_name>.rf"
+     PRINT*, "          <model_job_name>.dat"
      PRINT*, "          <model_job_name>.d"
      PRINT*
      PRINT*, "        and outputs:"
+     PRINT*, "          <model_job_name>-<instance-id>.dat" 
+     PRINT*, "          <model_job_name>-<instance-id>.d" 
+     PRINT*, "          <model_job_name>-<instance-id>.mat"
+     PRINT*
+     PRINT*, "        and optionally outputs:"
      PRINT*, "          <rfem_job_name>.d" 
      PRINT*, "          <rfem_job_name>.mat" 
-     PRINT*, "          <model_job_name>-rfem.dat" 
-     PRINT*, "          <model_job_name>-rfem.d" 
-     PRINT*, "          <model_job_name>-rfem.mat" 
      PRINT*
      STOP
   END IF
   CALL GETARG(1, rfem_job_name)
-  IF( argc == 2 ) THEN
+  IF( argc == 3 ) THEN
      CALL GETARG(2, model_job_name)
      do_model = .true.
+     CALL GETARG(3, instance_id_arg)
+     READ(instance_id_arg,*) instance_id
+     instance_id = instance_id_arg(1:LEN_TRIM(instance_id_arg))
   END IF
   
 !------------------------------------------------------------------------------
 ! 4. Read control data
 !------------------------------------------------------------------------------
 
-  IF (INDEX(rfem_job_name,".dat") /= 0) THEN
-     rfem_job_name = rfem_job_name(1:INDEX(rfem_job_name,".dat")-1)
+  IF (INDEX(rfem_job_name,".rf") /= 0) THEN
+     rfem_job_name = rfem_job_name(1:INDEX(rfem_job_name,".rf")-1)
   END IF
   fname = rfem_job_name(1:INDEX(rfem_job_name," ")-1) // ".rf"
   OPEN (10, file=fname, status='old', action='read')
@@ -146,7 +152,7 @@ PROGRAM rfemfield
         IF (INDEX(model_job_name,".dat") /= 0) THEN
            model_job_name = model_job_name(1:INDEX(model_job_name,".dat")-1)
         END IF
-        dat_name = model_job_name(1:INDEX(model_job_name," ")-1) // "-rfem.dat"
+        dat_name = model_job_name(1:INDEX(model_job_name," ")-1) // ".dat"
         d_name = model_job_name(1:INDEX(model_job_name," ")-1) // ".d"
         
         OPEN (14, file=dat_name, status='old', action='read')
@@ -246,8 +252,6 @@ PROGRAM rfemfield
         END DO
      END DO
      
-     !PRINT *, "EFLD = ", efld
-     
      CLOSE(11)
      CLOSE(12)
 
@@ -300,10 +304,12 @@ PROGRAM rfemfield
 
      IF( do_model ) THEN
 
-        fname = model_job_name(1:INDEX(model_job_name," ")-1) // "-rfem.d"
+        fname = model_job_name(1:INDEX(model_job_name," ")-1) // "-" // &
+             instance_id_arg(1:LEN_TRIM(instance_id_arg))// ".d"
         OPEN(16,FILE=fname,STATUS='REPLACE',ACTION='WRITE')
         
-        fname = model_job_name(1:INDEX(model_job_name," ")-1) // "-rfem.mat"
+        fname = model_job_name(1:INDEX(model_job_name," ")-1) // "-" // &
+             instance_id_arg(1:LEN_TRIM(instance_id_arg)) // ".mat"
         OPEN(17,FILE=fname,STATUS='REPLACE',ACTION='WRITE')
         
         WRITE(16,'(A)') "*THREE_DIMENSIONAL"
@@ -320,9 +326,13 @@ PROGRAM rfemfield
 
         ! TODO: m_nod is fixed here; needs to be dynamic
         DO iel = 1, m_nels
-           WRITE(16,'(I8,A,20I12,I12)') iel, " 3 20 1 ",m_num(:,iel), iel
-           !get k,j,i based on centroid of element
+           IF( m_nod == 8 ) THEN
+              WRITE(16,'(I8,A,8I12,I12)') iel, " 3 8 1 ",m_num(:,iel), iel
+           ELSE
+              WRITE(16,'(I8,A,20I12,I12)') iel, " 3 20 1 ",m_num(:,iel), iel
+           END IF
 
+           ! get k,j,i based on centroid of element
            ! sum and average x,y,z
            centroid = m_coord(:,m_num(1,iel))
            DO ind = 2, m_nod
@@ -354,7 +364,8 @@ PROGRAM rfemfield
 
      IF( do_model ) THEN
 
-        fname = model_job_name(1:INDEX(model_job_name," ")-1) // "-rfem.dat"
+        fname = model_job_name(1:INDEX(model_job_name," ")-1) // "-" &
+             // instance_id_arg(1:LEN_TRIM(instance_id_arg)) // ".dat"
         OPEN (14, file=fname, status='REPLACE', action='WRITE')
         WRITE(14,*) m_element
         WRITE(14,*) m_mesh

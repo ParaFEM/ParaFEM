@@ -53,8 +53,8 @@ PROGRAM rfembc
     PRINT*, "Usage:  rfembc <job_name> <fixed_value>"
     PRINT*
     PRINT*, "        program expects <job_name>.d and outputs"
-    PRINT*, "        <job_name>-rfem.dat,"
-    PRINT*, "        <job_name>-rfem.bnd and <job_name>-rfem.fix"
+    PRINT*, "        <job_name>.dat,"
+    PRINT*, "        <job_name>.bnd and <job_name>.fix"
     PRINT*
     STOP
   END IF
@@ -77,13 +77,13 @@ PROGRAM rfembc
      job_name = job_name(1:INDEX(job_name,".dat")-1)
   END IF
   in_dat_name = job_name(1:INDEX(job_name," ")-1) // ".dat"
-  out_dat_name = job_name(1:INDEX(job_name," ")-1) // "-rfem.dat"
+  out_dat_name = job_name(1:INDEX(job_name," ")-1) // ".dat"
   d_name = job_name(1:INDEX(job_name," ")-1) // ".d"
 
   OPEN (14, file=in_dat_name, status='old', action='read')
   READ(14,*) element,mesh,partition,np_types,   &
        nels,nn,nr,nip,nod,loaded_nodes,        &
-       fixed_freedoms,e,v,tol,limit
+       fixed_freedoms,tol,limit,mises
   CLOSE(14)
   
   ndim = 3
@@ -118,8 +118,8 @@ PROGRAM rfembc
 ! 6. Write .bnd and .fix files where nodes match zmin/zmax respectively
 !------------------------------------------------------------------------------
 
-  bnd_name = job_name(1:INDEX(job_name," ")-1) // "-rfem.bnd"
-  fix_name = job_name(1:INDEX(job_name," ")-1) // "-rfem.fix"
+  bnd_name = job_name(1:INDEX(job_name," ")-1) // ".bnd"
+  fix_name = job_name(1:INDEX(job_name," ")-1) // ".fix"
 
   OPEN(16,FILE=bnd_name,STATUS='REPLACE',ACTION='WRITE')
   OPEN(17,FILE=fix_name,STATUS='REPLACE',ACTION='WRITE')
