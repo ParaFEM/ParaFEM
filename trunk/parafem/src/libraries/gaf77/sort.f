@@ -81,7 +81,7 @@ c-------------------------------------------------------------------------
    5    arr(l) = arr(j)
         arr(j) = a
         jstack = jstack+2
-        if(jstack.gt.NSTACK)pause 'NSTACK too small in sort'
+c        if(jstack.gt.NSTACK)pause 'NSTACK too small in sort'
         if(ir-i+1.ge.j-l)then
           istack(jstack) = ir
           istack(jstack-1) = i

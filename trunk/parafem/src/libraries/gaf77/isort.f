@@ -81,7 +81,7 @@ c-------------------------------------------------------------------------
    5    iv(l) = iv(j)
         iv(j) = a
         jstack = jstack+2
-        if(jstack.gt.NSTACK)pause 'NSTACK too small in isort'
+c        if(jstack.gt.NSTACK)pause 'NSTACK too small in isort'
         if(ir-i+1.ge.j-l)then
           istack(jstack) = ir
           istack(jstack-1) = i
