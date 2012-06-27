@@ -24,7 +24,8 @@ SHARED=	precision.o \
 	global_variables.o \
 	timing.o
 
-MPI=	mp_interface.o \
+MPI=	mpi_wrapper.o \
+	mp_interface.o \
 	input.o \
 	maths.o \
 	gather_scatter.o \
@@ -56,6 +57,7 @@ lib-debug:	$(SHARED) $(BEM)
 	$(FC) -c $(FFLAGS) ../shared/precision.f90
 	$(FC) -c $(FFLAGS) ../shared/global_variables.f90
 	$(FC) -c $(FFLAGS) ../shared/timing.f90
+	$(FC) -c $(FFLAGS) ../mpi/mpi_wrapper.f90
 	$(FC) -c $(FFLAGS) ../mpi/mp_interface.f90
 	$(FC) -c $(FFLAGS) ../mpi/input.f90
 	$(FC) -c $(FFLAGS) ../mpi/maths.f90
