@@ -22,6 +22,7 @@ MODULE MATHS
   !*
   !*/
 
+  USE mpi_wrapper
   USE precision
   USE mp_interface
 

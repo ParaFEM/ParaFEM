@@ -25,6 +25,7 @@ MODULE MP_INTERFACE
   !*
   !*/
   
+  USE mpi_wrapper
   USE precision
   USE global_variables
   

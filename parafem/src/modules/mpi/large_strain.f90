@@ -37,6 +37,7 @@ MODULE LARGE_STRAIN
   !*  src/programs/5th_ed/xx7.f90
   !*/
 
+  USE mpi_wrapper
   USE PRECISION
   USE MP_INTERFACE
   USE PARTITION
