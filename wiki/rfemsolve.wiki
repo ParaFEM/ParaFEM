@@ -44,3 +44,7 @@ hexahedron
 }}}
 
 Compare with source code for SUBROUTINE READ_XX2 in src/input.f90 
+
+==Note==
+
+When you check out the code and build RFEMSOLVE to run in serial (rather than MPI), you need to edit src/modules/mpi/mpi_wrapper.f90  and uncomment the line "USE mpi_stubs".
