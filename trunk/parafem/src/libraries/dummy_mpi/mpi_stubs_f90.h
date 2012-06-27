@@ -14,7 +14,7 @@
 !  recv message status
 !
   integer mpi_status_size
-  parameter ( mpi_status_size = 3 )
+  parameter ( mpi_status_size = 4 )
   integer mpi_source
   parameter ( mpi_source = 1 )
   integer mpi_tag
@@ -31,10 +31,10 @@
 !
 !  data types and sizes
 !
-  integer mpi_integer
-  parameter ( mpi_integer = 1 )
-  integer mpi_real
-  parameter ( mpi_real = 2 )
+  integer MPI_INTEGER
+  parameter ( MPI_INTEGER = 28 )
+  integer MPI_REAL
+  parameter ( MPI_REAL = 11 )
   integer mpi_double_precision
   parameter ( mpi_double_precision = 3 )
   integer mpi_logical
@@ -44,15 +44,11 @@
 !
 !  allreduce operations
 !
-  integer mpi_sum
-  parameter ( mpi_sum = 1 )
-  integer mpi_max
-  parameter ( mpi_max = 2 )
-  integer mpi_min
-  parameter ( mpi_min = 3 )
-  integer mpi_product
-  parameter ( mpi_product = 4 )
+  INTEGER MPI_SUM, MPI_MAX, MPI_MIN, MPI_PROD
+  PARAMETER (MPI_MAX=100,MPI_MIN=101,MPI_SUM=102,MPI_PROD=103)
+
 !
 !  timer
 !
   double precision mpi_wtime
+
