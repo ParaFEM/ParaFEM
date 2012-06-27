@@ -41,7 +41,8 @@ MODULE INPUT
   !*  Place remarks that should not be included in the documentation here.
   !*
   !*/
-  
+
+  USE mpi_wrapper
   USE precision
   USE mp_interface
 
