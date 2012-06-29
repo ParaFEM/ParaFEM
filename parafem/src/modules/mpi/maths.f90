@@ -268,6 +268,52 @@ MODULE MATHS
 
   END FUNCTION SUM_P
 
+  FUNCTION ISUM_P(vectora)
+
+  !/****f* maths/isum_p
+  !*  NAME
+  !*    FUNCTION:   ISUM_P
+  !*  SYNOPSIS
+  !*    Usage:      isum_p(vectora)
+  !*  FUNCTION
+  !*    Parallel version of the serial fortran instrinsic SUM. The function
+  !*    sums all the components of a distributed vector. The result of ISUM_P
+  !*    is returned to all processors. This function requires MPI.
+  !*  INPUTS
+  !*    The following arguments have the INTENT(IN) attribute:
+  !*
+  !*    vectora(:)     : Integer
+  !*                   : Local part of vector stored on calling processor
+  !*
+  !*    The following arguments have the INTENT(OUT) attribute:
+  !*
+  !*    isum_p         : Integer
+  !*                   : Sum of all the components of the vector
+  !*  AUTHOR
+  !*    L. Margetts, Louise Lever
+  !*  COPYRIGHT
+  !*    (c) University of Manchester 2002-2012
+  !******
+  !*  Place remarks that should not be included in the documentation here.
+  !*
+  !*/
+
+  IMPLICIT NONE
+
+  INTEGER, INTENT(IN) :: vectora(:)
+  INTEGER             :: bufsize, ier
+  INTEGER             :: local_isum, global_isum , isum_p
+
+  local_isum = SUM(vectora)
+
+  bufsize = 1
+  CALL MPI_ALLREDUCE(local_isum,global_isum,bufsize,MPI_INTEGER,MPI_SUM,    &
+                     MPI_COMM_WORLD,ier)
+
+  isum_p = global_isum
+
+  END FUNCTION ISUM_P
+
 !---------------------------------------------------------------------------
 !---------------------------------------------------------------------------
 !---------------------------------------------------------------------------
