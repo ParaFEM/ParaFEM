@@ -794,11 +794,15 @@ MODULE OUTPUT
   
   CHARACTER(LEN=50)              :: fname
   INTEGER                        :: i          ! loop counter
+  REAL(iwp)                      :: nodecountpercent
  
   IF(numpe==1) THEN
 
     fname       = job_name(1:INDEX(job_name, " ")-1) // ".res"
     OPEN(11,FILE=fname,STATUS='REPLACE',ACTION='WRITE')     
+
+    fname       = job_name(1:INDEX(job_name, " ")-1) // ".tnc"
+    OPEN(31,FILE=fname,STATUS='REPLACE',ACTION='WRITE')     
 
 !------------------------------------------------------------------------------
 ! 2. Write basic details about the problem
@@ -825,6 +829,8 @@ MODULE OUTPUT
     WRITE(11,'(A,F12.6)')  "Threshold values for von Mises stress       ",mises
     WRITE(11,'(A,I12)')    "Number of nodes greater than threshold      ",     &
                             nodecount
+    nodecountpercent = (100.0 / nn) * nodecount
+    WRITE(31,'(I12,1F8.2)')       nodecount, nodecountpercent
 
 !-------------------------------------------------------------------------------
 ! 3. Output timing data
@@ -875,6 +881,7 @@ MODULE OUTPUT
                           timest(14)-timest(1),"  100.00"
     
     CLOSE(11)
+    CLOSE(31)
     
   END IF
   
