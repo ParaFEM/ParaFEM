@@ -73,6 +73,13 @@ $FC -L../../../../lib rfemfield.o -lgaf77 -lparafem -o rfemfield.exe
 mv rfemfield.exe ../../../../bin
 cd ../../../..
 
+cd src/tools/preprocessing/rfemreduce
+rm -f *.o rfemreduce.exe
+$FC $FFLAGS rfemreduce.f90 -I../../../../include
+$FC -L../../../../lib rfemreduce.o -lparafem -o rfemreduce.exe
+mv rfemreduce.exe ../../../../bin
+cd ../../../..
+
 cd src/programs/rfem
 rm -f *.o rfemsolve.exe
 $FC $FFLAGS rfemsolve.f90 -I../../../include
