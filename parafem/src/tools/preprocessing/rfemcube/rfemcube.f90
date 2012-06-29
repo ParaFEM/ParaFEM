@@ -34,7 +34,7 @@ PROGRAM rfemcube
   REAL(iwp)              :: tol=1.000000e-06,mises=70.0
   INTEGER                :: limit=2000
   CHARACTER(LEN=6)       :: varfnc
-  CHARACTER(LEN=15)      :: rfield
+  CHARACTER(LEN=15)      :: rfield, mises_arg
   CHARACTER(LEN=50)      :: in_rfem_name, out_model_name,fname
 
 !------------------------------------------------------------------------------
@@ -48,9 +48,9 @@ PROGRAM rfemcube
 !------------------------------------------------------------------------------
 
   argc = iargc()
-  IF( (argc /= 2) ) THEN
+  IF( (argc /= 2) .and. (argc /= 3) ) THEN
      PRINT*
-     PRINT*, "Usage:  rfemcube <in_rfem_name> <out_model_name>"
+     PRINT*, "Usage:  rfemcube <in_rfem_name> <out_model_name> <mises-threshold>"
      PRINT*
      PRINT*, "        program expects as input:"
      PRINT*, "          <in_rfem_name>.rf"
@@ -64,6 +64,10 @@ PROGRAM rfemcube
   END IF
   CALL GETARG(1, in_rfem_name)
   CALL GETARG(2, out_model_name)
+  IF(argc == 3) THEN
+     CALL GETARG(3, mises_arg)
+     READ(mises_arg,'(1E14.6)') mises
+  END IF
   
 !------------------------------------------------------------------------------
 ! 4. Read control data
