@@ -25,7 +25,7 @@ PROGRAM rfemsolve
   INTEGER               :: node_end,node_start,nodes_pp
   INTEGER               :: argc,iargc,meshgen,partitioner,np_types
   INTEGER               :: fixed_freedoms_pp,fixed_freedoms_start
-  INTEGER               :: nodecount_pp ! count of local nodes
+  INTEGER               :: nodecount_pp(1) ! count of local nodes
   INTEGER               :: nodecount    ! global count of nodes 
   REAL(iwp)             :: e,v,det,tol,up,alpha,beta,tload
   REAL(iwp)             :: mises        ! threshold for mises stress
@@ -497,13 +497,13 @@ PROGRAM rfemsolve
 
   ! count number of nodes with value above threshold
 
-  nodecount_pp = 0 ; nodecount = 0
+  nodecount_pp(1) = 0 ; nodecount = 0
  
   DO i = 1,nodes_pp
-    IF(princinodes_pp(i) > mises) nodecount_pp = nodecount_pp + 1
+    IF(princinodes_pp(((i-1)*3)+1) > mises) nodecount_pp(1) = nodecount_pp(1) + 1
   END DO
 
-  nodecount = MAX_INTEGER_P(nodecount_pp) 
+  nodecount = ISUM_P(nodecount_pp) 
                               
   DEALLOCATE(princinodes_pp)
 
