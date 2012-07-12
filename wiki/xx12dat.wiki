@@ -20,6 +20,8 @@ tol limit
 ||*Variable Name*||*Type*||*Meaning*||
 ||{{{element}}} || Character || The element type. Permitted values are {{{hexahedron}}} and {{{tetrahedron}}}.||
 ||{{{mesh}}} || Integer || Element node ordering scheme. Permitted values are {{{1}}} (Smith and Griffiths scheme) or {{{2}}} (Abaqus scheme).||
+||{{{partitioner}}} || Integer || Partitioning strategy. Permitted values are {{{1}}} (Smith and Griffiths partitioning) or {{{2}}} (use external partitioner).||
+||{{{np_types}}} || Integer ||Number of property types.||
 ||{{{nels}}} || Integer || Number of elements in the mesh.||
 ||{{{nn}}} || Integer || Number of nodes in the mesh.||
 ||{{{nr}}} || Integer || Number of restrained nodes in the mesh.||
@@ -29,7 +31,7 @@ tol limit
 ||{{{fixed_freedoms}}} || Integer || Number of freedoms with fixed displacements.||
 ||{{{kx}}} || Real || Thermal conductivity in x-direction.||
 ||{{{ky}}} || Real || Thermal conductivity in y-direction.||
-||{{{ky}}} || Real || Thermal conductivity in z-direction.||
+||{{{kz}}} || Real || Thermal conductivity in z-direction.||
 ||{{{rho}}} || Real || Density.||
 ||{{{cp}}} || Real || Specific heat capacity at constant pressure.||
 ||{{{val0}}} || Real || Initial temperature of whole model.||
@@ -39,7 +41,7 @@ tol limit
 ||{{{theta}}} || Real || Parameter in theta integrator (0.5 recommended).||
 ||{{{tol}}} || Real || Convergence tolerance for PCG.||
 ||{{{limit}}} || Integer || Iteration ceiling for PCG.||
-||{{{partitioner}}} || Integer || Partitioning strategy. Permitted values are {{{1}}} (Smith and Griffiths partitioning) or {{{2}}} (use external partitioner).||
+
 
 A real example follows:
 
@@ -50,7 +52,8 @@ hexahedron
 1
 64 125 0 8 8 25 25
 1.0000E+02 1.0000E+02 1.0000E+02
-0.0 0.0 0.0 0.0 
+0.0 0.0 0.0
+0.01 150 10 0.5
 0.1000E-04 500
 }}}
 
