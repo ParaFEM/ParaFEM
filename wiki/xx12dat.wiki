@@ -12,7 +12,8 @@ partitioner
 np_types
 nels nn nr nip nod loaded_nodes fixed_freedoms
 kx ky kz 
-rho cp cte te0
+rho cp val0
+dtim nsteps npri theta
 tol limit
 }}}
 
@@ -31,8 +32,11 @@ tol limit
 ||{{{ky}}} || Real || Thermal conductivity in z-direction.||
 ||{{{rho}}} || Real || Density.||
 ||{{{cp}}} || Real || Specific heat capacity at constant pressure.||
-||{{{cte}}} || Real || Coefficient of thermal expansion.||
-||{{{te0}}} || Real || Initial temperature of whole model.||
+||{{{val0}}} || Real || Initial temperature of whole model.||
+||{{{dtim}}} || Real || Timestep.||
+||{{{nsteps}}} || Integer || Number of timesteps in analysis.||
+||{{{npri}}} || Integer || Print interval.||
+||{{{theta}}} || Real || Parameter in theta integrator (0.5 recommended).||
 ||{{{tol}}} || Real || Convergence tolerance for PCG.||
 ||{{{limit}}} || Integer || Iteration ceiling for PCG.||
 ||{{{partitioner}}} || Integer || Partitioning strategy. Permitted values are {{{1}}} (Smith and Griffiths partitioning) or {{{2}}} (use external partitioner).||
