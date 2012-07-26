@@ -207,7 +207,7 @@ PROGRAM rfemfield
 ! 7. Generate spatially random field for Young's modulus in a regular cuboid
 !------------------------------------------------------------------------------
     
-     ALLOCATE(efld(nxe,nye,nze))
+     ALLOCATE(efld(nxe,nye,nze*9/8))
      ALLOCATE(ieplt(3))
      
      lunif  = .false.  ! not used
