@@ -315,7 +315,7 @@ PROGRAM rfemfield
         WRITE(16,'(A)') "*THREE_DIMENSIONAL"
         WRITE(16,'(A)') "*NODES"
         
-        WRITE(17,'(A,2I8)') '*MATERIAL', nprops, np_types
+        WRITE(17,'(A,2I8)') '*MATERIAL', m_nels, np_types
         WRITE(17,'(3A)') "E"," ", "v"
      
         DO i = 1,m_nn
