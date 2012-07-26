@@ -73,7 +73,7 @@ PROGRAM rfemreduce
   bin_count = 0
 
   DO i=1,num_instances
-     WRITE(inst,'(1I0)') i
+     WRITE(inst,'(1I0)') i-1
      fname = job_name(1:LEN_TRIM(job_name)) // "-" // inst(1:LEN_TRIM(inst)) // ".tnc"
      OPEN(10, file=fname, status='old', action='read')
      READ(10,*) inst_count(i), inst_count_percent(i)
