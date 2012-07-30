@@ -1,10 +1,13 @@
 # @(#) pf2ensi.var.awk - Basic conversion of ParaFEM data file to EnSight Variable file
 # @(#) Usage:awk -f pf2ensi.var.awk <filename>.{bnd,dis,fix,lds,nset,pri,rea,str,vms,ttr,flx}
 # Author: Louise M. Lever (louise.lever@manchester.ac.uk)
-# Version: 1.0.2
-# Date: 2012-05-29
+# Version: 1.0.3
+# Date: 2012-07-30
 
 # CHANGES:
+# v1.0.3
+#   LML: Added support for partial or full dataset processing for BND,FIX,LDS datasets
+#   LML: Full datasets output by default; use -partial as argument to pf2ensi
 # v1.0.2
 #   LML: Added support for .mat and element-scalar output
 #   LML: Uses temporary file of element type and element id lists. Replaces id with loaded values
@@ -29,6 +32,7 @@ BEGIN {
     # --------------------------------------------------------------------------------
 
     vec_file = ARGV[1];
+
     # determine type and get extension position
     if( (file_ext_pos = match(vec_file,/.[dD][iI][sS]$/) - 1) != -1 ) {
 	var_type = "DISPL";
@@ -159,11 +163,16 @@ BEGIN {
 
     if( var_type == "NDBND" ) {
     	start_bnd();
+	cur_pid = 0;
     } else if( var_type == "NDLDS" ) {
     	start_lds();
+	cur_pid = 0;
     } else if( var_type == "NDFIX" ) {
     	start_fix();
-	cur_pid = -1;
+	cur_pid = 0;
+	cur_i = 0.0;
+	cur_j = 0.0;
+	cur_k = 0.0;
     } else if( var_type == "NDSET" ) {
 	init_nset();
 	nset_count = 0;
@@ -189,9 +198,13 @@ END {
     # complete last time step and close files
     if( dset == "PARTIAL" ) {
 	if( dtype == "SCALAR" ) {
-	    end_partial_scalar();
+	    if( (var_type == "NDBND") && !do_partial ) {
+		end_bnd_nopartial_scalar();
+	    }
 	} else if( dtype == "VECTOR" ) {
-	    end_partial_vector();
+	    if( (var_type == "NDFIX") && !do_partial ) {
+		end_fix_nopartial_vector();
+	    }
 	}
     } else { # dset == FULL
 	if( dtype == "SCALAR" ) {
@@ -245,14 +258,47 @@ function start_bnd() {
     print "Alya Ensight Gold --- Scalar per-partial-node variable file" > var_file;
     print "part" > var_file;
     print "1" > var_file;
-    print "coordinates partial" > var_file;
+
+    if( !do_partial ) {
+	print "coordinates" > var_file;
+    } else {
+	print "coordinates partial" > var_file;
+    }
 }
 
 function do_bnd_scalar_partial_data() {
     gsub(/^ */,"");
+    if( ($1 - cur_pid) > 1 ) {
+	do_bnd_nopartial_fill( cur_pid+1, $1-1 );
+    }
     print $1 > tmp_pid_file;
     print int(!$4*4 + !$3*2 + !$2) > tmp_icomp_file;
     node_count++;
+    cur_pid = $1;
+}
+
+function do_bnd_nopartial_fill( from, to ) {
+    for( i=from; i<=to; i++ ) {
+	print i > tmp_pid_file;
+	print 0 > tmp_icomp_file;
+	node_count++;
+    }
+}
+
+function end_bnd_nopartial_scalar() {
+    do_bnd_nopartial_fill( cur_pid+1, num_nodes );
+
+    # close the var_file and temporary files
+    close(var_file);
+    close(tmp_pid_file);
+    close(tmp_icomp_file);
+
+    # append each pid and scalar var to the var_file
+    # system("cat " tmp_pid_file " >> " var_file);
+    system("cat " tmp_icomp_file " >> " var_file);
+
+    # clean up and remove the tmp files
+    system("rm -f " tmp_pid_file " " tmp_icomp_file);
 }
 
 # ---- DIS ----------------------------------------------------------------------------
@@ -279,7 +325,11 @@ function start_fix() {
     print "Alya Ensight Gold --- Vector per-partial-node variable file" > var_file;
     print "part" > var_file;
     print "1" > var_file;
-    print "coordinates partial" > var_file;
+    if( !do_partial ) {
+	print "coordinates" > var_file;
+    } else {
+	print "coordinates partial" > var_file;
+    }
 }
 
 function do_fix_vector_partial_cur() {
@@ -288,7 +338,7 @@ function do_fix_vector_partial_cur() {
 	print cur_i > tmp_icomp_file;
 	print cur_j > tmp_jcomp_file;
 	print cur_k > tmp_kcomp_file;
-    }
+    } 
     cur_i = 0.0;
     cur_j = 0.0;
     cur_k = 0.0;
@@ -297,9 +347,16 @@ function do_fix_vector_partial_cur() {
 function do_fix_vector_partial_data() {
     gsub(/^ */,"");
     if( $1 > cur_pid ) {
-	do_fix_vector_partial_cur();
+	if( cur_pid > 0 ) {
+	    do_fix_vector_partial_cur();
+	}
 	node_count++;
-	cur_pid = $1;
+	if( ($1 - cur_pid) > 1 ) {
+	    do_fix_vector_nopartial_fill( cur_pid+1, $1-1 )
+	    cur_pid = $1;
+	} else {
+	    cur_pid = $1;
+	}
     }
     if( $2 == 1 ) {
 	cur_i = $3;
@@ -308,6 +365,36 @@ function do_fix_vector_partial_data() {
     } else {
 	cur_k = $3;
     }
+}
+
+function do_fix_vector_nopartial_fill( from, to) {
+    for( i=from; i<=to; i++ ) {
+	print i > tmp_pid_file;
+	print 0.0 > tmp_icomp_file;
+	print 0.0 > tmp_jcomp_file;
+	print 0.0 > tmp_kcomp_file;
+	node_count++;
+    }
+}
+
+function end_fix_nopartial_vector() {
+    do_fix_vector_nopartial_fill( cur_pid+1, num_nodes );
+
+    # close the var_file and temporary files
+    close(var_file);
+    close(tmp_pid_file);
+    close(tmp_icomp_file);
+    close(tmp_jcomp_file);
+    close(tmp_kcomp_file);
+
+    # append each node id and vector component to the var_file
+    # system("cat " tmp_pid_file " >> " var_file);
+    system("cat " tmp_icomp_file " >> " var_file);
+    system("cat " tmp_jcomp_file " >> " var_file);
+    system("cat " tmp_kcomp_file " >> " var_file);
+
+    # clean up and remove the tmp files
+    system("rm -f " tmp_pid_file " " tmp_icomp_file " " tmp_jcomp_file " " tmp_kcomp_file);
 }
 
 # ---- LDS ----------------------------------------------------------------------------
