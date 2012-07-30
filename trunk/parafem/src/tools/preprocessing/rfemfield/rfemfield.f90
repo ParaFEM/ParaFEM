@@ -238,9 +238,9 @@ PROGRAM rfemfield
      
      PRINT *, nprops
      PRINT *, np_types
-     PRINT *, "MATERIAL"
+     PRINT *, "*MATERIAL"
      
-     WRITE(12,'(A,2I8)') "MATERIAL", nprops, np_types
+     WRITE(12,'(A,2I8)') "*MATERIAL", nprops, np_types
      WRITE(12,'(3A)') "E"," ", "v"
      
      DO i = 1, nze
