@@ -8,13 +8,17 @@ echo "Converting $1 to Ensight Gold CASE Format"
 # Process command line arguments
 # --------------------------------------------------------------------------------
 
+D2GEO_ARGS=""
+D2VAR_ARGS=""
+
 while [ $# -gt 0 ]; do
     ARG=`echo $1 | tr "[:upper:]" "[:lower:]"`
     case $ARG in
 	-usage) showusage; exit;;
 	-help) showusage; exit;;
 
-	-flip-normals) D2GEO_ARGS="-v flip_normals=1";;
+	-flip-normals) D2GEO_ARGS="$D2GEO_ARGS -v flip_normals=1";;
+	-partial)   D2VAR_ARGS="$D2VAR_ARGS -v do_partial=1";;
 
 	-*) unknown-arg; showusage; exit;;
 	*) BASE_FILENAME=$1
@@ -64,13 +68,11 @@ DO_STR=1
 DO_TTR=1
 DO_FLX=1
 DO_MAT=1
-
-DO_BND=1 # enable only if fixed ParaView has been installed/compiled
-DO_LDS=1 # "
-DO_FIX=1 # "
-
-DO_MATI=1
-DO_NSET=1
+DO_BND=1
+DO_LDS=1
+DO_FIX=1
+DO_MATI=0
+DO_NSET=0
 
 # --------------------------------------------------------------------------------
 # Generate output headers (initial)
@@ -124,6 +126,8 @@ D2GEO=`awk -f $BINLOC/pf2ensi.geo.awk $D2GEO_ARGS $D_FILENAME`
 NUM_NODES=`echo $D2GEO | awk '{print $1}'`
 NUM_CELLS=`echo $D2GEO | awk '{print $2}'`
 NUM_MATS=`echo $D2GEO | awk '{print $3}'`
+
+D2VAR_ARGS="$D2VAR_ARGS -v num_nodes=$NUM_NODES";
 
 # time info
 NUM_TIME_STEPS=-1
@@ -219,24 +223,26 @@ fi
 PROPID=1
 if [ -f $MAT_FILENAME ] && [ $DO_MAT == 1 ]; then
     MAT2ENSI=`awk -f $BINLOC/pf2ensi.var.awk $MAT_FILENAME`
+    echo "MAT2ENSI: $MAT2ENSI"
     for PROPNAME in $MAT2ENSI; do
 	echo -e "scalar per element:\t\tMaterial_""$PROPNAME""\t""$BASE_FILENAME"".ensi.ELMAT_""$PROPID""_""$PROPNAME" >> $ENSI_CASE_FILENAME
 	(( PROPID++ ))
     done
 fi
 
+# partial datasets (unless -do-partial argument is set call will expand to full size datasets
 if [ -f $FIX_FILENAME ] && [ $DO_FIX == 1 ]; then
-    FIX2ENSI=`awk -f $BINLOC/pf2ensi.var.awk $FIX_FILENAME`
+    FIX2ENSI=`awk -f $BINLOC/pf2ensi.var.awk $D2VAR_ARGS $FIX_FILENAME`
     echo -e "vector per node:\t\tFixed_Displacement\t""$BASE_FILENAME"".ensi.NDFIX" >> $ENSI_CASE_FILENAME
 fi
 
 if [ -f $BND_FILENAME ] && [ $DO_BND == 1 ]; then
-    BND2ENSI=`awk -f $BINLOC/pf2ensi.var.awk $BND_FILENAME`
+    BND2ENSI=`awk -f $BINLOC/pf2ensi.var.awk $D2VAR_ARGS $BND_FILENAME`
     echo -e "scalar per node:\t\tBound_Nodes\t""$BASE_FILENAME"".ensi.NDBND" >> $ENSI_CASE_FILENAME
 fi
 
 if [ -f $LDS_FILENAME ] && [ $DO_LDS == 1 ]; then
-    LDS2ENSI=`awk -f $BINLOC/pf2ensi.var.awk $LDS_FILENAME`
+    LDS2ENSI=`awk -f $BINLOC/pf2ensi.var.awk $D2VAR_ARGS $LDS_FILENAME`
     echo -e "vector per node:\t\tLoaded_Nodes\t""$BASE_FILENAME"".ensi.NDLDS" >> $ENSI_CASE_FILENAME
 fi
 
