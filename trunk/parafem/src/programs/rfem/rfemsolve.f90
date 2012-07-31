@@ -5,7 +5,8 @@ PROGRAM rfemsolve
 !                        material types; sequential version
 !------------------------------------------------------------------------------ 
                       
-  USE mpi_wrapper
+  USE mpi_wrapper   ! uncomment line to compile without MPI
+
   USE precision     ; USE global_variables ; USE mp_interface
   USE input         ; USE output           ; USE loading
   USE timing        ; USE maths            ; USE gather_scatter
