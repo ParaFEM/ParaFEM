@@ -494,6 +494,89 @@ MODULE GEOMETRY
 !---------------------------------------------------------------------------
 !---------------------------------------------------------------------------
 
+  SUBROUTINE CUBE_BC20_P56(rest,nxe,nye,nze)
+
+   !/****f* geometry/cube_bc20_p56
+   !*  NAME
+   !*    SUBROUTINE: cube_bc20_p56
+   !*  SYNOPSIS
+   !*    Usage:      CALL cube_bc20_p56(rest,nxe,nye,nze)
+   !*  FUNCTION
+   !*    Boundary conditions for simple 20-node element cuboid. Modified 
+   !*    version of CUBE_BC20 especially for program p56.
+   !*  INPUTS
+   !*  OUTPUTS
+   !*  AUTHOR
+   !*    Smith & Griffiths, Edition 4
+   !******
+   !*/      ! 
+  
+  IMPLICIT NONE
+  
+  INTEGER,INTENT(IN)  :: nxe,nye,nze
+  INTEGER,INTENT(OUT) :: rest(:,:)
+  INTEGER             :: i,j,k,l,m,n,face,face1,face2,count
+
+  face1 = 3*nxe*nze+2*(nxe+nze)+1 
+  face2 = (nxe+1)*(nze+1)
+  face  = face1 + face2  
+  l     = nze*(nxe+1) 
+  m     = 3*nxe + 2
+  n     = 3*nxe*nze + 2*nze 
+  count = 0
+
+  DO i = 0 , nye 
+     DO j = i*face+1,i*face+face1
+        k = j - i*face
+!       IF(i==0 .OR. i==nye) THEN
+        IF(i==0) THEN
+          IF((k+m-1)/m*m==(k+m-1) .AND. k<=n ) THEN
+            count=count+1; rest(count,1)= j; rest(count,2:)=(/0,0,1/) ; CYCLE 
+! RHS     ELSE IF((k+nxe+1)/m*m==(k+nxe+1) .AND. k<=n ) THEN
+!           count=count+1; rest(count,1)= j; rest(count,2:)=(/0,0,1/) ; CYCLE 
+          ELSE IF((k+nxe)/m*m==(k+nxe) .AND. k<=n ) THEN
+            count=count+1; rest(count,1)= j; rest(count,2:)=(/0,0,1/) ; CYCLE
+!         ELSE IF(k/m*m==k .AND. k<=n) THEN
+!           count=count+1; rest(count,1)= j; rest(count,2:)=(/0,0,1/) ; CYCLE
+          ELSE IF (k<=n) THEN
+            count=count+1; rest(count,1)= j; rest(count,2:)=(/1,0,1/) ; CYCLE
+          ELSE IF (k>n) THEN
+            count = count + 1 ; rest(count,1) = j; rest(count,2:) = (/0,0,0/)   
+          END IF
+         ELSE
+          IF((k+m-1)/m*m==(k+m-1) .AND. k<=n ) THEN
+            count=count+1; rest(count,1)= j; rest(count,2:)=(/0,1,1/) ; CYCLE 
+! RHS     ELSE IF((k+nxe+1)/m*m==(k+nxe+1) .AND. k<=n ) THEN
+!           count=count+1; rest(count,1)= j; rest(count,2:)=(/0,1,1/) ; CYCLE 
+          ELSE IF((k+nxe)/m*m==(k+nxe) .AND. k<=n ) THEN
+            count=count+1; rest(count,1)= j; rest(count,2:)=(/0,1,1/) ; CYCLE
+! RHS     ELSE IF(k/m*m==k .AND. k<=n) THEN
+!           count=count+1; rest(count,1)= j; rest(count,2:)=(/0,1,1/) ; CYCLE
+          ELSE IF (k>n) THEN
+            count = count + 1 ; rest(count,1) = j; rest(count,2:) = (/0,0,0/)   
+          END IF
+         END IF
+     END DO
+     IF(i<nye) THEN
+       DO j= i*face + face1 + 1, (i+1)*face
+          k = j - (face1 + i*face)
+          IF((k+nxe)/(nxe+1)*(nxe+1)==(k+nxe) .AND. k<=l ) THEN
+            count=count+1; rest(count,1)= j; rest(count,2:)=(/0,1,1/); CYCLE
+! rhs     ELSE IF(k/(nxe+1)*(nxe+1)==k .AND. k<=l) THEN
+!           count=count+1; rest(count,1)= j; rest(count,2:)=(/0,1,1/); CYCLE
+          ELSE IF (k>l) THEN
+            count = count + 1 ; rest(count,1) = j; rest(count,2:) = (/0,0,0/)
+          END IF
+       END DO
+     END IF
+  END DO
+
+  END SUBROUTINE CUBE_BC20_P56
+
+!---------------------------------------------------------------------------
+!---------------------------------------------------------------------------
+!---------------------------------------------------------------------------
+
   SUBROUTINE cube_bc8(rest,nxe,nye,nze)
 
    !/****f* geometry/cube_bc8
