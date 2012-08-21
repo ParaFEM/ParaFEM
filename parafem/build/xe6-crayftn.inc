@@ -237,6 +237,11 @@ XX11_MPI_REL_LDFLAGS=$(DEFAULT_XX_MPI_REL_LDFLAGS)
 XX11_MPI_DBG_FFLAGS=$(DEFAULT_XX_MPI_DBG_FFLAGS)
 XX11_MPI_DBG_LDFLAGS=$(DEFAULT_XX_MPI_DBG_LDFLAGS)
 
+XX12_MPI_REL_FFLAGS=$(DEFAULT_XX_MPI_REL_FFLAGS)
+XX12_MPI_REL_LDFLAGS=$(DEFAULT_XX_MPI_REL_LDFLAGS)
+XX12_MPI_DBG_FFLAGS=$(DEFAULT_XX_MPI_DBG_FFLAGS)
+XX12_MPI_DBG_LDFLAGS=$(DEFAULT_XX_MPI_DBG_LDFLAGS)
+
 # ------------------------------------------------------------------------------
 # TOOL FLAGS for selected tools.
 # ------------------------------------------------------------------------------
