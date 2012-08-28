@@ -19,16 +19,18 @@ PROGRAM xx12
 
 ! neq,ntot are now global variables - not declared
 
- INTEGER, PARAMETER  :: nodof=1,ndim=3
- INTEGER             :: nod
- INTEGER             :: nxe,nye,nze,nn,nr,nip,neq_temp,nn_temp,i,j
+ INTEGER, PARAMETER  :: ndim=3,nodof=1
+ INTEGER             :: nod,nn,nr,nip
+ INTEGER             :: nxe,nye,nze,neq_temp,nn_temp,i,j
  INTEGER             :: k,iel,nstep,npri,nres,iters,limit,it,is,nlen
  INTEGER             :: loaded_nodes,fixed_freedoms
  INTEGER             :: argc,iargc,meshgen,partitioner
  INTEGER             :: nels,ndof,ielpe,npes_pp
+ INTEGER             :: np_types
  REAL(iwp)           :: aa,bb,cc,kx,ky,kz,det,theta,dtim,real_time
- REAL(iwp)           :: val0 = 100.0_iwp
+ !REAL(iwp)           :: val0 = 100.0_iwp
  REAL(iwp)           :: tol,alpha,beta,up,big
+ REAL(iwp)           :: rho,cp,val0
  REAL(iwp),PARAMETER :: zero = 0.0_iwp
  CHARACTER(LEN=15)   :: element
  CHARACTER(LEN=50)   :: fname,job_name,label
@@ -65,9 +67,9 @@ PROGRAM xx12
   IF(argc /= 1) CALL job_name_error(numpe,program_name)
   CALL GETARG(1,job_name)
 
-  CALL read_p124(job_name,numpe,dtim,element,fixed_freedoms,kx,ky,kz,limit,   &
+  CALL read_xx12(job_name,numpe,dtim,element,fixed_freedoms,kx,ky,kz,limit,   &
                  loaded_nodes,meshgen,nels,nip,nn,nod,npri,nr,nstep,          &
-                 partitioner,theta,tol)
+                 partitioner,theta,tol,np_types,rho,cp,val0)
 
   CALL calc_nels_pp(job_name,nels,npes,numpe,partitioner,nels_pp)
 
@@ -76,11 +78,11 @@ PROGRAM xx12
 
   ALLOCATE(g_num_pp(nod,nels_pp))
   ALLOCATE(g_coord_pp(nod,ndim,nels_pp))
-  ALLOCATE(rest(nr,nodof+1))
+  IF (nr>0) ALLOCATE(rest(nr,nodof+1))
 
-  g_num_pp   = 0
-  g_coord_pp = zero
-  rest       = 0
+  g_num_pp   	 = 0
+  g_coord_pp 	 = zero
+  IF (nr>0) rest = 0
 
   timest(2) = elap_time()
 
@@ -93,7 +95,7 @@ PROGRAM xx12
   CALL read_g_coord_pp(job_name,g_num_pp,nn,npes,numpe,g_coord_pp)
   timest(5) = elap_time()
 
-  CALL read_rest(job_name,numpe,rest)
+  IF (nr>0) CALL read_rest(job_name,numpe,rest)
   timest(6) = elap_time()
 
   IF(numpe==1) PRINT *, " *** Read input data in: ", timest(6)-timest(1)," s"
@@ -124,13 +126,18 @@ PROGRAM xx12
 !    to solve.
 !------------------------------------------------------------------------------
 
-  CALL rearrange_2(rest)  
+  IF (nr>0) CALL rearrange_2(rest)  
 
   g_g_pp = 0
 
-  elements_1: DO iel = 1, nels_pp
-    CALL find_g4(g_num_pp(:,iel),g_g_pp(:,iel),rest)
-  END DO elements_1
+  ! When nr = 0, g_num_pp and g_g_pp are identical
+  IF(nr>0) THEN
+    elements_1: DO iel = 1, nels_pp
+      CALL find_g4(g_num_pp(:,iel),g_g_pp(:,iel),rest)
+    END DO elements_1
+  ELSE
+    g_g_pp = g_num_pp
+  END IF
    
   neq = 0
 
@@ -139,9 +146,11 @@ PROGRAM xx12
     IF(i > neq) neq = i
   END DO elements_2
 
-  neq  = MAX_INTEGER_P(neq)
+  neq = MAX_INTEGER_P(neq)
 
   timest(7) = elap_time()
+  
+  IF(numpe==1) PRINT *, " *** Found number of equations in: ", timest(7)-timest(6)," s"
 
 !------------------------------------------------------------------------------
 ! 6. Create interprocessor communication tables
@@ -156,6 +165,7 @@ PROGRAM xx12
   DO i = 1,neq_pp
     IF(nres==ieq_start+i-1) THEN
       it = numpe; is = i
+      IF(numpe==1) PRINT *, " *** it = ", it, " is = ", i
     END IF
   END DO
 
@@ -220,6 +230,10 @@ PROGRAM xx12
  END DO elements_3
 
  timest(10) = elap_time()
+
+ IF(numpe==1) PRINT *, " *** 8. Element stiffness integration and storage in: ",   &
+                           timest(10)-timest(9), " s"  
+
  
 !------------------------------------------------------------------------------
 ! 9. Build the diagonal preconditioner
@@ -239,19 +253,31 @@ PROGRAM xx12
  DEALLOCATE(diag_precon_tmp)
 
  diag_precon_pp=1._iwp/diag_precon_pp ! needs moving
+ 
+ timest(11) = elap_time()
+
+ IF(numpe==1) PRINT *, " *** 9. Build the diagonal preconditioner in: ",   &
+                          timest(11)-timest(10), " s" 
 
 !------------------------------------------------------------------------------
 ! 10. Read in the initial conditions and assign to equations
 !------------------------------------------------------------------------------
-
+ !val0 = 100.0_iwp
  loads_pp = val0    ! needs to be read in from file
  pmul_pp  = .0_iwp
 
- IF(numpe==it)THEN
+ !IF(numpe==it)THEN
+ IF(numpe==1)THEN
    fname = job_name(1:INDEX(job_name, " ")-1) // ".res"
    OPEN(11,FILE=fname,STATUS='REPLACE',ACTION='WRITE')
-   WRITE(11,'(A)')"    Time     Pressure  Iterations"
+   !WRITE(11,'(A)')"    Time     Pressure  Iterations"
+   WRITE(11,'(A)')"  Time         Iterations  Element  Node  Pressure"
  END IF
+
+  timest(12) = elap_time()
+
+  IF(numpe==1) PRINT *, " *** 10. Read in the initial conditions and assign to equations in: ",   &
+                           timest(12)-timest(11), " s"
 
 !------------------------------------------------------------------------------
 ! 11. Time-stepping loop
@@ -270,6 +296,13 @@ PROGRAM xx12
 
    loads_pp=u_pp
 
+  timest(13) = elap_time()
+
+  IF(numpe==1) PRINT *, " *** 11. Time-stepping loop in: ",   &
+                           timest(13)-timest(12), " s"
+
+! END DO timesteps
+ 
 !------------------------------------------------------------------------------
 ! 12. Solve simultaneous equations by pcg
 !------------------------------------------------------------------------------
@@ -292,6 +325,13 @@ PROGRAM xx12
      END DO elements_6
      CALL scatter(u_pp,utemp_pp)
 
+  timest(14) = elap_time()
+
+!  IF(numpe==1) PRINT *, " *** 12. Solve simultaneous equations by pcg in: ",   &
+!                           timest(14)-timest(13), " s"
+
+
+
 !------------------------------------------------------------------------------
 ! 13. PCG equation solution
 !------------------------------------------------------------------------------
@@ -310,10 +350,21 @@ PROGRAM xx12
 
    END DO iterations
 
+! END DO timesteps
+ 
    loads_pp=xnew_pp
 
-   IF(j/npri*npri==j.AND.numpe==1)WRITE(11,'(2E12.4,I5)')real_time,      &
-     loads_pp(is),iters
+!   IF(j/npri*npri==j.AND.numpe==1)WRITE(11,'(2E12.4,I5)')real_time,      &
+!     loads_pp(is),iters
+     
+   IF(j/npri*npri==j.AND.numpe==1)THEN
+     DO i=1,nels_pp
+       WRITE(11,'(E12.4,I4,I12)')real_time,iters,i
+       DO k=1,nod
+         WRITE(11,'(A,I4,E19.8)')"                                 ",k,loads_pp(k)
+       END DO
+     END DO
+   END IF
 
  END DO timesteps
 
@@ -326,10 +377,11 @@ PROGRAM xx12
 !   END IF
 ! END DO
 
- IF(numpe==it)THEN
+ !IF(numpe==it)THEN
+ IF(numpe==1)THEN
    WRITE(11,'(A,I5,A)')"This job ran on  ",npes,"  processors"  
    WRITE(11,'(A)')"Global coordinates and node numbers"
-   DO i=1,nels_pp,nels_pp - 1                                        
+   DO i=1,nels_pp!,nels_pp - 1                                        
      WRITE(11,'(A,I8)')"Element ",i
      num=g_num_pp(:,i)
      DO k=1,nod
@@ -340,8 +392,15 @@ PROGRAM xx12
      neq," equations"
    WRITE(11,*)"Time after setup  is   :",elap_time()-timest(1)
  END IF
+ 
+  timest(15) = elap_time()
 
- IF(numpe==it) WRITE(11,*)"This analysis took  :",elap_time()-timest(1)
+  IF(numpe==1) PRINT *, " *** 13. PCG equation solution in: ",   &
+                           timest(15)-timest(14), " s"
+ 
+ !IF(numpe==it) WRITE(11,*)"This analysis took  :",elap_time()-timest(1)
+ 
+ IF(numpe==1) CLOSE(11)
 
  CALL shutdown() 
 
