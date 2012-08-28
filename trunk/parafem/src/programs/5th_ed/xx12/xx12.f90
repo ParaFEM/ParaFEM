@@ -26,6 +26,7 @@ PROGRAM xx12
  INTEGER             :: loaded_nodes,fixed_freedoms
  INTEGER             :: argc,iargc,meshgen,partitioner
  INTEGER             :: nels,ndof,ielpe,npes_pp
+ INTEGER             :: node_end,node_start,nodes_pp
  INTEGER             :: np_types
  REAL(iwp)           :: aa,bb,cc,kx,ky,kz,det,theta,dtim,real_time
  !REAL(iwp)           :: val0 = 100.0_iwp
@@ -48,6 +49,7 @@ PROGRAM xx12
  REAL(iwp),ALLOCATABLE :: storkb_pp(:,:,:),x_pp(:),xnew_pp(:),pmul_pp(:,:)
  REAL(iwp),ALLOCATABLE :: utemp_pp(:,:),diag_precon_pp(:),diag_precon_tmp(:,:)
  REAL(iwp),ALLOCATABLE :: g_coord_pp(:,:,:),timest(:)
+ REAL(iwp),ALLOCATABLE :: disp_pp(:),eld_pp(:,:)
  INTEGER,ALLOCATABLE   :: rest(:,:),g(:),num(:),g_num_pp(:,:),g_g_pp(:,:)
  
 !------------------------------------------------------------------------------
@@ -280,7 +282,24 @@ PROGRAM xx12
                            timest(12)-timest(11), " s"
 
 !------------------------------------------------------------------------------
-! 11. Time-stepping loop
+! 11. Allocate disp_pp array and open file to write temperature output
+!------------------------------------------------------------------------------
+
+  CALL calc_nodes_pp(nn,npes,numpe,node_end,node_start,nodes_pp)
+  ALLOCATE(disp_pp(nodes_pp))    
+  disp_pp = zero
+  
+  IF(numpe==1) THEN
+    fname   = job_name(1:INDEX(job_name, " ")-1)//".ttr"
+    OPEN(24, file=fname, status='replace', action='write')
+    label   = "*TEMPERATURE"  
+  END IF
+  
+  ALLOCATE(eld_pp(ntot,nels_pp))
+  eld_pp = zero
+
+!------------------------------------------------------------------------------
+! 12. Time-stepping loop
 !------------------------------------------------------------------------------
 
  timesteps: DO j=1,nstep
@@ -290,7 +309,8 @@ PROGRAM xx12
 
    CALL gather(loads_pp,pmul_pp)
    elements_5: DO iel=1,nels_pp   
-     utemp_pp(:,iel)=MATMUL(storkb_pp(:,:,iel),pmul_pp(:,iel))
+     utemp_pp(:,iel)=MATMUL(rho*cp*storkb_pp(:,:,iel),pmul_pp(:,iel))
+ !    utemp_pp(:,iel)=MATMUL(storkb_pp(:,:,iel),pmul_pp(:,iel))
    END DO elements_5
    CALL scatter(u_pp,utemp_pp)
 
@@ -304,7 +324,7 @@ PROGRAM xx12
 ! END DO timesteps
  
 !------------------------------------------------------------------------------
-! 12. Solve simultaneous equations by pcg
+! 13. Solve simultaneous equations by pcg
 !------------------------------------------------------------------------------
 
    d_pp = diag_precon_pp*loads_pp
@@ -333,7 +353,7 @@ PROGRAM xx12
 
 
 !------------------------------------------------------------------------------
-! 13. PCG equation solution
+! 14. PCG equation solution
 !------------------------------------------------------------------------------
 
      up       = DOT_PRODUCT_P(loads_pp,d_pp)
@@ -365,6 +385,15 @@ PROGRAM xx12
        END DO
      END DO
    END IF
+   
+   utemp_pp  = zero
+   CALL gather(loads_pp(1:),utemp_pp)
+   CALL gather(xnew_pp(1:),eld_pp)
+   
+   CALL scatter_nodes(npes,nn,nels_pp,g_num_pp,nod,nodof,nodes_pp,              &
+ !                     node_start,node_end,utemp_pp,disp_pp,1)
+                      node_start,node_end,eld_pp,disp_pp,1)
+   CALL write_nodal_variable(label,24,j,nodes_pp,npes,numpe,nodof,disp_pp)
 
  END DO timesteps
 
@@ -400,7 +429,10 @@ PROGRAM xx12
  
  !IF(numpe==it) WRITE(11,*)"This analysis took  :",elap_time()-timest(1)
  
- IF(numpe==1) CLOSE(11)
+ IF(numpe==1)THEN
+   CLOSE(11)
+   CLOSE(24)
+ END IF
 
  CALL shutdown() 
 
