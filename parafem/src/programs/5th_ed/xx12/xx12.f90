@@ -3,6 +3,7 @@ PROGRAM xx12
 !      Program XX.12 Three dimensional anallysis of conduction equation using 
 !                    8-node hexahedral elements; pcg version implicit;  
 !                    integration in time using 'theta' method parallel version
+!
 !------------------------------------------------------------------------------
 
  USE precision  ; USE global_variables ; USE mp_interface
@@ -21,18 +22,21 @@ PROGRAM xx12
 
  INTEGER, PARAMETER  :: ndim=3,nodof=1
  INTEGER             :: nod,nn,nr,nip
- INTEGER             :: nxe,nye,nze,neq_temp,nn_temp,i,j
- INTEGER             :: k,iel,nstep,npri,nres,iters,limit,it,is,nlen
- INTEGER             :: loaded_nodes,fixed_freedoms
- INTEGER             :: argc,iargc,meshgen,partitioner
- INTEGER             :: nels,ndof,ielpe,npes_pp
+ INTEGER             :: i,j,k,iters,limit,iel
+ INTEGER             :: nxe,nye,nze,neq_temp,nn_temp
+ INTEGER             :: nstep,npri,nres,it,is,nlen
  INTEGER             :: node_end,node_start,nodes_pp
+ INTEGER             :: loaded_freedoms,fixed_freedoms,loaded_nodes
+ INTEGER             :: fixed_freedoms_pp,fixed_freedoms_start
+ INTEGER             :: loaded_freedoms_pp,loaded_freedoms_start
+ INTEGER             :: nels,ndof,ielpe,npes_pp
+ INTEGER             :: argc,iargc,meshgen,partitioner
  INTEGER             :: np_types
  REAL(iwp)           :: aa,bb,cc,kx,ky,kz,det,theta,dtim,real_time
  !REAL(iwp)           :: val0 = 100.0_iwp
- REAL(iwp)           :: tol,alpha,beta,up,big
+ REAL(iwp)           :: tol,alpha,beta,up,big,q
  REAL(iwp)           :: rho,cp,val0
- REAL(iwp),PARAMETER :: zero = 0.0_iwp
+ REAL(iwp),PARAMETER :: zero = 0.0_iwp,penalty=1.e20_iwp
  CHARACTER(LEN=15)   :: element
  CHARACTER(LEN=50)   :: fname,job_name,label
  CHARACTER(LEN=50)   :: program_name='xx12'
@@ -50,7 +54,10 @@ PROGRAM xx12
  REAL(iwp),ALLOCATABLE :: utemp_pp(:,:),diag_precon_pp(:),diag_precon_tmp(:,:)
  REAL(iwp),ALLOCATABLE :: g_coord_pp(:,:,:),timest(:)
  REAL(iwp),ALLOCATABLE :: disp_pp(:),eld_pp(:,:)
- INTEGER,ALLOCATABLE   :: rest(:,:),g(:),num(:),g_num_pp(:,:),g_g_pp(:,:)
+ REAL(iwp),ALLOCATABLE :: val(:,:),val_f(:),store_pp(:)
+ INTEGER,ALLOCATABLE   :: rest(:,:),g(:),num(:),g_num_pp(:,:),g_g_pp(:,:),no(:)
+ INTEGER,ALLOCATABLE   :: no_pp(:),no_f_pp(:),no_pp_temp(:),no_global(:)
+ INTEGER,ALLOCATABLE   :: sense(:),node(:)
  
 !------------------------------------------------------------------------------
 ! 3. Read job_name from the command line. 
@@ -137,6 +144,7 @@ PROGRAM xx12
     elements_1: DO iel = 1, nels_pp
       CALL find_g4(g_num_pp(:,iel),g_g_pp(:,iel),rest)
     END DO elements_1
+    DEALLOCATE(rest)
   ELSE
     g_g_pp = g_num_pp
   END IF
@@ -262,11 +270,12 @@ PROGRAM xx12
                           timest(11)-timest(10), " s" 
 
 !------------------------------------------------------------------------------
-! 10. Read in the initial conditions and assign to equations
+! 10a. Read in the initial conditions and assign to equations
 !------------------------------------------------------------------------------
  !val0 = 100.0_iwp
  loads_pp = val0    ! needs to be read in from file
  pmul_pp  = .0_iwp
+ !utemp_pp = zero
 
  !IF(numpe==it)THEN
  IF(numpe==1)THEN
@@ -276,32 +285,128 @@ PROGRAM xx12
    WRITE(11,'(A)')"  Time         Iterations  Element  Node  Pressure"
  END IF
 
-  timest(12) = elap_time()
+!------------------------------------------------------------------------------
+! 10b. Read in fixed nodal displacements and assign to equations
+!------------------------------------------------------------------------------
 
+  IF(fixed_freedoms > 0) THEN
+
+    ALLOCATE(node(fixed_freedoms),no(fixed_freedoms),val_f(fixed_freedoms),   &
+             no_pp_temp(fixed_freedoms),sense(fixed_freedoms),                &
+             no_global(fixed_freedoms))
+
+    node  = 0 ; no = 0 ; no_pp_temp = 0 ; sense = 0 ; no_global = 0
+    val_f = zero
+
+    CALL read_fixed(job_name,numpe,node,sense,val_f)
+    CALL find_no2(g_g_pp,g_num_pp,node,sense,fixed_freedoms_pp,               &
+                  fixed_freedoms_start,no)
+    CALL MPI_ALLREDUCE(no,no_global,fixed_freedoms,MPI_INTEGER,MPI_MAX,       &
+                       MPI_COMM_WORLD,ier)
+    CALL reindex_fixed_nodes(ieq_start,no_global,no_pp_temp,                  &
+                             fixed_freedoms_pp,fixed_freedoms_start,neq_pp)
+
+    ALLOCATE(no_f_pp(fixed_freedoms_pp),store_pp(fixed_freedoms_pp))
+
+    no_f_pp    = 0
+    store_pp = zero
+    no_f_pp    = no_pp_temp(1:fixed_freedoms_pp)
+
+    DEALLOCATE(node,no,sense,no_pp_temp)
+
+  END IF
+
+  IF(fixed_freedoms == 0) fixed_freedoms_pp = 0
+                           
+!------------------------------------------------------------------------------
+! 10c. Read in loaded nodes and get starting r_pp
+!------------------------------------------------------------------------------
+
+  loaded_freedoms = loaded_nodes ! hack
+
+  IF(loaded_freedoms > 0) THEN
+
+    ALLOCATE(node(loaded_freedoms),val(nodof,loaded_freedoms))
+    ALLOCATE(no_pp_temp(loaded_freedoms))
+
+    val = zero ; node = 0
+
+    CALL read_loads(job_name,numpe,node,val)
+    CALL reindex_fixed_nodes(ieq_start,node,no_pp_temp,                       &
+                             loaded_freedoms_pp,loaded_freedoms_start,neq_pp)
+
+    ALLOCATE(no_pp(loaded_freedoms_pp))
+
+    no_pp    = no_pp_temp(1:loaded_freedoms_pp)
+
+    DEALLOCATE(no_pp_temp)
+
+    DO i = 1, loaded_freedoms_pp
+      loads_pp(no_pp(i) - ieq_start + 1) = val(loaded_freedoms_start + i - 1)
+      ! Not sure about this, do I need to create r_pp? What about val0?
+      ! possibly do this instead
+      ! loads_pp(no_pp(i) - ieq_start + 1) = loads_pp(no_pp(i) - ieq_start + 1) + val(loaded_freedoms_start + i - 1)
+    END DO
+
+!   CALL load(g_g_pp,g_num_pp,node,val,r_pp(1:))
+
+    q = SUM_P(loads_pp) ! Not really needed - sums loads
+
+    DEALLOCATE(node,val)
+
+  END IF
+
+  !DEALLOCATE(g_g_pp)
+
+  timest(12) = elap_time()
   IF(numpe==1) PRINT *, " *** 10. Read in the initial conditions and assign to equations in: ",   &
                            timest(12)-timest(11), " s"
+
+!------------------------------------------------------------------------------
+! 10d. Invert the preconditioner. 
+!     If there are fixed freedoms, first apply a penalty
+!------------------------------------------------------------------------------
+
+  IF(fixed_freedoms_pp > 0) THEN
+    DO i = 1,fixed_freedoms_pp
+       j =  no_f_pp(i) - ieq_start + 1
+       diag_precon_pp(j) = diag_precon_pp(j) + penalty
+       store_pp(i)       = diag_precon_pp(j)
+    END DO
+  END IF
+
+  diag_precon_pp = 1._iwp/diag_precon_pp
+
+!------------------------------------------------------------------------------
+! 10e. Initiallize preconditioned conjugate gradient
+!------------------------------------------------------------------------------
+
+  IF(fixed_freedoms_pp>0) THEN
+    DO i = 1, fixed_freedoms_pp
+      j       = no_f_pp(i) - ieq_start + 1
+      k       = fixed_freedoms_start + i - 1
+      loads_pp(j) = store_pp(i) * val_f(k) ! As above (section 10c)
+    END DO
+  END IF
 
 !------------------------------------------------------------------------------
 ! 11. Allocate disp_pp array and open file to write temperature output
 !------------------------------------------------------------------------------
 
   CALL calc_nodes_pp(nn,npes,numpe,node_end,node_start,nodes_pp)
-  ALLOCATE(disp_pp(nodes_pp))    
-  disp_pp = zero
+  ALLOCATE(disp_pp(nodes_pp))
+  ALLOCATE(eld_pp(ntot,nels_pp))
   
   IF(numpe==1) THEN
     fname   = job_name(1:INDEX(job_name, " ")-1)//".ttr"
     OPEN(24, file=fname, status='replace', action='write')
     label   = "*TEMPERATURE"  
   END IF
-  
-  ALLOCATE(eld_pp(ntot,nels_pp))
-  eld_pp = zero
 
 !------------------------------------------------------------------------------
 ! 12. Time-stepping loop
 !------------------------------------------------------------------------------
-
+ 
  timesteps: DO j=1,nstep
  
    real_time = j*dtim
@@ -338,6 +443,7 @@ PROGRAM xx12
      iters   = iters+1
      u_pp    = zero
      pmul_pp = zero
+!     utemp_pp = zero 
 
      CALL gather(p_pp,pmul_pp)  
      elements_6: DO iel=1,nels_pp
@@ -386,12 +492,14 @@ PROGRAM xx12
      END DO
    END IF
    
-   utemp_pp  = zero
+   utemp_pp = zero
+   eld_pp   = zero
+   disp_pp  = zero
    CALL gather(loads_pp(1:),utemp_pp)
    CALL gather(xnew_pp(1:),eld_pp)
    
    CALL scatter_nodes(npes,nn,nels_pp,g_num_pp,nod,nodof,nodes_pp,              &
- !                     node_start,node_end,utemp_pp,disp_pp,1)
+!                      node_start,node_end,utemp_pp,disp_pp,1)
                       node_start,node_end,eld_pp,disp_pp,1)
    CALL write_nodal_variable(label,24,j,nodes_pp,npes,numpe,nodof,disp_pp)
 
