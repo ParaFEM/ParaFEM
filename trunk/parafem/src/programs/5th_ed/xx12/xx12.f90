@@ -22,7 +22,7 @@ PROGRAM xx12
 
  INTEGER, PARAMETER  :: ndim=3,nodof=1
  INTEGER             :: nod,nn,nr,nip
- INTEGER             :: i,j,k,iters,limit,iel
+ INTEGER             :: i,j,k,l,iters,limit,iel
  INTEGER             :: nxe,nye,nze,neq_temp,nn_temp
  INTEGER             :: nstep,npri,nres,it,is,nlen
  INTEGER             :: node_end,node_start,nodes_pp
@@ -260,7 +260,7 @@ PROGRAM xx12
  
  CALL scatter(diag_precon_pp,diag_precon_tmp)
 
- DEALLOCATE(diag_precon_tmp)
+! DEALLOCATE(diag_precon_tmp)
 
  diag_precon_pp=1._iwp/diag_precon_pp ! needs moving
  
@@ -270,30 +270,60 @@ PROGRAM xx12
                           timest(11)-timest(10), " s" 
 
 !------------------------------------------------------------------------------
-! 10a. Read in the initial conditions and assign to equations
+! 10. Allocate disp_pp array and open file to write temperature output
 !------------------------------------------------------------------------------
- !val0 = 100.0_iwp
- loads_pp = val0    ! needs to be read in from file
- pmul_pp  = .0_iwp
- !utemp_pp = zero
 
- !IF(numpe==it)THEN
- IF(numpe==1)THEN
-   fname = job_name(1:INDEX(job_name, " ")-1) // ".res"
-   OPEN(11,FILE=fname,STATUS='REPLACE',ACTION='WRITE')
-   !WRITE(11,'(A)')"    Time     Pressure  Iterations"
-   WRITE(11,'(A)')"  Time         Iterations  Element  Node  Pressure"
- END IF
+! !IF(numpe==it)THEN
+! IF(numpe==1)THEN
+!   fname = job_name(1:INDEX(job_name, " ")-1) // ".res"
+!   OPEN(11,FILE=fname,STATUS='REPLACE',ACTION='WRITE')
+!   !WRITE(11,'(A)')"    Time     Pressure  Iterations"
+!   WRITE(11,'(A)')"  Time         Iterations  Element  Node  Pressure"
+! END IF
 
+  CALL calc_nodes_pp(nn,npes,numpe,node_end,node_start,nodes_pp)
+  ALLOCATE(disp_pp(nodes_pp))
+  ALLOCATE(eld_pp(ntot,nels_pp))
+  
+  IF(numpe==1) THEN
+    fname   = job_name(1:INDEX(job_name, " ")-1)//".ttr"
+    OPEN(24, file=fname, status='replace', action='write')
+    label   = "*TEMPERATURE"  
+  END IF
+  
 !------------------------------------------------------------------------------
-! 10b. Read in fixed nodal displacements and assign to equations
+! 11a. Read in the initial conditions and assign to equations
 !------------------------------------------------------------------------------
+ 
+! Started time-stepping loop here to include setting of fixed_freedoms
+! and loaded_freedoms at start of each step
+  timesteps: DO j=1,nstep
+
+! Reassign the diagonal precondtioner at start of each time step (changes in sec.11e)
+! Done using diag_precon_tmp - reason for commenting out deallocation of variable in sec.9
+  IF(j>1)THEN
+     CALL scatter(diag_precon_pp,diag_precon_tmp)
+     diag_precon_pp=1._iwp/diag_precon_pp
+  END IF
+ 
+!  val0 = 100.0_iwp
+!  loads_pp = val0    ! needs to be read in from file
+  pmul_pp  = .0_iwp
+  utemp_pp = zero
+  
+!------------------------------------------------------------------------------
+! 11b. Read in fixed nodal displacements and assign to equations
+!------------------------------------------------------------------------------
+
+! In sec.11b & sec.11c several variables are allocated
+! To avoid reallocation whilst looping they are deallocated at end of section
+! These could be taken outside time-stepping loop
 
   IF(fixed_freedoms > 0) THEN
 
-    ALLOCATE(node(fixed_freedoms),no(fixed_freedoms),val_f(fixed_freedoms),   &
-             no_pp_temp(fixed_freedoms),sense(fixed_freedoms),                &
-             no_global(fixed_freedoms))
+    ALLOCATE(node(fixed_freedoms),no(fixed_freedoms),                         &
+             no_pp_temp(fixed_freedoms),sense(fixed_freedoms))
+    ALLOCATE(val_f(fixed_freedoms),no_global(fixed_freedoms))
 
     node  = 0 ; no = 0 ; no_pp_temp = 0 ; sense = 0 ; no_global = 0
     val_f = zero
@@ -307,19 +337,20 @@ PROGRAM xx12
                              fixed_freedoms_pp,fixed_freedoms_start,neq_pp)
 
     ALLOCATE(no_f_pp(fixed_freedoms_pp),store_pp(fixed_freedoms_pp))
-
+    
     no_f_pp    = 0
     store_pp = zero
     no_f_pp    = no_pp_temp(1:fixed_freedoms_pp)
 
     DEALLOCATE(node,no,sense,no_pp_temp)
+    DEALLOCATE(no_global)
 
   END IF
 
   IF(fixed_freedoms == 0) fixed_freedoms_pp = 0
                            
 !------------------------------------------------------------------------------
-! 10c. Read in loaded nodes and get starting r_pp
+! 11c. Read in loaded nodes and get starting r_pp
 !------------------------------------------------------------------------------
 
   loaded_freedoms = loaded_nodes ! hack
@@ -336,16 +367,13 @@ PROGRAM xx12
                              loaded_freedoms_pp,loaded_freedoms_start,neq_pp)
 
     ALLOCATE(no_pp(loaded_freedoms_pp))
-
+    
     no_pp    = no_pp_temp(1:loaded_freedoms_pp)
 
     DEALLOCATE(no_pp_temp)
 
     DO i = 1, loaded_freedoms_pp
       loads_pp(no_pp(i) - ieq_start + 1) = val(loaded_freedoms_start + i - 1)
-      ! Not sure about this, do I need to create r_pp? What about val0?
-      ! possibly do this instead
-      ! loads_pp(no_pp(i) - ieq_start + 1) = loads_pp(no_pp(i) - ieq_start + 1) + val(loaded_freedoms_start + i - 1)
     END DO
 
 !   CALL load(g_g_pp,g_num_pp,node,val,r_pp(1:))
@@ -353,6 +381,7 @@ PROGRAM xx12
     q = SUM_P(loads_pp) ! Not really needed - sums loads
 
     DEALLOCATE(node,val)
+    DEALLOCATE(no_pp)
 
   END IF
 
@@ -363,51 +392,66 @@ PROGRAM xx12
                            timest(12)-timest(11), " s"
 
 !------------------------------------------------------------------------------
-! 10d. Invert the preconditioner. 
+! 11d. Invert the preconditioner. 
 !     If there are fixed freedoms, first apply a penalty
 !------------------------------------------------------------------------------
 
   IF(fixed_freedoms_pp > 0) THEN
     DO i = 1,fixed_freedoms_pp
-       j =  no_f_pp(i) - ieq_start + 1
-       diag_precon_pp(j) = diag_precon_pp(j) + penalty
-       store_pp(i)       = diag_precon_pp(j)
+       l =  no_f_pp(i) - ieq_start + 1
+       diag_precon_pp(l) = diag_precon_pp(l) + penalty
+       store_pp(i)       = diag_precon_pp(l)
     END DO
   END IF
 
   diag_precon_pp = 1._iwp/diag_precon_pp
 
 !------------------------------------------------------------------------------
-! 10e. Initiallize preconditioned conjugate gradient
+! 11e. Initiallize preconditioned conjugate gradient
 !------------------------------------------------------------------------------
 
   IF(fixed_freedoms_pp>0) THEN
     DO i = 1, fixed_freedoms_pp
-      j       = no_f_pp(i) - ieq_start + 1
+      l       = no_f_pp(i) - ieq_start + 1
       k       = fixed_freedoms_start + i - 1
-      loads_pp(j) = store_pp(i) * val_f(k) ! As above (section 10c)
+      loads_pp(l) = store_pp(i) * val_f(k) ! As above (section 10c)
     END DO
+    
+    DEALLOCATE(no_f_pp,store_pp,val_f)
   END IF
-
-!------------------------------------------------------------------------------
-! 11. Allocate disp_pp array and open file to write temperature output
-!------------------------------------------------------------------------------
-
-  CALL calc_nodes_pp(nn,npes,numpe,node_end,node_start,nodes_pp)
-  ALLOCATE(disp_pp(nodes_pp))
-  ALLOCATE(eld_pp(ntot,nels_pp))
   
-  IF(numpe==1) THEN
-    fname   = job_name(1:INDEX(job_name, " ")-1)//".ttr"
-    OPEN(24, file=fname, status='replace', action='write')
-    label   = "*TEMPERATURE"  
-  END IF
+  d_pp = diag_precon_pp*loads_pp
+  p_pp = d_pp
+  x_pp = zero
+
+!------------------------------------------------------------------------------
+! XX. Allocate disp_pp array and open file to write temperature output
+!------------------------------------------------------------------------------
+
+!  CALL calc_nodes_pp(nn,npes,numpe,node_end,node_start,nodes_pp)
+!  ALLOCATE(disp_pp(nodes_pp))
+!  ALLOCATE(eld_pp(ntot,nels_pp))
+!  
+!  IF(numpe==1) THEN
+!    fname   = job_name(1:INDEX(job_name, " ")-1)//".ttr"
+!    OPEN(24, file=fname, status='replace', action='write')
+!    label   = "*TEMPERATURE"  
+!  END IF
+!  
+!  j = 0
+!  disp_pp = zero
+!  eld_pp  = zero
+!  CALL gather(loads_pp(1:),eld_pp)
+!  
+!  CALL scatter_nodes(npes,nn,nels_pp,g_num_pp,nod,nodof,nodes_pp,              &
+!                       node_start,node_end,eld_pp,disp_pp,1)
+!  CALL write_nodal_variable(label,24,j,nodes_pp,npes,numpe,nodof,disp_pp)
 
 !------------------------------------------------------------------------------
 ! 12. Time-stepping loop
 !------------------------------------------------------------------------------
  
- timesteps: DO j=1,nstep
+! timesteps: DO j=1,nstep
  
    real_time = j*dtim
    u_pp      = zero
@@ -415,7 +459,7 @@ PROGRAM xx12
    CALL gather(loads_pp,pmul_pp)
    elements_5: DO iel=1,nels_pp   
      utemp_pp(:,iel)=MATMUL(rho*cp*storkb_pp(:,:,iel),pmul_pp(:,iel))
- !    utemp_pp(:,iel)=MATMUL(storkb_pp(:,:,iel),pmul_pp(:,iel))
+!     utemp_pp(:,iel)=MATMUL(storkb_pp(:,:,iel),pmul_pp(:,iel))
    END DO elements_5
    CALL scatter(u_pp,utemp_pp)
 
@@ -425,16 +469,15 @@ PROGRAM xx12
 
   IF(numpe==1) PRINT *, " *** 11. Time-stepping loop in: ",   &
                            timest(13)-timest(12), " s"
-
-! END DO timesteps
  
 !------------------------------------------------------------------------------
 ! 13. Solve simultaneous equations by pcg
 !------------------------------------------------------------------------------
 
-   d_pp = diag_precon_pp*loads_pp
-   p_pp = d_pp
-   x_pp = zero
+! Moved these from here to sec.11e (before loads_pp is redefined in sec.12)
+!   d_pp = diag_precon_pp*loads_pp
+!   p_pp = d_pp
+!   x_pp = zero
 
    iters = 0
 
@@ -443,7 +486,7 @@ PROGRAM xx12
      iters   = iters+1
      u_pp    = zero
      pmul_pp = zero
-!     utemp_pp = zero 
+!     utemp_pp = zero
 
      CALL gather(p_pp,pmul_pp)  
      elements_6: DO iel=1,nels_pp
@@ -475,27 +518,25 @@ PROGRAM xx12
      IF(converged.OR.iters==limit)EXIT
 
    END DO iterations
-
-! END DO timesteps
  
    loads_pp=xnew_pp
 
 !   IF(j/npri*npri==j.AND.numpe==1)WRITE(11,'(2E12.4,I5)')real_time,      &
 !     loads_pp(is),iters
      
-   IF(j/npri*npri==j.AND.numpe==1)THEN
-     DO i=1,nels_pp
-       WRITE(11,'(E12.4,I4,I12)')real_time,iters,i
-       DO k=1,nod
-         WRITE(11,'(A,I4,E19.8)')"                                 ",k,loads_pp(k)
-       END DO
-     END DO
-   END IF
+!   IF(j/npri*npri==j.AND.numpe==1)THEN
+!     DO i=1,nels_pp
+!       WRITE(11,'(E12.4,I4,I12)')real_time,iters,i
+!       DO k=1,nod
+!         WRITE(11,'(A,I4,E19.8)')"                                 ",k,loads_pp(k)
+!       END DO
+!     END DO
+!   END IF
    
-   utemp_pp = zero
+!   utemp_pp = zero
    eld_pp   = zero
    disp_pp  = zero
-   CALL gather(loads_pp(1:),utemp_pp)
+!   CALL gather(loads_pp(1:),utemp_pp)
    CALL gather(xnew_pp(1:),eld_pp)
    
    CALL scatter_nodes(npes,nn,nels_pp,g_num_pp,nod,nodof,nodes_pp,              &
@@ -514,28 +555,28 @@ PROGRAM xx12
 !   END IF
 ! END DO
 
- !IF(numpe==it)THEN
- IF(numpe==1)THEN
-   WRITE(11,'(A,I5,A)')"This job ran on  ",npes,"  processors"  
-   WRITE(11,'(A)')"Global coordinates and node numbers"
-   DO i=1,nels_pp!,nels_pp - 1                                        
-     WRITE(11,'(A,I8)')"Element ",i
-     num=g_num_pp(:,i)
-     DO k=1,nod
-       WRITE(11,'(A,I8,3E12.4)')"  Node",num(k),p_g_co_pp(k,:,i)
-     END DO
-   END DO
-   WRITE(11,'(A,3(I8,A))')"There are ",nn," nodes",nr," restrained and",  &
-     neq," equations"
-   WRITE(11,*)"Time after setup  is   :",elap_time()-timest(1)
- END IF
+! !IF(numpe==it)THEN
+! IF(numpe==1)THEN
+!   WRITE(11,'(A,I5,A)')"This job ran on  ",npes,"  processors"  
+!   WRITE(11,'(A)')"Global coordinates and node numbers"
+!   DO i=1,nels_pp!,nels_pp - 1                                        
+!     WRITE(11,'(A,I8)')"Element ",i
+!     num=g_num_pp(:,i)
+!     DO k=1,nod
+!       WRITE(11,'(A,I8,3E12.4)')"  Node",num(k),p_g_co_pp(k,:,i)
+!     END DO
+!   END DO
+!   WRITE(11,'(A,3(I8,A))')"There are ",nn," nodes",nr," restrained and",  &
+!     neq," equations"
+!   WRITE(11,*)"Time after setup  is   :",elap_time()-timest(1)
+! END IF
  
   timest(15) = elap_time()
 
   IF(numpe==1) PRINT *, " *** 13. PCG equation solution in: ",   &
                            timest(15)-timest(14), " s"
  
- !IF(numpe==it) WRITE(11,*)"This analysis took  :",elap_time()-timest(1)
+! IF(numpe==it) WRITE(11,*)"This analysis took  :",elap_time()-timest(1)
  
  IF(numpe==1)THEN
    CLOSE(11)
