@@ -248,7 +248,7 @@ PROGRAM xx12
     storkb_pp(:,:,iel)=pm-kc*(1._iwp-theta)*dtim
     storkc_pp(:,:,iel) = kcx*kx + kcy*ky + kcz*kz
     
- !-- To run in xx11 mode set prog=11, in xx12 prog=12   
+    !-- To run in xx11 mode set prog=11, in xx12 prog=12   
     prog=12
     IF(prog==11) storka_pp = storkc_pp
     
@@ -279,8 +279,9 @@ PROGRAM xx12
 ! 10. Allocate disp_pp array and open file to write temperature output
 !------------------------------------------------------------------------------
   
+  !---Open file for temperature outputs in Excel format  
   IF(numpe==1)THEN
-    fname = job_name(1:INDEX(job_name, " ")-1) // ".res"
+    fname = job_name(1:INDEX(job_name, " ")-1) // ".ttr2"
     OPEN(11,FILE=fname,STATUS='REPLACE',ACTION='WRITE')
   END IF
   
@@ -288,6 +289,7 @@ PROGRAM xx12
   ALLOCATE(disp_pp(nodes_pp))
   ALLOCATE(eld_pp(ntot,nels_pp))
   
+  !---Open file for temperature outputs in ParaFEM format
   IF(numpe==1) THEN
     fname   = job_name(1:INDEX(job_name, " ")-1)//".ttr"
     OPEN(24, file=fname, status='replace', action='write')
@@ -366,7 +368,7 @@ PROGRAM xx12
   timesteps: DO j=1,nstep
     
     loaded_freedoms = loaded_nodes ! hack
-    loads_pp = zero;
+!    loads_pp = zero;
     
     IF(loaded_freedoms > 0) THEN
       
@@ -480,7 +482,13 @@ PROGRAM xx12
     CALL scatter_nodes(npes,nn,nels_pp,g_num_pp,nod,nodof,nodes_pp,              &
                       node_start,node_end,eld_pp,disp_pp,1)
     IF(j/npri*npri==j.AND.numpe==1)THEN
+      !---Write temperature outputs in ParaFEM format
       CALL write_nodal_variable(label,24,j,nodes_pp,npes,numpe,nodof,disp_pp)
+      
+      !---Write temperature outputs in Excel format
+      IF(numpe==1)THEN
+        WRITE(11,'(E12.4,8E19.8)')real_time,disp_pp
+      END IF      
     END IF
     
   END DO timesteps
