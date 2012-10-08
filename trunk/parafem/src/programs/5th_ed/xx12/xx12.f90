@@ -48,7 +48,6 @@ PROGRAM xx12
 !------------------------------------------------------------------------------ 
   
   REAL(iwp),ALLOCATABLE :: loads_pp(:),u_pp(:),p_pp(:),points(:,:),kay(:,:)
-  REAL(iwp),ALLOCATABLE :: newlo_pp(:)
   REAL(iwp),ALLOCATABLE :: coord(:,:),fun(:),jac(:,:),der(:,:),deriv(:,:)
   REAL(iwp),ALLOCATABLE :: weights(:),d_pp(:),kc(:,:),pm(:,:),funny(:,:)
   REAL(iwp),ALLOCATABLE :: p_g_co_pp(:,:,:),storka_pp(:,:,:)
@@ -56,7 +55,7 @@ PROGRAM xx12
   REAL(iwp),ALLOCATABLE :: utemp_pp(:,:),diag_precon_pp(:),diag_precon_tmp(:,:)
   REAL(iwp),ALLOCATABLE :: g_coord_pp(:,:,:),timest(:)
   REAL(iwp),ALLOCATABLE :: disp_pp(:),eld_pp(:,:)
-  REAL(iwp),ALLOCATABLE :: val(:,:),val_f(:),store_pp(:)
+  REAL(iwp),ALLOCATABLE :: val(:,:),val_f(:),store_pp(:),r_pp(:)
   REAL(iwp),ALLOCATABLE :: kcx(:,:),kcy(:,:),kcz(:,:)
   REAL(iwp),ALLOCATABLE :: eld(:),col(:,:),row(:,:),storkc_pp(:,:,:)
   INTEGER,ALLOCATABLE   :: rest(:,:),g(:),num(:),g_num_pp(:,:),g_g_pp(:,:),no(:)
@@ -93,8 +92,8 @@ PROGRAM xx12
   ALLOCATE(g_coord_pp(nod,ndim,nels_pp))
   IF (nr>0) ALLOCATE(rest(nr,nodof+1))
   
-  g_num_pp   	 = 0
-  g_coord_pp 	 = zero
+  g_num_pp       = 0
+  g_coord_pp     = zero
   IF (nr>0) rest = 0
   
   timest(2) = elap_time()
@@ -190,12 +189,9 @@ PROGRAM xx12
 !------------------------------------------------------------------------------
   
   ALLOCATE(loads_pp(neq_pp),diag_precon_pp(neq_pp),u_pp(neq_pp),              &
-           d_pp(neq_pp),p_pp(neq_pp),x_pp(neq_pp),xnew_pp(neq_pp))
+           d_pp(neq_pp),p_pp(neq_pp),x_pp(neq_pp),xnew_pp(neq_pp),r_pp(neq_pp))
   
-  ALLOCATE(newlo_pp(neq_pp))
-  newlo_pp = zero
-  
-  loads_pp  = zero ; diag_precon_pp = zero ; u_pp = zero
+  loads_pp  = zero ; diag_precon_pp = zero ; u_pp = zero ; r_pp    = zero
   d_pp      = zero ; p_pp           = zero ; x_pp = zero ; xnew_pp = zero
   
   IF(numpe==1) PRINT *, "End of 7"
@@ -299,19 +295,7 @@ PROGRAM xx12
   IF(numpe==1) PRINT *, "End of 10"
   
 !------------------------------------------------------------------------------
-! 11a. Read in the initial conditions and assign to equations
-!------------------------------------------------------------------------------
-  
-  j=1
-  
-!  val0 = 100.0_iwp
-!  loads_pp = val0    ! needs to be read in from file
-!  pmul_pp  = .0_iwp
-  
-  IF(numpe==1) PRINT *, "End of 11a"
-  
-!------------------------------------------------------------------------------
-! 11b. Read in fixed nodal displacements and assign to equations
+! 11. Read in fixed nodal temperatures and assign to equations
 !------------------------------------------------------------------------------
   
   IF(fixed_freedoms > 0) THEN
@@ -342,10 +326,10 @@ PROGRAM xx12
   
   IF(fixed_freedoms == 0) fixed_freedoms_pp = 0
   
-  IF(numpe==1) PRINT *, "End of 11b"
+  IF(numpe==1) PRINT *, "End of 11"
   
 !------------------------------------------------------------------------------
-! 11c. Invert the preconditioner. 
+! 12. Invert the preconditioner. 
 !     If there are fixed freedoms, first apply a penalty
 !------------------------------------------------------------------------------
   
@@ -359,16 +343,13 @@ PROGRAM xx12
   
   diag_precon_pp = 1._iwp/diag_precon_pp
   
-  IF(numpe==1) PRINT *, "End of 11c"
+  IF(numpe==1) PRINT *, "End of 12"
   
 !------------------------------------------------------------------------------
-! 11d. Read in loaded nodes and get starting r_pp
+! 13. Read in loaded nodes and get starting r_pp
 !------------------------------------------------------------------------------
-  
-  timesteps: DO j=1,nstep
     
     loaded_freedoms = loaded_nodes ! hack
-!    loads_pp = zero;
     
     IF(loaded_freedoms > 0) THEN
       
@@ -384,62 +365,86 @@ PROGRAM xx12
       
       no_pp    = no_pp_temp(1:loaded_freedoms_pp)
       
-      DO i = 1, loaded_freedoms_pp
-        loads_pp(no_pp(i) - ieq_start + 1) = val(loaded_freedoms_start + i - 1)
-      END DO
-      
       DEALLOCATE(no_pp_temp)
-      DEALLOCATE(node,val)
-      DEALLOCATE(no_pp)
+      DEALLOCATE(node)
     
     END IF
     
 !------------------------------------------------------------------------------
-! 11e. Initiallize preconditioned conjugate gradient
+! 14. Start time stepping loop
 !------------------------------------------------------------------------------
-    
-    IF(fixed_freedoms_pp>0) THEN
+
+  timesteps: DO j=1,nstep
+
+    real_time = j*dtim
+
+!------------------------------------------------------------------------------
+! 15. Apply loads (sources and/or sinks) supplied as a boundary value
+!------------------------------------------------------------------------------
+
+    loads_pp  = zero
+
+    DO i = 1, loaded_freedoms_pp
+      loads_pp(no_pp(i)-ieq_start+1) = val(loaded_freedoms_start+i-1)*dtim 
+    END DO
+
+!------------------------------------------------------------------------------
+! 16. Compute RHS of time stepping equation, using storkb_pp, then add 
+!     result to loads
+!------------------------------------------------------------------------------
+
+    IF(j==1) xnew_pp  = zero
+    u_pp              = zero
+    pmul_pp           = zero
+    utemp_pp          = zero
+
+    CALL gather(xnew_pp,pmul_pp)
+    elements_2a: DO iel=1,nels_pp
+      utemp_pp(:,iel)=MATMUL(storkb_pp(:,:,iel),pmul_pp(:,iel))
+    END DO elements_2a
+    CALL scatter(u_pp,utemp_pp)
+
+    loads_pp = loads_pp+u_pp
+
+!------------------------------------------------------------------------------
+! 17. Initialize PCG process
+! 
+!     When x = 0._iwp p and r are just loads but in general p=r=loads-A*x,
+!     so form r = A*x. Here, use LHS part of the transient equation storka_pp
+!------------------------------------------------------------------------------  
+    r_pp              = zero
+    pmul_pp           = zero
+    utemp_pp          = zero
+
+    CALL gather(xnew_pp,pmul_pp)
+    elements_2b: DO iel=1,nels_pp
+      utemp_pp(:,iel)=MATMUL(storka_pp(:,:,iel),pmul_pp(:,iel))
+    END DO elements_2b
+    CALL scatter(r_pp,utemp_pp)
+
+    IF(fixed_freedoms_pp > 0) THEN
       DO i = 1, fixed_freedoms_pp
         l       = no_f_pp(i) - ieq_start + 1
-        k       = fixed_freedoms_start + i - 1
-        loads_pp(l) = store_pp(i) * val_f(k)
+        r_pp(l) = store_pp(i)*val_f(i)
       END DO
     END IF
-    
-!------------------------------------------------------------------------------
-! 12. Time-stepping loop
-!------------------------------------------------------------------------------
-    
-    real_time = j*dtim
-    u_pp      = zero
-    pmul_pp  = .0_iwp
-    utemp_pp = zero
-    
-    IF(prog==12)THEN
-      CALL gather(loads_pp,pmul_pp)
-      elements_5: DO iel=1,nels_pp
-        utemp_pp(:,iel)=MATMUL(storkb_pp(:,:,iel),pmul_pp(:,iel))
-      END DO elements_5
-      CALL scatter(u_pp,utemp_pp)
-      
-      loads_pp=u_pp
-    END IF
-    
-!------------------------------------------------------------------------------
-! 13. Solve simultaneous equations by pcg
-!------------------------------------------------------------------------------
-    
-    d_pp = diag_precon_pp*loads_pp
+
+    r_pp = loads_pp - r_pp
+    d_pp = diag_precon_pp*r_pp
     p_pp = d_pp
-    x_pp = zero
-    
+
+!------------------------------------------------------------------------------
+! 18. Solve simultaneous equations by pcg
+!------------------------------------------------------------------------------
+   
     iters = 0
-    
+ 
     iterations: DO
     
-      iters   = iters+1
-      u_pp    = zero
-      pmul_pp = zero
+      iters    = iters+1
+
+      u_pp     = zero
+      pmul_pp  = zero
       utemp_pp = zero
       
       CALL gather(p_pp,pmul_pp)
@@ -449,7 +454,7 @@ PROGRAM xx12
       CALL scatter(u_pp,utemp_pp)
       
 !------------------------------------------------------------------------------
-! 14. PCG equation solution
+! 19. PCG equation solution
 !------------------------------------------------------------------------------
       
       IF(fixed_freedoms_pp > 0) THEN
@@ -459,27 +464,24 @@ PROGRAM xx12
         END DO
       END IF
       
-      up       = DOT_PRODUCT_P(loads_pp,d_pp)
+      up       = DOT_PRODUCT_P(r_pp,d_pp)
       alpha    = up/DOT_PRODUCT_P(p_pp,u_pp)
       xnew_pp  = x_pp+p_pp*alpha
-      loads_pp = loads_pp-u_pp*alpha
-      d_pp     = diag_precon_pp*loads_pp
-      beta     = DOT_PRODUCT_P(loads_pp,d_pp)/up
+      r_pp     = r_pp-u_pp*alpha
+      d_pp     = diag_precon_pp*r_pp
+      beta     = DOT_PRODUCT_P(r_pp,d_pp)/up
       p_pp     = d_pp+p_pp*beta
-!      u_pp     = xnew_pp ! not sure why this was added in p124, doesn't do anything
       
       CALL checon_par(xnew_pp,tol,converged,x_pp)
       IF(converged.OR.iters==limit)EXIT
       
     END DO iterations
     
-    loads_pp=xnew_pp
-    
     eld_pp   = zero
     disp_pp  = zero
     CALL gather(xnew_pp(1:),eld_pp)
     
-    CALL scatter_nodes(npes,nn,nels_pp,g_num_pp,nod,nodof,nodes_pp,              &
+    CALL scatter_nodes(npes,nn,nels_pp,g_num_pp,nod,nodof,nodes_pp,            &
                       node_start,node_end,eld_pp,disp_pp,1)
     IF(j/npri*npri==j.AND.numpe==1)THEN
       !---Write temperature outputs in ParaFEM format
