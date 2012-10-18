@@ -408,7 +408,8 @@ PROGRAM xx12
       IF(fixed_freedoms_pp > 0) THEN
         DO i = 1, fixed_freedoms_pp
           l       = no_f_pp(i) - ieq_start + 1
-          u_pp(l) = store_pp(i)*val_f(i)
+          k       = fixed_freedoms_start + i - 1
+          u_pp(l) = store_pp(i)*val_f(k)
         END DO
       END IF
 
@@ -436,7 +437,8 @@ PROGRAM xx12
     IF(fixed_freedoms_pp > 0) THEN
       DO i = 1, fixed_freedoms_pp
         l       = no_f_pp(i) - ieq_start + 1
-        r_pp(l) = store_pp(i)*val_f(i)
+        k       = fixed_freedoms_start + i - 1
+        r_pp(l) = store_pp(i)*val_f(k)
       END DO
     END IF
 
