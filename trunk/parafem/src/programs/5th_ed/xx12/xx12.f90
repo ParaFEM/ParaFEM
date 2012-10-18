@@ -385,7 +385,7 @@ PROGRAM xx12
     loads_pp  = zero
 
     DO i = 1, loaded_freedoms_pp
-      loads_pp(no_pp(i)-ieq_start+1) = val(loaded_freedoms_start+i-1)*dtim 
+      loads_pp(no_pp(i)-ieq_start+1) = val(loaded_freedoms_start+i-1,1)*dtim
     END DO
 
 !------------------------------------------------------------------------------
@@ -393,18 +393,27 @@ PROGRAM xx12
 !     result to loads
 !------------------------------------------------------------------------------
 
-    IF(j==1) xnew_pp  = zero
     u_pp              = zero
     pmul_pp           = zero
     utemp_pp          = zero
 
-    CALL gather(xnew_pp,pmul_pp)
-    elements_2a: DO iel=1,nels_pp
-      utemp_pp(:,iel)=MATMUL(storkb_pp(:,:,iel),pmul_pp(:,iel))
-    END DO elements_2a
-    CALL scatter(u_pp,utemp_pp)
+    IF(j/=1) THEN
 
-    loads_pp = loads_pp+u_pp
+      CALL gather(xnew_pp,pmul_pp)
+      elements_2a: DO iel=1,nels_pp
+        utemp_pp(:,iel)=MATMUL(storkb_pp(:,:,iel),pmul_pp(:,iel))
+      END DO elements_2a
+      CALL scatter(u_pp,utemp_pp)
+
+      IF(fixed_freedoms_pp > 0) THEN
+        DO i = 1, fixed_freedoms_pp
+          l       = no_f_pp(i) - ieq_start + 1
+          u_pp(l) = store_pp(i)*val_f(i)
+        END DO
+      END IF
+
+      loads_pp = loads_pp+u_pp
+    END IF
 
 !------------------------------------------------------------------------------
 ! 17. Initialize PCG process
@@ -412,11 +421,13 @@ PROGRAM xx12
 !     When x = 0._iwp p and r are just loads but in general p=r=loads-A*x,
 !     so form r = A*x. Here, use LHS part of the transient equation storka_pp
 !------------------------------------------------------------------------------  
+
     r_pp              = zero
     pmul_pp           = zero
     utemp_pp          = zero
+    x_pp              = zero
 
-    CALL gather(xnew_pp,pmul_pp)
+    CALL gather(x_pp,pmul_pp)
     elements_2b: DO iel=1,nels_pp
       utemp_pp(:,iel)=MATMUL(storka_pp(:,:,iel),pmul_pp(:,iel))
     END DO elements_2b
@@ -491,6 +502,7 @@ PROGRAM xx12
       IF(numpe==1)THEN
         WRITE(11,'(E12.4,8E19.8)')real_time,disp_pp
       END IF      
+      PRINT *, "Time ", real_time, "Iters ", iters
     END IF
     
   END DO timesteps
