@@ -25,14 +25,16 @@ PROGRAM mg2d
   INTEGER                :: nr,nn,nels,nres,nle,nxe,nye,nze
   INTEGER                :: nod,ndim,nodof,nip 
   INTEGER                :: nmodes,lalfa,leig,lx,lz
-  INTEGER                :: i,j,iel,iargc,argc
+  INTEGER                :: i,j,iel,l,m,n,iargc,argc
   INTEGER                :: cjits,limit,maxitr
   INTEGER                :: ell
   INTEGER                :: fixed_nodes,fixed_freedoms,loaded_freedoms
   INTEGER                :: nev,ncv
   INTEGER                :: meshgen,partitioner
   INTEGER                :: nstep,npri,count
-  REAL(iwp),PARAMETER    :: zero = 0.0_iwp, twelth = 0.0833_iwp
+  INTEGER                :: np_types
+  INTEGER                :: prnwidth,remainder
+  REAL(iwp),PARAMETER    :: zero = 0.0_iwp, twelth = 1.0_iwp/12.0_iwp
   REAL(iwp)              :: aa,bb,cc
   REAL(iwp)              :: kx,ky,kz
   REAL(iwp)              :: cjtol  
@@ -101,16 +103,22 @@ PROGRAM mg2d
 !------------------------------------------------------------------------------
 
     READ(10,*) nxe,nye,nze
-    READ(10,*) aa,bb,cc
 
-    ndim            = 3
-    nodof           = 3
-    nod             = 20
-    nels            = nxe*nye*nze
-    nn              = (((2*nxe+1)*(nze+1))+((nxe+1)*nze))*(nye+1)+(nxe+1)      &
-                       *(nze+1)*nye
-    nr              = ((2*nxe+1)*(nze+1))+((nxe+1)*nze)+((2*nxe+1)*nye)        &
-                      +((nxe+1)*nye)+(nze*nye)+(2*nze*nye)
+    aa              =  0.5_iwp/nxe
+    bb              =  3.0_iwp/nye
+    cc              = -2.0_iwp/nze
+    tol             =  0.00001_iwp
+    limit           =  2000
+    np_types        =  2
+    ndim            =  3
+    nodof           =  3
+    nod             =  20
+    nip             =  8
+    nels            =  nxe*nye*nze
+    nn              =  (((2*nxe+1)*(nze+1))+((nxe+1)*nze))*(nye+1)+(nxe+1)   &
+                        *(nze+1)*nye
+    nr              =  ((2*nxe+1)*(nze+1))+((nxe+1)*nze)+((2*nxe+1)*nye)     &
+                       +((nxe+1)*nye)+(nze*nye)+(2*nze*nye)
 
     loaded_freedoms = 3*nxe*nxe + 4*nxe + 1
 
@@ -132,7 +140,7 @@ PROGRAM mg2d
 !    Only works for this simple box mesh.
 !------------------------------------------------------------------------------ 
 
-    zbox = (nze*cc) * 0.5_iwp
+    zbox = abs((nze*cc) * 0.5_iwp)
     zele = zero 
 
     DO iel = 1, nels
@@ -140,7 +148,7 @@ PROGRAM mg2d
       z3   = abs(g_coord(3,g_num(3,iel)))
       zele = (z1+z3) * 0.5_iwp
       PRINT *, "iel ", iel, "zele ", zele, "zbox ", zbox
-      IF(zele < zbox) THEN
+      IF(zele <= zbox) THEN
         matID(iel) = 1
       ELSE
         matID(iel) = 2
@@ -200,7 +208,7 @@ PROGRAM mg2d
 
     nle = nxe  
     CALL load_p121(nle,nod,nxe,nze, no,val)
-    val = (val * twelth) * aa * bb
+    val = -(val * twelth) * aa * bb
 
     ttl = zero
     DO i = 1, loaded_freedoms
@@ -216,6 +224,233 @@ PROGRAM mg2d
     END DO
 
     CLOSE(13)
+
+!------------------------------------------------------------------------------
+! x. Write out the dat file in the 4th edition style
+!------------------------------------------------------------------------------
+
+    fname = job_name(1:INDEX(job_name, " ")-1) // ".dat" 
+    OPEN(14,FILE=fname,STATUS='REPLACE',ACTION='WRITE')
+
+    WRITE(14,'(I8)') nod
+    WRITE(14,'(3I5,I3,ES12.2,I5,I2)') nxe,nye,nze,nip,tol,limit,np_types 
+    WRITE(14,'(A)') "100  0.3"
+    WRITE(14,'(A)') "100  0.3"
+
+    prnwidth  = 24
+    remainder = MOD(nels,prnwidth)
+    n         = (nels-remainder)/prnwidth
+
+    IF(nels<=prnwidth) THEN
+      DO i = 1,nels
+        IF(i==nels) THEN
+          WRITE(14,'(I3)') matID(i)
+        ELSE
+          WRITE(14,'(I3)',ADVANCE='no') matID(i)
+        END IF
+      END DO 
+    ELSE
+      DO i = 1,n
+        m = ((i-1)*prnwidth) + 1
+        l = ((i-1)*prnwidth) + prnwidth
+        WRITE(14,'(24I3)') (matID(iel),iel=m,l)
+      END DO
+  
+      m = (n*prnwidth)+1
+      l = (n*prnwidth)+remainder
+
+      DO i = m,l
+        IF(i==l) THEN
+          WRITE(14,'(I3)') matID(i)
+        ELSE
+          WRITE(14,'(I3)',ADVANCE='no') matID(i)
+        END IF
+      END DO 
+
+    END IF
+
+! x_coords
+
+    prnwidth  = 8
+    remainder = MOD(nxe,prnwidth)
+    n         = (nxe-remainder)/prnwidth
+
+    IF(nxe<=prnwidth) THEN
+      WRITE(14,'(A)',ADVANCE='no') "  0.0000"
+      DO i=1,nxe
+        IF(i==nxe) THEN
+          WRITE(14,'(F8.4)') (0.5_iwp/nxe)*i
+        ELSE
+          WRITE(14,'(F8.4)',ADVANCE='no') (0.5_iwp/nxe)*i
+        END IF
+      END DO
+    ELSE
+      m = 1
+      l = prnwidth
+      WRITE(14,'(A)',ADVANCE='no') "  0.0000"
+      WRITE(14,'(8F8.4)') (((0.5_iwp/nxe)*iel),iel=m,l)
+      prnwidth  = 9
+      remainder = MOD(nxe,prnwidth)
+      n         = (nxe-remainder)/prnwidth
+      DO j = 2,n
+        m = ((j-1)*prnwidth) 
+        l = ((j-1)*prnwidth) + prnwidth - 1
+        WRITE(14,'(9F8.4)') (((0.5_iwp/nxe)*iel),iel=m,l)
+      END DO  
+
+      m = (n*prnwidth)
+      l = (n*prnwidth)+remainder
+
+      DO i=m,l
+        IF(i==l) THEN
+          WRITE(14,'(F8.4)') (0.5_iwp/nxe)*i
+        ELSE
+          WRITE(14,'(F8.4)',ADVANCE='no') (0.5_iwp/nxe)*i
+        END IF
+      END DO
+
+    END IF
+
+! y-coords
+
+    prnwidth  = 8
+    remainder = MOD(nye,prnwidth)
+    n         = (nye-remainder)/prnwidth
+
+    IF(nye<=prnwidth) THEN
+      WRITE(14,'(A)',ADVANCE='no') "  0.0000"
+      DO i=1,nye
+        IF(i==nye) THEN
+          WRITE(14,'(F8.4)') (3.0_iwp/nye)*i
+        ELSE
+          WRITE(14,'(F8.4)',ADVANCE='no') (3.0_iwp/nye)*i
+        END IF
+      END DO
+    ELSE
+      m = 1
+      l = prnwidth
+      WRITE(14,'(A)',ADVANCE='no') "  0.0000"
+      WRITE(14,'(8F8.4)') (((3.0_iwp/nye)*iel),iel=m,l)
+      prnwidth  = 9
+      remainder = MOD(nye,prnwidth)
+      n         = (nye-remainder)/prnwidth
+      DO j = 2,n
+        m = ((j-1)*prnwidth) 
+        l = ((j-1)*prnwidth) + prnwidth - 1
+        WRITE(14,'(9F8.4)') (((3.0_iwp/nye)*iel),iel=m,l)
+      END DO  
+
+      m = (n*prnwidth)
+      l = (n*prnwidth)+remainder
+
+      DO i=m,l
+        IF(i==l) THEN
+          WRITE(14,'(F8.4)') (3.0_iwp/nye)*i
+        ELSE
+          WRITE(14,'(F8.4)',ADVANCE='no') (3.0_iwp/nye)*i
+        END IF
+      END DO
+
+    END IF
+
+! z-coords
+
+    prnwidth  = 8
+    remainder = MOD(nze,prnwidth)
+    n         = (nze-remainder)/prnwidth
+
+    IF(nze<=prnwidth) THEN
+      WRITE(14,'(A)',ADVANCE='no') "  0.0000"
+      DO i=1,nze
+        IF(i==nze) THEN
+          WRITE(14,'(F8.4)') (-2.0_iwp/nze)*i
+        ELSE
+          WRITE(14,'(F8.4)',ADVANCE='no') (-2.0_iwp/nze)*i
+        END IF
+      END DO
+    ELSE
+      m = 1
+      l = prnwidth
+      WRITE(14,'(A)',ADVANCE='no') "  0.0000"
+      WRITE(14,'(8F8.4)') (((-2.0_iwp/nze)*iel),iel=m,l)
+      prnwidth  = 9
+      remainder = MOD(nze,prnwidth)
+      n         = (nze-remainder)/prnwidth
+      DO j = 2,n
+        m = ((j-1)*prnwidth) 
+        l = ((j-1)*prnwidth) + prnwidth - 1
+        WRITE(14,'(9F8.4)') (((-2.0_iwp/nze)*iel),iel=m,l)
+      END DO  
+
+      m = (n*prnwidth)
+      l = (n*prnwidth)+remainder
+
+      DO i=m,l
+        IF(i==l) THEN
+          WRITE(14,'(F8.4)') (-2.0_iwp/nze)*i
+        ELSE
+          WRITE(14,'(F8.4)',ADVANCE='no') (-2.0_iwp/nze)*i
+        END IF
+      END DO
+
+    END IF
+
+! restrained nodes
+
+    WRITE(14,'(I8)') nr
+
+    prnwidth  = 5
+    remainder = MOD(nr,prnwidth)
+    n         = (nr-remainder)/prnwidth
+
+    IF(nr<=prnwidth) THEN
+      DO i = 1,nr
+        IF(i==nr) THEN
+          WRITE(14,'(I8,3I2)') rest(i,:)
+        ELSE
+          WRITE(14,'(I8,3I2)',ADVANCE='no') rest(i,:)
+        END IF
+      END DO
+    ELSE
+      DO i = 1,n
+        m = ((i-1)*prnwidth) + 1
+        l = ((i-1)*prnwidth) + prnwidth
+        DO j = m,l
+          IF(j==l) THEN
+            WRITE(14,'(I8,3I2)') rest(j,:)
+          ELSE
+            WRITE(14,'(I8,3I2)',ADVANCE='no') rest(j,:)
+          END IF
+        END DO
+      END DO
+  
+      m = (n*prnwidth)+1
+      l = (n*prnwidth)+remainder
+
+      DO i = m,l
+        IF(i==l) THEN
+          WRITE(14,'(I8,3I2)') rest(i,:)
+        ELSE
+          WRITE(14,'(I8,3I2)',ADVANCE='no') rest(i,:)
+        END IF
+      END DO
+    END IF       
+
+! loads
+
+    WRITE(14,'(I8)') loaded_freedoms
+
+    DO i = 1, loaded_freedoms
+       WRITE(14,'(I10,2A,3E16.8)') no(i),                                   &
+                                  "  0.00000000E+00  ","0.00000000E+00",    &
+                                   val(i) 
+    END DO
+
+! fixed freedoms
+
+    WRITE(14,'(A)') " 0"
+     
+    CLOSE(14)
 
 !------------------------------------------------------------------------------
 !------------------------------------------------------------------------------
