@@ -20,7 +20,7 @@ PROGRAM xx12
   
 ! neq,ntot are now global variables - not declared
   
-  INTEGER, PARAMETER  :: ndim=3,nodof=1
+  INTEGER, PARAMETER  :: ndim=3,nodof=1,nprops=5
   INTEGER             :: nod,nn,nr,nip
   INTEGER             :: i,j,k,l,iters,limit,iel
   INTEGER             :: nxe,nye,nze,neq_temp,nn_temp
@@ -58,9 +58,11 @@ PROGRAM xx12
   REAL(iwp),ALLOCATABLE :: val(:,:),val_f(:),store_pp(:),r_pp(:)
   REAL(iwp),ALLOCATABLE :: kcx(:,:),kcy(:,:),kcz(:,:)
   REAL(iwp),ALLOCATABLE :: eld(:),col(:,:),row(:,:),storkc_pp(:,:,:)
+  REAL(iwp),ALLOCATABLE :: prop(:,:)
   INTEGER,ALLOCATABLE   :: rest(:,:),g(:),num(:),g_num_pp(:,:),g_g_pp(:,:),no(:)
   INTEGER,ALLOCATABLE   :: no_pp(:),no_f_pp(:),no_pp_temp(:),no_global(:)
   INTEGER,ALLOCATABLE   :: sense(:),node(:)
+  INTEGER,ALLOCATABLE   :: etype_pp(:)
   
 !------------------------------------------------------------------------------
 ! 3. Read job_name from the command line. 
@@ -79,10 +81,14 @@ PROGRAM xx12
   IF(argc /= 1) CALL job_name_error(numpe,program_name)
   CALL GETARG(1,job_name)
   
-  CALL read_xx12(job_name,numpe,dtim,element,fixed_freedoms,kx,ky,kz,limit,   &
-                 loaded_nodes,meshgen,nels,nip,nn,nod,npri,nr,nstep,          &
-                 partitioner,theta,tol,np_types,rho,cp,val0)
+! CALL read_xx12(job_name,numpe,dtim,element,fixed_freedoms,kx,ky,kz,limit,   &
+!                loaded_nodes,meshgen,nels,nip,nn,nod,npri,nr,nstep,          &
+!                partitioner,theta,tol,np_types,rho,cp,val0)
   
+  CALL read_xx12(job_name,numpe,dtim,element,fixed_freedoms,limit,            &
+                 loaded_nodes,meshgen,nels,nip,nn,nod,npri,nr,nstep,          &
+                 partitioner,theta,tol,np_types,val0)
+
   CALL calc_nels_pp(job_name,nels,npes,numpe,partitioner,nels_pp)
   
   ndof = nod*nodof
@@ -91,14 +97,19 @@ PROGRAM xx12
   ALLOCATE(g_num_pp(nod,nels_pp))
   ALLOCATE(g_coord_pp(nod,ndim,nels_pp))
   IF (nr>0) ALLOCATE(rest(nr,nodof+1))
-  
+  ALLOCATE(etype_pp(nels_pp))
+  ALLOCATE(prop(nprops,np_types))
+ 
   g_num_pp       = 0
   g_coord_pp     = zero
   IF (nr>0) rest = 0
+  etype_pp       = 0
+  prop           = zero
   
   timest(2) = elap_time()
   
-  CALL read_g_num_pp2(job_name,iel_start,nn,npes,numpe,g_num_pp)
+! CALL read_g_num_pp2(job_name,iel_start,nn,npes,numpe,g_num_pp)
+  CALL read_elements(job_name,iel_start,nn,npes,numpe,etype_pp,g_num_pp)
   timest(3) = elap_time()
   
   IF(meshgen == 2) CALL abaqus2sg(element,g_num_pp)
@@ -109,7 +120,12 @@ PROGRAM xx12
   
   IF (nr>0) CALL read_rest(job_name,numpe,rest)
   timest(6) = elap_time()
-  
+
+  PRINT *, "np_types = ", np_types
+
+  fname = job_name(1:INDEX(job_name, " ")-1) // ".mat"  
+  CALL read_materialValue(prop,fname,numpe,npes)
+
   IF(numpe==1) PRINT *, " *** Read input data in: ", timest(6)-timest(1)," s"
   
 ! nn_temp=0
@@ -204,13 +220,16 @@ PROGRAM xx12
   
   storka_pp = zero 
   storkb_pp = zero
-  kay       = zero
-  kay(1,1)  = kx
-  kay(2,2)  = ky
-  kay(3,3)  = kz
   
   elements_3: DO iel=1,nels_pp
     
+    kay       = zero
+    kay(1,1)  = prop(1,etype_pp(iel))  ! kx
+    kay(2,2)  = prop(2,etype_pp(iel))  ! ky
+    kay(3,3)  = prop(3,etype_pp(iel))  ! kz
+    rho       = prop(4,etype_pp(iel))  ! rho
+    cp        = prop(5,etype_pp(iel))  ! cp
+
     kc = zero ; pm = zero
     
     gauss_pts: DO i=1,nip
