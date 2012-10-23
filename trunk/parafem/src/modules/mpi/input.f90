@@ -1358,10 +1358,13 @@ MODULE INPUT
 
     IF(numpe==1)THEN
      OPEN(21,FILE=fname, STATUS='OLD', ACTION='READ')
-     READ(21,*) keyword, nmats
-     READ(21,*)                  ! skip line
+!    READ(21,*) keyword, nmats
+     READ(21,*) nmats
+     PRINT *, "nmats =", nmats
+!    READ(21,*)                  ! skip line
      DO i = 1,nmats
        READ(21,*)k, materialValues(:,i)
+       PRINT *, "materialValues = ", materialValues(:,i)
      END DO
      CLOSE(21)
     END IF
@@ -2012,9 +2015,9 @@ MODULE INPUT
 !------------------------------------------------------------------------------
 !------------------------------------------------------------------------------
 
-  SUBROUTINE READ_XX12(job_name,numpe,dtim,element,fixed_freedoms,kx,ky,kz,   &
+  SUBROUTINE READ_XX12(job_name,numpe,dtim,element,fixed_freedoms,            &
                        limit,loaded_nodes,mesh,nels,nip,nn,nod,npri,nr,       &
-                       nstep,partition,theta,tol,np_types,rho,cp,val0)
+                       nstep,partition,theta,tol,np_types,val0)
 
   !/****f* input/read_xx12
   !*  NAME
@@ -2065,13 +2068,8 @@ MODULE INPUT
   !*    The following scalar reals have the INTENT(INOUT) attribute:
   !*
   !*    dtim                   : Time step
-  !*    kx                     : Conductivity in x-direction
-  !*    ky                     : Conductivity in y-direction
-  !*    kz                     : Conductivity in z-direction
   !*    theta                  : Parameter in theta integrator
   !*    tol                    : Tolerance for PCG
-  !*    rho                    : Density
-  !*    cp                     : Specific heat capacity at constant pressure
   !*    val0                   : Initial temperature of whole model
   !*
   !*  AUTHOR
@@ -2095,16 +2093,16 @@ MODULE INPUT
   INTEGER, INTENT(INOUT)           :: limit,mesh,fixed_freedoms,partition 
   INTEGER, INTENT(INOUT)           :: npri,nstep
   INTEGER, INTENT(INOUT)           :: np_types
-  REAL(iwp), INTENT(INOUT)         :: kx,ky,kz,tol
+  REAL(iwp), INTENT(INOUT)         :: tol
   REAL(iwp), INTENT(INOUT)         :: dtim,theta
-  REAL(iwp), INTENT(INOUT)         :: rho,cp,val0
+  REAL(iwp), INTENT(INOUT)         :: val0
 
 !------------------------------------------------------------------------------
 ! 1. Local variables
 !------------------------------------------------------------------------------
 
   INTEGER                          :: bufsize,ier,integer_store(13)
-  REAL(iwp)                        :: real_store(9)
+  REAL(iwp)                        :: real_store(4)
   CHARACTER(LEN=50)                :: fname
   
 !------------------------------------------------------------------------------
@@ -2115,7 +2113,7 @@ MODULE INPUT
     fname = job_name(1:INDEX(job_name, " ") -1) // ".dat"
     OPEN(10,FILE=fname,STATUS='OLD',ACTION='READ')
     READ(10,*) element,mesh,partition,np_types,nels,nn,nr,nip,nod,            &
-               loaded_nodes,fixed_freedoms,kx,ky,kz,rho,cp,val0,              &
+               loaded_nodes,fixed_freedoms,val0,                              &
                dtim,nstep,npri,theta,tol,limit
     CLOSE(10)
    
@@ -2137,15 +2135,10 @@ MODULE INPUT
 
     real_store         = 0.0_iwp
 
-    real_store(1)      = kx  
-    real_store(2)      = ky  
-    real_store(3)      = kz  
-    real_store(4)      = tol  
-    real_store(5)      = dtim  
-    real_store(6)      = theta
-    real_store(7)      = rho
-    real_store(8)      = cp
-    real_store(9)      = val0
+    real_store(1)      = tol  
+    real_store(2)      = dtim  
+    real_store(3)      = theta
+    real_store(4)      = val0
 
   END IF
 
@@ -2156,7 +2149,7 @@ MODULE INPUT
   bufsize = 13
   CALL MPI_BCAST(integer_store,bufsize,MPI_INTEGER,0,MPI_COMM_WORLD,ier)
 
-  bufsize = 9
+  bufsize = 4
   CALL MPI_BCAST(real_store,bufsize,MPI_REAL8,0,MPI_COMM_WORLD,ier)
 
   bufsize = 15
@@ -2182,15 +2175,10 @@ MODULE INPUT
     nstep           = integer_store(12)
     np_types        = integer_store(13)
 
-    kx              = real_store(1)
-    ky              = real_store(2)
-    kz              = real_store(3)
-    tol             = real_store(4)
-    dtim            = real_store(5)
-    theta           = real_store(6)
-    rho             = real_store(7)
-    cp              = real_store(8)
-    val0            = real_store(9)
+    tol             = real_store(1)
+    dtim            = real_store(2)
+    theta           = real_store(3)
+    val0            = real_store(4)
 
   END IF
 
