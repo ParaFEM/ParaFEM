@@ -32,12 +32,13 @@ PROGRAM xx12
   INTEGER             :: nels,ndof,ielpe,npes_pp
   INTEGER             :: argc,iargc,meshgen,partitioner
   INTEGER             :: np_types
-  INTEGER             :: prog
+  INTEGER             :: prog,tz
   REAL(iwp)           :: aa,bb,cc,kx,ky,kz,det,theta,dtim,real_time
   !REAL(iwp)           :: val0 = 100.0_iwp
   REAL(iwp)           :: tol,alpha,beta,up,big,q
   REAL(iwp)           :: rho,cp,val0
   REAL(iwp),PARAMETER :: zero = 0.0_iwp,penalty=1.e20_iwp
+  REAL(iwp),PARAMETER :: t0 = 0.0_iwp
   CHARACTER(LEN=15)   :: element
   CHARACTER(LEN=50)   :: fname,job_name,label
   CHARACTER(LEN=50)   :: program_name='xx12'
@@ -433,15 +434,57 @@ PROGRAM xx12
       END IF
 
       loads_pp = loads_pp+u_pp
-    END IF
+
+    ELSE
 
 !------------------------------------------------------------------------------
-! 17. Initialize PCG process
+! 17. Set initial temperature
+!------------------------------------------------------------------------------
+
+      x_pp = val0
+
+      IF(fixed_freedoms_pp > 0) THEN
+        DO i = 1, fixed_freedoms_pp
+          l       = no_f_pp(i) - ieq_start + 1
+          k       = fixed_freedoms_start + i - 1
+          x_pp(l) = val_f(k)
+        END DO
+      END IF
+
+      CALL gather(x_pp,pmul_pp)
+      elements_2c: DO iel=1,nels_pp
+        utemp_pp(:,iel)=MATMUL(storka_pp(:,:,iel),pmul_pp(:,iel))
+      END DO elements_2c
+      CALL scatter(u_pp,utemp_pp)
+
+      loads_pp = loads_pp + u_pp
+
+!------------------------------------------------------------------------------
+! 18. Output "results" at t=0
+!------------------------------------------------------------------------------
+
+      eld_pp   = zero
+      disp_pp  = zero
+      CALL gather(x_pp(1:),eld_pp)
+    
+      CALL scatter_nodes(npes,nn,nels_pp,g_num_pp,nod,nodof,nodes_pp,         &
+                         node_start,node_end,eld_pp,disp_pp,1)
+      IF(numpe==1)THEN
+        tz = 0
+        !---Write temperature outputs in ParaFEM format
+        CALL write_nodal_variable(label,24,tz,nodes_pp,npes,numpe,nodof,disp_pp)
+        !---Write temperature outputs in Excel format
+        WRITE(11,'(E12.4,8E19.8)')t0,disp_pp(3)
+      END IF
+
+    END IF ! From section 16
+
+!------------------------------------------------------------------------------
+! 19. Initialize PCG process
 ! 
 !     When x = 0._iwp p and r are just loads but in general p=r=loads-A*x,
 !     so form r = A*x. Here, use LHS part of the transient equation storka_pp
 !------------------------------------------------------------------------------  
-
     r_pp              = zero
     pmul_pp           = zero
     utemp_pp          = zero
@@ -466,7 +509,7 @@ PROGRAM xx12
     p_pp = d_pp
 
 !------------------------------------------------------------------------------
-! 18. Solve simultaneous equations by pcg
+! 20. Solve simultaneous equations by pcg
 !------------------------------------------------------------------------------
    
     iters = 0
@@ -486,7 +529,7 @@ PROGRAM xx12
       CALL scatter(u_pp,utemp_pp)
       
 !------------------------------------------------------------------------------
-! 19. PCG equation solution
+! 21. PCG equation solution
 !------------------------------------------------------------------------------
       
       IF(fixed_freedoms_pp > 0) THEN
@@ -521,7 +564,7 @@ PROGRAM xx12
       
       !---Write temperature outputs in Excel format
       IF(numpe==1)THEN
-        WRITE(11,'(E12.4,8E19.8)')real_time,disp_pp
+        WRITE(11,'(E12.4,8E19.8)')real_time,disp_pp(3)
       END IF      
       PRINT *, "Time ", real_time, "Iters ", iters
     END IF
