@@ -792,12 +792,19 @@ MODULE STEERING
 
       ALLOCATE(temp(nod))
       
+      PRINT*,
+      PRINT*, "This is untested for stress elements"
+      
       DO iel = 1,nels
         temp          = g_num(:,iel)
+!        g_num(1,iel)  = temp(1)
+!        g_num(2,iel)  = temp(3)
+!        g_num(3,iel)  = temp(4)
+!        g_num(4,iel)  = temp(2)
         g_num(1,iel)  = temp(1)
         g_num(2,iel)  = temp(3)
-        g_num(3,iel)  = temp(4)
-        g_num(4,iel)  = temp(2)
+        g_num(3,iel)  = temp(2)
+        g_num(4,iel)  = temp(4)
       END DO
 
       DEALLOCATE(temp)
