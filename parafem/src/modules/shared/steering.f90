@@ -792,7 +792,7 @@ MODULE STEERING
 
       ALLOCATE(temp(nod))
       
-      PRINT*,
+      PRINT*
       PRINT*, "This is untested for stress elements"
       
       DO iel = 1,nels
