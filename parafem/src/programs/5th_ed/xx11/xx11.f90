@@ -508,19 +508,19 @@ PROGRAM xx11
                         flux_integral_pp,fluxnodes_pp)
   CALL write_nodal_variable(label,25,1,nodes_pp,npes,numpe,ndim,fluxnodes_pp)
 
-  IF(numpe==1)THEN
-    PRINT *
-    DO k=1,nels_pp
-      WRITE(*,'(I5,24E16.8)')k,flux_integral_pp(:,k)
-    END DO
-  END IF 
+!  IF(numpe==1)THEN
+!    PRINT *
+!    DO k=1,nels_pp
+!      WRITE(*,'(I5,24E16.8)')k,flux_integral_pp(:,k)
+!    END DO
+!  END IF 
 
-  IF(numpe==1)THEN
-    PRINT *
-    DO k=1,nn
-      WRITE(*,'(I5,3E16.8)')k,fluxnodes_pp(3*k-2),fluxnodes_pp(3*k-1),fluxnodes_pp(3*k-0)
-    END DO
-  END IF 
+!  IF(numpe==1)THEN
+!    PRINT *
+!    DO k=1,nn
+!      WRITE(*,'(I5,3E16.8)')k,fluxnodes_pp(3*k-2),fluxnodes_pp(3*k-1),fluxnodes_pp(3*k-0)
+!    END DO
+!  END IF 
   
 !  !--------- SECTION TO WRITE FLUX WHEN IN SINGLE CORE MODE ---------!
 !  IF(numpe==1) THEN
@@ -538,21 +538,21 @@ PROGRAM xx11
 !  END IF
 !  !------------------------------------------------------------------!
   
-  !--------- SECTION TO WRITE FLUX WHEN IN SINGLE CORE MODE ---------!
-  IF(numpe==1) THEN
-    WRITE(26,'(/A)')"  IP   Flux_x      Flux_y      Flux_z"
-    DO k=1,nels_pp
-      WRITE(26,'(I5,3E16.8)')k,flux_pp(8*k-7,1),flux_pp(8*k-7,2),flux_pp(8*k-7,3)
-      WRITE(26,'(I5,3E16.8)')k,flux_pp(8*k-6,1),flux_pp(8*k-6,2),flux_pp(8*k-6,3)
-      WRITE(26,'(I5,3E16.8)')k,flux_pp(8*k-5,1),flux_pp(8*k-5,2),flux_pp(8*k-5,3)
-      WRITE(26,'(I5,3E16.8)')k,flux_pp(8*k-4,1),flux_pp(8*k-4,2),flux_pp(8*k-4,3)
-      WRITE(26,'(I5,3E16.8)')k,flux_pp(8*k-3,1),flux_pp(8*k-3,2),flux_pp(8*k-3,3)
-      WRITE(26,'(I5,3E16.8)')k,flux_pp(8*k-2,1),flux_pp(8*k-2,2),flux_pp(8*k-2,3)
-      WRITE(26,'(I5,3E16.8)')k,flux_pp(8*k-1,1),flux_pp(8*k-1,2),flux_pp(8*k-1,3)
-      WRITE(26,'(I5,3E16.8)')k,flux_pp(8*k-0,1),flux_pp(8*k-0,2),flux_pp(8*k-0,3)
-    END DO
-  END IF
-  !------------------------------------------------------------------!
+!  !--------- SECTION TO WRITE FLUX WHEN IN SINGLE CORE MODE ---------!
+!  IF(numpe==1) THEN
+!    WRITE(26,'(/A)')"  IP   Flux_x      Flux_y      Flux_z"
+!    DO k=1,nels_pp
+!      WRITE(26,'(I5,3E16.8)')k,flux_pp(8*k-7,1),flux_pp(8*k-7,2),flux_pp(8*k-7,3)
+!      WRITE(26,'(I5,3E16.8)')k,flux_pp(8*k-6,1),flux_pp(8*k-6,2),flux_pp(8*k-6,3)
+!      WRITE(26,'(I5,3E16.8)')k,flux_pp(8*k-5,1),flux_pp(8*k-5,2),flux_pp(8*k-5,3)
+!      WRITE(26,'(I5,3E16.8)')k,flux_pp(8*k-4,1),flux_pp(8*k-4,2),flux_pp(8*k-4,3)
+!      WRITE(26,'(I5,3E16.8)')k,flux_pp(8*k-3,1),flux_pp(8*k-3,2),flux_pp(8*k-3,3)
+!      WRITE(26,'(I5,3E16.8)')k,flux_pp(8*k-2,1),flux_pp(8*k-2,2),flux_pp(8*k-2,3)
+!      WRITE(26,'(I5,3E16.8)')k,flux_pp(8*k-1,1),flux_pp(8*k-1,2),flux_pp(8*k-1,3)
+!      WRITE(26,'(I5,3E16.8)')k,flux_pp(8*k-0,1),flux_pp(8*k-0,2),flux_pp(8*k-0,3)
+!    END DO
+!  END IF
+!  !------------------------------------------------------------------!
 
   DEALLOCATE(flux_pp,storeflux_pp,kay,g_g_pp,xnew_pp)
   DEALLOCATE(flux_integral_pp,fun)
