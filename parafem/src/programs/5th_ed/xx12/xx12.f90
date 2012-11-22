@@ -325,7 +325,7 @@ PROGRAM xx12
     ALLOCATE(val_f(fixed_freedoms),no_global(fixed_freedoms))
     
     node  = 0 ; no = 0 ; no_pp_temp = 0 ; sense = 0 ; no_global = 0
-    val_f = zero ; no_f_pp = 0 ; store_pp = zero
+    val_f = zero
     
     CALL read_fixed(job_name,numpe,node,sense,val_f)
     CALL find_no2(g_g_pp,g_num_pp,node,sense,fixed_freedoms_pp,               &
@@ -337,7 +337,9 @@ PROGRAM xx12
     
     ALLOCATE(no_f_pp(fixed_freedoms_pp),store_pp(fixed_freedoms_pp))
     
-    no_f_pp    = no_pp_temp(1:fixed_freedoms_pp)
+    no_f_pp  = 0 
+    store_pp = zero
+    no_f_pp  = no_pp_temp(1:fixed_freedoms_pp)
     
     DEALLOCATE(node,no,sense,no_pp_temp)
     DEALLOCATE(no_global)
@@ -375,14 +377,15 @@ PROGRAM xx12
       
       ALLOCATE(node(loaded_freedoms),val(nodof,loaded_freedoms))
       ALLOCATE(no_pp_temp(loaded_freedoms))
-      ALLOCATE(no_pp(loaded_freedoms_pp))
       
       val = zero ; node = 0
       
       CALL read_loads(job_name,numpe,node,val)
       CALL reindex_fixed_nodes(ieq_start,node,no_pp_temp,                     &
                                loaded_freedoms_pp,loaded_freedoms_start,neq_pp)
-      
+ 
+      ALLOCATE(no_pp(loaded_freedoms_pp))
+
       no_pp    = no_pp_temp(1:loaded_freedoms_pp)
       
       DEALLOCATE(no_pp_temp)
@@ -465,14 +468,16 @@ PROGRAM xx12
 
       eld_pp   = zero
       disp_pp  = zero
+      tz       = 0
       CALL gather(x_pp(1:),eld_pp)
     
       CALL scatter_nodes(npes,nn,nels_pp,g_num_pp,nod,nodof,nodes_pp,         &
                          node_start,node_end,eld_pp,disp_pp,1)
+
+      CALL write_nodal_variable(label,24,tz,nodes_pp,npes,numpe,nodof,disp_pp)
+
       IF(numpe==1)THEN
-        tz = 0
         !---Write temperature outputs in ParaFEM format
-        CALL write_nodal_variable(label,24,tz,nodes_pp,npes,numpe,nodof,disp_pp)
         !---Write temperature outputs in Excel format
         WRITE(11,'(E12.4,8E19.8)')t0,disp_pp(3)
       END IF
@@ -552,13 +557,15 @@ PROGRAM xx12
       
     END DO iterations
     
-    eld_pp   = zero
-    disp_pp  = zero
-    CALL gather(xnew_pp(1:),eld_pp)
+    IF(j/npri*npri==j)THEN
     
-    CALL scatter_nodes(npes,nn,nels_pp,g_num_pp,nod,nodof,nodes_pp,            &
-                      node_start,node_end,eld_pp,disp_pp,1)
-    IF(j/npri*npri==j.AND.numpe==1)THEN
+      eld_pp   = zero
+      disp_pp  = zero
+      CALL gather(xnew_pp(1:),eld_pp)
+    
+      CALL scatter_nodes(npes,nn,nels_pp,g_num_pp,nod,nodof,nodes_pp,            &
+                        node_start,node_end,eld_pp,disp_pp,1)
+
       !---Write temperature outputs in ParaFEM format
       CALL write_nodal_variable(label,24,j,nodes_pp,npes,numpe,nodof,disp_pp)
       
