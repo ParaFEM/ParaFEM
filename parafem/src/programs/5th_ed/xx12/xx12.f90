@@ -106,6 +106,7 @@ PROGRAM xx12
   IF (nr>0) rest = 0
   etype_pp       = 0
   prop           = zero
+  q              = zero
   
   timest(2) = elap_time()
   
@@ -113,7 +114,10 @@ PROGRAM xx12
   CALL read_elements(job_name,iel_start,nn,npes,numpe,etype_pp,g_num_pp)
   timest(3) = elap_time()
   
-  IF(meshgen == 2) CALL abaqus2sg(element,g_num_pp)
+  IF(meshgen == 2)THEN
+    PRINT *,"Calling abaqus2sg, meshgen = ",meshgen
+    CALL abaqus2sg(element,g_num_pp)
+  END IF
   timest(4) = elap_time()
   
   CALL read_g_coord_pp(job_name,g_num_pp,nn,npes,numpe,g_coord_pp)
@@ -180,6 +184,7 @@ PROGRAM xx12
   
   neq = MAX_INTEGER_P(neq)
   
+  timest(7) = elap_time()
   IF(numpe==1) PRINT *, "End of 5"
   
 !------------------------------------------------------------------------------
@@ -199,6 +204,7 @@ PROGRAM xx12
     END IF
   END DO
   
+  timest(8) = elap_time()
   IF(numpe==1) PRINT *, "End of 6"
   
 !------------------------------------------------------------------------------
@@ -211,6 +217,7 @@ PROGRAM xx12
   loads_pp  = zero ; diag_precon_pp = zero ; u_pp = zero ; r_pp    = zero
   d_pp      = zero ; p_pp           = zero ; x_pp = zero ; xnew_pp = zero
   
+  timest(9) = elap_time()
   IF(numpe==1) PRINT *, "End of 7"
   
 !------------------------------------------------------------------------------
@@ -243,33 +250,34 @@ PROGRAM xx12
       deriv      = MATMUL(jac,der)
       kc         = kc + MATMUL(MATMUL(TRANSPOSE(deriv),kay),deriv)*det*weights(i)
       pm         = pm + MATMUL(TRANSPOSE(funny),funny)*det*weights(i)*rho*cp
-      !-------------------------------------------------------------------------
-      !- Added to check if storekc_pp would be the same as xx11
-      row(1,:) = deriv(1,:)
-      eld      = deriv(1,:)
-      col(:,1) = eld
-      kcx      = kcx + MATMUL(col,row)*det*weights(i)
-      row(1,:) = deriv(2,:)
-      eld      = deriv(2,:)
-      col(:,1) = eld
-      kcy      = kcy + MATMUL(col,row)*det*weights(i)
-      row(1,:) = deriv(3,:)
-      eld      = deriv(3,:)
-      col(:,1) = eld
-      kcz      = kcz + MATMUL(col,row)*det*weights(i)
-      !-------------------------------------------------------------------------
+!      !-------------------------------------------------------------------------
+!      !- Added to check if storekc_pp would be the same as xx11
+!      row(1,:) = deriv(1,:)
+!      eld      = deriv(1,:)
+!      col(:,1) = eld
+!      kcx      = kcx + MATMUL(col,row)*det*weights(i)
+!      row(1,:) = deriv(2,:)
+!      eld      = deriv(2,:)
+!      col(:,1) = eld
+!      kcy      = kcy + MATMUL(col,row)*det*weights(i)
+!      row(1,:) = deriv(3,:)
+!      eld      = deriv(3,:)
+!      col(:,1) = eld
+!      kcz      = kcz + MATMUL(col,row)*det*weights(i)
+!      !-------------------------------------------------------------------------
     END DO gauss_pts
     
     storka_pp(:,:,iel)=pm+kc*theta*dtim
     storkb_pp(:,:,iel)=pm-kc*(1._iwp-theta)*dtim
-    storkc_pp(:,:,iel) = kcx*kx + kcy*ky + kcz*kz
-    
-    !-- To run in xx11 mode set prog=11, in xx12 prog=12   
-    prog=12
-    IF(prog==11) storka_pp = storkc_pp
+!    storkc_pp(:,:,iel) = kcx*kx + kcy*ky + kcz*kz
+!    
+!    !-- To run in xx11 mode set prog=11, in xx12 prog=12   
+!    prog=12
+!    IF(prog==11) storka_pp = storkc_pp
     
   END DO elements_3
   
+  timest(10) = elap_time()
   IF(numpe==1) PRINT *, "End of 8"
   
 !------------------------------------------------------------------------------
@@ -289,6 +297,7 @@ PROGRAM xx12
   
   DEALLOCATE(diag_precon_tmp)
   
+  timest(11) = elap_time()
   IF(numpe==1) PRINT *, "End of 9" 
   
 !------------------------------------------------------------------------------
@@ -348,6 +357,7 @@ PROGRAM xx12
   
   IF(fixed_freedoms == 0) fixed_freedoms_pp = 0
   
+  timest(12) = elap_time()
   IF(numpe==1) PRINT *, "End of 11"
   
 !------------------------------------------------------------------------------
@@ -392,12 +402,16 @@ PROGRAM xx12
       DEALLOCATE(node)
     
     END IF
-    
+  
+  timest(12) = elap_time()
+  
 !------------------------------------------------------------------------------
 ! 14. Start time stepping loop
 !------------------------------------------------------------------------------
 
   timesteps: DO j=1,nstep
+  
+  timest(15) = elap_time()
 
     real_time = j*dtim
 
@@ -410,6 +424,8 @@ PROGRAM xx12
     DO i = 1, loaded_freedoms_pp
       loads_pp(no_pp(i)-ieq_start+1) = val(loaded_freedoms_start+i-1,1)*dtim
     END DO
+    
+    q = q + SUM_P(loads_pp)
 
 !------------------------------------------------------------------------------
 ! 16. Compute RHS of time stepping equation, using storkb_pp, then add 
@@ -473,13 +489,15 @@ PROGRAM xx12
     
       CALL scatter_nodes(npes,nn,nels_pp,g_num_pp,nod,nodof,nodes_pp,         &
                          node_start,node_end,eld_pp,disp_pp,1)
-
+      
+      !---Write temperature outputs in ParaFEM format
       CALL write_nodal_variable(label,24,tz,nodes_pp,npes,numpe,nodof,disp_pp)
 
       IF(numpe==1)THEN
-        !---Write temperature outputs in ParaFEM format
         !---Write temperature outputs in Excel format
-        WRITE(11,'(E12.4,8E19.8)')t0,disp_pp(3)
+        !---Doesn't work in parallel
+        WRITE(11,'(E12.4,8E19.8)')t0,disp_pp(11488731)
+        !---For 5% node 118564, 10% node 11488731
       END IF
 
     END IF ! From section 16
@@ -557,6 +575,9 @@ PROGRAM xx12
       
     END DO iterations
     
+    timest(13) = timest(13) + (elap_time() - timest(15))
+    timest(16) = elap_time()
+    
     IF(j/npri*npri==j)THEN
     
       eld_pp   = zero
@@ -569,14 +590,21 @@ PROGRAM xx12
       !---Write temperature outputs in ParaFEM format
       CALL write_nodal_variable(label,24,j,nodes_pp,npes,numpe,nodof,disp_pp)
       
-      !---Write temperature outputs in Excel format
       IF(numpe==1)THEN
-        WRITE(11,'(E12.4,8E19.8)')real_time,disp_pp(3)
+        !---Write temperature outputs in Excel format
+        !---Doesn't work in parallel
+        WRITE(11,'(E12.4,8E19.8)')real_time,disp_pp(11488731)
+        ! For 5% node 118564, 10% node 11488731
       END IF      
-      PRINT *, "Time ", real_time, "Iters ", iters
+      IF(numpe==1) PRINT *, "Time ", real_time, "Iters ", iters
     END IF
     
+    timest(14) = timest(14) + (elap_time() - timest(16))
+    
   END DO timesteps
+  
+  timest(13) = timest(12) + timest(13)
+  timest(14) = timest(13) + timest(14)
   
   IF(numpe==1) PRINT *, "End of 14"
   
@@ -584,6 +612,11 @@ PROGRAM xx12
     CLOSE(11)
     CLOSE(24)
   END IF
+  
+  IF(numpe==1) PRINT *, "Timest ", timest
+  
+  CALL WRITE_P123(fixed_freedoms,iters,job_name,loaded_freedoms,neq,nn,npes,  &
+                  nr,numpe,timest,q)
   
   CALL shutdown()
   
