@@ -1,10 +1,14 @@
 # @(#) inp2pf.awk - Basic conversion of Abaqus Input Deck .inp to ParaFEM input files .d .bnd .lds .dat
 # @(#) Usage:awk -f inp2pf.awk <filename.inp>
 # Author: Louise M. Lever (louise.lever@manchester.ac.uk)
-# Version: 1.1.0
-# Date: 2012-04-26
+# Version: 1.1.2
+# Date: 2012-11-13
 
 # CHANGES:
+# v1.1.2
+#   LML: Modified output of nodes to use %s as format for coords rather than %g which truncates precision
+# v1.1.1
+#   LML: Added quick output of node_id remapping - INP node ids stored in .lab file (no header)
 # v1.1.0
 #   LML: Renamed as inp2pf for consistency
 #   LML: Added support for DC3D8 elements; requires further support for thermal problems
@@ -89,6 +93,7 @@ BEGIN {
   fix_file = base_filename ".fix";
   nset_file = base_filename ".nset";
   dat_file = base_filename ".dat";
+  lab_file = base_filename ".lab";
 
   # report filenames
   print "Abaqus Input Deck:", abq_file > "/dev/stderr";
@@ -98,6 +103,7 @@ BEGIN {
   print "Output fix file:", fix_file > "/dev/stderr";
   print "Output nset file:", nset_file > "/dev/stderr";
   print "Output dat file:", dat_file > "/dev/stderr";
+  print "Output lab file:", lab_file > "/dev/stderr";
 
   # Open model file <name>.d and generate header
   print "*THREE_DIMENSIONAL" > d_file;
@@ -208,14 +214,17 @@ function start_nodes() {
 
 function do_nodes() {
   gsub(/^ */,"");
-  printf "%d %g %g %g\n", $1, $2, $3, $4 > d_file;
+#  printf "%d %g %g %g\n", $1, $2, $3, $4 > d_file;
+  printf "%d %s %s %s\n", $1, $2, $3, $4 > d_file;
   node_count++;
 }
 
 function do_nodes_renumber() {
   gsub(/^ */,"");
-  printf "%d %g %g %g\n", node_id, $2, $3, $4 > d_file;
+#  printf "%d %g %g %g\n", node_id, $2, $3, $4 > d_file;
+  printf "%d %s %s %s\n", node_id, $2, $3, $4 > d_file;
   node_id_lut[$1] = node_id;
+  print $1 > lab_file;
   node_count++;
   node_id++;
 }
