@@ -195,7 +195,7 @@ PROGRAM xx12
   CALL calc_npes_pp(npes,npes_pp)
   CALL make_ggl2(npes_pp,npes,g_g_pp)
   
-  nres = nxe*(nze-1) + 1
+  nres = 11488731 ! 11488731 25% model or 118564 5% model
   
   DO i = 1,neq_pp
     IF(nres==ieq_start+i-1) THEN
@@ -305,7 +305,7 @@ PROGRAM xx12
 !------------------------------------------------------------------------------
   
   !---Open file for temperature outputs in Excel format  
-  IF(numpe==1)THEN
+  IF(numpe==it)THEN
     fname = job_name(1:INDEX(job_name, " ")-1) // ".ttr2"
     OPEN(11,FILE=fname,STATUS='REPLACE',ACTION='WRITE')
   END IF
@@ -491,12 +491,14 @@ PROGRAM xx12
                          node_start,node_end,eld_pp,disp_pp,1)
       
       !---Write temperature outputs in ParaFEM format
-      CALL write_nodal_variable(label,24,tz,nodes_pp,npes,numpe,nodof,disp_pp)
+!     CALL write_nodal_variable(label,24,tz,nodes_pp,npes,numpe,nodof,disp_pp)
+!     CALL write_nodal_variable_binary(label,24,tz,nodes_pp,npes,numpe,nodof, &
+!                                      disp_pp)
 
-      IF(numpe==1)THEN
+      IF(numpe==it)THEN
         !---Write temperature outputs in Excel format
         !---Doesn't work in parallel
-        WRITE(11,'(E12.4,8E19.8)')t0,disp_pp(11488731)
+        WRITE(11,'(E12.4,8E19.8)')t0,disp_pp(is)
         !---For 5% node 118564, 10% node 11488731
       END IF
 
@@ -584,16 +586,18 @@ PROGRAM xx12
       disp_pp  = zero
       CALL gather(xnew_pp(1:),eld_pp)
     
-      CALL scatter_nodes(npes,nn,nels_pp,g_num_pp,nod,nodof,nodes_pp,            &
+      CALL scatter_nodes(npes,nn,nels_pp,g_num_pp,nod,nodof,nodes_pp,         &
                         node_start,node_end,eld_pp,disp_pp,1)
 
       !---Write temperature outputs in ParaFEM format
-      CALL write_nodal_variable(label,24,j,nodes_pp,npes,numpe,nodof,disp_pp)
+!     CALL write_nodal_variable(label,24,j,nodes_pp,npes,numpe,nodof,disp_pp)
+!     CALL write_nodal_variable_binary(label,24,j,nodes_pp,npes,numpe,nodof,  &
+!                                      disp_pp)
       
-      IF(numpe==1)THEN
+      IF(numpe==it)THEN
         !---Write temperature outputs in Excel format
         !---Doesn't work in parallel
-        WRITE(11,'(E12.4,8E19.8)')real_time,disp_pp(11488731)
+        WRITE(11,'(E12.4,8E19.8)')real_time,disp_pp(is)
         ! For 5% node 118564, 10% node 11488731
       END IF      
       IF(numpe==1) PRINT *, "Time ", real_time, "Iters ", iters
