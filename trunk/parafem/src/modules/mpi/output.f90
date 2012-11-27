@@ -1066,6 +1066,181 @@ MODULE OUTPUT
 !------------------------------------------------------------------------------
 !------------------------------------------------------------------------------
 !------------------------------------------------------------------------------
+ 
+  SUBROUTINE WRITE_NODAL_VARIABLE_BINARY(text,filnum,iload,nodes_pp,npes,     &
+                                         numpe,numvar,stress)
+
+  !/****f* output/write_nodal_variable_binary
+  !*  NAME
+  !*    SUBROUTINE: write_nodal_variable_binary
+  !*  SYNOPSIS
+  !*    Usage:      CALL write_nodal_variable_binary(text,filnum,iload,       &
+  !*                                                 nodes_pp,numpe,numvar,   &
+  !*                                                 stress) 
+  !*  FUNCTION
+  !*    Write the values of a nodal variable to a file. This subroutine is 
+  !*    parallel and requires MPI. The master processor collects all the data
+  !*    from the slave processors. Binary output.
+  !*  INPUTS
+  !*    The following arguments have the INTENT(IN) attribute:
+  !*
+  !*    text                    : Character
+  !*                            : Text indicating the variable to write
+  !*
+  !*    filnum                  : Integer
+  !*                            : File number to write
+  !*
+  !*    iload                   : Integer
+  !*                            : Load step number
+  !*
+  !*    nodes_pp                : Integer
+  !*                            : Number of nodes assigned to a process
+  !*
+  !*    npes                    : Integer
+  !*                            : Number of processes
+  !*
+  !*    numpe                   : Integer
+  !*                            : Process number
+  !*
+  !*    numvar                  : Integer
+  !*                            : Number of components of the variable
+  !*                              (1-scalar, 3-vector, 6-tensor)
+  !*
+  !*    stress(nodes_pp*numvar) : Real
+  !*                            : Nodal variables to print
+  !*                             
+  !*
+  !*    The following arguments have the INTENT(OUT) attribute:
+  !*
+  !*  AUTHOR
+  !*    F. Calvo
+  !*    L. Margetts
+  !*  CREATION DATE
+  !*    27.11.2012
+  !*  COPYRIGHT
+  !*    (c) University of Manchester 2012-2012
+  !******
+  !*
+  !*/
+
+  IMPLICIT NONE
+
+  CHARACTER(LEN=50), INTENT(IN) :: text
+  INTEGER, INTENT(IN)           :: filnum, iload, nodes_pp, npes, numpe, numvar
+  REAL(iwp), INTENT(IN)         :: stress(:)
+  INTEGER                       :: i, j, idx1, nod_r, bufsize1, bufsize2
+  INTEGER                       :: ier, iproc, n, bufsize
+  INTEGER                       :: statu(MPI_STATUS_SIZE)
+  INTEGER, ALLOCATABLE          :: get(:)
+  REAL(iwp), ALLOCATABLE        :: stress_r(:)
+
+!------------------------------------------------------------------------------
+! 1. Master processor writes out the results for its own assigned nodes
+!------------------------------------------------------------------------------
+
+  IF (numpe==1) THEN
+    WRITE(filnum)text
+    WRITE(filnum)iload
+    DO i = 1,nodes_pp
+      idx1 = (i-1)*numvar + 1
+      IF (numvar==1) THEN
+        WRITE(filnum)i,(stress(j),j=idx1,idx1+numvar-1)
+      END IF
+      IF (numvar==3) THEN
+        WRITE(filnum)i,(stress(j),j=idx1,idx1+numvar-1)
+      END IF
+      IF (numvar==4) THEN
+        WRITE(filnum)i,(stress(j),j=idx1,idx1+numvar-1)
+      END IF
+      IF (numvar==6) THEN
+        WRITE(filnum)i,(stress(j),j=idx1,idx1+numvar-1)
+      END IF
+    END DO
+  END IF    
+  
+!------------------------------------------------------------------------------
+! 2. Allocate arrays involved in communications
+!------------------------------------------------------------------------------
+
+  ALLOCATE(get(npes))
+  ALLOCATE(stress_r(nodes_pp*numvar)) 
+
+!------------------------------------------------------------------------------
+! 3. Master processor populates the array "get" containing "nodes_pp" of 
+!    every processor. Slave processors send this number to the master processor
+!------------------------------------------------------------------------------
+
+  get = 0
+  get(1) = nodes_pp
+
+  bufsize = 1
+
+  DO i = 2,npes
+    IF(numpe==i) THEN
+      CALL MPI_SEND(nodes_pp,bufsize,MPI_INTEGER,0,i,MPI_COMM_WORLD,ier)
+    END IF
+    IF(numpe==1) THEN
+      CALL MPI_RECV(nod_r,bufsize,MPI_INTEGER,i-1,i,MPI_COMM_WORLD,statu,ier)
+      get(i) = nod_r
+    END IF
+  END DO
+
+!------------------------------------------------------------------------------
+! 4. Master processor receives the nodal variables from the other processors 
+!    and writes them
+!------------------------------------------------------------------------------
+
+  DO iproc = 2,npes
+    IF (numpe==iproc) THEN
+      bufsize1 = nodes_pp*numvar
+      CALL MPI_SEND(stress,bufsize1,MPI_REAL8,0,iproc,MPI_COMM_WORLD,ier)
+    END IF
+    IF (numpe==1) THEN
+      bufsize2 = get(iproc)*numvar
+      CALL MPI_RECV(stress_r,bufsize2,MPI_REAL8,iproc-1,iproc, &
+                    MPI_COMM_WORLD,statu,ier)
+      n = 1
+      DO j = 2,iproc
+        n = n + get(j-1)
+      END DO
+      DO i = 1,get(iproc)
+        idx1 = (i-1)*numvar + 1
+        IF (numvar==1) THEN
+          WRITE(filnum)n-1+i,(stress_r(j),j=idx1,idx1+numvar-1)
+        END IF
+        IF (numvar==3) THEN
+          WRITE(filnum)n-1+i,(stress_r(j),j=idx1,idx1+numvar-1)
+        END IF
+        IF (numvar==4) THEN
+          WRITE(filnum)n-1+i,(stress_r(j),j=idx1,idx1+numvar-1)
+        END IF
+        IF (numvar==6) THEN
+          WRITE(filnum)n-1+i,(stress_r(j),j=idx1,idx1+numvar-1)
+        END IF
+      END DO
+    END IF
+  END DO
+
+!------------------------------------------------------------------------------
+! 5. Deallocate communication arrays
+!------------------------------------------------------------------------------
+
+  DEALLOCATE(get,stress_r)
+
+!------------------------------------------------------------------------------
+! 6. Set formats used in this subroutine
+!------------------------------------------------------------------------------
+
+! 2001 FORMAT(i8,1(1p,e12.4))
+! 2003 FORMAT(i8,3(1p,e12.4))
+! 2004 FORMAT(i8,4(1p,e12.4))
+! 2006 FORMAT(i8,6(1p,e12.4))
+
+  END SUBROUTINE WRITE_NODAL_VARIABLE_BIN
+  
+!------------------------------------------------------------------------------
+!------------------------------------------------------------------------------
+!------------------------------------------------------------------------------
 
   SUBROUTINE job_name_error(numpe,program_name)
 
