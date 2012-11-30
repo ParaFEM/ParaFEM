@@ -606,7 +606,7 @@ PROGRAM xx12
       END IF      
 
       !---Write temperature outputs in ParaFEM format
-      CALL write_nodal_variable(label,24,j,nodes_pp,npes,numpe,nodof,disp_pp)
+!     CALL write_nodal_variable(label,24,j,nodes_pp,npes,numpe,nodof,disp_pp)
       CALL write_nodal_variable_binary(label,25,j,nodes_pp,npes,numpe,nodof,  &
                                        disp_pp)
       
