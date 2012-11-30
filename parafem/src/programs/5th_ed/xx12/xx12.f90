@@ -200,7 +200,7 @@ PROGRAM xx12
   DO i = 1,neq_pp
     IF(nres==ieq_start+i-1) THEN
       it = numpe; is = i
-      IF(numpe==1) PRINT *, " *** it = ", it, " is = ", i
+      IF(numpe==it) PRINT *, " *** it = ", it, " is = ", i
     END IF
   END DO
   
@@ -318,9 +318,18 @@ PROGRAM xx12
   IF(numpe==1) THEN
     fname   = job_name(1:INDEX(job_name, " ")-1)//".ttr"
     OPEN(24, file=fname, status='replace', action='write')
+    fname   = job_name(1:INDEX(job_name, " ")-1)//".ttrb"
+    OPEN(25, file=fname, status='replace', action='write',                    &
+         access='sequential', form='unformatted')
+    fname   = job_name(1:INDEX(job_name, " ")-1)//".npp"
+    OPEN(26, file=fname, status='replace', action='write')
     label   = "*TEMPERATURE"  
+    WRITE(26,*) nn
+    WRITE(26,*) nstep/npri
+    WRITE(26,*) npes
   END IF
-  
+
+   
   IF(numpe==1) PRINT *, "End of 10"
   
 !------------------------------------------------------------------------------
@@ -490,17 +499,17 @@ PROGRAM xx12
       CALL scatter_nodes(npes,nn,nels_pp,g_num_pp,nod,nodof,nodes_pp,         &
                          node_start,node_end,eld_pp,disp_pp,1)
       
-      !---Write temperature outputs in ParaFEM format
-!     CALL write_nodal_variable(label,24,tz,nodes_pp,npes,numpe,nodof,disp_pp)
-!     CALL write_nodal_variable_binary(label,24,tz,nodes_pp,npes,numpe,nodof, &
-!                                      disp_pp)
-
       IF(numpe==it)THEN
         !---Write temperature outputs in Excel format
         !---Doesn't work in parallel
         WRITE(11,'(E12.4,8E19.8)')t0,disp_pp(is)
         !---For 5% node 118564, 10% node 11488731
       END IF
+
+      !---Write temperature outputs in ParaFEM format
+!     CALL write_nodal_variable(label,24,tz,nodes_pp,npes,numpe,nodof,disp_pp)
+      CALL write_nodal_variable_binary(label,25,tz,nodes_pp,npes,numpe,nodof, &
+                                       disp_pp)
 
     END IF ! From section 16
 
@@ -581,7 +590,7 @@ PROGRAM xx12
     timest(16) = elap_time()
     
     IF(j/npri*npri==j)THEN
-    
+
       eld_pp   = zero
       disp_pp  = zero
       CALL gather(xnew_pp(1:),eld_pp)
@@ -589,17 +598,18 @@ PROGRAM xx12
       CALL scatter_nodes(npes,nn,nels_pp,g_num_pp,nod,nodof,nodes_pp,         &
                         node_start,node_end,eld_pp,disp_pp,1)
 
-      !---Write temperature outputs in ParaFEM format
-!     CALL write_nodal_variable(label,24,j,nodes_pp,npes,numpe,nodof,disp_pp)
-!     CALL write_nodal_variable_binary(label,24,j,nodes_pp,npes,numpe,nodof,  &
-!                                      disp_pp)
-      
       IF(numpe==it)THEN
         !---Write temperature outputs in Excel format
         !---Doesn't work in parallel
         WRITE(11,'(E12.4,8E19.8)')real_time,disp_pp(is)
         ! For 5% node 118564, 10% node 11488731
       END IF      
+
+      !---Write temperature outputs in ParaFEM format
+      CALL write_nodal_variable(label,24,j,nodes_pp,npes,numpe,nodof,disp_pp)
+      CALL write_nodal_variable_binary(label,25,j,nodes_pp,npes,numpe,nodof,  &
+                                       disp_pp)
+      
       IF(numpe==1) PRINT *, "Time ", real_time, "Iters ", iters
     END IF
     
