@@ -18,21 +18,27 @@ PROGRAM p125
 
 ! neq,ntot are now global variables - not declared
 
- INTEGER           :: nxe,nye,nze,nn,nr,nip,nodof=1,nod=8,ndim=3,i,j,k,iel
- INTEGER           :: neq_temp,nn_temp,nstep,npri,nres,it,is,nlen
- REAL(iwp)         :: aa,bb,cc,kx,ky,kz,det,dtim,val0,real_time
- CHARACTER(LEN=15) :: element='hexahedron',argv
+ INTEGER,PARAMETER    :: nodof=1,ndim=3
+ INTEGER              :: nels,ndof,npes_pp,nn,nr,nip,nod,i,j,k,iel
+ INTEGER              :: neq_temp,nn_temp,nstep,npri,nres=1,it,is,nlen
+ INTEGER              :: argc,iargc,meshgen,partitioner
+ INTEGER              :: loaded_nodes,fixed_freedoms
+ REAL(iwp)            :: kx,ky,kz,det,dtim,val0,real_time
+ REAL(iwp),PARAMETER  :: zero=0.0_iwp
+ CHARACTER(LEN=15)    :: element
+ CHARACTER(LEN=50)    :: fname,job_name,label
+ CHARACTER(LEN=50)    :: program_name='p125'
 
 !------------------------------------------------------------------------------
 ! 2. Declare dynamic arrays
 !------------------------------------------------------------------------------ 
 
- REAL(iwp),ALLOCATABLE :: loads_pp(:),points(:,:),kay(:,:),coord(:,:)
+ REAL(iwp),ALLOCATABLE :: loads_pp(:),points(:,:),kay(:,:)
  REAL(iwp),ALLOCATABLE :: jac(:,:),der(:,:),deriv(:,:),weights(:),kc(:,:)
- REAL(iwp),ALLOCATABLE :: pm(:,:),funny(:,:),p_g_co_pp(:,:,:),globma_pp(:)
+ REAL(iwp),ALLOCATABLE :: pm(:,:),funny(:,:),globma_pp(:)
  REAL(iwp),ALLOCATABLE :: fun(:),store_pm_pp(:,:,:),newlo_pp(:),mass(:)
  REAL(iwp),ALLOCATABLE :: globma_tmp(:,:),pmul_pp(:,:),utemp_pp(:,:)
- REAL(iwp),ALLOCATABLE :: timest(:) 
+ REAL(iwp),ALLOCATABLE :: g_coord_pp(:,:,:),timest(:) 
  INTEGER,ALLOCATABLE   :: rest(:,:),g(:),num(:),g_num_pp(:,:),g_g_pp(:,:)         
 
 !------------------------------------------------------------------------------
@@ -50,9 +56,9 @@ PROGRAM p125
   IF(argc /= 1) CALL job_name_error(numpe,program_name)
   CALL GETARG(1,job_name)
 
-! CALL read_p125(job_name,numpe,dtim,element,fixed_freedoms,kx,ky,kz,limit,   &
-!                loaded_nodes,meshgen,nels,nip,nn,nod,npri,nr,nstep,          &
-!                partitioner,theta,tol)
+  CALL read_p125(job_name,numpe,dtim,element,fixed_freedoms,kx,ky,kz,         &
+                 loaded_nodes,meshgen,nels,nip,nn,nod,npri,nr,nstep,          &
+                 partitioner)
 
 ! READ(10,*)nels,nxe,nze,nip,aa,bb,cc,kx,ky,kz,dtim,nstep,npri,val0
 
@@ -87,12 +93,12 @@ PROGRAM p125
 ! 4. Allocate dynamic arrays used in main program
 !------------------------------------------------------------------------------
 
-  ALLOCATE (rest(nr,nodof+1),points(nip,ndim),weights(nip),kay(ndim,ndim),     &
-            coord(nod,ndim),jac(ndim,ndim),p_g_co_pp(nod,ndim,nels_pp),        &
-            der(ndim,nod),deriv(ndim,nod),g_num_pp(nod,nels_pp),kc(ntot,ntot), &
-            g(ntot),funny(1,nod),num(nod),g_g_pp(ntot,nels_pp),                &
-            store_pm_pp(ntot,ntot,nels_pp),mass(ntot),fun(nod),pm(ntot,ntot),  &
-            globma_tmp(ntot,nels_pp),pmul_pp(ntot,nels_pp),                    &
+  ALLOCATE (rest(nr,nodof+1),points(nip,ndim),weights(nip),kay(ndim,ndim),    &
+            jac(ndim,ndim),                                                   &
+            der(ndim,nod),deriv(ndim,nod),g_num_pp(nod,nels_pp),kc(ntot,ntot),&
+            g(ntot),funny(1,nod),num(nod),g_g_pp(ntot,nels_pp),               &
+            store_pm_pp(ntot,ntot,nels_pp),mass(ntot),fun(nod),pm(ntot,ntot), &
+            globma_tmp(ntot,nels_pp),pmul_pp(ntot,nels_pp),                   &
             utemp_pp(ntot,nels_pp))
 
 !------------------------------------------------------------------------------
@@ -127,7 +133,7 @@ PROGRAM p125
   CALL calc_npes_pp(npes,npes_pp)
   CALL make_ggl2(npes_pp,npes,g_g_pp)
 
-  nres = nxe*(nze-1) + 1
+! nres = nxe*(nze-1)+1
 
   DO i = 1,neq_pp
     IF(nres==ieq_start+i-1) THEN
@@ -138,14 +144,15 @@ PROGRAM p125
   timest(8) = elap_time()
 
   IF(numpe==it)THEN
-    OPEN(11,FILE=argv(1:nlen)//'.res',STATUS='REPLACE',ACTION='WRITE')              
+    fname=job_name(1:INDEX(job_name," ")-1) // ".res"
+    OPEN(11,FILE=fname,STATUS='REPLACE',ACTION='WRITE')              
     WRITE(11,'(A,I5,A)')"This job ran on ",npes,"  processors" 
     WRITE(11,'(A)')"Global coordinates and node numbers" 
     DO i=1,nels_pp,nels_pp-1
       WRITE(11,'(A,I8)')"Element ",i
       num=g_num_pp(:,i)
       DO k=1,nod
-        WRITE(11,'(A,I8,3E12.4)')"  Node",num(k),p_g_co_pp(k,:,i)
+        WRITE(11,'(A,I8,3E12.4)')"  Node",num(k),g_coord_pp(k,:,i)
       END DO
     END DO
     WRITE(11,'(A,3(I8,A))')"There are ",nn," nodes",nr," restrained and",  &
@@ -173,15 +180,14 @@ PROGRAM p125
   kay(2,2)   = ky
   kay(3,3)   = kz
 
-  elements_1: DO iel=1,nels_pp
-    coord=p_g_co_pp(:,:,iel)
+  elements_3: DO iel=1,nels_pp
     kc=0.0_iwp
     pm=0.0_iwp
     gauss_pts: DO i=1,nip
       CALL shape_der(der,points,i)
       CALL shape_fun(fun,points,i)
       funny(1,:)=fun(:)
-      jac=MATMUL(der,coord)
+      jac=MATMUL(der,g_coord_pp(:,:,iel))
       det=determinant(jac)
       CALL invert(jac)
       deriv=MATMUL(jac,der)
@@ -199,7 +205,7 @@ PROGRAM p125
     DO i=1,ntot
       globma_tmp(i,iel)=globma_tmp(i,iel)+mass(i)
     END DO
-  END DO elements_1
+  END DO elements_3
  
  IF(numpe==it)                                                            &
    WRITE(11,*)"Time after element integration is :",elap_time()-timest(1)
@@ -227,10 +233,10 @@ PROGRAM p125
    utemp_pp = .0_iwp
    pmul_pp  = .0_iwp
    CALL gather(loads_pp,pmul_pp)
-   elements_2: DO iel=1,nels_pp  
+   elements_4: DO iel=1,nels_pp  
      pm = store_pm_pp(:,:,iel) 
      utemp_pp(:,iel) = utemp_pp(:,iel)+MATMUL(pm,pmul_pp(:,iel)) 
-   END DO elements_2
+   END DO elements_4
    CALL scatter(newlo_pp,utemp_pp)
 
    loads_pp = newlo_pp*globma_pp
