@@ -20,7 +20,7 @@ PROGRAM p125
 
  INTEGER,PARAMETER    :: nodof=1,ndim=3
  INTEGER              :: nels,ndof,npes_pp,nn,nr,nip,nod,i,j,k,iel
- INTEGER              :: neq_temp,nn_temp,nstep,npri,nres=1,it,is,nlen
+ INTEGER              :: neq_temp,nn_temp,nstep,npri,nres,it,is,nlen
  INTEGER              :: argc,iargc,meshgen,partitioner
  INTEGER              :: loaded_nodes,fixed_freedoms
  REAL(iwp)            :: kx,ky,kz,det,dtim,val0,real_time
@@ -57,8 +57,8 @@ PROGRAM p125
   CALL GETARG(1,job_name)
 
   CALL read_p125(job_name,numpe,dtim,element,fixed_freedoms,kx,ky,kz,         &
-                 loaded_nodes,meshgen,nels,nip,nn,nod,npri,nr,nstep,          &
-                 partitioner)
+                 loaded_nodes,meshgen,nels,nip,nn,nod,npri,nr,nres,nstep,     &
+                 partitioner,val0)
 
 ! READ(10,*)nels,nxe,nze,nip,aa,bb,cc,kx,ky,kz,dtim,nstep,npri,val0
 
@@ -93,9 +93,9 @@ PROGRAM p125
 ! 4. Allocate dynamic arrays used in main program
 !------------------------------------------------------------------------------
 
-  ALLOCATE (rest(nr,nodof+1),points(nip,ndim),weights(nip),kay(ndim,ndim),    &
+  ALLOCATE (points(nip,ndim),weights(nip),kay(ndim,ndim),                     &
             jac(ndim,ndim),                                                   &
-            der(ndim,nod),deriv(ndim,nod),g_num_pp(nod,nels_pp),kc(ntot,ntot),&
+            der(ndim,nod),deriv(ndim,nod),kc(ntot,ntot),                      &
             g(ntot),funny(1,nod),num(nod),g_g_pp(ntot,nels_pp),               &
             store_pm_pp(ntot,ntot,nels_pp),mass(ntot),fun(nod),pm(ntot,ntot), &
             globma_tmp(ntot,nels_pp),pmul_pp(ntot,nels_pp),                   &
@@ -132,8 +132,6 @@ PROGRAM p125
   CALL calc_neq_pp          
   CALL calc_npes_pp(npes,npes_pp)
   CALL make_ggl2(npes_pp,npes,g_g_pp)
-
-! nres = nxe*(nze-1)+1
 
   DO i = 1,neq_pp
     IF(nres==ieq_start+i-1) THEN
@@ -212,6 +210,7 @@ PROGRAM p125
  
  CALL scatter(globma_pp,globma_tmp)
  globma_pp = 1._iwp/globma_pp
+
  loads_pp  = val0
  
  DEALLOCATE(globma_tmp)
