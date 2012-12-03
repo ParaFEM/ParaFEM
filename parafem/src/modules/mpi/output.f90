@@ -1141,21 +1141,21 @@ MODULE OUTPUT
   IF (numpe==1) THEN
     WRITE(filnum)text
     WRITE(filnum)iload
-    DO i = 1,nodes_pp
-      idx1 = (i-1)*numvar + 1
-      IF (numvar==1) THEN
-        WRITE(filnum)i,(stress(j),j=idx1,idx1+numvar-1)
-      END IF
-      IF (numvar==3) THEN
-        WRITE(filnum)i,(stress(j),j=idx1,idx1+numvar-1)
-      END IF
-      IF (numvar==4) THEN
-        WRITE(filnum)i,(stress(j),j=idx1,idx1+numvar-1)
-      END IF
-      IF (numvar==6) THEN
-        WRITE(filnum)i,(stress(j),j=idx1,idx1+numvar-1)
-      END IF
-    END DO
+!   DO i = 1,nodes_pp
+!     idx1 = (i-1)*numvar + 1
+!     IF (numvar==1) THEN
+        WRITE(filnum)stress
+!     END IF
+!     IF (numvar==3) THEN
+!       WRITE(filnum)i,(stress(j),j=idx1,idx1+numvar-1)
+!     END IF
+!     IF (numvar==4) THEN
+!       WRITE(filnum)i,(stress(j),j=idx1,idx1+numvar-1)
+!     END IF
+!     IF (numvar==6) THEN
+!       WRITE(filnum)i,(stress(j),j=idx1,idx1+numvar-1)
+!     END IF
+!   END DO
   END IF    
   
 !------------------------------------------------------------------------------
@@ -1199,27 +1199,34 @@ MODULE OUTPUT
       bufsize2 = get(iproc)*numvar
       CALL MPI_RECV(stress_r,bufsize2,MPI_REAL8,iproc-1,iproc, &
                     MPI_COMM_WORLD,statu,ier)
-      n = 1
-      DO j = 2,iproc
-        n = n + get(j-1)
-      END DO
-      DO i = 1,get(iproc)
-        idx1 = (i-1)*numvar + 1
-        IF (numvar==1) THEN
-          WRITE(filnum)n-1+i,(stress_r(j),j=idx1,idx1+numvar-1)
-        END IF
-        IF (numvar==3) THEN
-          WRITE(filnum)n-1+i,(stress_r(j),j=idx1,idx1+numvar-1)
-        END IF
-        IF (numvar==4) THEN
-          WRITE(filnum)n-1+i,(stress_r(j),j=idx1,idx1+numvar-1)
-        END IF
-        IF (numvar==6) THEN
-          WRITE(filnum)n-1+i,(stress_r(j),j=idx1,idx1+numvar-1)
-        END IF
-      END DO
+!     n = 1
+!     DO j = 2,iproc
+!       n = n + get(j-1)
+!     END DO
+!     DO i = 1,get(iproc)
+!       idx1 = (i-1)*numvar + 1
+!       IF (numvar==1) THEN
+          WRITE(filnum)stress_r !(1:(get(iproc)))
+!       END IF
+!       IF (numvar==3) THEN
+!         WRITE(filnum)n-1+i,(stress_r(j),j=idx1,idx1+numvar-1)
+!       END IF
+!       IF (numvar==4) THEN
+!         WRITE(filnum)n-1+i,(stress_r(j),j=idx1,idx1+numvar-1)
+!       END IF
+!       IF (numvar==6) THEN
+!         WRITE(filnum)n-1+i,(stress_r(j),j=idx1,idx1+numvar-1)
+!       END IF
+!     END DO
     END IF
   END DO
+
+  IF(numpe==1) THEN
+    DO i=1,npes
+      WRITE(filnum+1,*) get(i)
+    END DO
+  END IF
+
 
 !------------------------------------------------------------------------------
 ! 5. Deallocate communication arrays
@@ -1236,7 +1243,7 @@ MODULE OUTPUT
 ! 2004 FORMAT(i8,4(1p,e12.4))
 ! 2006 FORMAT(i8,6(1p,e12.4))
 
-  END SUBROUTINE WRITE_NODAL_VARIABLE_BIN
+  END SUBROUTINE WRITE_NODAL_VARIABLE_BINARY
   
 !------------------------------------------------------------------------------
 !------------------------------------------------------------------------------
