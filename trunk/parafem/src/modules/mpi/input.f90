@@ -2018,8 +2018,8 @@ MODULE INPUT
 !------------------------------------------------------------------------------
 
   SUBROUTINE READ_P125(job_name,numpe,dtim,element,fixed_freedoms,kx,ky,kz,   &
-                       loaded_nodes,mesh,nels,nip,nn,nod,npri,nr,nstep,       &
-                       partition)
+                       loaded_nodes,mesh,nels,nip,nn,nod,npri,nr,nres,nstep,  &
+                       partition,val0)
 
   !/****f* input/read_p125
   !*  NAME
@@ -2027,7 +2027,7 @@ MODULE INPUT
   !*  SYNOPSIS
   !*    Usage:      CALL read_p125(job_name,numpe,dtim,element,fixed_freedoms,
   !*                               kx,ky,kz,loaded_nodes,mesh,nels,nip,nn,nod,
-  !*                               npri,nr,nstep,partition)
+  !*                               npri,nr,nres,nstep,partition,val0)
   !*  FUNCTION
   !*    Master processor reads the general data for the problem and broadcasts 
   !*    it to the slave processors.
@@ -2057,6 +2057,7 @@ MODULE INPUT
   !*    nn                     : Total number of nodes in the mesh
   !*    nod                    : Number of nodes per element
   !*    npri                   : Number of timesteps to skip before printing
+  !*    nres                   : Equation number for print out
   !*    nr                     : Number of nodes with restrained degrees of
   !*                             freedom 
   !*    nstep                  : Number of steps to complete in the simulation  
@@ -2070,6 +2071,7 @@ MODULE INPUT
   !*    kx                     : Conductivity in x-direction
   !*    ky                     : Conductivity in y-direction
   !*    kz                     : Conductivity in z-direction
+  !*    val0                   : Initial value
   !*
   !*  AUTHOR
   !*    Lee Margetts
@@ -2089,15 +2091,15 @@ MODULE INPUT
   INTEGER, INTENT(IN)              :: numpe
   INTEGER, INTENT(INOUT)           :: nels,nn,nr,nod,nip,loaded_nodes
   INTEGER, INTENT(INOUT)           :: mesh,fixed_freedoms,partition 
-  INTEGER, INTENT(INOUT)           :: npri,nstep
-  REAL(iwp), INTENT(INOUT)         :: kx,ky,kz,dtim
+  INTEGER, INTENT(INOUT)           :: npri,nstep,nres
+  REAL(iwp), INTENT(INOUT)         :: kx,ky,kz,dtim,val0
 
 !------------------------------------------------------------------------------
 ! 1. Local variables
 !------------------------------------------------------------------------------
 
-  INTEGER                          :: bufsize,ier,integer_store(11)
-  REAL(iwp)                        :: real_store(4)
+  INTEGER                          :: bufsize,ier,integer_store(12)
+  REAL(iwp)                        :: real_store(5)
   CHARACTER(LEN=50)                :: fname
   
 !------------------------------------------------------------------------------
@@ -2108,7 +2110,7 @@ MODULE INPUT
     fname = job_name(1:INDEX(job_name, " ") -1) // ".dat"
     OPEN(10,FILE=fname,STATUS='OLD',ACTION='READ')
     READ(10,*) element,mesh,partition,nels,nn,nr,nip,nod,loaded_nodes,        &
-               fixed_freedoms,kx,ky,kz,dtim,nstep,npri
+               fixed_freedoms,kx,ky,kz,dtim,nstep,npri,nres,val0
     CLOSE(10)
    
     integer_store      = 0
@@ -2124,6 +2126,7 @@ MODULE INPUT
     integer_store(9)   = partition
     integer_store(10)  = npri
     integer_store(11)  = nstep
+    integer_store(12)  = nres
 
     real_store         = 0.0_iwp
 
@@ -2131,6 +2134,7 @@ MODULE INPUT
     real_store(2)      = ky  
     real_store(3)      = kz  
     real_store(4)      = dtim  
+    real_store(5)      = val0 
 
   END IF
 
@@ -2138,10 +2142,10 @@ MODULE INPUT
 ! 3. Master processor broadcasts the temporary arrays to the slave processors
 !------------------------------------------------------------------------------
 
-  bufsize = 11
+  bufsize = 12
   CALL MPI_BCAST(integer_store,bufsize,MPI_INTEGER,0,MPI_COMM_WORLD,ier)
 
-  bufsize = 4
+  bufsize = 5
   CALL MPI_BCAST(real_store,bufsize,MPI_REAL8,0,MPI_COMM_WORLD,ier)
 
   bufsize = 15
@@ -2164,11 +2168,13 @@ MODULE INPUT
     partition       = integer_store(9)
     npri            = integer_store(10)
     nstep           = integer_store(11)
+    nres            = integer_store(12)
 
     kx              = real_store(1)
     ky              = real_store(2)
     kz              = real_store(3)
     dtim            = real_store(4)
+    val0            = real_store(5)
 
   END IF
 
