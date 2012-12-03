@@ -1064,11 +1064,151 @@ PROGRAM mg2d
 
   CASE('p125')
 
-  PRINT*
-  PRINT*, "Program p125 not supported"
-  PRINT*
+    READ(10,*) nels, nxe, nze, nip
+    READ(10,*) aa, bb, cc, kx, ky, kz
+    READ(10,*) val0
+    READ(10,*) loaded_freedoms, fixed_freedoms
+ 
+    PRINT *, "Read .mg file"
 
-  STOP
+!------------------------------------------------------------------------------
+! 10.1 Initialize variables
+!------------------------------------------------------------------------------
+
+    nye   = nels/nxe/nze
+    ndim  = 3
+    nod   = 8
+    nr    = (nxe+1)*(nye+1) + (nxe+1)*nze + nye*nze
+    nn    = (nxe+1)*(nye+1)*(nze+1)
+    nodof = 1
+    nres  = nxe*(nze-1)+1
+    dtim  = 0.002_iwp
+    nstep = 5000
+    npri  = 500
+
+!------------------------------------------------------------------------------
+! 10.2 Allocate dynamic arrays
+!------------------------------------------------------------------------------
+  
+    ALLOCATE(coord(nod,ndim),g_coord(ndim,nn),g_num(nod,nels),              &
+             rest(nr,nodof+1),val(loaded_freedoms),no(loaded_freedoms),     &
+             num(nod),val_f(fixed_freedoms),no_f(fixed_freedoms))
+    
+    coord    = 0.0_iwp ; g_coord = 0.0_iwp ;   val = 0.0_iwp
+    g_num    = 0       ; rest    = 0       ;   no  = 0       ; num = 0
+    val_f    = 0.0_iwp ; no_f    = 0
+  
+!------------------------------------------------------------------------------
+! 10.3 Find nodal coordinates and element steering array
+!      Write to file using Abaqus node numbering convention 
+!------------------------------------------------------------------------------
+
+    DO iel = 1, nels
+      CALL geometry_8bxz(iel,nxe,nze,aa,bb,cc,coord,g_num(:,iel))
+      g_coord(:,g_num(:,iel)) = TRANSPOSE(coord)
+    END DO
+    
+    fname = job_name(1:INDEX(job_name, " ")-1) // ".d" 
+    OPEN(11,FILE=fname,STATUS='REPLACE',ACTION='WRITE')
+    
+    WRITE(11,'(A)') "*THREE_DIMENSIONAL"
+    WRITE(11,'(A)') "*NODES"
+  
+    DO i = 1, nn
+      WRITE(11,'(I12,3E14.6)') i, g_coord(:,i)
+    END DO
+  
+    WRITE(11,'(A)') "*ELEMENTS"
+    
+    DO iel = 1, nels
+      WRITE(11,'(I12,A,8I12,A)') iel, " 3 8 1 ", g_num(1,iel),g_num(4,iel),  &
+                                   g_num(8,iel),g_num(5,iel),g_num(2,iel),   &
+                                   g_num(3,iel),g_num(7,iel),g_num(6,iel),   &
+                                    " 1"
+    END DO
+    
+    CLOSE(11)
+
+    PRINT *, "Output nodal coordinates and element steering array"
+
+!------------------------------------------------------------------------------
+! 10.4 Boundary conditions
+!------------------------------------------------------------------------------
+  
+    fname = job_name(1:INDEX(job_name, " ")-1) // ".bnd" 
+    OPEN(12,FILE=fname,STATUS='REPLACE',ACTION='WRITE')
+  
+    CALL box_bc8(rest,nxe,nye,nze)
+  
+    DO i = 1, nr
+      WRITE(12,'(I8,3I6)') rest(i,:) 
+    END DO
+  
+    CLOSE(12)
+
+    PRINT *, "Output boundary conditions"
+
+!------------------------------------------------------------------------------
+! 10.5 Loading conditions
+!------------------------------------------------------------------------------
+
+    IF(loaded_freedoms > 0) THEN
+     
+      fname = job_name(1:INDEX(job_name, " ")-1) // ".lds" 
+      OPEN(13,FILE=fname,STATUS='REPLACE',ACTION='WRITE')
+     
+      no   = nres
+      val  = 10.0_iwp
+  
+      DO i = 1, loaded_freedoms
+        WRITE(13,'(I10,E16.8)') no(i),val(i)
+      END DO
+
+      CLOSE(13)
+
+      PRINT *, "Output fixed loads"
+
+    END IF
+
+    IF(fixed_freedoms>0) THEN
+
+      fname = job_name(1:INDEX(job_name, " ")-1) // ".fix" 
+      OPEN(14,FILE=fname,STATUS='REPLACE',ACTION='WRITE')
+
+      no_f  = nres
+      val_f = 100.0_iwp
+
+      DO i = 1, fixed_freedoms
+        WRITE(14,'(I10,E16.8)') no_f(i),val_f(i)
+      END DO
+
+      CLOSE(14)
+
+      PRINT *, "Output fixed freedoms"
+
+    END IF
+
+!------------------------------------------------------------------------------
+! 10.6 New control data
+!------------------------------------------------------------------------------
+
+    fname = job_name(1:INDEX(job_name, " ")-1) // ".dat" 
+    OPEN(15,FILE=fname,STATUS='REPLACE',ACTION='WRITE')
+  
+    WRITE(15,'(A)') "'hexahedron'"
+    WRITE(15,'(A)') "2"              ! Abaqus node numbering scheme
+    WRITE(15,'(A)') "1"              ! Internal mesh partitioning
+    WRITE(15,'(7I9)') nels, nn, nr, nip, nod, loaded_freedoms, fixed_freedoms
+    WRITE(15,'(4E12.4,I8)') kx, ky, kz
+    WRITE(15,'(E12.4,I8,I8,E12.4)') dtim, nstep, npri
+    WRITE(15,'(I8,E12.4)') nres, val0
+     
+    CLOSE(15)
+     
+    PRINT *, "Output new control data file"
+    PRINT *, "Some values have default values"
+    PRINT *, "Job completed"
+    PRINT *
 
 !------------------------------------------------------------------------------
 ! 12. Program p126
