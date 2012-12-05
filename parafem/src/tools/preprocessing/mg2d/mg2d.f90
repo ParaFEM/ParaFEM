@@ -43,6 +43,7 @@ PROGRAM mg2d
   REAL(iwp)              :: kappa,penalty,tol,x0  
   REAL(iwp)              :: alpha1,beta1,theta,omega,dtim
   REAL(iwp)              :: zbox,zele,z1,z3,ttl
+  REAL(iwp)              :: val0
   CHARACTER(LEN=15)      :: element
   CHARACTER(LEN=50)      :: program_name,job_name,fname,problem_type
   CHARACTER(LEN=1)       :: bmat
@@ -1082,7 +1083,7 @@ PROGRAM mg2d
     nn    = (nxe+1)*(nye+1)*(nze+1)
     nodof = 1
     nres  = nxe*(nze-1)+1
-    dtim  = 0.002_iwp
+    dtim  = 0.0002_iwp
     nstep = 5000
     npri  = 500
 
@@ -1090,13 +1091,15 @@ PROGRAM mg2d
 ! 10.2 Allocate dynamic arrays
 !------------------------------------------------------------------------------
   
-    ALLOCATE(coord(nod,ndim),g_coord(ndim,nn),g_num(nod,nels),              &
-             rest(nr,nodof+1),val(loaded_freedoms),no(loaded_freedoms),     &
-             num(nod),val_f(fixed_freedoms),no_f(fixed_freedoms))
+    ALLOCATE(coord(nod,ndim),g_coord(ndim,nn),                              &
+!            rest(nr,nodof+1),val(loaded_freedoms),no(loaded_freedoms),     &
+!            num(nod),val_f(fixed_freedoms),no_f(fixed_freedoms))
+             num(nod))
     
-    coord    = 0.0_iwp ; g_coord = 0.0_iwp ;   val = 0.0_iwp
-    g_num    = 0       ; rest    = 0       ;   no  = 0       ; num = 0
-    val_f    = 0.0_iwp ; no_f    = 0
+ !  coord    = 0.0_iwp ; g_coord = 0.0_iwp ;   val = 0.0_iwp
+ !  g_num    = 0       ; rest    = 0       ;   no  = 0       ; num = 0
+ !  val_f    = 0.0_iwp ; no_f    = 0
+   coord    = 0.0_iwp ; g_coord = 0.0_iwp ; num = 0 
   
 !------------------------------------------------------------------------------
 ! 10.3 Find nodal coordinates and element steering array
@@ -1104,8 +1107,8 @@ PROGRAM mg2d
 !------------------------------------------------------------------------------
 
     DO iel = 1, nels
-      CALL geometry_8bxz(iel,nxe,nze,aa,bb,cc,coord,g_num(:,iel))
-      g_coord(:,g_num(:,iel)) = TRANSPOSE(coord)
+      CALL geometry_8bxz(iel,nxe,nze,aa,bb,cc,coord,num)
+      g_coord(:,num) = TRANSPOSE(coord)
     END DO
     
     fname = job_name(1:INDEX(job_name, " ")-1) // ".d" 
@@ -1117,14 +1120,16 @@ PROGRAM mg2d
     DO i = 1, nn
       WRITE(11,'(I12,3E14.6)') i, g_coord(:,i)
     END DO
+
+    DEALLOCATE(g_coord)
   
     WRITE(11,'(A)') "*ELEMENTS"
     
     DO iel = 1, nels
-      WRITE(11,'(I12,A,8I12,A)') iel, " 3 8 1 ", g_num(1,iel),g_num(4,iel),  &
-                                   g_num(8,iel),g_num(5,iel),g_num(2,iel),   &
-                                   g_num(3,iel),g_num(7,iel),g_num(6,iel),   &
-                                    " 1"
+      CALL geometry_8bxz(iel,nxe,nze,aa,bb,cc,coord,num)
+      WRITE(11,'(I12,A,8I12,A)') iel, " 3 8 1 ", num(1), num(4),              &
+                                 num(8), num(5), num(2),                      &
+                                 num(3), num(7), num(6)," 1"
     END DO
     
     CLOSE(11)
@@ -1135,13 +1140,16 @@ PROGRAM mg2d
 ! 10.4 Boundary conditions
 !------------------------------------------------------------------------------
   
+    ALLOCATE(rest(nr,nodof+1))
+    rest  = 0
+
     fname = job_name(1:INDEX(job_name, " ")-1) // ".bnd" 
     OPEN(12,FILE=fname,STATUS='REPLACE',ACTION='WRITE')
   
     CALL box_bc8(rest,nxe,nye,nze)
   
     DO i = 1, nr
-      WRITE(12,'(I8,3I6)') rest(i,:) 
+      WRITE(12,'(I12,3I6)') rest(i,:) 
     END DO
   
     CLOSE(12)
@@ -1161,7 +1169,7 @@ PROGRAM mg2d
       val  = 10.0_iwp
   
       DO i = 1, loaded_freedoms
-        WRITE(13,'(I10,E16.8)') no(i),val(i)
+        WRITE(13,'(I11,E16.8)') no(i),val(i)
       END DO
 
       CLOSE(13)
@@ -1179,7 +1187,7 @@ PROGRAM mg2d
       val_f = 100.0_iwp
 
       DO i = 1, fixed_freedoms
-        WRITE(14,'(I10,E16.8)') no_f(i),val_f(i)
+        WRITE(14,'(I12,E16.8)') no_f(i),val_f(i)
       END DO
 
       CLOSE(14)
