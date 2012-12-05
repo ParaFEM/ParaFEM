@@ -60,8 +60,6 @@ PROGRAM p125
                  loaded_nodes,meshgen,nels,nip,nn,nod,npri,nr,nres,nstep,     &
                  partitioner,val0)
 
-! READ(10,*)nels,nxe,nze,nip,aa,bb,cc,kx,ky,kz,dtim,nstep,npri,val0
-
   CALL calc_nels_pp(job_name,nels,npes,numpe,partitioner,nels_pp)
  
   ndof = nod*nodof
@@ -166,6 +164,8 @@ PROGRAM p125
 
   loads_pp = zero; newlo_pp = zero ; globma_pp = zero
 
+  timest(9) = elap_time()
+  
 !------------------------------------------------------------------------------
 ! 8. Element stiffness integration and invert mass
 !------------------------------------------------------------------------------
@@ -204,16 +204,20 @@ PROGRAM p125
       globma_tmp(i,iel)=globma_tmp(i,iel)+mass(i)
     END DO
   END DO elements_3
- 
- IF(numpe==it)                                                            &
-   WRITE(11,*)"Time after element integration is :",elap_time()-timest(1)
- 
- CALL scatter(globma_pp,globma_tmp)
- globma_pp = 1._iwp/globma_pp
 
- loads_pp  = val0
+  timest(10) = elap_time() 
+
+  IF(numpe==it)                                                            &
+    WRITE(11,*)"Time after element integration is :",elap_time()-timest(1)
  
- DEALLOCATE(globma_tmp)
+  CALL scatter(globma_pp,globma_tmp)
+  globma_pp = 1._iwp/globma_pp
+
+  loads_pp  = val0
+ 
+  DEALLOCATE(globma_tmp)
+
+ timest(11) = elap_time() 
 
 !------------------------------------------------------------------------------
 ! 9. Time stepping recursion
@@ -245,9 +249,14 @@ PROGRAM p125
      WRITE(11,'(2E12.4)')real_time,loads_pp(is) 
 
  END DO timesteps
- 
+
+ timest(12) = elap_time() 
+
  IF(numpe==it)WRITE(11,*)"This analysis took  :",elap_time()-timest(1)
  
+ CALL WRITE_P125(fixed_freedoms,iters,job_name,loaded_freedoms,neq,nn,npes,  &
+                 nr,numpe,timest)
+                  
  CALL shutdown() 
 
 END PROGRAM p125
