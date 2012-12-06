@@ -22,7 +22,7 @@ PROGRAM p125
  INTEGER              :: nels,ndof,npes_pp,nn,nr,nip,nod,i,j,k,iel
  INTEGER              :: neq_temp,nn_temp,nstep,npri,nres,it,is,nlen
  INTEGER              :: argc,iargc,meshgen,partitioner
- INTEGER              :: loaded_nodes,fixed_freedoms
+ INTEGER              :: loaded_nodes=0,fixed_freedoms
  REAL(iwp)            :: kx,ky,kz,det,dtim,val0,real_time
  REAL(iwp),PARAMETER  :: zero=0.0_iwp
  CHARACTER(LEN=15)    :: element
@@ -245,7 +245,7 @@ PROGRAM p125
    loads_pp = newlo_pp*globma_pp
    newlo_pp = .0_iwp 
 
-   IF(j/npri*npri==j.AND.numpe==it)                                       &
+   IF(j/npri*npri==j.AND.numpe==it)                                          &
      WRITE(11,'(2E12.4)')real_time,loads_pp(is) 
 
  END DO timesteps
@@ -254,7 +254,7 @@ PROGRAM p125
 
  IF(numpe==it)WRITE(11,*)"This analysis took  :",elap_time()-timest(1)
  
- CALL WRITE_P125(fixed_freedoms,iters,job_name,loaded_freedoms,neq,nn,npes,  &
+ CALL WRITE_P125(fixed_freedoms,nstep,job_name,loaded_nodes,neq,nn,npes,     &
                  nr,numpe,timest)
                   
  CALL shutdown() 
