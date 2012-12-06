@@ -160,10 +160,10 @@ PROGRAM p126
    END IF
  END DO
 
- IF(numpe==it) THEN
-   fname = job_name(1:INDEX(job_name, " ")-1) // ".res"
-   OPEN(11,FILE=fname,STATUS='REPLACE',ACTION='WRITE')     
- END IF
+! IF(numpe==it) THEN
+!   fname = job_name(1:INDEX(job_name, " ")-1) // ".res"
+!   OPEN(11,FILE=fname,STATUS='REPLACE',ACTION='WRITE')     
+! END IF
 
 !------------------------------------------------------------------------------
 ! 7. Allocate arrays dimensioned by neq_pp 
