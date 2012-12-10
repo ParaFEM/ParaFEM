@@ -12,7 +12,7 @@
     Usage: rfem-solve <job_name_in> <job_name_out>
 
    
-  AUTHOR
+  AUTHORS
 
   lee.margetts@manchester.ac.uk
-
+  jose.arreguimena@postgrad.manchester.ac.uk
