@@ -5,6 +5,7 @@ rem
 set PARAFEM=d:\parafem\parafem
 set G95=c:\g95\bin\g95
 set AR=c:\g95\bin\ar
+set FFLAGS=-c -r8 -i4 -Wall -ftrace=full -fbounds-check -I%PARAFEM%\include
 set VER=1
 rem
 rem 
@@ -22,7 +23,7 @@ rem
 rem
 cd /D %PARAFEM%\src\libraries\dummy_mpi
 del *.a *.o *.mod
-%G95% -c -r8 -i4 -Wall -ftrace=full -fbounds-check mpi_stubs.f90
+%G95% %FFLAGS% mpi_stubs.f90
 %AR% -r libmpi_stubs.a mpi_stubs.o
 move libmpi_stubs.a %PARAFEM%\lib
 move mpi_stubs.mod %PARAFEM%\include
@@ -46,32 +47,33 @@ del *.a *.o *.mod
 cd /D %PARAFEM%\src\modules\mpi
 del *.a *.o *.mod
 cd /D %PARAFEM%\src\modules\shared
-%G95% -c -r8 -i4 -Wall -ftrace=full -fbounds-check precision.f90
-%G95% -c -r8 -i4 -Wall -ftrace=full -fbounds-check global_variables.f90
-%G95% -c -r8 -i4 -Wall -ftrace=full -fbounds-check geometry.f90
-%G95% -c -r8 -i4 -Wall -ftrace=full -fbounds-check elements.f90
-%G95% -c -r8 -i4 -Wall -ftrace=full -fbounds-check steering.f90
-%G95% -c -r8 -i4 -Wall -ftrace=full -fbounds-check timing.f90
-%G95% -c -r8 -i4 -Wall -ftrace=full -fbounds-check partition.f90
-%G95% -c -r8 -i4 -Wall -ftrace=full -fbounds-check plasticity.f90
-%G95% -c -r8 -i4 -Wall -ftrace=full -fbounds-check fluid.f90
+%G95% %FFLAGS% precision.f90
+%G95% %FFLAGS% global_variables.f90
+%G95% %FFLAGS% geometry.f90
+%G95% %FFLAGS% elements.f90
+%G95% %FFLAGS% steering.f90
+%G95% %FFLAGS% timing.f90
+%G95% %FFLAGS% partition.f90
+%G95% %FFLAGS% plasticity.f90
+%G95% %FFLAGS% fluid.f90
 move *.o %PARAFEM%\src\modules\mpi
 move *.mod %PARAFEM%\src\modules\mpi
 cd /D %PARAFEM%\src\modules\mpi
-%G95% -c -r8 -i4 -Wall -ftrace=full -fbounds-check mpi_wrapper.f90 -I../../include
-%G95% -c -r8 -i4 -Wall -ftrace=full -fbounds-check mp_interface.f90 -I../../libraries/dummy_mpi/include
-%G95% -c -r8 -i4 -Wall -ftrace=full -fbounds-check maths.f90
-%G95% -c -r8 -i4 -Wall -ftrace=full -fbounds-check input.f90
-%G95% -c -r8 -i4 -Wall -ftrace=full -fbounds-check output.f90
-%G95% -c -r8 -i4 -Wall -ftrace=full -fbounds-check gather_scatter.f90
-%G95% -c -r8 -i4 -Wall -ftrace=full -fbounds-check loading.f90
-%G95% -c -r8 -i4 -Wall -ftrace=full -fbounds-check large_strain.f90
-%G95% -c -r8 -i4 -Wall -ftrace=full -fbounds-check pcg.f90
-%G95% -c -r8 -i4 -Wall -ftrace=full -fbounds-check bicg.f90
+%G95% %FFLAGS% mpi_wrapper.f90
+%G95% %FFLAGS% mp_interface.f90 -I../../libraries/dummy_mpi/include
+%G95% %FFLAGS% maths.f90
+%G95% %FFLAGS% input.f90
+%G95% %FFLAGS% output.f90
+%G95% %FFLAGS% gather_scatter.f90
+%G95% %FFLAGS% loading.f90
+%G95% %FFLAGS% large_strain.f90
+%G95% %FFLAGS% pcg.f90
+%G95% %FFLAGS% bicg.f90
 %AR% -r libparafem.a *.o
 move libparafem.a %PARAFEM%\lib
 move *.mod %PARAFEM%\include
 del *.o 
+cd /D %PARAFEM%
 rem
 rem
 rem *** BUILD RFEMCUBE ***
