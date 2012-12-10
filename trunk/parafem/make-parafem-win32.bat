@@ -2,9 +2,9 @@ echo
 rem  *** EDIT THE NEXT THREE LINES IF NECESSARY ***
 rem
 rem
-set PARAFEM=c:\parafem\parafem
-set G95=c:\MinGW\g95\bin\g95
-set AR=c:\MinGW\g95\bin\ar
+set PARAFEM=d:\parafem\parafem
+set G95=c:\g95\bin\g95
+set AR=c:\g95\bin\ar
 set VER=1
 rem
 rem 
@@ -23,8 +23,9 @@ rem
 cd /D %PARAFEM%\src\libraries\dummy_mpi
 del *.a *.o *.mod
 %G95% -c -r8 -i4 -Wall -ftrace=full -fbounds-check mpi_stubs.f90
-%AR% -r libmpi_stubs.a mpi_stubs.o 
+%AR% -r libmpi_stubs.a mpi_stubs.o
 move libmpi_stubs.a %PARAFEM%\lib
+move mpi_stubs.mod %PARAFEM%\include
 del *.o
 rem
 rem
@@ -57,7 +58,8 @@ cd /D %PARAFEM%\src\modules\shared
 move *.o %PARAFEM%\src\modules\mpi
 move *.mod %PARAFEM%\src\modules\mpi
 cd /D %PARAFEM%\src\modules\mpi
-%G95% -c -r8 -i4 -Wall -ftrace=full -fbounds-check mp_interface.f90
+%G95% -c -r8 -i4 -Wall -ftrace=full -fbounds-check mpi_wrapper.f90 -I../../include
+%G95% -c -r8 -i4 -Wall -ftrace=full -fbounds-check mp_interface.f90 -I../../libraries/dummy_mpi/include
 %G95% -c -r8 -i4 -Wall -ftrace=full -fbounds-check maths.f90
 %G95% -c -r8 -i4 -Wall -ftrace=full -fbounds-check input.f90
 %G95% -c -r8 -i4 -Wall -ftrace=full -fbounds-check output.f90
@@ -70,6 +72,16 @@ cd /D %PARAFEM%\src\modules\mpi
 move libparafem.a %PARAFEM%\lib
 move *.mod %PARAFEM%\include
 del *.o 
+rem
+rem
+rem *** BUILD RFEMCUBE ***
+rem
+rem
+cd /D %PARAFEM%\src\tools\preprocessing\rfemcube
+del rfemcube.exe rfemcube.o
+%G95% -r8 -i4 -Wall -ftrace=full -fbounds-check rfemcube.f90 -L%PARAFEM%\lib -lparafem -I%PARAFEM%\include -o rfemcube.exe
+del *.o *.a
+move rfemcube.exe %PARAFEM%\bin
 rem
 rem
 rem *** BUILD RFEMBC ***
@@ -99,3 +111,4 @@ del *.o *.a
 move rfemsolve.exe %PARAFEM%\bin
 cd /D %PARAFEM%
 
+:end
