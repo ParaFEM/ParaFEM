@@ -276,6 +276,9 @@ if [ $NUM_TIME_STEPS -gt 0 ]; then
     TS=1
     while [ $TS -le $NUM_TIME_STEPS ]; do
 	printf "%10E " $TS >> $ENSI_CASE_FILENAME
+	if [ $(( $TS % 10 )) -eq 0 ] ; then
+	    printf "\n" >> $ENSI_CASE_FILENAME
+	fi
 	(( TS++ ))
     done
 fi    
