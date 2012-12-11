@@ -1352,7 +1352,7 @@ MODULE INPUT
     !k is the material number in the file, it is read and discarded
 
     IMPLICIT NONE
-    INTEGER                       :: i,k,nmats,bufsize,ier,ielpe
+    INTEGER                       :: i,k,nmats,nvals,bufsize,ier,ielpe
     INTEGER,INTENT(IN)            :: numpe,npes
     REAL(iwp),INTENT(INOUT)       :: materialValues(:,:)
     CHARACTER(LEN=50), INTENT(in) :: fname
@@ -1360,13 +1360,15 @@ MODULE INPUT
 
     IF(numpe==1)THEN
      OPEN(21,FILE=fname, STATUS='OLD', ACTION='READ')
-!    READ(21,*) keyword, nmats
-     READ(21,*) nmats
+     !Read the *MATERIAL keyword, num of materials in file and num values per material line (2)
+     READ(21,*) keyword, nmats, nvals
+     !Read the material labels line
+     READ(21,*)                  ! skip line
+
      PRINT *, "nmats =", nmats
-!    READ(21,*)                  ! skip line
      DO i = 1,nmats
        READ(21,*)k, materialValues(:,i)
-       PRINT *, "materialValues = ", materialValues(:,i)
+ !      PRINT *, "materialValues = ", materialValues(:,i)
      END DO
      CLOSE(21)
     END IF
