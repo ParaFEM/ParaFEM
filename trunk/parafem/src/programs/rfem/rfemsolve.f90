@@ -78,13 +78,13 @@ PROGRAM rfemsolve
      PRINT*, "          <model_name>-<instance-id>.mat"
      PRINT*
      PRINT*, "        and outputs:"
-     PRINT*, "          <model_name>.dis" 
-     PRINT*, "          <model_name>.pri" 
-     PRINT*, "          <model_name>.str" 
-     PRINT*, "          <model_name>.vms" 
-     PRINT*, "          <model_name>.rea" 
-     PRINT*, "          <model_name>.tnc" 
-     PRINT*, "          <model_name>.res" 
+     PRINT*, "          <model_name>-<instance-id>.dis" 
+     PRINT*, "          <model_name>-<instance-id>.pri" 
+     PRINT*, "          <model_name>-<instance-id>.str" 
+     PRINT*, "          <model_name>-<instance-id>.vms" 
+     PRINT*, "          <model_name>-<instance-id>.rea" 
+     PRINT*, "          <model_name>-<instance-id>.tnc" 
+     PRINT*, "          <model_name>-<instance-id>.res" 
      PRINT*
      CALL job_name_error(numpe,program_name)
      STOP
