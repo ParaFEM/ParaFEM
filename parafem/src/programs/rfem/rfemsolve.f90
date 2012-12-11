@@ -66,7 +66,29 @@ PROGRAM rfemsolve
   
   CALL find_pe_procs(numpe,npes)
   argc = iargc()
-  IF (argc /= 2) CALL job_name_error(numpe,program_name)
+  IF( argc /= 2 ) THEN
+     PRINT*
+     PRINT*, "Usage:  rfemsolve <model_name> <instance-id>"
+     PRINT*
+     PRINT*, "        program expects as input:"
+     PRINT*, "          <model_name>-<instance-id>.d"
+     PRINT*, "          <model_name>-<instance-id>.dat"
+     PRINT*, "          <model_name>-<instance-id>.bnd"
+     PRINT*, "          <model_name>-<instance-id>.fix"
+     PRINT*, "          <model_name>-<instance-id>.mat"
+     PRINT*
+     PRINT*, "        and outputs:"
+     PRINT*, "          <model_name>.dis" 
+     PRINT*, "          <model_name>.pri" 
+     PRINT*, "          <model_name>.str" 
+     PRINT*, "          <model_name>.vms" 
+     PRINT*, "          <model_name>.rea" 
+     PRINT*, "          <model_name>.tnc" 
+     PRINT*, "          <model_name>.res" 
+     PRINT*
+     CALL job_name_error(numpe,program_name)
+     STOP
+  END IF
   CALL GETARG(1, job_in) 
   CALL GETARG(2, instance_id) 
 
