@@ -388,8 +388,9 @@ int compile_kernel_from_file_( const char *filename, const char *kernelname, con
   fseek(kfp , 0 , SEEK_END);
   kfilesize = (long)ftell(kfp);
   rewind(kfp);
-  ksource = (char *)malloc(kfilesize*sizeof(char));
+  ksource = (char *)malloc((kfilesize+1)*sizeof(char));
   numread = fread(ksource, 1, kfilesize, kfp);
+  ksource[kfilesize] = '\0';
   if ( numread < kfilesize ) {
     printf( "Error reading kernel source file %s. Only read %ld of %ld bytes\n", 
 	    filename, numread, kfilesize );
