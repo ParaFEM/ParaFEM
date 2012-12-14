@@ -23,10 +23,6 @@
 include ../../../../build/mk_defs.inc
 include ../../../../build/$(MACHINE).inc
 
-CU = nvcc
-CUFLAGS = -arch=sm_20 --ptxas-options=-v
-CUINCLUDES = -I/export/cuda/cuda4.0.17/include
-CULIBS = -L/export/cuda/cuda4.0.17/lib64 -lcudart
 
 MODULE	= ../../../../include/mpi
 LIB	= ../../../../lib
@@ -39,7 +35,7 @@ release:
 	@echo "Building xx3 RELEASE"
 	$(MAKE) xx3 \
 	FFLAGS="-c -I$(MODULE) $(XX3_MPI_REL_FFLAGS)" \
-	LDFLAGS="-L$(LIB) -lParaFEM_mpi.$(VERSION) $(XX3_MPI_REL_LDFLAGS) $(CULIBS)"
+	LDFLAGS="-L$(LIB) -lParaFEM_mpi.$(VERSION) $(XX3_MPI_REL_LDFLAGS) $(GPU_CU_LIB)"
 	@echo "Done xx3 RELEASE"
 
 debug:
@@ -47,7 +43,7 @@ debug:
 	@echo "Building xx3 DEBUG"
 	$(MAKE) xx3 \
 	FFLAGS="-c -I$(MODULE) $(XX3_MPI_DBG_FFLAGS)" \
-	LDFLAGS="-L$(LIB) -lParaFEM_mpi_D.$(VERSION) $(XX3_MPI_DBG_LDFLAGS) $(CULIBS)"
+	LDFLAGS="-L$(LIB) -lParaFEM_mpi_D.$(VERSION) $(XX3_MPI_DBG_LDFLAGS) $(GPU_CU_LIB)"
 	@echo "Done xx3 DEBUG"
 
 xx3: xx3.o cuda_helpers.o
@@ -57,7 +53,7 @@ xx3.o: xx3.f90
 	$(FC) xx3.f90 $(FFLAGS)
 
 cuda_helpers.o: cuda_helpers.cu
-	$(CU) -c cuda_helpers.cu $(CUFLAGS) $(CUINCLUDES) 
+	$(GPU_CU) -c cuda_helpers.cu $(GPU_CU_FLAGS) $(GPU_CU_INC) 
 
 clean:
 	rm -f *.o
