@@ -391,7 +391,7 @@ int compile_kernel_from_file_( const char *filename, const char *kernelname, con
   ksource = (char *)malloc(kfilesize*sizeof(char));
   numread = fread(ksource, 1, kfilesize, kfp);
   if ( numread < kfilesize ) {
-    printf( "Error reading kernel source file %s. Only read %d of %d bytes\n", 
+    printf( "Error reading kernel source file %s. Only read %ld of %ld bytes\n", 
 	    filename, numread, kfilesize );
     free(ksource);
     return 0;
@@ -487,7 +487,7 @@ int allocate_memory_on_gpu_( const int *n_elems, const int *elem_size, const int
   case 2:
     memtype = CL_MEM_READ_WRITE;
     break;
-  otherwise:
+  default:
     printf( "Invalid memflag arg %d\n", *memflag );
     return 0;
   }
