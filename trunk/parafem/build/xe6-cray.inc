@@ -8,6 +8,7 @@
 # Generic settings for compilation
 # ------------------------------------------------------------------------------
 FC=ftn
+INSTALL_CMD=mv
 
 # ------------------------------------------------------------------------------
 # FLAGS for EXTERNAL LIBRARY compliation

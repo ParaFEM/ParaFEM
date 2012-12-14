@@ -8,6 +8,7 @@
 # Generic settings for compilation
 # --------------------------------------------------------------------------------
 FC=mpxlf90_r
+INSTALL_CMD=mv
 
 # --------------------------------------------------------------------------------
 # FLAGS for EXTERNAL LIBRARY compliation
