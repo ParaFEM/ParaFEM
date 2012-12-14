@@ -34,7 +34,7 @@ release:
 	$(MAKE) rfemfield \
 	FFLAGS="-c -I$(MODULE) $(RFEMFIELD_MPI_REL_FFLAGS)" \
 	LDFLAGS="-L$(LIB) -lParaFEM_mpi.$(VERSION) $(RFEMFIELD_MPI_REL_LDFLAGS) \
-	-l gaf77"
+	-lgaf77"
 	@echo "Done rfemfield RELEASE"
 
 debug:
@@ -43,7 +43,7 @@ debug:
 	$(MAKE) rfemfield \
 	FFLAGS="-c -I$(MODULE) $(RFEMFIELD_MPI_DBG_FFLAGS)" \
 	LDFLAGS="-L$(LIB) -lParaFEM_mpi_D.$(VERSION) $(RFEMFIELD_MPI_DBG_LDFLAGS) \
-	         -l gaf77"
+	         -lgaf77"
 	@echo "Done rfemfield DEBUG"
 
 rfemfield: rfemfield.o
