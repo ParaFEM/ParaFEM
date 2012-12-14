@@ -21,16 +21,18 @@
 include ../../../../build/mk_defs.inc
 include ../../../../build/$(MACHINE).inc 
 
+# Add CUBLAS library
+XX9_GPU_CU_LIB = $(GPU_CU_LIB) -lcublas
+
+# CUDA CUBLAS wrappers for Fortran/C interop.
+XX9_GPU_CU_FTN_C = $(GPU_CU_ROOT)/src/fortran.c
+XX9_GPU_CU_FTN_H = $(GPU_CU_ROOT)/src/fortran.h
+XX9_GPU_CU_INC   = $(GPU_CU_INC) -I$(GPU_CU_ROOT)/src
+
 MODULE	= ../../../../include/mpi
-LIB	= ../../../../lib -L/export/cuda/cuda4.0.17/lib64 -lcublas
-.SUFFIXES: .o .f90 .c
-
-CUDAINCLUDE=-I/export/cuda/cuda4.0.17/include
-CFLAGS=-O3
-CC=nvcc
-
-CU = nvcc
-CUFLAGS = -arch=sm_20 --ptxas-options=-v
+LIB	= ../../../../lib
+.SUFFIXES: .o .f90
+.PHONY: fortranfiles
 
 all:	release
 
@@ -39,7 +41,7 @@ release:
 	@echo "Building xx9 RELEASE"
 	$(MAKE) xx9 \
 	FFLAGS="-c -I$(MODULE) $(XX9_MPI_REL_FFLAGS)" \
-	LDFLAGS="-L$(LIB) -lParaFEM_mpi.$(VERSION) $(XX9_MPI_REL_LDFLAGS)"
+	LDFLAGS="-L$(LIB) -lParaFEM_mpi.$(VERSION) $(XX9_MPI_REL_LDFLAGS) $(XX9_GPU_CU_LIB)"
 	@echo "Done xx9 RELEASE"
 
 debug:
@@ -47,14 +49,18 @@ debug:
 	@echo "Building xx9 DEBUG"
 	$(MAKE) xx9 \
 	FFLAGS="-c -I$(MODULE) $(XX9_MPI_DBG_FFLAGS)" \
-	LDFLAGS="-L$(LIB) -lParaFEM_mpi_D.$(VERSION) $(XX9_MPI_DBG_LDFLAGS)"
+	LDFLAGS="-L$(LIB) -lParaFEM_mpi_D.$(VERSION) $(XX9_MPI_DBG_LDFLAGS) $(XX9_GPU_CU_LIB)"
 	@echo "Done xx9 DEBUG"
 
-fortran.o: fortran.c fortran.h
-	$(CC) -c fortran.c $(CFLAGS) $(CUDAINCLUDE)
-
 cuda_helpers.o: cuda_helpers.cu
-	$(CU) -c cuda_helpers.cu $(CUFLAGS) $(CUINCLUDES) 
+	$(GPU_CU) -c cuda_helpers.cu $(GPU_CU_FLAGS) $(GPU_CU_INC) 
+
+fortranfiles:
+	@cp $(XX9_GPU_CU_FTN_C) .
+	@cp $(XX9_GPU_CU_FTN_H) .
+
+fortran.o: fortranfiles fortran.c fortran.h
+	$(CC) -c fortran.c $(CFLAGS) $(XX9_GPU_CU_INC)
 
 xx9: xx9.o cuda_helpers.o fortran.o
 	$(FC) xx9.o cuda_helpers.o fortran.o -o xx9 $(LDFLAGS)
