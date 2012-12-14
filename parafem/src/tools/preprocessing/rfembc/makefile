@@ -34,7 +34,7 @@ release:
 	$(MAKE) rfembc \
 	FFLAGS="-c -I$(MODULE) $(RFEMBC_MPI_REL_FFLAGS)" \
 	LDFLAGS="-L$(LIB) -lParaFEM_mpi.$(VERSION) $(RFEMBC_MPI_REL_LDFLAGS) \
-	-l gaf77"
+	-lgaf77"
 	@echo "Done rfembc RELEASE"
 
 debug:
@@ -43,7 +43,7 @@ debug:
 	$(MAKE) rfembc \
 	FFLAGS="-c -I$(MODULE) $(RFEMBC_MPI_DBG_FFLAGS)" \
 	LDFLAGS="-L$(LIB) -lParaFEM_mpi_D.$(VERSION) $(RFEMBC_MPI_DBG_LDFLAGS) \
-	         -l gaf77"
+	         -lgaf77"
 	@echo "Done rfembc DEBUG"
 
 rfembc: rfembc.o

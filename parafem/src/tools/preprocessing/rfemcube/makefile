@@ -34,7 +34,7 @@ release:
 	$(MAKE) rfemcube \
 	FFLAGS="-c -I$(MODULE) $(RFEMCUBE_MPI_REL_FFLAGS)" \
 	LDFLAGS="-L$(LIB) -lParaFEM_mpi.$(VERSION) $(RFEMCUBE_MPI_REL_LDFLAGS) \
-	-l gaf77"
+	-lgaf77"
 	@echo "Done rfemcube RELEASE"
 
 debug:
@@ -43,7 +43,7 @@ debug:
 	$(MAKE) rfemcube \
 	FFLAGS="-c -I$(MODULE) $(RFEMCUBE_MPI_DBG_FFLAGS)" \
 	LDFLAGS="-L$(LIB) -lParaFEM_mpi_D.$(VERSION) $(RFEMCUBE_MPI_DBG_LDFLAGS) \
-	         -l gaf77"
+	         -lgaf77"
 	@echo "Done rfemcube DEBUG"
 
 rfemcube: rfemcube.o
