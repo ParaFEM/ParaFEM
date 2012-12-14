@@ -65,6 +65,7 @@ PROGRAM XX9
      end function set_gpu
      
      integer(c_int) function sync_gpu() bind(C)
+       use iso_c_binding
      end function sync_gpu
 
   end interface
