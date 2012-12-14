@@ -42,6 +42,20 @@ debug-metis:
 	@echo "****************************************************************"
 	$(MAKE) release-metis
 
+release-gaf77:
+	@echo
+	@echo "Building LIBRARY RELEASE (GAF77)"
+	@cd gaf77 && $(MAKE) FC=$(EXT_LIB_GAF77_FC) FFLAGS="$(EXT_LIB_GAF77_FFLAGS)" LDFLAGS="$(EXT_LIB_GAF77_LDFLAGS)" && cd ..
+	@echo "Done LIBRARY RELEASE (GAF77)"
+
+debug-gaf77:
+	@echo
+	@echo "****************************************************************"
+	@echo "** There is currently no DEBUG option for the gaf77 library   **"
+	@echo "** Building the RELEASE version instead                       **"
+	@echo "****************************************************************"
+	$(MAKE) release-gaf77
+
 clean:
 	@cd ARPACK && $(MAKE) clean && cd ..
 #	@cd metis-4.0.3 && $(MAKE) clean && cd ..
