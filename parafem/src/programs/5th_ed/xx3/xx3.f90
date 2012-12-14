@@ -33,6 +33,7 @@ PROGRAM xx3
   CHARACTER(LEN=50)     :: program_name='xx3'
   CHARACTER(LEN=50)     :: fname,job_name,label
   LOGICAL               :: converged = .false.
+  INTEGER               :: dsize = sizeof(0.0d0)   ! Size of C double
 
   ! GPU related variables etc
   ! -------------------------
@@ -90,7 +91,7 @@ PROGRAM xx3
        
        integer(c_int) :: n_elements
        integer(c_int) :: element_size
-       real(c_double) :: host_data(:,:,:)
+       real(c_double) :: host_data(*)
        type (c_ptr) :: device_pointer
      end function copy_3d_data_to_gpu
      
@@ -105,7 +106,7 @@ PROGRAM xx3
        
        integer(c_int) :: n_elements
        integer(c_int) :: element_size
-       real(c_double) :: host_data(:,:)
+       real(c_double) :: host_data(*)
        type (c_ptr) :: device_pointer
      end function copy_2d_data_to_gpu
      
@@ -120,7 +121,7 @@ PROGRAM xx3
 
        integer(c_int) :: n_elements
        integer(c_int) :: element_size
-       real(c_double) :: host_data(:,:)
+       real(c_double) :: host_data(*)
        type (c_ptr) :: device_pointer
      end function copy_data_from_gpu
 
@@ -417,7 +418,7 @@ PROGRAM xx3
      ! Allocate memory on the gpu for matrices
      status = allocate_memory_on_gpu( &
           nels_pp*ndof_per_element**2, &
-          sizeof(0.0d0), &
+          dsize, &
           device_matrix)
      if (status > 0) then
         print *, "gpu memory failed to allocate!"
@@ -427,7 +428,7 @@ PROGRAM xx3
      ! Allocate memory for lhs vectors
      status = allocate_memory_on_gpu( &
           nels_pp*ndof_per_element, &
-          sizeof(0.0d0), &
+          dsize, &
           device_lhs_vector)
      if (status > 0) then
         print *, "gpu memory failed to allocate!"
@@ -437,7 +438,7 @@ PROGRAM xx3
      ! Allocate memory for rhs vectors
      status =  allocate_memory_on_gpu( &
           nels_pp*ndof_per_element, &
-          sizeof(0.0d0), &
+          dsize, &
           device_rhs_vector)
      if (status > 0) then
         print *, "gpu memory failed to allocate!"
@@ -447,7 +448,7 @@ PROGRAM xx3
      ! Copy matrix data to the gpu
      status = copy_3d_data_to_gpu( &
           nels_pp*ndof_per_element**2, &
-          sizeof(0.0d0), &
+          dsize, &
           storkm_pp(:,:,:), &
           device_matrix)
      if (status > 0) then
@@ -490,7 +491,7 @@ PROGRAM xx3
        ! Copy lhs vectors to gpu
        status = copy_2d_data_to_gpu( &
             nels_pp*ndof_per_element, &
-            sizeof(0.0d0), &
+            dsize, &
             pmul_pp(:,1:nels_pp), &
             device_lhs_vector)
        if (status > 0) then
@@ -519,7 +520,7 @@ PROGRAM xx3
        ! Copy result vector back from gpu
        status = copy_data_from_gpu( &
             nels_pp*ndof_per_element, & 
-            sizeof(0.0d0), &
+            dsize, &
             utemp_pp(:,1:nels_pp), &
             device_rhs_vector)
        if (status > 0) then
