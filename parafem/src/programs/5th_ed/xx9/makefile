@@ -55,12 +55,8 @@ debug:
 cuda_helpers.o: cuda_helpers.cu
 	$(GPU_CU) -c cuda_helpers.cu $(GPU_CU_FLAGS) $(GPU_CU_INC) 
 
-fortranfiles:
-	@cp $(XX9_GPU_CU_FTN_C) .
-	@cp $(XX9_GPU_CU_FTN_H) .
-
-fortran.o: fortranfiles fortran.c fortran.h
-	$(CC) -c fortran.c $(CFLAGS) $(XX9_GPU_CU_INC)
+fortran.o: $(XX9_GPU_CU_FTN_C) $(XX9_GPU_CU_FTN_H)
+	$(CC) -c $(XX9_GPU_CU_FTN_C) $(CFLAGS) $(XX9_GPU_CU_INC)
 
 xx9: xx9.o cuda_helpers.o fortran.o
 	$(FC) xx9.o cuda_helpers.o fortran.o -o xx9 $(LDFLAGS)
