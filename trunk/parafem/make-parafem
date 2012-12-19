@@ -74,10 +74,11 @@ BUILD_MODULES_OPT=
 BUILD_LIBRARIES_OPT=
 
 # PROGRAM build options
-# options are: p12(default), prog8(default), gaitfem(default), rfem(default)
+# options are: p12, 5ed, xx, prog8, gaitfem, rfem
 BUILD_PROGRAMS_OPT=
 BUILD_GROUP_P12="p121 p123 p125 p126 p129 p1210"
-BUILD_GROUP_XX="xx1 xx2 xx3 xx4 xx5 xx6 xx7 xx9 xx10 xx11 xx12 xx13" # + xx8
+BUILD_GROUP_5ED="p121-5"
+BUILD_GROUP_XX="xx11 xx12" # + xx1 xx2 xx3 xx4 xx5 xx6 xx7 xx8 xx9 xx10
 BUILD_GROUP_PROG8="prog81 prog82 prog83"
 BUILD_GROUP_GAITFEM="gaitfem"
 BUILD_GROUP_RFEM="rfemsolve"
@@ -90,7 +91,7 @@ BUILD_GROUP_POSTPROC="d2off bnd2dis mat2numpe upvw2dis pf2ensi ttrb2ttr"
 # DEFAULT build options for LIBRARIES, MODULES, PROGRAMS and TOOLS
 BUILD_LIBRARIES_DEFAULTS="arpack gaf77" # + metis
 BUILD_MODULES_DEFAULTS="mpi serial bem_lib bem_lib_p"
-BUILD_PROGRAMS_DEFAULTS="p12 xx rfem" # + prog8 + gaitfem
+BUILD_PROGRAMS_DEFAULTS="p12 5ed xx rfem" # + prog8 + gaitfem
 BUILD_TOOLS_DEFAULTS="preproc postproc"
 
 # ------------------------------------------------------------------------------
@@ -120,6 +121,7 @@ showusage() {
     echo 
     echo "Building the PROGRAMS:"
     echo "  -p12 will build the programs in the p12 group: $BUILD_GROUP_P12"
+    echo "  -5ed will build the programs in the 5ed group: $BUILD_GROUP_5ED"
     echo "  -xx will build the programs in the xx group: $BUILD_GROUP_XX"
     echo "  -prog8 will build the programs in the prog8 group: $BUILD_GROUP_PROG8"
     echo "  -gaitfem will build the programs in the gaitfem group: $BUILD_GROUP_GAITFEM"
@@ -208,6 +210,7 @@ while [ $# -gt 0 ]; do
 	# ----------------------------------------------------------------------
 	# program group options
 	-p12) BUILD_PROGRAMS_OPT="$BUILD_PROGRAMS_OPT p12"; BUILD_PROGRAMS_GIVEN=1;;
+	-5ed) BUILD_PROGRAMS_OPT="$BUILD_PROGRAMS_OPT 5ed"; BUILD_PROGRAMS_GIVEN=1;;
 	-xx) BUILD_PROGRAMS_OPT="$BUILD_PROGRAMS_OPT xx"; BUILD_PROGRAMS_GIVEN=1;;
 	-prog8) BUILD_PROGRAMS_OPT="$BUILD_PROGRAMS_OPT prog8"; BUILD_PROGRAMS_GIVEN=1;;
 	-gaitfem) BUILD_PROGRAMS_OPT="$BUILD_PROGRAMS_OPT gaitfem"; BUILD_PROGRAMS_GIVEN=1;;
@@ -384,11 +387,20 @@ if [ $BUILD_PROGRAMS = 1 ]; then
 		    cd src/programs/4th_ed/$PROG && make $TARGET && cd ../../../..
 		    if [ $? = 2 ]; then	error "BUILD_GROUP_P12/$PROG/$TARGET"; fi
 		done;;
+	    5ed)
+		echo "5ed: $BUILD_GROUP_5ED"
+		for PROG in $BUILD_GROUP_5ED; do
+		    separator
+		    cd $PARAFEM_HOME
+		    cd src/programs/5th_ed/$PROG && make $TARGET && cd ../../../..
+		    if [ $? = 2 ]; then	error "BUILD_GROUP_5ED/$PROG/$TARGET"; fi
+		done;;
+
 	    xx)
 		for PROG in $BUILD_GROUP_XX; do
 		    separator
 		    cd $PARAFEM_HOME
-		    cd src/programs/5th_ed/$PROG && make $TARGET && cd ../../../..
+		    cd src/programs/dev/$PROG && make $TARGET && cd ../../../..
 		    if [ $? = 2 ]; then	error "BUILD_GROUP_XX/$PROG/$TARGET"; fi
 		done;;
 	    prog8) 
