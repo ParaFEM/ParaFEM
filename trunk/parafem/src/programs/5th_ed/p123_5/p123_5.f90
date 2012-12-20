@@ -1,6 +1,6 @@
-PROGRAM p124         
+PROGRAM p123         
 !------------------------------------------------------------------------------
-!      program p124 three dimensional analysis of steady state heat equation
+!      program p12.3 three dimensional analysis of steady state heat equation
 !      using 8-node brick elements, preconditioned conjugate gradient solver
 !      diagonal preconditioner ; parallel version ; externally generated model 
 !------------------------------------------------------------------------------
@@ -568,4 +568,4 @@ PROGRAM p124
 
   CALL shutdown()
 
-END PROGRAM p124
+END PROGRAM p123

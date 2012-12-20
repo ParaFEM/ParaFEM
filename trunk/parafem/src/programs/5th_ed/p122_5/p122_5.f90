@@ -1,6 +1,6 @@
- PROGRAM P123
+ PROGRAM P122
 !------------------------------------------------------------------------------
-!      program p123 three-d strain of an elastic-plastic(von Mises) solid
+!      program p12.2 three-d strain of an elastic-plastic(von Mises) solid
 !      using 20-node brick elements; consistent return method, pcg parallel
 !      displacement control, load control, adaptive increment sizes
 !------------------------------------------------------------------------------
@@ -1235,4 +1235,4 @@
  CALL shutdown()
  
 
-END PROGRAM P123 
+END PROGRAM P122
