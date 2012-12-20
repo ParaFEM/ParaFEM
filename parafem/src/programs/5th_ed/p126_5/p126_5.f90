@@ -1,6 +1,6 @@
-PROGRAM p127     
+PROGRAM p126     
 !------------------------------------------------------------------------------
-!      Program 12.7 steady state  3-d Navier-Stokes equation
+!      Program 12.6 steady state  3-d Navier-Stokes equation
 !      using 20-node velocity hexahedral elements  
 !      coupled to 8-node pressure hexahedral elements : u-p-v-w order
 !      element by element solution using BiCGSTAB(L) : parallel version
@@ -508,4 +508,4 @@ PROGRAM p127
 
  CALL shutdown()    
 
-END PROGRAM p127
+END PROGRAM p126
