@@ -24,6 +24,10 @@ EXT_LIB_METIS_LDOPTIONS=
 EXT_LIB_METIS_AR=ar rv
 EXT_LIB_METIS_RANLIB=ranlib
   
+EXT_LIB_GAF77_FC=ifort
+EXT_LIB_GAF77_FFLAGS=-V -O2 -axAVX
+EXT_LIB_GAF77_LDFLAGS=
+
 # ------------------------------------------------------------------------------
 # FLAGS for MODULE/LIBRARY compliation
 # ------------------------------------------------------------------------------
