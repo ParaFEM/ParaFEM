@@ -1,6 +1,6 @@
-PROGRAM p1211      
+PROGRAM p1210      
 !------------------------------------------------------------------------------
-!  Program 12.11 forced vibration of an elastic-plastic(Von Mises) solid
+!  Program 12.10 forced vibration of an elastic-plastic(Von Mises) solid
 !  Viscoplastic strain method, lumped mass, explicit integration
 !------------------------------------------------------------------------------
 
@@ -332,4 +332,4 @@ PROGRAM p1211
 
   CALL shutdown() 
 
-END PROGRAM p1211
+END PROGRAM p1210
