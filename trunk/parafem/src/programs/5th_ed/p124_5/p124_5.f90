@@ -1,6 +1,6 @@
-PROGRAM p125      
+PROGRAM P124      
 !------------------------------------------------------------------------------
-!      Program P125  Three dimensional transient analysis of heat conduction 
+!      Program P12.4 Three dimensional transient analysis of heat conduction 
 !                    equation using 8-node hexahedral elements; pcg version;
 !                    implicit; integration in time using 'theta' method 
 !                    parallel version
@@ -634,4 +634,4 @@ PROGRAM p125
   
   CALL shutdown()
   
-END PROGRAM P125
+END PROGRAM P124
