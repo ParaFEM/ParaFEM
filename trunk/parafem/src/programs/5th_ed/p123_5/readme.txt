@@ -7,7 +7,8 @@
 
     Usage: p123_5 <job_name>
 
-   
+  This was originally program xx5 in folder /dev
+  
   AUTHOR
 
   lee.margetts@manchester.ac.uk
