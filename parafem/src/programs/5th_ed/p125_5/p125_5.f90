@@ -1,4 +1,4 @@
-PROGRAM p125_5      
+PROGRAM p125      
 !------------------------------------------------------------------------------
 !      Program P125  Three dimensional transient analysis of heat conduction 
 !                    equation using 8-node hexahedral elements; pcg version;
