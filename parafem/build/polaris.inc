@@ -1,7 +1,7 @@
 # BUILD INCLUDE build/xe6.inc
 # Author: Louise M. Lever
 # ------------------------------------------------------------------------------
-# Include file for the xe6 (HECToR) architecture.
+# Include file for the Intel Sandy Bridge (Polaris) architecture.
 # ------------------------------------------------------------------------------
 
 # ------------------------------------------------------------------------------
@@ -13,7 +13,7 @@ INSTALL_CMD=mv
 # ------------------------------------------------------------------------------
 # FLAGS for EXTERNAL LIBRARY compliation
 # ------------------------------------------------------------------------------
-EXT_LIB_ARPACK_FC=ftn
+EXT_LIB_ARPACK_FC=ifort
 EXT_LIB_ARPACK_FFLAGS=-V -O2 -axAVX
 EXT_LIB_ARPACK_LDFLAGS=
 
