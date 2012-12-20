@@ -1,11 +1,11 @@
 
-  PROGRAM: p122_5.f90
+  PROGRAM: p121_5.f90
 
-  p122_5 performs the 3D analysis of a linear elastic solid. The program is a 
+  p121_5 performs the 3D analysis of a linear elastic solid. The program is a 
   modified version of the one published in Smith I.M. and Griffiths D.V. 
   and Margetts L. "Programming the Finite Element Method", 5th Edition, Wiley, 2013.
 
-    Usage: p122_5 <job_name>
+    Usage: p121_5 <job_name>
 
    
   AUTHOR
