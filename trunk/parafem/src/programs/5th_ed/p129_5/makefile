@@ -32,7 +32,7 @@ release:
 	@echo "Building P129_5 RELEASE"
 	$(MAKE) p129_5 \
 	FFLAGS="-c -I$(MODULE) $(P129_5_MPI_REL_FFLAGS)" \
-	LDFLAGS="-L$(LIB) -lParaFEM_mpi.$(VERSION) $(P129_5_MPI_REL_LDFLAGS)"
+	LDFLAGS="-L$(LIB) -lParaFEM_mpi.$(VERSION) -larpack_$(MACHINE) $(P129_5_MPI_REL_LDFLAGS)"
 	@echo "Done p129_5 RELEASE"
 
 debug:
@@ -40,7 +40,7 @@ debug:
 	@echo "Building p129_5 DEBUG"
 	$(MAKE) p129_5 \
 	FFLAGS="-c -I$(MODULE) $(P129_5_MPI_DBG_FFLAGS)" \
-	LDFLAGS="-L$(LIB) -lParaFEM_mpi_D.$(VERSION) $(P129_5_MPI_DBG_LDFLAGS)"
+	LDFLAGS="-L$(LIB) -lParaFEM_mpi_D.$(VERSION) -larpact_$(MACHINE) $(P129_5_MPI_DBG_LDFLAGS)"
 	@echo "Done p129_5 DEBUG"
 
 p129_5: p129_5.o
