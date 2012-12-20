@@ -220,8 +220,13 @@ c					compute required field size (once)
             call flush(istat)
          endif
          cov = sngl(esd/emn)
-         pvr = alog(one + cov*cov)
-         pmn = alog(sngl(emn)) - half*pvr
+c        pvr = alog(one + cov*cov)
+c        pmn = alog(sngl(emn)) - half*pvr
+c
+c        intel compiler doesn't support alog (original code), so try log
+c
+         pvr = log(one + cov*cov)
+         pmn = log(sngl(emn)) - half*pvr
          psd = sqrt(pvr)
          if( .not. liid .and. .not. lunif ) then
 c						set covariance fnc parameters
