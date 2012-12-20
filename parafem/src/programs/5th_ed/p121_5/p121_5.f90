@@ -1,6 +1,6 @@
-PROGRAM p122_5        
+PROGRAM p121        
 !------------------------------------------------------------------------------ 
-!      Program 12.2 three dimensional analysis of an elastic solid
+!      Program 12.1 three dimensional analysis of an elastic solid
 !                   load control or displacement control
 !------------------------------------------------------------------------------ 
                                  
@@ -536,4 +536,4 @@ PROGRAM p122_5
  
   CALL shutdown() 
  
-END PROGRAM p122_5
+END PROGRAM p121
