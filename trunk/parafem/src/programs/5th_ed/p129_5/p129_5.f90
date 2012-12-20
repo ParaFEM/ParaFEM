@@ -1,6 +1,6 @@
-PROGRAM p1210       
+PROGRAM p129       
 !------------------------------------------------------------------------------
-!      Program 12.10 forced vibration of a 3d elastic solid
+!      Program 12.9 forced vibration of a 3d elastic solid
 !      Lumped or consistent mass
 !      Implicit integration by theta method : parallel version
 !------------------------------------------------------------------------------
@@ -416,4 +416,4 @@ PROGRAM p1210
 
  CALL shutdown() 
 
-END PROGRAM p1210
+END PROGRAM p129
