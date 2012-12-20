@@ -1,6 +1,6 @@
-PROGRAM P129
+PROGRAM P128
 !------------------------------------------------------------------------------
-!      program p12.9 eigenvalues and eigenvectors of a cuboidal elastic
+!      program p12.8 eigenvalues and eigenvectors of a cuboidal elastic
 !      solid in 3d using uniform 8-node hexahedral elements ; Arnoldi "dp" 
 !      for lumped mass this is done element by element : parallel version
 !------------------------------------------------------------------------------
@@ -358,4 +358,4 @@ PROGRAM P129
    
    CALL shutdown()
 
- END PROGRAM P129
+ END PROGRAM P128
