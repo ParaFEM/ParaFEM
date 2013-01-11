@@ -12,11 +12,12 @@ PROGRAM p121
  INTEGER,PARAMETER::nodof=3,ndim=3,nst=6
  INTEGER::loaded_nodes,fixed_freedoms,iel,i,j,k,l,idx1,idx2,iters,limit, &
    nn,nr,nip,nod,nels,ndof,npes_pp,node_end,node_start,nodes_pp,argc,    &
-   iargc,meshgen,partitioner,fixed_freedoms_pp,fixed_freedoms_start
+   iargc,meshgen,partitioner,fixed_freedoms_pp,fixed_freedoms_start,step
  REAL(iwp),PARAMETER::zero=0.0_iwp,penalty=1.0e20_iwp
  REAL(iwp)::e,v,det,tol,up,alpha,beta,tload
  CHARACTER(LEN=50)::program_name='p121',fname,job_name,label
- CHARACTER(LEN=15)::element ;LOGICAL::converged=.false.
+ CHARACTER(LEN=15)::element ;CHARACTER(LEN=5)::ch
+ LOGICAL::converged=.false.
 !---------------------------- dynamic arrays -----------------------------
  REAL(iwp),ALLOCATABLE::points(:,:),dee(:,:),weights(:),val(:,:),        &
    disp_pp(:),g_coord_pp(:,:,:),jac(:,:),der(:,:),deriv(:,:),bee(:,:),   &
@@ -25,9 +26,9 @@ PROGRAM p121
    d_pp(:),timest(:),diag_precon_tmp(:,:),eld_pp(:,:),tensor_pp(:,:,:),  &
    valf(:),store_pp(:),fun(:),shape_integral_pp(:,:),                    &
    stress_integral_pp(:,:),stressnodes_pp(:),principal_integral_pp(:,:), &
-   princinodes_pp(:),principal(:),reacnodes_pp(:),rest(:,:),             &
-   g_num_pp(:,:),g_g_pp(:,:),node(:)
- INTEGER,  ALLOCATABLE::no(:),no_pp(:),no_pp_temp(:),no_global(:),sense(:)
+   princinodes_pp(:),principal(:),reacnodes_pp(:),temp(:)
+ INTEGER,ALLOCATABLE::rest(:,:),g_num_pp(:,:),g_g_pp(:,:),node(:),no(:), &
+   no_pp(:),no_pp_temp(:),no_global(:),sense(:)
 !------------------------ input and initialisation -----------------------
  ALLOCATE(timest(20)); timest=zero; timest(1)=elap_time()
  CALL find_pe_procs(numpe,npes); argc=iargc(); CALL GETARG(1, job_name) 
@@ -79,12 +80,13 @@ PROGRAM p121
  END DO;  END DO elements_4
  CALL scatter(diag_precon_pp,diag_precon_tmp); DEALLOCATE(diag_precon_tmp)
  IF(numpe==1)THEN
-   OPEN(11,FILE='p121.res',STATUS='REPLACE',ACTION='WRITE')
+   fname=job_name(1:INDEX(job_name, " ") -1) // ".res"
+   OPEN(11,FILE=fname,STATUS='REPLACE',ACTION='WRITE')
    WRITE(11,'(A,I7,A)') "This job ran on ",npes," processes"
    WRITE(11,'(A,3(I8,A))') "There are ",nn," nodes", nr, &
                            " restrained and ",neq," equations"
-   WRITE(11,*) "The time to read input is:",timest(2)-timest(1)
-   WRITE(11,*) "The time to after setup is:",elap_time()-timest(1)
+   WRITE(11,'(A,F10.4)') "Time to read input is:",timest(2)-timest(1)
+   WRITE(11,'(A,F10.4)') "Time after setup is:",elap_time()-timest(1)
  END IF
 !----------------------------- get starting r ----------------------------
  IF(loaded_nodes>0) THEN
@@ -113,35 +115,43 @@ PROGRAM p121
  END DO iterations
  IF(numpe==1)THEN
    WRITE(11,'(A,I6)')"The number of iterations to convergence was ",iters
-   WRITE(11,*)"Time to solve equations was  :", elap_time()-timest(3)  
+   WRITE(11,'(A,F10.4)')"Time to solve equations was  :",                 &
+                         elap_time()-timest(3)  
    WRITE(11,'(A,E12.4)')"The central nodal displacement is :",xnew_pp(1)
  END IF
  DEALLOCATE(p_pp,r_pp,x_pp,u_pp,d_pp,diag_precon_pp,storkm_pp,pmul_pp) 
 !------------------------ write out displacements ------------------------
  CALL calc_nodes_pp(nn,npes,numpe,node_end,node_start,nodes_pp)
  IF(numpe==1) THEN
-   fname = job_name(1:INDEX(job_name, " ")-1)//".dis"
+   step=1; WRITE(ch,'(I5.5)') step
+   fname = job_name(1:INDEX(job_name, " ")-1)//".ensi.DISPL-"//ch
    OPEN(24, file=fname, status='replace', action='write')
+   WRITE(24,'(A)') "Alya Ensight Gold --- Vector per-node variable file"
+   WRITE(24,'(A/A/A)') "part", "     1","coordinates"
  END IF
  ALLOCATE(eld_pp(ntot,nels_pp)); eld_pp=zero
  CALL gather(xnew_pp(1:),eld_pp); DEALLOCATE(xnew_pp)
  ALLOCATE(disp_pp(nodes_pp*ndim)); disp_pp = zero
- label="*DISPLACEMENT"
+ ALLOCATE(temp(nodes_pp)); temp = zero
  CALL scatter_nodes(npes,nn,nels_pp,g_num_pp,nod,ndim,nodes_pp,          &
                     node_start,node_end,eld_pp,disp_pp,1)
- CALL write_nodal_variable(label,24,1,nodes_pp,npes,numpe,ndim,disp_pp)
+ DO i=1,ndim ; temp=zero
+   DO j=1,nodes_pp; k=i+(ndim*j-1); temp(j)=disp_pp(k); END DO
+   CALL dismsh_ensi_p(label,24,1,nodes_pp,npes,numpe,1,temp)
+ END DO
  DEALLOCATE(disp_pp); IF(numpe==1) CLOSE(24)
 !--------------- recover stresses at centroidal gauss point --------------
  nip=1; points=zero; iel=1
  IF(numpe==1)WRITE(11,'(A)')"The Centroid point stresses for element 1 are"
  gauss_pts_2: DO i=1,nip
-   CALL shape_der(der,points,i); jac=MATMUL(der,coord)
+   CALL shape_der(der,points,i); jac=MATMUL(der,g_coord_pp(:,:,iel))
    CALL invert(jac); deriv=MATMUL(jac,der); CALL beemat(bee,deriv)
-   eps=MATMUL(bee,eld); sigma=MATMUL(dee,eps)
+   eps=MATMUL(bee,eld_pp(:,iel)); sigma=MATMUL(dee,eps)
    IF(numpe==1.AND.i==1)THEN
      WRITE(11,'(A,I5)')"Point ",i ; WRITE(11,'(6E12.4)') sigma
    END IF
  END DO gauss_pts_2
- IF(numpe==1)WRITE(11,*)"This analysis took  :", elap_time()-timest(1)  
+ IF(numpe==1)WRITE(11,'(A,F10.4)')"This analysis took  :",               &
+                                   elap_time()-timest(1)  
  CALL shutdown() 
 END PROGRAM p121
