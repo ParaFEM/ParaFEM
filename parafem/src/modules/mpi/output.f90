@@ -335,7 +335,7 @@ MODULE OUTPUT
 !------------------------------------------------------------------------------
 !------------------------------------------------------------------------------
 
-  SUBROUTINE WRITE_P125(fixed_freedoms,iters,job_name,loaded_freedoms,neq,nn, &
+  SUBROUTINE WRITE_P125(fixed_freedoms,nstep,job_name,loaded_freedoms,neq,nn, &
                         npes,nr,numpe,timest)
 
   !/****f* output/write_p125
@@ -352,7 +352,7 @@ MODULE OUTPUT
   !*    The following scalar integers have the INTENT(IN) attribute:
   !*
   !*    fixed_freedoms         : Number of fixed displacements
-  !*    iters                  : Number of PCG iterations taken to solve problem
+  !*    nstep                  : Number of time steps carried out
   !*    loaded_nodes           : Number of loaded_nodes
   !*    neq                    : Total number of equations in the mesh
   !*    nn                     : Number of nodes in the mesh
@@ -388,7 +388,7 @@ MODULE OUTPUT
   IMPLICIT NONE
 
   CHARACTER(LEN=50), INTENT(IN)  :: job_name
-  INTEGER, INTENT(IN)            :: numpe,npes,nn,nr,neq,iters
+  INTEGER, INTENT(IN)            :: numpe,npes,nn,nr,neq,nstep
   INTEGER, INTENT(IN)            :: fixed_freedoms,loaded_freedoms
   REAL(iwp), INTENT(IN)          :: timest(:)
 
@@ -414,7 +414,7 @@ MODULE OUTPUT
     WRITE(12,'(A,I12)')    "Number of nodes in the mesh                 ",nn
     WRITE(12,'(A,I12)')    "Number of nodes that were restrained        ",nr
     WRITE(12,'(A,I12)')    "Number of equations solved                  ",neq
-    WRITE(12,'(A,I12)')    "Number of PCG iterations                    ",iters
+    WRITE(12,'(A,I12)')    "Number of time steps                        ",nstep
     IF(loaded_freedoms > 0) THEN
       WRITE(12,'(A,I12)')    "Number of loaded freedoms                   ",   &
                               loaded_freedoms 
@@ -434,37 +434,37 @@ MODULE OUTPUT
                         "SECONDS  ", "%TOTAL    "
     WRITE(12,'(A,F12.6,F8.2)') "Setup                                       ",&
                            timest(2)-timest(1),                               &
-                           ((timest(2)-timest(1))/(timest(14)-timest(1)))*100  
+                           ((timest(2)-timest(1))/(timest(12)-timest(1)))*100  
     WRITE(12,'(A,F12.6,F8.2)') "Read element steering array                 ",&
                            timest(3)-timest(2),                               &
-                           ((timest(3)-timest(2))/(timest(14)-timest(1)))*100  
+                           ((timest(3)-timest(2))/(timest(12)-timest(1)))*100  
     WRITE(12,'(A,F12.6,F8.2)') "Convert Abaqus to S&G node ordering         ",&
                            timest(4)-timest(3),                               &
-                           ((timest(4)-timest(3))/(timest(14)-timest(1)))*100  
+                           ((timest(4)-timest(3))/(timest(12)-timest(1)))*100  
     WRITE(12,'(A,F12.6,F8.2)') "Read nodal coordinates                      ",&
                            timest(5)-timest(4),                               &
-                           ((timest(5)-timest(4))/(timest(14)-timest(1)))*100  
+                           ((timest(5)-timest(4))/(timest(12)-timest(1)))*100  
     WRITE(12,'(A,F12.6,F8.2)') "Read restrained nodes                       ",&
                            timest(6)-timest(5),                               &
-                           ((timest(6)-timest(5))/(timest(14)-timest(1)))*100                             
+                           ((timest(6)-timest(5))/(timest(12)-timest(1)))*100                             
     WRITE(12,'(A,F12.6,F8.2)') "Compute steering array and neq              ",&
                            timest(7)-timest(6),                               &
-                          ((timest(7)-timest(6))/(timest(14)-timest(1)))*100  
+                          ((timest(7)-timest(6))/(timest(12)-timest(1)))*100  
     WRITE(12,'(A,F12.6,F8.2)') "Compute interprocessor communication tables ",&
                            timest(8)-timest(7),                               &
-                          ((timest(8)-timest(7))/(timest(14)-timest(1)))*100  
+                          ((timest(8)-timest(7))/(timest(12)-timest(1)))*100  
     WRITE(12,'(A,F12.6,F8.2)') "Allocate neq_pp arrays                      ",&
                            timest(9)-timest(8),                               &
-                          ((timest(9)-timest(8))/(timest(14)-timest(1)))*100  
+                          ((timest(9)-timest(8))/(timest(12)-timest(1)))*100  
     WRITE(12,'(A,F12.6,F8.2)') "Compute element stiffness matrices          ",&
                             timest(10)-timest(9),                             &
-                          ((timest(10)-timest(9))/(timest(14)-timest(1)))*100  
+                          ((timest(10)-timest(9))/(timest(12)-timest(1)))*100  
     WRITE(12,'(A,F12.6,F8.2)') "Invert the mass matrix                      ",&
                            timest(11)-timest(10),                             &
-                          ((timest(11)-timest(10))/(timest(14)-timest(1)))*100  
+                          ((timest(11)-timest(10))/(timest(12)-timest(1)))*100  
     WRITE(12,'(A,F12.6,F8.2)') "Time stepping recursion                     ",&
                            timest(12)-timest(11),                             &
-                          ((timest(12)-timest(11))/(timest(14)-timest(1)))*100  
+                          ((timest(12)-timest(11))/(timest(12)-timest(1)))*100  
 !    WRITE(12,'(A,F12.6,F8.2)')"Output results                              ",&
 !                           timest(14)-timest(13),                            &
 !                          ((timest(14)-timest(13))/(timest(14)-timest(1)))*100  
@@ -1534,7 +1534,7 @@ MODULE OUTPUT
 !------------------------------------------------------------------------------ 
  
   SUBROUTINE DISMSH_ENSI_P(text,filnum,iload,nodes_pp,npes,numpe, &
-                                  numvar,stress,newstep)
+                                  numvar,stress)
 
   !/****f* output/write_nodal_variable
   !*  NAME
@@ -1578,12 +1578,11 @@ MODULE OUTPUT
   !*    The following arguments have the INTENT(OUT) attribute:
   !*
   !*  AUTHOR
-  !*    F. Calvo
   !*    L. Margetts
   !*  CREATION DATE
   !*    11.01.2013
   !*  COPYRIGHT
-  !*    (c) University of Manchester 2007-2010
+  !*    (c) University of Manchester 2013
   !******
   !*
   !*/
@@ -1591,13 +1590,11 @@ MODULE OUTPUT
   IMPLICIT NONE
 
   CHARACTER(LEN=50), INTENT(IN) :: text
-  CHARACTER(LEN=5)              :: ch
   INTEGER, INTENT(IN)           :: filnum, iload, nodes_pp, npes, numpe, numvar
   REAL(iwp), INTENT(IN)         :: stress(:)
   INTEGER                       :: i, j, idx1, nod_r, bufsize1, bufsize2
   INTEGER                       :: ier, iproc, n, bufsize
   INTEGER                       :: statu(MPI_STATUS_SIZE)
-  INTEGER                       :: newstep
   INTEGER, ALLOCATABLE          :: get(:)
   REAL(iwp), ALLOCATABLE        :: stress_r(:)
 
@@ -1605,24 +1602,9 @@ MODULE OUTPUT
 ! 1. Master processor writes out the results for its own assigned nodes
 !------------------------------------------------------------------------------
 
-  
-  WRITE(ch,'(I5.5)') iload ! convert integer to string using internal file
-
-  OPEN(17,FILE=argv(1:nlen)//'.ensi.DISPL-'//ch)
-
-  IF(newstep==1)THEN
-
-    WRITE(17,'(A)') "Alya Ensight Gold --- Vector per-node variable file"
-    WRITE(17,'(A/A/A)') "part", "      1","coordinates"
-    
-  END IF
-  
   IF(numpe==1) THEN
     DO i = 1,nodes_pp
-      idx1 = (i-1)*numvar + 1
-      IF (numvar==1) THEN
-        WRITE(filnum,2001)i,(stress(j),j=idx1,idx1+numvar-1)
-      END IF
+      WRITE(filnum,'(e12.4)') stress(i)
     END DO
   END IF    
   
@@ -1672,10 +1654,7 @@ MODULE OUTPUT
         n = n + get(j-1)
       END DO
       DO i = 1,get(iproc)
-        idx1 = (i-1)*numvar + 1
-        IF (numvar==1) THEN
-          WRITE(filnum,2001)n-1+i,(stress_r(j),j=idx1,idx1+numvar-1)
-        END IF
+        WRITE(filnum,'(e12.4)') stress_r(i)
       END DO
     END IF
   END DO
@@ -1685,15 +1664,6 @@ MODULE OUTPUT
 !------------------------------------------------------------------------------
 
   DEALLOCATE(get,stress_r)
-
-!------------------------------------------------------------------------------
-! 6. Set formats used in this subroutine
-!------------------------------------------------------------------------------
-
-  2001 FORMAT(i8,1(1p,e12.4))
-  2003 FORMAT(i8,3(1p,e12.4))
-  2004 FORMAT(i8,4(1p,e12.4))
-  2006 FORMAT(i8,6(1p,e12.4))
 
   END SUBROUTINE DISMSH_ENSI_P
   
