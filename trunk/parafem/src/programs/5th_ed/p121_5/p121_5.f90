@@ -136,7 +136,7 @@ PROGRAM p121
  CALL scatter_nodes(npes,nn,nels_pp,g_num_pp,nod,ndim,nodes_pp,          &
                     node_start,node_end,eld_pp,disp_pp,1)
  DO i=1,ndim ; temp=zero
-   DO j=1,nodes_pp; k=i+(ndim*j-1); temp(j)=disp_pp(k); END DO
+   DO j=1,nodes_pp; k=i+(ndim*(j-1)); temp(j)=disp_pp(k); END DO
    CALL dismsh_ensi_p(label,24,1,nodes_pp,npes,numpe,1,temp)
  END DO
  DEALLOCATE(disp_pp); IF(numpe==1) CLOSE(24)
