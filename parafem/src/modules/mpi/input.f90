@@ -11,6 +11,7 @@ MODULE INPUT
   !*    
   !*    Subroutine             Purpose
   !*
+  !*    GETNAME                Gets the base name of a data file
   !*    READ_G_COORD_PP        Reads the global coordinates
   !*    READ_G_NUM_PP          Reads the element nodal steering array
   !*    READ_ELEMENTS          Reads the element nodal steering array
@@ -50,6 +51,38 @@ MODULE INPUT
   USE mp_interface
 
   CONTAINS
+
+!------------------------------------------------------------------------------
+!------------------------------------------------------------------------------
+!------------------------------------------------------------------------------
+
+  SUBROUTINE getname(argv,nlen)
+  !
+  ! This subroutine gets the base name of data file.
+  !
+   IMPLICIT NONE
+   INTEGER::narg
+   INTEGER,INTENT(OUT)::nlen
+   INTEGER::lnblnk,iargc
+   CHARACTER(*),INTENT(OUT)::argv
+   LOGICAL found
+   narg=iargc()
+   IF(narg.lt.1)THEN
+     WRITE(*,*)'Please enter the base name of data file: '
+     READ(*,*) argv
+    ELSE
+     CALL getarg(1,argv)
+   ENDIF
+  !nlen=lnblnk(argv)
+   nlen=len_trim(argv)
+   INQUIRE(file=argv(1:nlen)//'.dat',exist=found)
+   IF(.not.found)THEN
+    WRITE(*,*)'Data file not found: ',argv(1:nlen)//'.dat'
+    WRITE(*,*)'Please create or check spelling.'
+    STOP
+   ENDIF
+  RETURN
+  END SUBROUTINE getname
 
 !------------------------------------------------------------------------------
 !------------------------------------------------------------------------------
