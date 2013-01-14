@@ -48,20 +48,17 @@ PROGRAM p121
    pmul_pp(ntot,nels_pp),utemp_pp(ntot,nels_pp),g_g_pp(ntot,nels_pp))
 !----------  find the steering array and equations per process ----------
  CALL rearrange(rest); g_g_pp=0; neq=0
- elements_1: DO iel = 1, nels_pp
+ elements_1: DO iel=1,nels_pp
     CALL find_g3(g_num_pp(:,iel),g_g_pp(:,iel),rest)
  END DO elements_1
-!CALL MPI_BARRIER(MPI_COMM_WORLD,ier) ! remove
- elements_2: DO iel = 1, nels_pp  
+ elements_2: DO iel=1,nels_pp  
     i=MAXVAL(g_g_pp(:,iel)); IF(i>neq) neq=i
  END DO elements_2  
  neq=MAX_INTEGER_P(neq); CALL calc_neq_pp; CALL calc_npes_pp(npes,npes_pp)
  CALL make_ggl2(npes_pp,npes,g_g_pp)
-!CALL MPI_BARRIER(MPI_COMM_WORLD,ier) ! remove
  ALLOCATE(p_pp(neq_pp),r_pp(neq_pp),x_pp(neq_pp),xnew_pp(neq_pp),        &
-   u_pp(neq_pp),d_pp(neq_pp),diag_precon_pp(neq_pp))
+   u_pp(neq_pp),d_pp(neq_pp),diag_precon_pp(neq_pp)); diag_precon_pp=zero
  p_pp=zero;  r_pp=zero;  x_pp=zero; xnew_pp=zero; u_pp=zero; d_pp=zero
- diag_precon_pp=zero
 !------ element stiffness integration and build the preconditioner ------
  dee=zero; CALL deemat(e,v,dee); CALL sample(element,points,weights)
  storkm_pp=zero
@@ -120,26 +117,6 @@ PROGRAM p121
    WRITE(11,'(A,E12.4)')"The central nodal displacement is :",xnew_pp(1)
  END IF
  DEALLOCATE(p_pp,r_pp,x_pp,u_pp,d_pp,diag_precon_pp,storkm_pp,pmul_pp) 
-!------------------------ write out displacements ------------------------
- CALL calc_nodes_pp(nn,npes,numpe,node_end,node_start,nodes_pp)
- IF(numpe==1) THEN
-   step=1; WRITE(ch,'(I5.5)') step
-   fname = job_name(1:INDEX(job_name, " ")-1)//".ensi.DISPL-"//ch
-   OPEN(24, file=fname, status='replace', action='write')
-   WRITE(24,'(A)') "Alya Ensight Gold --- Vector per-node variable file"
-   WRITE(24,'(A/A/A)') "part", "     1","coordinates"
- END IF
- ALLOCATE(eld_pp(ntot,nels_pp)); eld_pp=zero
- CALL gather(xnew_pp(1:),eld_pp); DEALLOCATE(xnew_pp)
- ALLOCATE(disp_pp(nodes_pp*ndim)); disp_pp = zero
- ALLOCATE(temp(nodes_pp)); temp = zero
- CALL scatter_nodes(npes,nn,nels_pp,g_num_pp,nod,ndim,nodes_pp,          &
-                    node_start,node_end,eld_pp,disp_pp,1)
- DO i=1,ndim ; temp=zero
-   DO j=1,nodes_pp; k=i+(ndim*(j-1)); temp(j)=disp_pp(k); END DO
-   CALL dismsh_ensi_p(label,24,1,nodes_pp,npes,numpe,1,temp)
- END DO
- DEALLOCATE(disp_pp); IF(numpe==1) CLOSE(24)
 !--------------- recover stresses at centroidal gauss point --------------
  nip=1; points=zero; iel=1
  IF(numpe==1)WRITE(11,'(A)')"The Centroid point stresses for element 1 are"
@@ -147,11 +124,28 @@ PROGRAM p121
    CALL shape_der(der,points,i); jac=MATMUL(der,g_coord_pp(:,:,iel))
    CALL invert(jac); deriv=MATMUL(jac,der); CALL beemat(bee,deriv)
    eps=MATMUL(bee,eld_pp(:,iel)); sigma=MATMUL(dee,eps)
-   IF(numpe==1.AND.i==1)THEN
+   IF(numpe==1.AND.i==1);
      WRITE(11,'(A,I5)')"Point ",i ; WRITE(11,'(6E12.4)') sigma
    END IF
- END DO gauss_pts_2
- IF(numpe==1)WRITE(11,'(A,F10.4)')"This analysis took  :",               &
-                                   elap_time()-timest(1)  
+ END DO gauss_pts_2; DEALLOCATE(g_coord_pp)
+!------------------------ write out displacements ------------------------
+ CALL calc_nodes_pp(nn,npes,numpe,node_end,node_start,nodes_pp)
+ IF(numpe==1) THEN;  step=1; WRITE(ch,'(I5.5)') step
+   fname = job_name(1:INDEX(job_name, " ")-1)//".ensi.DISPL-"//ch
+   OPEN(24, file=fname, status='replace', action='write')
+   WRITE(24,'(A)') "Alya Ensight Gold --- Vector per-node variable file"
+   WRITE(24,'(A/A/A)') "part", "     1","coordinates"
+ END IF
+ ALLOCATE(eld_pp(ntot,nels_pp)); eld_pp=zero
+ CALL gather(xnew_pp(1:),eld_pp); DEALLOCATE(xnew_pp)
+ ALLOCATE(disp_pp(nodes_pp*ndim),temp(nodes_pp)); disp_pp=zero; temp=zero
+ CALL scatter_nodes(npes,nn,nels_pp,g_num_pp,nod,ndim,nodes_pp,          &
+                    node_start,node_end,eld_pp,disp_pp,1)
+ DO i=1,ndim ; temp=zero
+   DO j=1,nodes_pp; k=i+(ndim*(j-1)); temp(j)=disp_pp(k); END DO
+   CALL dismsh_ensi_p(label,24,1,nodes_pp,npes,numpe,1,temp)
+ END DO ; IF(numpe==1) CLOSE(24)
+ IF(numpe==1) WRITE(11,'(A,F10.4)')"This analysis took  :",              &
+    elap_time()-timest(1)  
  CALL shutdown() 
 END PROGRAM p121
