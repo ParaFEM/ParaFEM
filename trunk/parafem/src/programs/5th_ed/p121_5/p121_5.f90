@@ -3,50 +3,45 @@ PROGRAM p121
 !      Program 12.1 three dimensional analysis of an elastic solid
 !      using 20-node brick elements, preconditioned conjugate gradient
 !      solver; diagonal preconditioner diag_precon; parallel version
-!      loaded_nodes only
+!      loaded_nodes only; set fixed_freedoms=0
 !------------------------------------------------------------------------- 
  USE precision; USE global_variables; USE mp_interface; USE input
  USE output; USE loading; USE timing; USE maths; USE gather_scatter
  USE partition; USE elements; USE steering; USE pcg; IMPLICIT NONE
 ! neq,ntot are now global variables - must not be declared
  INTEGER,PARAMETER::nodof=3,ndim=3,nst=6
- INTEGER::loaded_nodes,fixed_freedoms,iel,i,j,k,l,idx1,idx2,iters,limit, &
-   nn,nr,nip,nod,nels,ndof,npes_pp,node_end,node_start,nodes_pp,argc,    &
-   iargc,meshgen,partitioner,fixed_freedoms_pp,fixed_freedoms_start,step
- REAL(iwp),PARAMETER::zero=0.0_iwp,penalty=1.0e20_iwp
+ INTEGER::loaded_nodes,iel,i,j,k,l,iters,limit,nn,nr,nip,nod,nels,ndof,  &
+   npes_pp,node_end,node_start,nodes_pp,meshgen,partitioner,             &
+   step,fixed_freedoms,nlen
+ REAL(iwp),PARAMETER::zero=0.0_iwp
  REAL(iwp)::e,v,det,tol,up,alpha,beta,tload
- CHARACTER(LEN=50)::program_name='p121',fname,job_name,label
- CHARACTER(LEN=15)::element ;CHARACTER(LEN=5)::ch
- LOGICAL::converged=.false.
+ CHARACTER(LEN=50)::argv; CHARACTER(LEN=15)::element
+ CHARACTER(LEN=5)::ch; LOGICAL::converged=.false.
 !---------------------------- dynamic arrays -----------------------------
  REAL(iwp),ALLOCATABLE::points(:,:),dee(:,:),weights(:),val(:,:),        &
    disp_pp(:),g_coord_pp(:,:,:),jac(:,:),der(:,:),deriv(:,:),bee(:,:),   &
    storkm_pp(:,:,:),eld(:),eps(:),sigma(:),diag_precon_pp(:),p_pp(:),    &
    r_pp(:),x_pp(:),xnew_pp(:),u_pp(:),pmul_pp(:,:),utemp_pp(:,:),        &
-   d_pp(:),timest(:),diag_precon_tmp(:,:),eld_pp(:,:),tensor_pp(:,:,:),  &
-   valf(:),store_pp(:),fun(:),shape_integral_pp(:,:),                    &
-   stress_integral_pp(:,:),stressnodes_pp(:),principal_integral_pp(:,:), &
-   princinodes_pp(:),principal(:),reacnodes_pp(:),temp(:)
- INTEGER,ALLOCATABLE::rest(:,:),g_num_pp(:,:),g_g_pp(:,:),node(:),no(:), &
-   no_pp(:),no_pp_temp(:),no_global(:),sense(:)
+   d_pp(:),timest(:),diag_precon_tmp(:,:),eld_pp(:,:),temp(:)
+ INTEGER,ALLOCATABLE::rest(:,:),g_num_pp(:,:),g_g_pp(:,:),node(:)
 !------------------------ input and initialisation -----------------------
  ALLOCATE(timest(20)); timest=zero; timest(1)=elap_time()
- CALL find_pe_procs(numpe,npes); argc=iargc(); CALL GETARG(1, job_name) 
- CALL read_p121(job_name,numpe,e,element,fixed_freedoms,limit,           &
+ CALL find_pe_procs(numpe,npes); CALL getname(argv,nlen) 
+ CALL read_p121(argv,numpe,e,element,fixed_freedoms,limit,               &
    loaded_nodes,meshgen,nels,nip,nn,nod,nr,partitioner,tol,v)
- CALL calc_nels_pp(job_name,nels,npes,numpe,partitioner,nels_pp)
+ CALL calc_nels_pp(argv,nels,npes,numpe,partitioner,nels_pp)
  ndof=nod*nodof; ntot=ndof
  ALLOCATE(g_num_pp(nod, nels_pp),g_coord_pp(nod,ndim,nels_pp),           &
    rest(nr,nodof+1)); g_num_pp=0; g_coord_pp=zero; rest=0
- CALL read_g_num_pp2(job_name,iel_start,nn,npes,numpe,g_num_pp)
+ CALL read_g_num_pp2(argv,iel_start,nn,npes,numpe,g_num_pp)
  IF(meshgen == 2) CALL abaqus2sg(element,g_num_pp)
- CALL read_g_coord_pp(job_name,g_num_pp,nn,npes,numpe,g_coord_pp)
- CALL read_rest(job_name,numpe,rest); timest(2)=elap_time()
- ALLOCATE(points(nip,ndim),dee(nst,nst),jac(ndim,ndim),principal(ndim),  &
-   der(ndim,nod),deriv(ndim,nod),bee(nst,ntot),weights(nip),fun(nod),    &
+ CALL read_g_coord_pp(argv,g_num_pp,nn,npes,numpe,g_coord_pp)
+ CALL read_rest(argv,numpe,rest); timest(2)=elap_time()
+ ALLOCATE(points(nip,ndim),dee(nst,nst),jac(ndim,ndim),                  &
+   der(ndim,nod),deriv(ndim,nod),bee(nst,ntot),weights(nip),             &
    storkm_pp(ntot,ntot,nels_pp),eld(ntot),eps(nst),sigma(nst),           &
    pmul_pp(ntot,nels_pp),utemp_pp(ntot,nels_pp),g_g_pp(ntot,nels_pp))
-!----------  find the steering array and equations per process ----------
+!----------  find the steering array and equations per process -----------
  CALL rearrange(rest); g_g_pp=0; neq=0
  elements_1: DO iel=1,nels_pp
     CALL find_g3(g_num_pp(:,iel),g_g_pp(:,iel),rest)
@@ -77,8 +72,7 @@ PROGRAM p121
  END DO;  END DO elements_4
  CALL scatter(diag_precon_pp,diag_precon_tmp); DEALLOCATE(diag_precon_tmp)
  IF(numpe==1)THEN
-   fname=job_name(1:INDEX(job_name, " ") -1) // ".res"
-   OPEN(11,FILE=fname,STATUS='REPLACE',ACTION='WRITE')
+   OPEN(11,FILE=argv(1:nlen)//".res",STATUS='REPLACE',ACTION='WRITE')
    WRITE(11,'(A,I7,A)') "This job ran on ",npes," processes"
    WRITE(11,'(A,3(I8,A))') "There are ",nn," nodes", nr, &
                            " restrained and ",neq," equations"
@@ -88,7 +82,7 @@ PROGRAM p121
 !----------------------------- get starting r ----------------------------
  IF(loaded_nodes>0) THEN
    ALLOCATE(node(loaded_nodes),val(ndim,loaded_nodes)); val=zero; node=0
-   CALL read_loads(job_name,numpe,node,val)
+   CALL read_loads(argv,numpe,node,val)
    CALL load(g_g_pp,g_num_pp,node,val,r_pp(1:))
    tload = SUM_P(r_pp(1:)); DEALLOCATE(node,val)
  END IF
@@ -124,15 +118,15 @@ PROGRAM p121
    CALL shape_der(der,points,i); jac=MATMUL(der,g_coord_pp(:,:,iel))
    CALL invert(jac); deriv=MATMUL(jac,der); CALL beemat(bee,deriv)
    eps=MATMUL(bee,eld_pp(:,iel)); sigma=MATMUL(dee,eps)
-   IF(numpe==1.AND.i==1);
+   IF(numpe==1.AND.i==1) THEN
      WRITE(11,'(A,I5)')"Point ",i ; WRITE(11,'(6E12.4)') sigma
    END IF
  END DO gauss_pts_2; DEALLOCATE(g_coord_pp)
 !------------------------ write out displacements ------------------------
  CALL calc_nodes_pp(nn,npes,numpe,node_end,node_start,nodes_pp)
  IF(numpe==1) THEN;  step=1; WRITE(ch,'(I5.5)') step
-   fname = job_name(1:INDEX(job_name, " ")-1)//".ensi.DISPL-"//ch
-   OPEN(24, file=fname, status='replace', action='write')
+   OPEN(24,file=argv(1:nlen)//".ensi.DISPL-"//ch,status='replace',       &
+        action='write')
    WRITE(24,'(A)') "Alya Ensight Gold --- Vector per-node variable file"
    WRITE(24,'(A/A/A)') "part", "     1","coordinates"
  END IF
@@ -143,7 +137,7 @@ PROGRAM p121
                     node_start,node_end,eld_pp,disp_pp,1)
  DO i=1,ndim ; temp=zero
    DO j=1,nodes_pp; k=i+(ndim*(j-1)); temp(j)=disp_pp(k); END DO
-   CALL dismsh_ensi_p(label,24,1,nodes_pp,npes,numpe,1,temp)
+   CALL dismsh_ensi_p(24,1,nodes_pp,npes,numpe,1,temp)
  END DO ; IF(numpe==1) CLOSE(24)
  IF(numpe==1) WRITE(11,'(A,F10.4)')"This analysis took  :",              &
     elap_time()-timest(1)  
