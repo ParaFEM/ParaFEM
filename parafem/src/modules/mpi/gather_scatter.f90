@@ -394,6 +394,53 @@ MODULE GATHER_SCATTER
 !------------------------------------------------------------------------------
 !------------------------------------------------------------------------------
 
+  SUBROUTINE CALC_NPES_PP2(npes,npes_pp)
+  
+  !/****f* gather_scatter/calc_npes_pp2
+  !*  NAME
+  !*    SUBROUTINE: calc_npes_pp2
+  !*  SYNOPSIS
+  !*    Usage:      CALL calc_npes_pp2(npes,npes_pp)
+  !*  FUNCTION
+  !*    Sets value to be used in initial dimensions of toget and toput. We do
+  !*    not know the exact number of processors needed by each processor until
+  !*    MAKE_GGL is called, but we must declare these arrays (or at least
+  !*    temporary versions of them) before the exact number is known. NPES
+  !*    is definitely enough, but wasteful of memory, so make rough
+  !*    overestimate based on number of processors, NPES.
+  !*  AUTHOR
+  !*    M.A. Pettipher
+  !*    L. Margetts
+  !*  COPYRIGHT
+  !*    (c) University of Manchester 1996-2010
+  !******
+  !*
+  !* This subroutine needs to be rewritten. It causes the most execution 
+  !* failures, particularly for pathological cases.
+  !*
+  !* Temporary version for trying out values
+  !*/ 
+ 
+    IMPLICIT NONE
+
+    INTEGER, INTENT(OUT) :: npes_pp
+    INTEGER, INTENT(IN)  :: npes
+ 
+    SELECT CASE (npes)
+
+      CASE (1:15)
+        npes_pp = npes
+      CASE DEFAULT
+        npes_pp = 16
+
+    END SELECT
+
+  END SUBROUTINE CALC_NPES_PP2
+  
+!------------------------------------------------------------------------------
+!------------------------------------------------------------------------------
+!------------------------------------------------------------------------------
+
   SUBROUTINE ALLOCATE_GATHER_SCATTER(npes_pp,npes)
 
   !/****f* gather_scatter/allocate_gather_scatter
