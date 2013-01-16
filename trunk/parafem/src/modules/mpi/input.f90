@@ -2535,8 +2535,8 @@ MODULE INPUT
 !------------------------------------------------------------------------------
 
   SUBROUTINE READ_P126(job_name,numpe,cjits,cjtol,ell,fixed_equations,kappa,  &
-                       limit,mesh,nels,nip,nn,nr,partitioner,penalty,rho,tol, &
-                       x0,visc)
+                       limit,mesh,nels,nip,nn,nr,nres,partitioner,penalty,rho,&
+                       tol,x0,visc) 
 
   !/****f* input/read_p126
   !*  NAME
@@ -2544,7 +2544,8 @@ MODULE INPUT
   !*  SYNOPSIS
   !*    Usage:      CALL read_p126(job_name,numpe,cjits,cjtol,ell,
   !*                               fixed_equations,kappa,limit,mesh,nels,     &
-  !*                               nip,nn,nr,partitioner,penalty,rho,tol,x0,visc
+  !*                               nip,nn,nr,nres,partitioner,penalty,rho,tol,&
+  !*                               x0,visc)
   !*  FUNCTION
   !*    Master processor reads the general data for the problem and broadcasts 
   !*    it to the slave processors.
@@ -2591,6 +2592,9 @@ MODULE INPUT
   !*                           : Number of nodes with restrained degrees of
   !*                             freedom 
   !*
+  !*    nres                   : Integer
+  !*                           : Equation number for output
+  !*
   !*    partitioner            : Integer
   !*                           : Type of partitioning
   !*                           : 1 = internal partitioning
@@ -2615,7 +2619,7 @@ MODULE INPUT
   !*  CREATION DATE
   !*    03.03.2010
   !*  COPYRIGHT
-  !*    (c) University of Manchester 2010-11
+  !*    (c) University of Manchester 2010-13
   !******
   !*  Place remarks that should not be included in the documentation here.
   !*  Need to add some error traps
@@ -2625,7 +2629,7 @@ MODULE INPUT
 
   CHARACTER(LEN=50), INTENT(IN)    :: job_name
   INTEGER, INTENT(IN)              :: numpe
-  INTEGER, INTENT(INOUT)           :: nels,nn,nr,nip,cjits,fixed_equations
+  INTEGER, INTENT(INOUT)           :: nels,nn,nr,nres,nip,cjits,fixed_equations
   INTEGER, INTENT(INOUT)           :: limit,mesh,ell,partitioner 
   REAL(iwp), INTENT(INOUT)         :: cjtol,kappa,penalty,rho,tol,x0,visc
 
@@ -2633,7 +2637,7 @@ MODULE INPUT
 ! 1. Local variables
 !------------------------------------------------------------------------------
 
-  INTEGER                          :: bufsize,ier,integer_store(10)
+  INTEGER                          :: bufsize,ier,integer_store(11)
   REAL(iwp)                        :: real_store(7)
   CHARACTER(LEN=50)                :: fname
   CHARACTER(LEN=50)                :: program_name
@@ -2647,7 +2651,7 @@ MODULE INPUT
     OPEN(10,FILE=fname,STATUS='OLD',ACTION='READ')
     READ(10,*) program_name
     READ(10,*) mesh,partitioner,nels,nn,nr,fixed_equations,nip,visc,rho,tol,  &
-               limit,cjtol,cjits,penalty,x0,ell,kappa
+               limit,cjtol,cjits,penalty,x0,ell,kappa,nres
     CLOSE(10)
    
     integer_store      = 0
@@ -2662,6 +2666,7 @@ MODULE INPUT
     integer_store(8)   = cjits
     integer_store(9)   = ell
     integer_store(10)  = partitioner
+    integer_store(11)  = nres
 
     real_store         = 0.0_iwp
 
@@ -2679,7 +2684,7 @@ MODULE INPUT
 ! 3. Master processor broadcasts the temporary arrays to the slave processors
 !------------------------------------------------------------------------------
 
-  bufsize = 10 
+  bufsize = 11 
   CALL MPI_BCAST(integer_store,bufsize,MPI_INTEGER,0,MPI_COMM_WORLD,ier)
 
   bufsize = 7
@@ -2702,6 +2707,7 @@ MODULE INPUT
     cjits           = integer_store(8)
     ell             = integer_store(9)
     partitioner     = integer_store(10)
+    nres            = integer_store(11)
 
     visc            = real_store(1)
     rho             = real_store(2)
