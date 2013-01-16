@@ -1533,14 +1533,14 @@ MODULE OUTPUT
 !------------------------------------------------------------------------------
 !------------------------------------------------------------------------------ 
  
-  SUBROUTINE DISMSH_ENSI_P(text,filnum,iload,nodes_pp,npes,numpe, &
+  SUBROUTINE DISMSH_ENSI_P(filnum,iload,nodes_pp,npes,numpe, &
                                   numvar,stress)
 
   !/****f* output/write_nodal_variable
   !*  NAME
   !*    SUBROUTINE: write_nodal_variable
   !*  SYNOPSIS
-  !*    Usage:      CALL write_nodal_variable(text,filnum,iload,nodes_pp, &
+  !*    Usage:      CALL write_nodal_variable(filnum,iload,nodes_pp, &
   !*                                          numpe,numvar,stress) 
   !*  FUNCTION
   !*    Write the values of a nodal variable to a file. This subroutine is 
@@ -1548,9 +1548,6 @@ MODULE OUTPUT
   !*    from the slave processors.
   !*  INPUTS
   !*    The following arguments have the INTENT(IN) attribute:
-  !*
-  !*    text                    : Character
-  !*                            : Text indicating the variable to write
   !*
   !*    filnum                  : Integer
   !*                            : File number to write
@@ -1589,7 +1586,6 @@ MODULE OUTPUT
 
   IMPLICIT NONE
 
-  CHARACTER(LEN=50), INTENT(IN) :: text
   INTEGER, INTENT(IN)           :: filnum, iload, nodes_pp, npes, numpe, numvar
   REAL(iwp), INTENT(IN)         :: stress(:)
   INTEGER                       :: i, j, idx1, nod_r, bufsize1, bufsize2
