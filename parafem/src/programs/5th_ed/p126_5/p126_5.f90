@@ -19,8 +19,7 @@ PROGRAM p126
    penalty,x0,pp,kappa,gama,omega,norm_r,r0_norm,error
  REAL(iwp),PARAMETER::zero=0.0_iwp,one=1.0_iwp
  LOGICAL::converged,cj_converged
- CHARACTER(LEN=15)::element='hexahedron'
- CHARACTER(LEN=50)::program_name='p126',job_name,label,fname
+ CHARACTER(LEN=15)::element='hexahedron';CHARACTER(LEN=50)::argv
 !--------------------------- dynamic arrays ------------------------------
  REAL(iwp),ALLOCATABLE::points(:,:),coord(:,:),derivf(:,:),fun(:),       &
    jac(:,:),kay(:,:),der(:,:),deriv(:,:),weights(:),derf(:,:),funf(:),   &
@@ -70,9 +69,9 @@ PROGRAM p126
  nres=481
  DO i=1,neq_pp; IF(nres==ieq_start+i-1)THEN;it=numpe;is=i;END IF;END DO
  IF(numpe==it) THEN
-   OPEN(11,FILE=argv(1:nlen)//".res",STATUS='REPLACE',ACTION='WRITE'
-   WRITE(11,'(A,I6,A) "This job ran on ",npes," processes"
-   WRITE(11,'(A,3(I12,A)' "There are ",nn," nodes ",nr,                  &
+   OPEN(11,FILE=argv(1:nlen)//".res",STATUS='REPLACE',ACTION='WRITE')
+   WRITE(11,'(A,I6,A)') "This job ran on ",npes," processes"
+   WRITE(11,'(A,3(I12,A))') "There are ",nn," nodes ",nr,                &
      " restrained and ", neq," equations"
    WRITE(11,'(A,F10.4)') "Time to read input was:",timest(2)-timest(1)
    WRITE(11,'(A,F10.4)') "Time after setup was:",elap_time()-timest(1)
@@ -83,7 +82,7 @@ PROGRAM p126
  x_pp=zero; rt_pp=zero; r_pp=zero; u_pp=zero; b_pp=zero; diag_pp=zero
  xold_pp=zero; y_pp=zero; y1_pp=zero; store_pp=zero
 !-------------------------- organise fixed equations ---------------------
- CALL read_loads_ns(job_name,numpe,no,val)
+ CALL read_loads_ns(argv,numpe,no,val)
  CALL reindex_fixed_nodes(ieq_start,no,no_local_temp,num_no,             &
    no_index_start,neq_pp); ALLOCATE(no_local(1:num_no))
  no_local = no_local_temp(1:num_no); DEALLOCATE(no_local_temp)
@@ -216,9 +215,9 @@ PROGRAM p126
    WRITE(12,'(A/A/A)') "part", "     1","coordinates"
  END IF
  CALL calc_nodes_pp(nn,npes,numpe,node_end,node_start,nodes_pp)
- ALLOCATE(disp_pp(nodes_pp*nodof),temp(nodes_pp)); disp_pp=zero          &
+ ALLOCATE(disp_pp(nodes_pp*nodof),temp(nodes_pp)); disp_pp=zero          
  temp=zero; utemp_pp=zero; CALL gather(x_pp(1:),utemp_pp)
- CALL scatter_nodes_ns(npes,nn,nels_pp,g_num_pp,nod,nodof,nodes_pp,          &
+ CALL scatter_nodes_ns(npes,nn,nels_pp,g_num_pp,nod,nodof,nodes_pp,      &
    node_start,node_end,utemp_pp,disp_pp,1)
  DO i=1,nodof ; temp=zero
    DO j=1,nodes_pp; k=i+(ndim*(j-1)); temp(j)=disp_pp(k); END DO
