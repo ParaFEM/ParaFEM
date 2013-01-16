@@ -72,7 +72,9 @@ PROGRAM p126
   CALL GETARG(1, job_name) 
 
   CALL read_p126(job_name,numpe,cjits,cjtol,ell,fixed_equations,kappa,limit,  &
-                 meshgen,nels,nip,nn,nr,partitioner,penalty,rho,tol,x0,visc)
+              meshgen,nels,nip,nn,nr,nres,partitioner,penalty,rho,tol,x0,visc)
+
+  PRINT *, "Warning: recently updated read_p126 to read nres. Update mg2d"
 
   CALL calc_nels_pp(job_name,nels,npes,numpe,partitioner,nels_pp)
  
@@ -151,7 +153,7 @@ PROGRAM p126
  
  timest(4) = elap_time()
 
- nres = 481
+! nres = 481
 
  DO i = 1,neq_pp
    IF(nres==ieq_start+i-1)THEN
