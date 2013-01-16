@@ -34,8 +34,8 @@ PROGRAM p126
 !---------------------- input and initialisation -------------------------
  ALLOCATE(timest(20)); timest=zero; timest(1)=elap_time()
  CALL find_pe_procs(numpe,npes); CALL getname(argv,nlen)
- CALL read_p126(argv,numpe,cjits,cjtol,ell,fixed_equations,kappa,    &
-   limit,meshgen,nels,nip,nn,nr,partitioner,penalty,rho,tol,x0,visc)
+ CALL read_p126(argv,numpe,cjits,cjtol,ell,fixed_equations,kappa,limit,  &
+   meshgen,nels,nip,nn,nr,nres,partitioner,penalty,rho,tol,x0,visc)
  CALL calc_nels_pp(argv,nels,npes,numpe,partitioner,nels_pp)
  ntot=nod+nodf+nod+nod; n_t=nod*nodof
  ALLOCATE(g_num_pp(nod,nels_pp),g_coord_pp(nod,ndim,nels_pp),            &
@@ -66,7 +66,6 @@ PROGRAM p126
  END DO elements_2 
  neq=MAX_INTEGER_P(neq); CALL calc_neq_pp; CALL calc_npes_pp(npes,npes_pp)
  CALL make_ggl(npes_pp,npes,g_g_pp); DEALLOCATE(g_g_pp)
- nres=481
  DO i=1,neq_pp; IF(nres==ieq_start+i-1)THEN;it=numpe;is=i;END IF;END DO
  IF(numpe==it) THEN
    OPEN(11,FILE=argv(1:nlen)//".res",STATUS='REPLACE',ACTION='WRITE')
@@ -87,10 +86,10 @@ PROGRAM p126
    no_index_start,neq_pp); ALLOCATE(no_local(1:num_no))
  no_local = no_local_temp(1:num_no); DEALLOCATE(no_local_temp)
 !------------------------- main iteration loop ---------------------------
- CALL sample(element,points,weights)
- uvel=zero; vvel=zero; wvel=zero; kay=zero; iters=0; cj_tot=0
- kay(1,1)=visc/rho; kay(2,2)=visc/rho; kay(3,3)=visc/rho
- iterations: DO; timest(3)=elap_time()
+ CALL sample(element,points,weights); uvel=zero; vvel=zero; wvel=zero
+ kay=zero; iters=0; cj_tot=0; kay(1,1)=visc/rho; kay(2,2)=visc/rho
+ kay(3,3)=visc/rho; timest(3)=elap_time()
+ iterations: DO
    iters=iters+1; ke=zero; storke_pp=zero; diag_pp=zero; utemp_pp=zero
    b_pp=zero; pmul_pp=zero; CALL gather(x_pp,utemp_pp)
    CALL gather(xold_pp,pmul_pp)
@@ -192,8 +191,8 @@ PROGRAM p126
    END DO bicg_iterations            
    b_pp=x_pp-xold_pp; pp=norm_p(b_pp); cj_tot=cj_tot+cjiters
    IF(numpe==it) THEN
-     WRITE(11,'(A,E12.4)') "Norm of the error is :", pp
-     WRITE(11,'(A,I6,A)') " It took BiCGSTAB(L) ", cjiters,              &
+     WRITE(11,'(A,E12.4)') "Norm of the error is:", pp
+     WRITE(11,'(A,I6,A)') "It took BiCGSTAB(L) ", cjiters,               &
        " iterations to converge"; END IF
    CALL checon_par(x_pp,tol,converged,xold_pp)
    IF(converged.OR.iters==limit)EXIT
@@ -204,12 +203,13 @@ PROGRAM p126
  IF(numpe==it) THEN
    WRITE(11,'(A)') "The pressure at the corner of the box is: "
    WRITE(11,'(A)') "Freedom  Pressure "
-   WRITE(11,'(I12,E12.4)') nres, x_pp(is)
+   WRITE(11,'(I6,E12.4)') nres, x_pp(is)
    WRITE(11,'(A,I6)')"The total number of BiCGSTAB iterations was:",cj_tot
+   WRITE(11,'(A,I5,A)')"The solution took",iters," iterations to converge"
    WRITE(11,'(A,F10.4)')"Time spent in solver was:",timest(4)-timest(3)
  END IF
  IF(numpe==1) THEN
-   OPEN(12,file=argv(1:nlen)//".ensi.VELOCITY",status='replace',         &
+   OPEN(12,file=argv(1:nlen)//".ensi.VEL",status='replace',              &
      action='write')
    WRITE(12,'(A)') "Alya Ensight Gold --- Vector per-node variable file"
    WRITE(12,'(A/A/A)') "part", "     1","coordinates"
@@ -220,8 +220,9 @@ PROGRAM p126
  CALL scatter_nodes_ns(npes,nn,nels_pp,g_num_pp,nod,nodof,nodes_pp,      &
    node_start,node_end,utemp_pp,disp_pp,1)
  DO i=1,nodof ; temp=zero
-   DO j=1,nodes_pp; k=i+(ndim*(j-1)); temp(j)=disp_pp(k); END DO
-   CALL dismsh_ensi_p(12,1,nodes_pp,npes,numpe,1,temp)
+   IF(i/=2) THEN
+     DO j=1,nodes_pp; k=i+(nodof*(j-1)); temp(j)=disp_pp(k); END DO
+     CALL dismsh_ensi_p(12,1,nodes_pp,npes,numpe,1,temp); END IF
  END DO ; IF(numpe==1) CLOSE(12)
  IF(numpe==it) THEN 
    WRITE(11,'(A,F10.4)') "This analysis took :", elap_time()-timest(1)
