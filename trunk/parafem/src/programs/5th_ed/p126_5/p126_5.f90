@@ -19,7 +19,8 @@ PROGRAM p126
    penalty,x0,pp,kappa,gama,omega,norm_r,r0_norm,error
  REAL(iwp),PARAMETER::zero=0.0_iwp,one=1.0_iwp
  LOGICAL::converged,cj_converged
- CHARACTER(LEN=15)::element='hexahedron';CHARACTER(LEN=50)::argv
+ CHARACTER(LEN=15)::element='hexahedron',io_type
+ CHARACTER(LEN=50)::argv
 !--------------------------- dynamic arrays ------------------------------
  REAL(iwp),ALLOCATABLE::points(:,:),coord(:,:),derivf(:,:),fun(:),       &
    jac(:,:),kay(:,:),der(:,:),deriv(:,:),weights(:),derf(:,:),funf(:),   &
@@ -34,8 +35,9 @@ PROGRAM p126
 !---------------------- input and initialisation -------------------------
  ALLOCATE(timest(20)); timest=zero; timest(1)=elap_time()
  CALL find_pe_procs(numpe,npes); CALL getname(argv,nlen)
- CALL read_p126(argv,numpe,cjits,cjtol,ell,fixed_equations,kappa,limit,  &
-   meshgen,nels,nip,nn,nr,nres,partitioner,penalty,rho,tol,x0,visc)
+ CALL read_p126(argv,numpe,cjits,cjtol,ell,fixed_equations,io_type,      &
+   kappa,limit,meshgen,nels,nip,nn,nr,nres,partitioner,penalty,rho,tol,  &
+   x0,visc)
  CALL calc_nels_pp(argv,nels,npes,numpe,partitioner,nels_pp)
  ntot=nod+nodf+nod+nod; n_t=nod*nodof
  ALLOCATE(g_num_pp(nod,nels_pp),g_coord_pp(nod,ndim,nels_pp),            &

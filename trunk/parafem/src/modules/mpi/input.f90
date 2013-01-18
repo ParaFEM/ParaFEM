@@ -2534,18 +2534,18 @@ MODULE INPUT
 !------------------------------------------------------------------------------
 !------------------------------------------------------------------------------
 
-  SUBROUTINE READ_P126(job_name,numpe,cjits,cjtol,ell,fixed_equations,kappa,  &
-                       limit,mesh,nels,nip,nn,nr,nres,partitioner,penalty,rho,&
-                       tol,x0,visc) 
+  SUBROUTINE READ_P126(job_name,numpe,cjits,cjtol,ell,fixed_equations,io_type,&
+                       kappa,limit,mesh,nels,nip,nn,nr,nres,partitioner,      &
+                       penalty,rho,tol,x0,visc) 
 
   !/****f* input/read_p126
   !*  NAME
   !*    SUBROUTINE: read_p126
   !*  SYNOPSIS
   !*    Usage:      CALL read_p126(job_name,numpe,cjits,cjtol,ell,
-  !*                               fixed_equations,kappa,limit,mesh,nels,     &
-  !*                               nip,nn,nr,nres,partitioner,penalty,rho,tol,&
-  !*                               x0,visc)
+  !*                               fixed_equations,io_type,kappa,limit,mesh,  &
+  !*                               nels,nip,nn,nr,nres,partitioner,penalty,   &
+  !*                               rho,tol,x0,visc)
   !*  FUNCTION
   !*    Master processor reads the general data for the problem and broadcasts 
   !*    it to the slave processors.
@@ -2554,6 +2554,9 @@ MODULE INPUT
   !*
   !*    job_name               : Character
   !*                           : File name that contains the data to be read
+  !*
+  !*    io_type                : Character
+  !*                           : ASCII or BINARY format
   !*
   !*    numpe                  : Integer
   !*                           : Processor number
@@ -2628,6 +2631,7 @@ MODULE INPUT
   IMPLICIT NONE
 
   CHARACTER(LEN=50), INTENT(IN)    :: job_name
+  CHARACTER(LEN=15), INTENT(INOUT) :: io_type
   INTEGER, INTENT(IN)              :: numpe
   INTEGER, INTENT(INOUT)           :: nels,nn,nr,nres,nip,cjits,fixed_equations
   INTEGER, INTENT(INOUT)           :: limit,mesh,ell,partitioner 
@@ -2649,9 +2653,9 @@ MODULE INPUT
   IF (numpe==1) THEN
     fname = job_name(1:INDEX(job_name, " ") -1) // ".dat"
     OPEN(10,FILE=fname,STATUS='OLD',ACTION='READ')
-    READ(10,*) program_name
-    READ(10,*) mesh,partitioner,nels,nn,nr,fixed_equations,nip,visc,rho,tol,  &
-               limit,cjtol,cjits,penalty,x0,ell,kappa,nres
+    READ(10,*) program_name,io_type
+    READ(10,*) mesh,partitioner,nels,nn,nres,nr,fixed_equations,nip,visc,rho, &
+               tol,limit,cjtol,cjits,penalty,x0,ell,kappa,nres
     CLOSE(10)
    
     integer_store      = 0
@@ -2690,6 +2694,8 @@ MODULE INPUT
   bufsize = 7
   CALL MPI_BCAST(real_store,bufsize,MPI_REAL8,0,MPI_COMM_WORLD,ier)
 
+  bufsize = 15
+  CALL MPI_BCAST(io_type,bufsize,MPI_CHARACTER,0,MPI_COMM_WORLD,ier)
 
 !------------------------------------------------------------------------------
 ! 4. Slave processors extract the variables from the temporary arrays
