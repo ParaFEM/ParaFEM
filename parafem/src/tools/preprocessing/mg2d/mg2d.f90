@@ -1586,6 +1586,8 @@ PROGRAM mg2d
    
   loaded_freedoms = (2*nxe)+1 ! Differs from the problem in the book
 
+  nres = 3*(nye*(nxe+1)*(nze+1)+nr*(nye-1)+(nxe+1))
+
 !------------------------------------------------------------------------------
 ! 16.1 Allocate dynamic arrays
 !------------------------------------------------------------------------------
@@ -1699,9 +1701,8 @@ PROGRAM mg2d
   partitioner = 1 ! current default
   
   WRITE(14,'(A)')             "'hexahedron'"
-  WRITE(14,'(I4)')            meshgen
-  WRITE(14,'(I4)')            partitioner
-  WRITE(14,'(3I12,2I5,2I12)') nels,nn,nr,nip,nod,loaded_freedoms
+  WRITE(14,'(2I4)')           meshgen,partitioner
+  WRITE(14,'(3I12,2I5,3I12)') nels,nn,nr,nip,nod,loaded_freedoms,nres
   WRITE(14,'(5E14.6)')        rho,e,v,alpha1,beta1
   WRITE(14,'(2I6,3E14.6,I6)') nstep,npri,theta,omega,tol,limit
 
