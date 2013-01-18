@@ -9,11 +9,11 @@ PROGRAM p1210
  IMPLICIT NONE
 ! neq,ntot are now global variables - not declared 
  INTEGER,PARAMETER::nodof=3,ndim=3,nst=6
- INTEGER::nn,nr,nip,loaded_nodes,nres,nod,i,j,k,jj,iel,nstep,npri,       &
+ INTEGER::nn,nr,nip,loaded_nodes,nres,nod,i,j,k,ii,jj,iel,nstep,npri,    &
    num_no,no_index_start,is,it,nlen,ndof,nels,npes_pp,node_end,          &
-   node_start,nodes_pp,argc,iargc,meshgen,partitioner=1,rho,dtim,e,v,    &
-   det,sbary,pload,sigm,f,fnew,fac,is,it,nlen
- REAL(iwp)::volume,sbar,dsbar,lode_theta,real_time,tload
+   node_start,nodes_pp,argc,iargc,meshgen,partitioner=1
+ REAL(iwp)::rho,dtim,e,v,det,sbary,pload,sigm,f,fnew,fac,volume,sbar,    &
+   dsbar,lode_theta,real_time,tload
  REAL(iwp),PARAMETER::zero=0.0_iwp    
  CHARACTER(LEN=15)::element,io_type; CHARACTER(LEN=50)::argv
  CHARACTER(LEN=6)::ch
@@ -23,9 +23,9 @@ PROGRAM p1210
    etensor_pp(:,:,:),val(:,:),dee(:,:),mm_pp(:),jac(:,:),weights(:),     &
    der(:,:),deriv(:,:),bee(:,:),eld(:),eps(:),sigma(:),bload(:),         &
    eload(:),mm_tmp(:,:),g_coord_pp(:,:,:),pmul_pp(:,:),utemp_pp(:,:),    &
-   disp_pp(:),fext_pp(:),timest(:),rest(:,:),no(:),no_local(:),          &
-   g_num_pp(:,:),temp(:)
- INTEGER,ALLOCATABLE::g_g_pp(:,:),no_local_temp(:),node(:)
+   disp_pp(:),fext_pp(:),temp(:)
+ INTEGER,ALLOCATABLE::timest(:),rest(:,:),no(:),no_local(:),node(:),     &
+   g_num_pp(:,:),g_g_pp(:,:),no_local_temp(:)
 !----------------------- input and initialisation ------------------------
  ALLOCATE(timest(20)); timest=zero; timest(1)=elap_time()
  CALL find_pe_procs(numpe,npes); CALL getname(argv,nlen)
@@ -64,8 +64,7 @@ PROGRAM p1210
    WRITE(11,'(A,F10.4)') "Time after setup was:",elap_time()-timest(1)
  END IF 
  CALL calc_nodes_pp(nn,npes,numpe,node_end,node_start,nodes_pp)
- ALLOCATE(disp_pp(nodes_pp*ndim),temp(nodes_pp),eld_pp(ntot,nels_pp))
- disp_pp=zero; eld_pp=zero; temp=0
+ ALLOCATE(disp_pp(nodes_pp*ndim),temp(nodes_pp)); disp_pp=zero; temp=0
  ALLOCATE(bdylds_pp(neq_pp),x1_pp(neq_pp),d1x1_pp(neq_pp),mm_pp(neq_pp), &     
    d2x1_pp(neq_pp),fext_pp(neq_pp)); bdylds_pp=zero; x1_pp=zero
    d1x1_pp=zero; d2x1_pp=zero; mm_pp=zero; fext_pp=zero
@@ -134,10 +133,10 @@ PROGRAM p1210
         WRITE(12,'(A/A/A)') "part", "     1","coordinates"
       END IF
       CALL gather(x1_pp(1:),utemp_pp)
-      CALL scatter_nodes(npes,nn,nels_pp,g_num_pp,nod,ndim,nodes_pp      &
+      CALL scatter_nodes(npes,nn,nels_pp,g_num_pp,nod,ndim,nodes_pp,     &
                          node_start,node_end,utemp_pp,disp_pp,1)
       DO i=1,ndim ; temp=zero
-        DO jj=1,nodes_pp; k=i+(ndim*(jj-1)); temp(jj)=disp_pp(k); END DO
+        DO ii=1,nodes_pp; k=i+(ndim*(ii-1)); temp(ii)=disp_pp(k); END DO
         CALL dismsh_ensi_p(12,jj,nodes_pp,npes,numpe,1,temp)
       END DO ; IF(numpe==1) CLOSE(12)
     END IF
