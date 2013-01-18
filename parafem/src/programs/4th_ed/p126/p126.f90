@@ -35,7 +35,7 @@ PROGRAM p126
   REAL(iwp),PARAMETER   :: zero = 0.0_iwp
   REAL(iwp),PARAMETER   :: one  = 1.0_iwp
   LOGICAL               :: converged,cj_converged
-  CHARACTER(LEN=15)     :: element='hexahedron'
+  CHARACTER(LEN=15)     :: element='hexahedron',io_type
   CHARACTER(LEN=50)     :: program_name='p126',job_name,label
   CHARACTER(LEN=50)     :: fname
   
@@ -71,8 +71,9 @@ PROGRAM p126
   IF (argc /= 1) CALL job_name_error(numpe,program_name)
   CALL GETARG(1, job_name) 
 
-  CALL read_p126(job_name,numpe,cjits,cjtol,ell,fixed_equations,kappa,limit,  &
-              meshgen,nels,nip,nn,nr,nres,partitioner,penalty,rho,tol,x0,visc)
+  CALL read_p126(job_name,numpe,cjits,cjtol,ell,fixed_equations,io_type,      &
+                 kappa,limit,meshgen,nels,nip,nn,nr,nres,partitioner,penalty, &
+                 rho,tol,x0,visc)
 
   PRINT *, "Warning: recently updated read_p126 to read nres. Update mg2d"
 
