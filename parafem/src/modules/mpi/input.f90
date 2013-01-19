@@ -3248,8 +3248,8 @@ MODULE INPUT
 !------------------------------------------------------------------------------
 
   SUBROUTINE READ_P1210(job_name,numpe,dtim,e,element,loaded_nodes,meshgen,   &
-                        nels,nip,nn,nod,npri,nr,nstep,partitioner,pload,rho,  &
-                        sbary,v)
+                        nels,nip,nn,nod,npri,nr,nres,nstep,partitioner,pload, &
+                        rho,sbary,v)
 
   !/****f* input/read_p1210
   !*  NAME
@@ -3257,7 +3257,8 @@ MODULE INPUT
   !*  SYNOPSIS
   !*    Usage:      CALL read_p1210(job_name,numpe,dtim,e,element,            &
   !*                                loaded_nodes,meshgen,nels,nip,nn,nod,npri,&
-  !*                                nr,nstep,partitioner,pload,rho,sbary,v)
+  !*                                nr,nres,nstep,partitioner,pload,rho,      &
+  !*                                sbary,v)
   !*  FUNCTION
   !*    Master processor reads the general data for the problem and broadcasts 
   !*    it to the slave processors.
@@ -3316,7 +3317,7 @@ MODULE INPUT
   CHARACTER(LEN=15), INTENT(INOUT) :: element
   CHARACTER(LEN=50)                :: fname
   INTEGER, INTENT(IN)              :: numpe
-  INTEGER, INTENT(INOUT)           :: nels,nip,nn,nod,npri,nr,nstep
+  INTEGER, INTENT(INOUT)           :: nels,nip,nn,nod,npri,nr,nres,nstep
   INTEGER, INTENT(INOUT)           :: loaded_nodes,meshgen,partitioner 
   REAL(iwp), INTENT(INOUT)         :: rho,e,v,sbary,dtim,pload
 
@@ -3324,7 +3325,7 @@ MODULE INPUT
 ! 1. Local variables
 !------------------------------------------------------------------------------
 
-  INTEGER                          :: bufsize,ier,integer_store(10)
+  INTEGER                          :: bufsize,ier,integer_store(11)
   REAL(iwp)                        :: real_store(6)
 
 !------------------------------------------------------------------------------
@@ -3335,7 +3336,7 @@ MODULE INPUT
     fname = job_name(1:INDEX(job_name, " ") -1) // ".dat"
     OPEN(10,FILE=fname,STATUS='OLD',ACTION='READ')
     READ(10,*) element,meshgen,partitioner,nels,nip,nn,nr,nod,loaded_nodes,   &
-               rho,e,v,sbary,pload,dtim,nstep,npri
+               nres,rho,e,v,sbary,dtim,nstep,npri,pload
     CLOSE(10)
    
     integer_store      = 0
@@ -3350,15 +3351,16 @@ MODULE INPUT
     integer_store(8)   = nr 
     integer_store(9)   = nstep
     integer_store(10)  = partitioner
+    integer_store(11)  = nres
 
     real_store         = 0.0_iwp
 
     real_store(1)      = dtim
     real_store(2)      = e  
-    real_store(3)      = pload
-    real_store(4)      = rho  
-    real_store(5)      = sbary
-    real_store(6)      = v  
+    real_store(3)      = rho  
+    real_store(4)      = sbary
+    real_store(5)      = v  
+    real_store(6)      = pload  
 
   END IF
 
@@ -3366,7 +3368,7 @@ MODULE INPUT
 ! 3. Master processor broadcasts the temporary arrays to the slave processors
 !------------------------------------------------------------------------------
 
-  bufsize = 10
+  bufsize = 11
   CALL MPI_BCAST(integer_store,bufsize,MPI_INTEGER,0,MPI_COMM_WORLD,ier)
 
   bufsize = 6
@@ -3391,13 +3393,14 @@ MODULE INPUT
     nr            = integer_store(8)
     nstep         = integer_store(9)
     partitioner   = integer_store(10)
+    nres          = integer_store(11)
 
     dtim          = real_store(1)
     e             = real_store(2)
-    pload         = real_store(3)
-    rho           = real_store(4)
-    sbary         = real_store(5)
-    v             = real_store(6)
+    rho           = real_store(3)
+    sbary         = real_store(4)
+    v             = real_store(5)
+    pload         = real_store(6)
     
   END IF
 
