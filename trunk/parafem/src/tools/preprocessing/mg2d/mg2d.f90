@@ -44,6 +44,7 @@ PROGRAM mg2d
   REAL(iwp)              :: alpha1,beta1,theta,omega,dtim
   REAL(iwp)              :: zbox,zele,z1,z3,ttl
   REAL(iwp)              :: val0
+  REAL(iwp)              :: sbary
   CHARACTER(LEN=15)      :: element
   CHARACTER(LEN=50)      :: program_name,job_name,fname,problem_type
   CHARACTER(LEN=1)       :: bmat
@@ -1717,7 +1718,6 @@ PROGRAM mg2d
   READ(10,*) nels,nxe,nze,nip
   READ(10,*) aa,bb,cc
   READ(10,*) rho,e,v,sbary
-  READ(10,*) alpha1,beta1
   READ(10,*) dtim,nstep,npri
 
   nye   = nels/nxe/nze
@@ -1845,7 +1845,7 @@ PROGRAM mg2d
   
   WRITE(14,'(A)')             "'hexahedron'"
   WRITE(14,'(2I4)')           meshgen,partitioner
-  WRITE(14,'(3I12,2I5,3I12)') nels,nip,nn,nr,nod,loaded_nodes,nres
+  WRITE(14,'(3I12,2I5,3I12)') nels,nip,nn,nr,nod,loaded_freedoms,nres
   WRITE(14,'(4E14.6)')        rho,e,v,sbary
   WRITE(14,'(E14.6,2I8)')     dtim,nstep,npri
 
