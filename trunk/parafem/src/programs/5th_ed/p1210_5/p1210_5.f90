@@ -9,11 +9,11 @@ PROGRAM p1210
  IMPLICIT NONE
 ! neq,ntot are now global variables - not declared 
  INTEGER,PARAMETER::nodof=3,ndim=3,nst=6
- INTEGER::nn,nr,nip,loaded_nodes,nres,nod,i,j,k,ii,jj,iel,nstep,npri,    &
+ INTEGER::nn,nr,nip,loaded_nodes,nres=1,nod,i,j,k,ii,jj,iel,nstep,npri,  &
    num_no,no_index_start,is,it,nlen,ndof,nels,npes_pp,node_end,          &
    node_start,nodes_pp,argc,iargc,meshgen,partitioner=1
- REAL(iwp)::rho,dtim,e,v,det,sbary,pload,sigm,f,fnew,fac,volume,sbar,    &
-   dsbar,lode_theta,real_time,tload
+ REAL(iwp)::rho,dtim,e,v,det,sbary,sigm,f,fnew,fac,volume,sbar,          &
+   dsbar,lode_theta,real_time,tload,pload
  REAL(iwp),PARAMETER::zero=0.0_iwp    
  CHARACTER(LEN=15)::element,io_type; CHARACTER(LEN=50)::argv
  CHARACTER(LEN=6)::ch
@@ -30,7 +30,7 @@ PROGRAM p1210
  ALLOCATE(timest(20)); timest=zero; timest(1)=elap_time()
  CALL find_pe_procs(numpe,npes); CALL getname(argv,nlen)
  CALL read_p1210(argv,numpe,dtim,e,element,loaded_nodes,meshgen,nels,    &
-   nip,nn,nod,npri,nr,nstep,partitioner,pload,rho,sbary,v)
+   nip,nn,nod,npri,nr,nres,nstep,partitioner,pload,rho,sbary,v)
  CALL calc_nels_pp(argv,nels,npes,numpe,partitioner,nels_pp)
  ndof=nod*nodof; ntot=ndof
  ALLOCATE(g_num_pp(nod, nels_pp),g_coord_pp(nod,ndim,nels_pp),           & 
@@ -120,18 +120,20 @@ PROGRAM p1210
         etensor_pp(:,i,iel)=etensor_pp(:,i,iel)+eps
       END DO gauss_pts_2; utemp_pp(:,iel)=utemp_pp(:,iel)-bload    
     END DO elements_4
-    CALL scatter(bdylds_pp,utemp_pp); bdylds_pp=bdylds_pp+fext_pp*2._iwp
+    CALL scatter(bdylds_pp,utemp_pp); bdylds_pp=bdylds_pp+fext_pp*pload
     bdylds_pp=bdylds_pp/mm_pp
     d1x1_pp=d1x1_pp+(d2x1_pp+bdylds_pp)*.5_iwp*dtim; d2x1_pp=bdylds_pp
 !---------------------- output displacements -----------------------------
     IF(jj==jj/npri*npri) THEN 
-      disp_pp=zero; utemp_pp=zero
-      IF(numpe==1) THEN;  WRITE(ch,'(I6.6)') j
+      IF(numpe==it) THEN
+        WRITE(11,'(4E12.4)')real_time,x1_pp(is),d1x1_pp(is),d2x1_pp(is)
+      END IF
+      IF(numpe==1) THEN;  WRITE(ch,'(I6.6)') jj
         OPEN(12,file=argv(1:nlen)//".ensi.DISPL-"//ch,status='replace',  &
              action='write'); WRITE(12,'(A)')                            &
         "Alya Ensight Gold --- Vector per-node variable file"
         WRITE(12,'(A/A/A)') "part", "     1","coordinates"
-      END IF
+      END IF; disp_pp=zero; utemp_pp=zero
       CALL gather(x1_pp(1:),utemp_pp)
       CALL scatter_nodes(npes,nn,nels_pp,g_num_pp,nod,ndim,nodes_pp,     &
                          node_start,node_end,utemp_pp,disp_pp,1)
