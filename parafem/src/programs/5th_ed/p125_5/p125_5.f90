@@ -32,11 +32,11 @@ PROGRAM p125
  ndof=nod*nodof; ntot=ndof
  ALLOCATE(g_num_pp(nod,nels_pp),g_coord_pp(nod,ndim,nels_pp),            &
    rest(nr,nodof+1)); g_num_pp=0; g_coord_pp=zero; rest=0
- CALL read_g_num_pp2(job_name,iel_start,nn,npes,numpe,g_num_pp)
+ CALL read_g_num_pp2(argv,iel_start,nn,npes,numpe,g_num_pp)
  IF(meshgen == 2) CALL abaqus2sg(element,g_num_pp)
- CALL read_g_coord_pp(job_name,g_num_pp,nn,npes,numpe,g_coord_pp)
- CALL read_rest(job_name,numpe,rest);timest(2)=elap_time()
- ALLOCATE (points(nip,ndim),weights(nip),kay(ndim,ndim),jac(ndim,ndim),  &                                                   &
+ CALL read_g_coord_pp(argv,g_num_pp,nn,npes,numpe,g_coord_pp)
+ CALL read_rest(argv,numpe,rest);timest(2)=elap_time()
+ ALLOCATE (points(nip,ndim),weights(nip),kay(ndim,ndim),jac(ndim,ndim),  &
    der(ndim,nod),deriv(ndim,nod),kc(ntot,ntot),g(ntot),funny(1,nod),     &
    num(nod),g_g_pp(ntot,nels_pp),store_pm_pp(ntot,ntot,nels_pp),         &
    mass(ntot),fun(nod),pm(ntot,ntot),globma_tmp(ntot,nels_pp),           &
@@ -79,7 +79,7 @@ PROGRAM p125
     store_pm_pp(:,:,iel)=pm-kc*dtim
     DO i=1,ntot; globma_tmp(i,iel)=globma_tmp(i,iel)+mass(i); END DO
   END DO elements_3
-  IF(numpe==it) THEN; WRITE(11,'(A,F10.4)                                &
+  IF(numpe==it) THEN; WRITE(11,'(A,F10.4)')                              &
     "Time for element integration is :",elap_time()-timest(3); END IF
   CALL scatter(globma_pp,globma_tmp); globma_pp = 1._iwp/globma_pp
   loads_pp=val0; DEALLOCATE(globma_tmp); timest(4)=elap_time()

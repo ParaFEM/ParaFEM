@@ -45,11 +45,13 @@ PROGRAM p121
  CALL rearrange(rest); g_g_pp=0; neq=0
  elements_1: DO iel=1,nels_pp
     CALL find_g3(g_num_pp(:,iel),g_g_pp(:,iel),rest)
+!   CALL find_g(g_num_pp(:,iel),g_g_pp(:,iel),rest)
  END DO elements_1
  elements_2: DO iel=1,nels_pp  
     i=MAXVAL(g_g_pp(:,iel)); IF(i>neq) neq=i
  END DO elements_2  
  neq=MAX_INTEGER_P(neq); CALL calc_neq_pp; CALL calc_npes_pp(npes,npes_pp)
+!neq=MAX_INTEGER_P(neq); CALL calc_neq_pp; CALL calc_npes_pp2(npes,npes_pp)
  CALL make_ggl2(npes_pp,npes,g_g_pp)
  ALLOCATE(p_pp(neq_pp),r_pp(neq_pp),x_pp(neq_pp),xnew_pp(neq_pp),        &
    u_pp(neq_pp),d_pp(neq_pp),diag_precon_pp(neq_pp)); diag_precon_pp=zero
@@ -74,7 +76,7 @@ PROGRAM p121
  IF(numpe==1)THEN
    OPEN(11,FILE=argv(1:nlen)//".res",STATUS='REPLACE',ACTION='WRITE')
    WRITE(11,'(A,I7,A)') "This job ran on ",npes," processes"
-   WRITE(11,'(A,3(I8,A))') "There are ",nn," nodes", nr, &
+   WRITE(11,'(A,3(I12,A))') "There are ",nn," nodes", nr, &
                            " restrained and ",neq," equations"
    WRITE(11,'(A,F10.4)') "Time to read input is:",timest(2)-timest(1)
    WRITE(11,'(A,F10.4)') "Time after setup is:",elap_time()-timest(1)
@@ -112,7 +114,8 @@ PROGRAM p121
  END IF
  DEALLOCATE(p_pp,r_pp,x_pp,u_pp,d_pp,diag_precon_pp,storkm_pp,pmul_pp) 
 !--------------- recover stresses at centroidal gauss point --------------
- nip=1; points=zero; iel=1
+ ALLOCATE(eld_pp(ntot,nels_pp)); eld_pp=zero; points=zero; nip=1; iel=1
+ CALL gather(xnew_pp(1:),eld_pp); DEALLOCATE(xnew_pp)
  IF(numpe==1)WRITE(11,'(A)')"The Centroid point stresses for element 1 are"
  gauss_pts_2: DO i=1,nip
    CALL shape_der(der,points,i); jac=MATMUL(der,g_coord_pp(:,:,iel))
@@ -123,23 +126,21 @@ PROGRAM p121
    END IF
  END DO gauss_pts_2; DEALLOCATE(g_coord_pp)
 !------------------------ write out displacements ------------------------
- CALL calc_nodes_pp(nn,npes,numpe,node_end,node_start,nodes_pp)
- IF(numpe==1) THEN;  step=1; WRITE(ch,'(I5.5)') step
-   OPEN(24,file=argv(1:nlen)//".ensi.DISPL-"//ch,status='replace',       &
-        action='write')
-   WRITE(24,'(A)') "Alya Ensight Gold --- Vector per-node variable file"
-   WRITE(24,'(A/A/A)') "part", "     1","coordinates"
- END IF
- ALLOCATE(eld_pp(ntot,nels_pp)); eld_pp=zero
- CALL gather(xnew_pp(1:),eld_pp); DEALLOCATE(xnew_pp)
- ALLOCATE(disp_pp(nodes_pp*ndim),temp(nodes_pp)); disp_pp=zero; temp=zero
- CALL scatter_nodes(npes,nn,nels_pp,g_num_pp,nod,ndim,nodes_pp,          &
-                    node_start,node_end,eld_pp,disp_pp,1)
- DO i=1,ndim ; temp=zero
-   DO j=1,nodes_pp; k=i+(ndim*(j-1)); temp(j)=disp_pp(k); END DO
-   CALL dismsh_ensi_p(24,1,nodes_pp,npes,numpe,1,temp)
- END DO ; IF(numpe==1) CLOSE(24)
- IF(numpe==1) WRITE(11,'(A,F10.4)')"This analysis took  :",              &
+! CALL calc_nodes_pp(nn,npes,numpe,node_end,node_start,nodes_pp)
+! IF(numpe==1) THEN;  step=1; WRITE(ch,'(I5.5)') step
+!  OPEN(24,file=argv(1:nlen)//".ensi.DISPL-"//ch,status='replace',       &
+!       action='write')
+!  WRITE(24,'(A)') "Alya Ensight Gold --- Vector per-node variable file"
+!  WRITE(24,'(A/A/A)') "part", "     1","coordinates"
+! END IF
+! ALLOCATE(disp_pp(nodes_pp*ndim),temp(nodes_pp)); disp_pp=zero; temp=zero
+! CALL scatter_nodes(npes,nn,nels_pp,g_num_pp,nod,ndim,nodes_pp,          &
+!                    node_start,node_end,eld_pp,disp_pp,1)
+! DO i=1,ndim ; temp=zero
+!   DO j=1,nodes_pp; k=i+(ndim*(j-1)); temp(j)=disp_pp(k); END DO
+!   CALL dismsh_ensi_p(24,1,nodes_pp,npes,numpe,1,temp)
+! END DO ; IF(numpe==1) CLOSE(24)
+  IF(numpe==1) WRITE(11,'(A,F10.4)')"This analysis took  :",              &
     elap_time()-timest(1)  
  CALL shutdown() 
 END PROGRAM p121
