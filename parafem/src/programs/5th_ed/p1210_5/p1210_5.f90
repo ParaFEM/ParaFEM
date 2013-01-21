@@ -36,7 +36,9 @@ PROGRAM p1210
  ALLOCATE(g_num_pp(nod, nels_pp),g_coord_pp(nod,ndim,nels_pp),           & 
    rest(nr,nodof+1)); g_num_pp=0; g_coord_pp=zero; rest=0
  CALL read_g_num_pp(argv,iel_start,nels,nn,numpe,g_num_pp)
- IF(meshgen == 2) CALL abaqus2sg(element,g_num_pp)
+ IF(meshgen == 2) THEN
+   CALL abaqus2sg(element,g_num_pp); PRINT *, "Renumbered nodes"
+ END IF
  CALL read_g_coord_pp(argv,g_num_pp,nn,npes,numpe,g_coord_pp)
  CALL read_rest(argv,numpe,rest)
  ALLOCATE(points(nip,ndim),weights(nip),dee(nst,nst),                    &
@@ -84,10 +86,14 @@ PROGRAM p1210
  CALL scatter(mm_pp,mm_tmp); DEALLOCATE(mm_tmp)
 !----------------------------------- loads -------------------------------
  IF(loaded_nodes>0) THEN
+!  loaded_nodes=1
    ALLOCATE(node(loaded_nodes),val(ndim,loaded_nodes)); val=zero; node=0
    CALL read_loads(argv,numpe,node,val)
+!  val(3,1)=-0.001_iwp; node(1)=nn-20
+!  PRINT *, val; PRINT *, node
    CALL load(g_g_pp,g_num_pp,node,val,fext_pp(1:))
    tload = SUM_P(fext_pp(1:)); DEALLOCATE(node,val)
+!  PRINT*, tload
  END IF
 !---------------------- explicit integration loop ------------------------
  tensor_pp=zero; etensor_pp=zero; real_time=zero

@@ -1727,7 +1727,8 @@ PROGRAM mg2d
   nod   = 20
   nn    = (((2*nxe+1)*(nze+1))+((nxe+1)*nze))*(nye+1)+(nxe+1)*(nze+1)*nye
    
-  loaded_freedoms = (2*nxe)+1 ! Differs from the problem in the book
+! loaded_freedoms = (2*nxe)+1 ! Differs from the problem in the book
+  loaded_freedoms = 1 ! Same as problem in the book
 
   nres = 3*(nye*(nxe+1)*(nze+1)+nr*(nye-1)+(nxe+1))
 
@@ -1768,12 +1769,12 @@ PROGRAM mg2d
   WRITE(11,'(A)') "*NODES"
 
   DO i = 1, nn
-    WRITE(11,'(I6,3F12.4)') i, g_coord(:,i)
+    WRITE(11,'(I10,3F12.4)') i, g_coord(:,i)
   END DO
 
   WRITE(11,'(A)') "*ELEMENTS"
   DO iel = 1, nels
-    WRITE(11,'(I6,A,20I10,A)') iel, " 3 20 1 ", g_num(3,iel),g_num(5,iel),    &
+    WRITE(11,'(I10,A,20I10,A)')  iel, " 3 20 1 ", g_num(3,iel),g_num(5,iel),  &
                                  g_num(7,iel),g_num(1,iel),g_num(15,iel),     &
                                  g_num(17,iel),g_num(19,iel),g_num(13,iel),   &
                                  g_num(4,iel),g_num(6,iel),g_num(8,iel),      &
@@ -1798,7 +1799,7 @@ PROGRAM mg2d
   END DO
 
   DO i = 1, nr
-    WRITE(12,'(4I6)') rest(i,:) 
+    WRITE(12,'(4I10)') rest(i,:) 
   END DO
 
   CLOSE(12)
@@ -1809,17 +1810,21 @@ PROGRAM mg2d
 
   count = 1
 
-  DO i = 1,loaded_freedoms
-    no(i) = nn - ((2*nxe)+1) + i
-    IF(i==1.OR.i==((2*nxe)+1)) THEN
-      val(count) = 25._iwp/12._iwp 
-    ELSE IF(mod(i,2)==0) THEN
-      val(count) = 25._iwp/3._iwp
-    ELSE
-      val(count) = 25._iwp/6._iwp
-    END IF
-    count = count + 1
-  END DO
+! DO i = 1,loaded_freedoms
+!   no(i) = nn - ((2*nxe)+1) + i
+!   IF(i==1.OR.i==((2*nxe)+1)) THEN
+!     val(count) = -0.1_iwp/12._iwp 
+!   ELSE IF(mod(i,2)==0) THEN
+!     val(count) = 0.1_iwp/3._iwp
+!   ELSE
+!     val(count) = -0.1_iwp/6._iwp
+!   END IF
+!   count = count + 1
+! END DO
+
+  no(1)  = nn-nxe
+  val    = 0.0_iwp
+  val(1) = -0.001_iwp
 
   fname = job_name(1:INDEX(job_name, " ")-1) // ".lds" 
   OPEN(13,FILE=fname,STATUS='REPLACE',ACTION='WRITE')
@@ -1843,11 +1848,11 @@ PROGRAM mg2d
   meshgen     = 2 ! current default
   partitioner = 1 ! current default
   
-  WRITE(14,'(A)')             "'hexahedron'"
-  WRITE(14,'(2I4)')           meshgen,partitioner
-  WRITE(14,'(3I12,2I5,3I12)') nels,nip,nn,nr,nod,loaded_freedoms,nres
-  WRITE(14,'(4E14.6)')        rho,e,v,sbary
-  WRITE(14,'(E14.6,2I8)')     dtim,nstep,npri
+  WRITE(14,'(A)')               "'hexahedron'"
+  WRITE(14,'(2I4)')             meshgen,partitioner
+  WRITE(14,'(I10,I3,5I10)')     nels,nip,nn,nr,nod,loaded_freedoms,nres
+  WRITE(14,'(4E14.6)')          rho,e,v,sbary
+  WRITE(14,'(E14.6,2I8,A)')     dtim,nstep,npri, " -1.0000"
 
   CLOSE(14)
 
