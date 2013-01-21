@@ -6,13 +6,13 @@ PROGRAM P128
 !-------------------------------------------------------------------------
  USE precision; USE global_variables; USE mp_interface; USE input
  USE output; USE loading; USE maths; USE gather_scatter; USE partition
- USE elements; USE steering; USE pcg !; USE timing
+ USE elements; USE steering; USE pcg; USE timing
  IMPLICIT NONE
 ! neq,ntot are global variables - not declared
- INTEGER::nn,nr,nip,nodof=3,nod,nst=6,i,j,jj,k,l,inode,iel,ndim=3,iters, &
-   model,nconv,ncv,nev,maxitr,argc,iargc,partitioner=1,nels,ndof,        &
+ INTEGER::nn,nr,nip,nodof=3,nod,nst=6,i,j,ii,jj,k,l,inode,iel,ndim=3,    &
+   iters,model,nconv,ncv,nev,maxitr,argc,iargc,partitioner=1,nels,ndof,  &
    npes_pp,meshgen,first,last,ic,ido,ierr,info,iparam(11),ipntr(11),     &
-   ishfts,lworkl,node_end,node_start,nodes_pp,nlen  
+   ishfts,lworkl,nlen  
  REAL(iwp)::rho,e,nu,det,sigma,tol
  REAL(iwp),PARAMETER::zero=0.0_iwp, one=1.0_iwp  
  CHARACTER (LEN=15)::element; CHARACTER(LEN=50)::argv 
@@ -23,14 +23,13 @@ PROGRAM P128
    resid(:),fun(:),jac(:,:),der(:,:),deriv(:,:),weights(:),bee(:,:),     &
    store_km_pp(:,:,:),emm(:,:),ecm(:,:),diag(:),pmul(:),d(:,:),v(:,:),   &
    workl(:),workd(:),g_coord_pp(:,:,:),diag1(:),udiag(:),utemp(:),       &
-   eigv(:,:),eigv1(:,:),timest(:),temp(:)
+   eigv(:,:),eigv1(:,:),timest(:)
  INTEGER, ALLOCATABLE::rest(:,:),g(:),num(:),g_num_pp(:,:),g_g_pp(:,:),  &
    g_g_local(:,:),g_g(:,:),g_num(:,:),g_num_local(:,:)
  LOGICAL, ALLOCATABLE::select(:)   
  INCLUDE  'debug.h'     ! From ARPACK library
 !------------------------ input and initialisation -----------------------
- ALLOCATE(timest(20)); CALL cpu_time(timest(1))
-!timest=zero; timest(1)=elap_time()
+ ALLOCATE(timest(20)); timest=zero; timest(1)=elap_time()
  CALL find_pe_procs(numpe,npes); CALL getname(argv,nlen) 
  CALL read_xx6(argv,numpe,bmat,e,element,maxitr,meshgen,ncv,nels,    &
    nev,nip,nn,nod,nr,rho,tol,nu,which)
@@ -41,7 +40,7 @@ PROGRAM P128
  CALL read_g_num_pp2(argv,iel_start,nn,npes,numpe,g_num_pp)
  IF(meshgen == 2) CALL abaqus2sg(element,g_num_pp)
  CALL read_g_coord_pp(argv,g_num_pp,nn,npes,numpe,g_coord_pp)
- CALL read_rest(argv,numpe,rest)! ; timest(2)=elap_time()
+ CALL read_rest(argv,numpe,rest); timest(2)=elap_time()
 !----------- initialise values of parameters required by ARPACK ----------
  lworkl=ncv*(ncv+8); ndigit=-3; logfil=6; msgets=0; mseupd=0; msaitr=0
  msaupd=1; msaup2=0; mseigt=0; msapps=0; info=0; ishfts=1; model=1; ido=0    
@@ -134,7 +133,6 @@ PROGRAM P128
    END IF
  END IF
 !---------------------- write out the eigenvectors -----------------------   
- CALL calc_nodes_pp(nn,npes,numpe,node_end,node_start,nodes_pp)
  ALLOCATE(eigv(ndim,nn),g_num(nod,nels),g_num_local(nod,nels),           &
    g_g(ntot,nels),g_g_local(ntot,nels))
  eigv=zero; g_num=0; g_num_local=0; g_g=0; g_g_local=0
@@ -160,11 +158,14 @@ PROGRAM P128
          IF(g_g(l,iel)/=0) eigv(k,inode)=udiag(g_g(l,iel))
    END DO; END DO; END DO
    IF(numpe==1) THEN
-     DO jj=1,nn; k=i+(ndim*(jj-1)); temp(jj)=eigv(k,j); END DO
-     CALL dismsh_ensi_p(12,1,nodes_pp,npes,numpe,1,temp)
+     DO ii=1,ndim
+       DO jj=1,nn
+         WRITE(12,('(E12.4)')) eigv(ii,jj)
+       END DO
+     END DO
+     CLOSE(12)
    END IF
-   IF(numpe==1) CLOSE(12) ! *** need to open and close ***
  END DO
-!IF(numpe==1) WRITE(11,*) "This analysis took  :", elap_time( ) - timest(1)
+ IF(numpe==1) WRITE(11,*) "This analysis took  :", elap_time( ) - timest(1)
  CALL shutdown()
  END PROGRAM P128
