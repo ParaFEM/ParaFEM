@@ -1457,31 +1457,19 @@ PROGRAM mg2d
 ! 14. Program p128
 !------------------------------------------------------------------------------
  
+! PRINT*
+! PRINT*, "      The <my_job>.mg file should contain the following data:"
+! PRINT*
+! PRINT*, "      p128ar"
+! PRINT*, "      element"
+! PRINT*, "      nels, nxe, nze, nod, nip"
+! PRINT*, "      aa, bb, cc"
+! PRINT*, "      rho, e, v"
+! PRINT*, "      nev, ncv, bmat, which"
+! PRINT*, "      tol, maxitr"
+! PRINT*
+
   CASE('p128')
- 
-  PRINT*
-  PRINT*, "Program p128 not supported"
-  PRINT*
-  PRINT*, "      Use program p128ar instead "
-  PRINT*
-  PRINT*, "      The <my_job>.mg file should contain the following data:"
-  PRINT*
-  PRINT*, "      p128ar"
-  PRINT*, "      element"
-  PRINT*, "      nels, nxe, nze, nod, nip"
-  PRINT*, "      aa, bb, cc"
-  PRINT*, "      rho, e, v"
-  PRINT*, "      nev, ncv, bmat, which"
-  PRINT*, "      tol, maxitr"
-  PRINT*
-
-  STOP
-
-!------------------------------------------------------------------------------
-! 15. Program p128ar
-!------------------------------------------------------------------------------
- 
-  CASE('p128ar')
   READ(10,*) element
   READ(10,*) meshgen
   READ(10,*) nels, nxe, nze, nod, nip
