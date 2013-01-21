@@ -14,20 +14,21 @@
 *  This version gets the time from the system function ETIME.
 *
 *     .. Local Scalars ..
-      REAL               T1
+*     REAL               T1
 *     ..
 *     .. Local Arrays ..
-      REAL               TARRAY( 2 )
+*     REAL               TARRAY( 2 )
 *     ..
 *     .. External Functions ..
-      REAL               ETIME
-      EXTERNAL           ETIME
+*     REAL               ETIME
+*     EXTERNAL           ETIME
 *     ..
 *     .. Executable Statements ..
 *
 
-      T1 = ETIME( TARRAY )
-      T  = TARRAY( 1 )
+*     T1 = ETIME( TARRAY )
+*     T  = TARRAY( 1 )
+      CALL CPU_TIME(T)
 
       RETURN
 *
