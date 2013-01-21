@@ -660,9 +660,13 @@ PROGRAM mg2d
      WRITE(11,'(A)') "*ELEMENTS"
     
      DO iel = 1, nels
-       WRITE(11,'(I12,A,8I12,A)') iel, " 3 8 1 ", g_num(1,iel),g_num(4,iel),  &
-                                    g_num(8,iel),g_num(5,iel),g_num(2,iel),   &
-                                    g_num(3,iel),g_num(7,iel),g_num(6,iel),   &
+!      WRITE(11,'(I12,A,8I12,A)') iel, " 3 8 1 ", g_num(1,iel),g_num(4,iel),  &
+!                                   g_num(8,iel),g_num(5,iel),g_num(2,iel),   &
+!                                   g_num(3,iel),g_num(7,iel),g_num(6,iel),   &
+!                                   " 1"
+       WRITE(11,'(I12,A,8I12,A)') iel, " 3 8 1 ", g_num(1,iel),g_num(2,iel),  &
+                                    g_num(3,iel),g_num(4,iel),g_num(5,iel),   &
+                                    g_num(6,iel),g_num(7,iel),g_num(8,iel),   &
                                     " 1"
      END DO
     
@@ -721,7 +725,11 @@ PROGRAM mg2d
      OPEN(14,FILE=fname,STATUS='REPLACE',ACTION='WRITE')
   
      WRITE(14,'(A)') "'hexahedron'"
-     WRITE(14,'(A)') "2"              ! Abaqus node numbering scheme
+     IF(nod==8) THEN
+       WRITE(14,'(A)') "1"            ! Abaqus node numbering scheme
+     ELSE
+       WRITE(14,'(A)') "2"            ! Abaqus node numbering scheme
+     END IF
      WRITE(14,'(A)') "1"              ! Internal mesh partitioning
      WRITE(14,'(7I9)') nels, nn, nr, nip, nod, loaded_freedoms, fixed_freedoms
      WRITE(14,'(3E12.4,I8,A)') e, v, tol, limit, " 1" ! S&G partitions
