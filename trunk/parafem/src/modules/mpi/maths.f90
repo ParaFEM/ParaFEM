@@ -71,6 +71,51 @@ MODULE MATHS
 
   END FUNCTION MAX_INTEGER_P
 
+!------------------------------------------------------------------------------
+!------------------------------------------------------------------------------
+!------------------------------------------------------------------------------
+
+  FUNCTION MAX_P(n_pp) RESULT(n)
+
+  !/****f* maths/max_p
+  !*  NAME
+  !*    FUNCTION:   MAX_P
+  !*  SYNOPSIS
+  !*    Usage:      max_p(n_pp)
+  !*  FUNCTION
+  !*    Maximum value of an integer across processors
+  !*    Every process keeps the result
+  !*  INPUTS
+  !*    The following arguments have the INTENT(IN) attribute:
+  !*
+  !*    n_pp:          : Integer
+  !*                   : Integer on each processor
+  !*
+  !*    The following arguments have the INTENT(OUT) attribute:
+  !*
+  !*    n:             : Integer
+  !*                   : Maximum value across processors
+  !*  AUTHOR
+  !*    L. Margetts
+  !*  COPYRIGHT
+  !*    (c) University of Manchester 2002-2013
+  !******
+  !*  Place remarks that should not be included in the documentation here.
+  !*  Same as MAX_INTEGER_P
+  !*  Place holder subroutine for one that uses an interface to swap 
+  !*  between REAL and INTEGER versions
+  !*/
+
+  IMPLICIT NONE
+
+  INTEGER, INTENT(IN) :: n_pp
+  INTEGER :: n, bufsize, ier
+
+  bufsize = 1
+  CALL MPI_ALLREDUCE(n_pp,n,bufsize,MPI_INTEGER,MPI_MAX,MPI_COMM_WORLD,ier)
+
+  END FUNCTION MAX_P
+
 !---------------------------------------------------------------------------
 !---------------------------------------------------------------------------
 !---------------------------------------------------------------------------
