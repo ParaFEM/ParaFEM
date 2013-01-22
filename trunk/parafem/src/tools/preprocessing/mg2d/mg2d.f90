@@ -46,7 +46,7 @@ PROGRAM mg2d
   REAL(iwp)              :: val0
   REAL(iwp)              :: sbary
   CHARACTER(LEN=15)      :: element
-  CHARACTER(LEN=50)      :: program_name,job_name,fname,problem_type
+  CHARACTER(LEN=50)      :: program_name,job_name,fname,problem_type,iotype
   CHARACTER(LEN=1)       :: bmat
   CHARACTER(LEN=2)       :: which
 
@@ -463,9 +463,9 @@ PROGRAM mg2d
 !------------------------------------------------------------------------------
 
   CASE('p121')
-
-    READ(10,*) problem_type
-    READ(10,*) nels, nxe, nze, nod, nip
+    problem_type='ed4' ! hardwired
+!   READ(10,*) problem_type
+    READ(10,*) iotype, nels, nxe, nze, nod, nip
     READ(10,*) aa, bb, cc, e, v
     READ(10,*) tol, limit
 
@@ -474,6 +474,10 @@ PROGRAM mg2d
 !------------------------------------------------------------------------------
 ! 7.1 Select 8 node or 20 node hexahedra
 !------------------------------------------------------------------------------
+
+    SELECT CASE(iotype)
+
+    CASE('parafem')
 
     SELECT CASE(nod)
    
@@ -751,6 +755,15 @@ PROGRAM mg2d
       
    END SELECT
   
+   CASE('paraview')
+
+     PRINT *, "  Output for ParaView not yet implemented"; PRINT *, ""
+
+   CASE DEFAULT
+
+     PRINT *, "  Option ", iotype, " not recognised."; PRINT *, ""
+
+   END SELECT 
 
 !------------------------------------------------------------------------------ 
 !------------------------------------------------------------------------------
@@ -1074,7 +1087,7 @@ PROGRAM mg2d
 
   CASE('p125')
 
-    READ(10,*) nels, nxe, nze, nip
+    READ(10,*) iotype, nels, nxe, nze, nip
     READ(10,*) aa, bb, cc, kx, ky, kz
     READ(10,*) dtim, nstep
     READ(10,*) npri, val0
@@ -1082,6 +1095,10 @@ PROGRAM mg2d
     loaded_freedoms=0; fixed_freedoms=0
  
     PRINT *, "Read .mg file"
+
+    SELECT CASE(iotype)
+
+    CASE('parafem')
 
 !------------------------------------------------------------------------------
 ! 10.1 Initialize variables
@@ -1226,13 +1243,23 @@ PROGRAM mg2d
     PRINT *, "Job completed"
     PRINT *
 
+    CASE('paraview')
+
+      PRINT *, "  Output for ParaView not yet implemented"; PRINT *, ""
+
+    CASE DEFAULT
+
+      PRINT *, "  Option ", iotype, " not recognised."; PRINT *, ""
+
+    END SELECT 
+
 !------------------------------------------------------------------------------
 ! 12. Program p126
 !------------------------------------------------------------------------------
 
   CASE('p126')
 
-  READ(10,*) nels, nxe, nze, nip
+  READ(10,*) iotype, nels, nxe, nze, nip
   READ(10,*) aa, bb, cc
   READ(10,*) visc, rho, tol, limit
   READ(10,*) cjtol, cjits, penalty
@@ -1270,13 +1297,17 @@ PROGRAM mg2d
 !     Write to file using Abaqus node numbering convention 
 !------------------------------------------------------------------------------
 
-  PRINT *, "  Writing nodal coordinates and element steering array"
-
   DO iel = 1, nels
     CALL geometry_20bxz(iel,nxe,nze,aa,bb,cc,coord,g_num(:,iel))
     g_coord(:,g_num(:,iel)) = TRANSPOSE(coord)
   END DO
+
+
+  SELECT CASE(iotype)
+
+  CASE('parafem')
  
+  PRINT *, "  Writing nodal coordinates and element steering array"
   fname = job_name(1:INDEX(job_name, " ")-1) // ".d" 
   OPEN(11,FILE=fname,STATUS='REPLACE',ACTION='WRITE')
   
@@ -1440,6 +1471,16 @@ PROGRAM mg2d
 
   CLOSE(15)
 
+  CASE('paraview')
+
+    PRINT *, "  Output for ParaView not yet implemented"; PRINT *, ""
+
+  CASE DEFAULT
+
+    PRINT *, "  Option ", iotype, " not recognised."; PRINT *, ""
+
+  END SELECT 
+
 !------------------------------------------------------------------------------
 ! 13. Program p127
 !------------------------------------------------------------------------------
@@ -1566,7 +1607,7 @@ PROGRAM mg2d
 !------------------------------------------------------------------------------  
   CASE('p129')
  
-  READ(10,*) nels,nxe,nze,nip
+  READ(10,*) iotype,nels,nxe,nze,nip
   READ(10,*) aa,bb,cc,rho
   READ(10,*) e,v
   READ(10,*) alpha1,beta1
@@ -1587,6 +1628,10 @@ PROGRAM mg2d
 !------------------------------------------------------------------------------
 ! 16.1 Allocate dynamic arrays
 !------------------------------------------------------------------------------
+
+  SELECT CASE(iotype)
+
+  CASE('parafem')
 
   ALLOCATE(coord(nod,ndim))
   ALLOCATE(g_coord(ndim,nn))
@@ -1704,13 +1749,23 @@ PROGRAM mg2d
 
   CLOSE(14)
 
+  CASE('paraview')
+
+    PRINT *, "  Output for ParaView not yet implemented"; PRINT *, ""
+
+  CASE DEFAULT
+
+    PRINT *, "  Option ", iotype, " not recognised."; PRINT *, ""
+
+  END SELECT 
+
 !------------------------------------------------------------------------------
 ! 16. Program p1210
 !------------------------------------------------------------------------------
 
   CASE('p1210')
 
-  READ(10,*) nels,nxe,nze,nip
+  READ(10,*) iotype,nels,nxe,nze,nip
   READ(10,*) aa,bb,cc
   READ(10,*) rho,e,v,sbary
   READ(10,*) dtim,nstep,npri
@@ -1730,6 +1785,10 @@ PROGRAM mg2d
 !------------------------------------------------------------------------------
 ! 16.1 Allocate dynamic arrays
 !------------------------------------------------------------------------------
+
+  SELECT CASE(iotype)
+
+  CASE('parafem')
 
   ALLOCATE(coord(nod,ndim))
   ALLOCATE(g_coord(ndim,nn))
@@ -1850,6 +1909,16 @@ PROGRAM mg2d
   WRITE(14,'(E14.6,2I8,A)')     dtim,nstep,npri, " -1.0000"
 
   CLOSE(14)
+
+  CASE('paraview')
+
+    PRINT *, "  Output for ParaView not yet implemented"; PRINT *, ""
+
+  CASE DEFAULT
+
+    PRINT *, "  Option ", iotype, " not recognised."; PRINT *, ""
+
+  END SELECT 
 
   STOP
 
