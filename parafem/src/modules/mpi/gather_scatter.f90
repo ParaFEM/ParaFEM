@@ -238,7 +238,7 @@ MODULE GATHER_SCATTER
   
     CASE (2)
 
-      CALL read_nels_pp(job_name,nels_pp,npes,numpe)
+      CALL read_nels_pp(job_name,iel_start,nels_pp,npes,numpe)
 
     CASE DEFAULT
      
