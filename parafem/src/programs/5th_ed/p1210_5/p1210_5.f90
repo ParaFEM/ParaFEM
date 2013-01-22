@@ -49,14 +49,11 @@ PROGRAM p1210
    mm_tmp(ntot,nels_pp),utemp_pp(ntot,nels_pp))
 !----------  find the steering array and equations per process -----------
  CALL rearrange(rest); g_g_pp=0; neq=0
- elements_1: DO iel=1,nels_pp
+ elements_0: DO iel=1,nels_pp
    CALL find_g(g_num_pp(:,iel),g_g_pp(:,iel),rest)
- END DO elements_1
- elements_2: DO iel=1,nels_pp  
-   i=MAXVAL(g_g_pp(:,iel)); IF(i>neq) neq=i
- END DO elements_2  
- neq=MAX_INTEGER_P(neq); CALL calc_neq_pp; CALL calc_npes_pp(npes,npes_pp)
- CALL make_ggl(npes_pp,npes,g_g_pp)
+ END DO elements_0
+ neq=MAXVAL(g_g_pp); neq=MAX_INTEGER_P(neq); CALL calc_neq_pp
+ CALL calc_npes_pp(npes,npes_pp); CALL make_ggl(npes_pp,npes,g_g_pp)
  DO i=1,neq_pp; IF(nres==ieq_start+i-1)THEN;it=numpe;is=i;END IF;END DO
  IF(numpe==it) THEN
    OPEN(11,FILE=argv(1:nlen)//".res",STATUS='REPLACE',ACTION='WRITE')
@@ -72,7 +69,7 @@ PROGRAM p1210
    d1x1_pp=zero; d2x1_pp=zero; mm_pp=zero; fext_pp=zero
 !-------------------- calculate diagonal mass matrix ---------------------
  mm_tmp=zero; CALL sample(element,points,weights)
- elements_3: DO iel=1,nels_pp
+ elements_1: DO iel=1,nels_pp
    volume=zero
    gauss_pts_1: DO i=1,nip
      CALL shape_der(der,points,i); jac=MATMUL(der,g_coord_pp(:,:,iel))
@@ -82,18 +79,14 @@ PROGRAM p1210
    emm(2:20:6)=emm(4)*.125_iwp; emm(3:21:6)=emm(4)*.125_iwp
    emm(37:55:6)=emm(4)*.125_iwp; emm(38:56:6)=emm(4)*.125_iwp
    emm(39:57:6)=emm(4)*.125_iwp; mm_tmp(:,iel)=mm_tmp(:,iel)+emm 
- END DO elements_3
+ END DO elements_1
  CALL scatter(mm_pp,mm_tmp); DEALLOCATE(mm_tmp)
 !----------------------------------- loads -------------------------------
  IF(loaded_nodes>0) THEN
-!  loaded_nodes=1
    ALLOCATE(node(loaded_nodes),val(ndim,loaded_nodes)); val=zero; node=0
    CALL read_loads(argv,numpe,node,val)
-!  val(3,1)=-0.001_iwp; node(1)=nn-20
-!  PRINT *, val; PRINT *, node
    CALL load(g_g_pp,g_num_pp,node,val,fext_pp(1:))
    tload = SUM_P(fext_pp(1:)); DEALLOCATE(node,val)
-!  PRINT*, tload
  END IF
 !---------------------- explicit integration loop ------------------------
  tensor_pp=zero; etensor_pp=zero; real_time=zero
@@ -102,7 +95,7 @@ PROGRAM p1210
     x1_pp=x1_pp+(d1x1_pp+d2x1_pp*dtim*.5_iwp)*dtim
 !------------------ element stress-strain relationship -------------------
     pmul_pp=zero; utemp_pp=zero; CALL gather(x1_pp,pmul_pp)
-    elements_4: DO iel=1,nels_pp          
+    elements_2: DO iel=1,nels_pp          
       bload=zero; eld=pmul_pp(:,iel)
       gauss_pts_2: DO i=1,nip
         dee=zero; CALL deemat(e,v,dee); CALL shape_der(der,points,i)
@@ -125,7 +118,7 @@ PROGRAM p1210
         tensor_pp(:,i,iel)=sigma
         etensor_pp(:,i,iel)=etensor_pp(:,i,iel)+eps
       END DO gauss_pts_2; utemp_pp(:,iel)=utemp_pp(:,iel)-bload    
-    END DO elements_4
+    END DO elements_2
     CALL scatter(bdylds_pp,utemp_pp); bdylds_pp=bdylds_pp+fext_pp*pload
     bdylds_pp=bdylds_pp/mm_pp
     d1x1_pp=d1x1_pp+(d2x1_pp+bdylds_pp)*.5_iwp*dtim; d2x1_pp=bdylds_pp
