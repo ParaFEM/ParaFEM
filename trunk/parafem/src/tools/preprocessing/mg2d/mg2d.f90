@@ -1346,11 +1346,11 @@ PROGRAM mg2d
 
   meshgen     = 2 ! current default
   partitioner = 1 ! current default
+  nres        = nze*(nxe+1)+3*nxe+1
 
   WRITE(14,'(A)') "'p126'"
-  WRITE(14,'(I4)') meshgen
-  WRITE(14,'(I4)') partitioner
-  WRITE(14,'(6I9)') nels, nn, nr, fixed_freedoms, nip
+  WRITE(14,'(2I4)') meshgen, partitioner
+  WRITE(14,'(7I9)') nels, nn, nres, nr, fixed_freedoms, nip
   WRITE(14,'(3E12.4,I8)') visc, rho, tol, limit
   WRITE(14,'(E12.4,I8,E12.4)') cjtol, cjits, penalty
   WRITE(14,'(E12.4,I8,E12.4)') x0, ell, kappa
