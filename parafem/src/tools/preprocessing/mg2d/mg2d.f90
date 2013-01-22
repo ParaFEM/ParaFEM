@@ -1076,8 +1076,10 @@ PROGRAM mg2d
 
     READ(10,*) nels, nxe, nze, nip
     READ(10,*) aa, bb, cc, kx, ky, kz
-    READ(10,*) val0
-    READ(10,*) loaded_freedoms, fixed_freedoms
+    READ(10,*) dtim, nstep
+    READ(10,*) npri, val0
+    
+    loaded_freedoms=0; fixed_freedoms=0
  
     PRINT *, "Read .mg file"
 
@@ -1092,9 +1094,6 @@ PROGRAM mg2d
     nn    = (nxe+1)*(nye+1)*(nze+1)
     nodof = 1
     nres  = nxe*(nze-1)+1
-    dtim  = 0.0002_iwp
-    nstep = 5000
-    npri  = 500
 
 !------------------------------------------------------------------------------
 ! 10.2 Allocate dynamic arrays
@@ -1622,12 +1621,12 @@ PROGRAM mg2d
   WRITE(11,'(A)') "*NODES"
 
   DO i = 1, nn
-    WRITE(11,'(I6,3F12.4)') i, g_coord(:,i)
+    WRITE(11,'(I12,3F12.4)') i, g_coord(:,i)
   END DO
 
   WRITE(11,'(A)') "*ELEMENTS"
   DO iel = 1, nels
-    WRITE(11,'(I6,A,20I10,A)') iel, " 3 20 1 ", g_num(3,iel),g_num(5,iel),    &
+    WRITE(11,'(I10,A,20I12,A)') iel, " 3 20 1 ", g_num(3,iel),g_num(5,iel),   &
                                  g_num(7,iel),g_num(1,iel),g_num(15,iel),     &
                                  g_num(17,iel),g_num(19,iel),g_num(13,iel),   &
                                  g_num(4,iel),g_num(6,iel),g_num(8,iel),      &
