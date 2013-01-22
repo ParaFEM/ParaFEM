@@ -45,21 +45,16 @@ PROGRAM p121
  CALL rearrange(rest); g_g_pp=0; neq=0
  elements_1: DO iel=1,nels_pp
     CALL find_g3(g_num_pp(:,iel),g_g_pp(:,iel),rest)
-!   CALL find_g(g_num_pp(:,iel),g_g_pp(:,iel),rest)
  END DO elements_1
- elements_2: DO iel=1,nels_pp  
-    i=MAXVAL(g_g_pp(:,iel)); IF(i>neq) neq=i
- END DO elements_2  
- neq=MAX_INTEGER_P(neq); CALL calc_neq_pp; CALL calc_npes_pp(npes,npes_pp)
-!neq=MAX_INTEGER_P(neq); CALL calc_neq_pp; CALL calc_npes_pp2(npes,npes_pp)
- CALL make_ggl2(npes_pp,npes,g_g_pp)
+ neq=MAXVAL(g_g_pp); neq=MAX_INTEGER_P(neq); CALL calc_neq_pp
+ CALL calc_npes_pp(npes,npes_pp); CALL make_ggl2(npes_pp,npes,g_g_pp)
  ALLOCATE(p_pp(neq_pp),r_pp(neq_pp),x_pp(neq_pp),xnew_pp(neq_pp),        &
    u_pp(neq_pp),d_pp(neq_pp),diag_precon_pp(neq_pp)); diag_precon_pp=zero
  p_pp=zero;  r_pp=zero;  x_pp=zero; xnew_pp=zero; u_pp=zero; d_pp=zero
 !------ element stiffness integration and build the preconditioner ------
  dee=zero; CALL deemat(e,v,dee); CALL sample(element,points,weights)
  storkm_pp=zero
- elements_3: DO iel=1,nels_pp
+ elements_2: DO iel=1,nels_pp
    gauss_pts_1: DO i=1,nip
      CALL shape_der(der,points,i); jac=MATMUL(der,g_coord_pp(:,:,iel))
      det=determinant(jac); CALL invert(jac); deriv=MATMUL(jac,der)
@@ -67,11 +62,11 @@ PROGRAM p121
      storkm_pp(:,:,iel)=storkm_pp(:,:,iel) +                             &
                     MATMUL(MATMUL(TRANSPOSE(bee),dee),bee)*det*weights(i)   
    END DO gauss_pts_1
- END DO elements_3
+ END DO elements_2
  ALLOCATE(diag_precon_tmp(ntot,nels_pp)); diag_precon_tmp=zero
- elements_4: DO iel=1,nels_pp ; DO i=1,ndof
+ elements_3: DO iel=1,nels_pp ; DO i=1,ndof
    diag_precon_tmp(i,iel) = diag_precon_tmp(i,iel)+storkm_pp(i,i,iel)
- END DO;  END DO elements_4
+ END DO;  END DO elements_3
  CALL scatter(diag_precon_pp,diag_precon_tmp); DEALLOCATE(diag_precon_tmp)
  IF(numpe==1)THEN
    OPEN(11,FILE=argv(1:nlen)//".res",STATUS='REPLACE',ACTION='WRITE')
@@ -95,9 +90,9 @@ PROGRAM p121
  iterations: DO 
    iters=iters+1; u_pp=zero; pmul_pp=zero; utemp_pp=zero
    CALL gather(p_pp,pmul_pp)
-   elements_5: DO iel=1,nels_pp
+   elements_4: DO iel=1,nels_pp
      utemp_pp(:,iel) = MATMUL(storkm_pp(:,:,iel),pmul_pp(:,iel))
-   END DO elements_5 ;CALL scatter(u_pp,utemp_pp)
+   END DO elements_4 ;CALL scatter(u_pp,utemp_pp)
 !-------------------------- pcg equation solution ------------------------
    up=DOT_PRODUCT_P(r_pp,d_pp); alpha=up/DOT_PRODUCT_P(p_pp,u_pp)
    xnew_pp=x_pp+p_pp*alpha; r_pp=r_pp-u_pp*alpha
@@ -126,21 +121,21 @@ PROGRAM p121
    END IF
  END DO gauss_pts_2; DEALLOCATE(g_coord_pp)
 !------------------------ write out displacements ------------------------
-! CALL calc_nodes_pp(nn,npes,numpe,node_end,node_start,nodes_pp)
-! IF(numpe==1) THEN;  step=1; WRITE(ch,'(I5.5)') step
-!  OPEN(24,file=argv(1:nlen)//".ensi.DISPL-"//ch,status='replace',       &
-!       action='write')
-!  WRITE(24,'(A)') "Alya Ensight Gold --- Vector per-node variable file"
-!  WRITE(24,'(A/A/A)') "part", "     1","coordinates"
-! END IF
-! ALLOCATE(disp_pp(nodes_pp*ndim),temp(nodes_pp)); disp_pp=zero; temp=zero
-! CALL scatter_nodes(npes,nn,nels_pp,g_num_pp,nod,ndim,nodes_pp,          &
-!                    node_start,node_end,eld_pp,disp_pp,1)
-! DO i=1,ndim ; temp=zero
-!   DO j=1,nodes_pp; k=i+(ndim*(j-1)); temp(j)=disp_pp(k); END DO
-!   CALL dismsh_ensi_p(24,1,nodes_pp,npes,numpe,1,temp)
-! END DO ; IF(numpe==1) CLOSE(24)
-  IF(numpe==1) WRITE(11,'(A,F10.4)')"This analysis took  :",              &
-    elap_time()-timest(1)  
+ CALL calc_nodes_pp(nn,npes,numpe,node_end,node_start,nodes_pp)
+ IF(numpe==1) THEN;  step=1; WRITE(ch,'(I5.5)') step
+   OPEN(24,file=argv(1:nlen)//".ensi.DISPL-"//ch,status='replace',       &
+     action='write')
+   WRITE(24,'(A)') "Alya Ensight Gold --- Vector per-node variable file"
+   WRITE(24,'(A/A/A)') "part", "     1","coordinates"
+ END IF
+ ALLOCATE(disp_pp(nodes_pp*ndim),temp(nodes_pp)); disp_pp=zero; temp=zero
+ CALL scatter_nodes(npes,nn,nels_pp,g_num_pp,nod,ndim,nodes_pp,          &
+                    node_start,node_end,eld_pp,disp_pp,1)
+ DO i=1,ndim ; temp=zero
+   DO j=1,nodes_pp; k=i+(ndim*(j-1)); temp(j)=disp_pp(k); END DO
+   CALL dismsh_ensi_p(24,1,nodes_pp,npes,numpe,1,temp)
+ END DO ; IF(numpe==1) CLOSE(24)
+ IF(numpe==1) WRITE(11,'(A,F10.4)')"This analysis took  :",              &
+   elap_time()-timest(1)  
  CALL shutdown() 
 END PROGRAM p121
