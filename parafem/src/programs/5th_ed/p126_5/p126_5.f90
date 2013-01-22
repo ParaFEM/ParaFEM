@@ -5,6 +5,7 @@ PROGRAM p126
 !      coupled to 8-node pressure hexahedral elements : u-p-v-w order
 !      element by element solution using BiCGSTAB(L) : parallel version
 !-------------------------------------------------------------------------
+!USE mpi_wrapper  !remove comment for serial compilation
  USE precision; USE global_variables; USE mp_interface; USE input; 
  USE output; USE loading; USE timing; USE maths; USE gather_scatter
  USE partition; USE elements; USE steering; USE bicg; USE fluid
@@ -19,7 +20,7 @@ PROGRAM p126
    penalty,x0,pp,kappa,gama,omega,norm_r,r0_norm,error
  REAL(iwp),PARAMETER::zero=0.0_iwp,one=1.0_iwp
  LOGICAL::converged,cj_converged
- CHARACTER(LEN=15)::element='hexahedron',io_type
+ CHARACTER(LEN=15)::element='hexahedron'
  CHARACTER(LEN=50)::argv
 !--------------------------- dynamic arrays ------------------------------
  REAL(iwp),ALLOCATABLE::points(:,:),coord(:,:),derivf(:,:),fun(:),       &
@@ -35,9 +36,8 @@ PROGRAM p126
 !---------------------- input and initialisation -------------------------
  ALLOCATE(timest(20)); timest=zero; timest(1)=elap_time()
  CALL find_pe_procs(numpe,npes); CALL getname(argv,nlen)
- CALL read_p126(argv,numpe,cjits,cjtol,ell,fixed_equations,io_type,      &
-   kappa,limit,meshgen,nels,nip,nn,nr,nres,partitioner,penalty,rho,tol,  &
-   x0,visc)
+ CALL read_p126(argv,numpe,cjits,cjtol,ell,fixed_equations,kappa,limit,  &
+   meshgen,nels,nip,nn,nr,nres,partitioner,penalty,rho,tol,x0,visc) 
  CALL calc_nels_pp(argv,nels,npes,numpe,partitioner,nels_pp)
  ntot=nod+nodf+nod+nod; n_t=nod*nodof
  ALLOCATE(g_num_pp(nod,nels_pp),g_coord_pp(nod,ndim,nels_pp),            &
@@ -59,14 +59,12 @@ PROGRAM p126
    pmul_pp(ntot,nels_pp),weights(nip))
 !----------  find the steering array and equations per process -----------
  CALL rearrange(rest); g_g_pp=0; neq=0
- elements_1: DO iel=1,nels_pp
+ elements_0: DO iel=1,nels_pp
    CALL find_g3(g_num_pp(:,iel),g_t,rest)
    CALL g_t_g_ns(nod,g_t,g_g_pp(:,iel))
- END DO elements_1
- elements_2: DO iel=1,nels_pp  
-   i=MAXVAL(g_g_pp(:,iel)); IF(i>neq) neq=i
- END DO elements_2 
- neq=MAX_INTEGER_P(neq); CALL calc_neq_pp; CALL calc_npes_pp(npes,npes_pp)
+ END DO elements_0
+ neq=MAXVAL(g_g_pp); neq=MAX_INTEGER_P(neq); CALL calc_neq_pp
+ CALL calc_npes_pp(npes,npes_pp)
  CALL make_ggl(npes_pp,npes,g_g_pp); DEALLOCATE(g_g_pp)
  DO i=1,neq_pp; IF(nres==ieq_start+i-1)THEN;it=numpe;is=i;END IF;END DO
  IF(numpe==it) THEN
@@ -96,7 +94,7 @@ PROGRAM p126
    b_pp=zero; pmul_pp=zero; CALL gather(x_pp,utemp_pp)
    CALL gather(xold_pp,pmul_pp)
 !-------------------- element stiffness integration ----------------------
-   elements_3: DO iel=1,nels_pp
+   elements_1: DO iel=1,nels_pp
      uvel=(utemp_pp(1:nod,iel)+pmul_pp(1:nod,iel))*.5_iwp
      DO i=nod+nodf+1,nod+nodf+nod
        vvel(i-nod-nodf)=(utemp_pp(i,iel)+pmul_pp(i,iel))*.5_iwp
@@ -135,12 +133,12 @@ PROGRAM p126
        c24=c24+MATMUL(funnyf,row3)*det*weights(i)
      END DO gauss_points_1
      CALL formupvw(storke_pp,iel,c11,c12,c21,c23,c32,c24,c42)
-   END DO elements_3
+   END DO elements_1
 !----------------------- build the preconditioner ------------------------
  diag_tmp=zero
- elements_4: DO iel=1,nels_pp; DO k=1,ntot
+ elements_2: DO iel=1,nels_pp; DO k=1,ntot
    diag_tmp(k,iel)=diag_tmp(k,iel)+storke_pp(k,k,iel); END DO
- END DO elements_4; CALL scatter(diag_pp,diag_tmp)
+ END DO elements_2; CALL scatter(diag_pp,diag_tmp)
 !------------------- prescribed values of velocity and pressure ----------
  DO i=1,num_no; k=no_local(i)-ieq_start+1
    diag_pp(k)=diag_pp(k)+penalty
@@ -150,9 +148,9 @@ PROGRAM p126
 !-------------------------- initialisation phase -------------------------
  IF(iters==1) x_pp=x0; pmul_pp=zero; y1_pp=zero; y_pp=x_pp
    CALL gather(y_pp,pmul_pp)
-   elements_5: DO iel=1,nels_pp  
+   elements_3: DO iel=1,nels_pp  
      utemp_pp(:,iel)=MATMUL(storke_pp(:,:,iel),pmul_pp(:,iel))
-   END DO elements_5; CALL scatter(y1_pp,utemp_pp)
+   END DO elements_3; CALL scatter(y1_pp,utemp_pp)
    DO i=1,num_no; k=no_local(i)-ieq_start+1
      y1_pp(k)=y_pp(k)*store_pp(k)
    END DO; y_pp=y1_pp; rt_pp=b_pp-y_pp; r_pp=zero; r_pp(:,1)=rt_pp
@@ -166,9 +164,9 @@ PROGRAM p126
        rho1=DOT_PRODUCT_P(rt_pp,y_pp); beta=rho1/gama
        u_pp(:,1:j)=r_pp(:,1:j)-beta*u_pp(:,1:j)
        pmul_pp=zero; y_pp=u_pp(:,j); y1_pp=zero; CALL gather(y_pp,pmul_pp)
-       elements_6: DO iel=1,nels_pp
+       elements_4: DO iel=1,nels_pp
          utemp_pp(:,iel)=MATMUL(storke_pp(:,:,iel),pmul_pp(:,iel))
-       END DO elements_6; CALL scatter(y1_pp,utemp_pp)
+       END DO elements_4; CALL scatter(y1_pp,utemp_pp)
        DO i=1,num_no; l=no_local(i)-ieq_start+1
          y1_pp(l)=y_pp(l)*store_pp(l)
        END DO; y_pp=y1_pp; u_pp(:,j+1)=y_pp
@@ -176,9 +174,9 @@ PROGRAM p126
        x_pp=x_pp+alpha*u_pp(:,1)
        r_pp(:,1:j)=r_pp(:,1:j)-alpha*u_pp(:,2:j+1)
        pmul_pp=zero; y_pp=r_pp(:,j); y1_pp=zero; CALL gather(y_pp,pmul_pp)
-       elements_7: DO iel=1,nels_pp
+       elements_5: DO iel=1,nels_pp
          utemp_pp(:,iel)=MATMUL(storke_pp(:,:,iel),pmul_pp(:,iel))
-       END DO elements_7; CALL scatter(y1_pp,utemp_pp)
+       END DO elements_5; CALL scatter(y1_pp,utemp_pp)
        DO i=1,num_no; l=no_local(i)-ieq_start+1
          y1_pp(l)=y_pp(l)*store_pp(l)
        END DO; y_pp=y1_pp; r_pp(:,j+1)=y_pp
