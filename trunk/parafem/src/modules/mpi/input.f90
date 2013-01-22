@@ -1418,13 +1418,13 @@ MODULE INPUT
 !------------------------------------------------------------------------------
 !------------------------------------------------------------------------------
 
-  SUBROUTINE READ_NELS_PP(job_name,nels_pp,npes,numpe)
+  SUBROUTINE READ_NELS_PP(job_name,iel_start,nels_pp,npes,numpe)
 
   !/****f* input/read_nels_pp
   !*  NAME
   !*    SUBROUTINE: read_nels_pp
   !*  SYNOPSIS
-  !*    Usage:      CALL read_nels_pp(job_name,nels_pp,npes,numpe)
+  !*    Usage:      CALL read_nels_pp(job_name,iel_start,nels_pp,npes,numpe)
   !*  FUNCTION
   !*    Reads NELS_PP from a file called job_name.psize 
   !*  INPUTS
@@ -1457,7 +1457,7 @@ MODULE INPUT
   CHARACTER(LEN=50), INTENT(IN)    :: job_name
   CHARACTER(LEN=50)                :: fname
   INTEGER, INTENT(IN)              :: npes,numpe
-  INTEGER, INTENT(OUT)             :: nels_pp
+  INTEGER, INTENT(OUT)             :: nels_pp,iel_start
   INTEGER, ALLOCATABLE             :: psize(:)
   INTEGER                          :: i,p
 
@@ -1489,8 +1489,20 @@ MODULE INPUT
 ! 3. Each processor takes the value it needs
 !------------------------------------------------------------------------------
 
-  nels_pp = psize(numpe)
- 
+  nels_pp   = psize(numpe)
+  iel_start = 0
+
+  IF(numpe==1) THEN
+    iel_start = 1
+  ELSE
+    DO i = 2, numpe
+      iel_start = iel_start + psize(i-1)
+    END DO
+    iel_start   = iel_start + 1
+  END IF
+
+  PRINT *, "iel_start = ", iel_start, " on process ", numpe 
+
   DEALLOCATE(psize)
 
   RETURN
