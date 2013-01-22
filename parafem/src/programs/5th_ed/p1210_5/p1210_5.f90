@@ -5,7 +5,7 @@ PROGRAM p1210
 !-------------------------------------------------------------------------
  USE precision; USE global_variables; USE mp_interface; USE input
  USE output; USE loading; USE timing; USE maths; USE gather_scatter
- USE partition; USE elements; USE steering; USE pcg; USE plasticity 
+ USE elements; USE steering; USE plasticity 
  IMPLICIT NONE
 ! neq,ntot are now global variables - not declared 
  INTEGER,PARAMETER::nodof=3,ndim=3,nst=6
