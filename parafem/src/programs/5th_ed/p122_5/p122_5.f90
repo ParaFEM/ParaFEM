@@ -13,12 +13,13 @@ PROGRAM p122
  INTEGER::nn,nod,nr,nip,i,j,k,iel,plasiters,nels,ndof, &
    plasits,cjiters,cjits,cjtot,incs,iy,loaded_nodes,num_no,     &
    no_index_start,neq_temp,nn_temp,nle,nlen,partitioner,meshgen,npes_pp,  &
-   node_end,node_start,nodes_pp
+   node_end,node_start,nodes_pp,fixed_freedoms,fixed_freedoms_pp,         &
+   fixed_freedoms_start
  LOGICAL::plastic_converged,cj_converged; CHARACTER(LEN=50)::argv
  CHARACTER(LEN=15)::element='hexahedron';  CHARACTER(LEN=6)::ch
  REAL(iwp)::e,v,det,phi,c,psi,dt,f,dsbar,dq1,dq2,dq3,lode_theta,presc,    &
    sigm,pi,snph,cons,plastol,cjtol,up,alpha,beta,big
- REAL(iwp)::zero=0.0_iwp
+ REAL(iwp),PARAMETER::zero=0.0_iwp,penalty=1.e20_iwp
 !---------------------------- dynamic arrays-----------------------------
  REAL(iwp),ALLOCATABLE::loads_pp(:),points(:,:),bdylds_pp(:),             &
    evpt_pp(:,:,:),pmul_pp(:,:),dee(:,:),coord(:,:),jac(:,:),weights(:),   &
@@ -28,9 +29,10 @@ PROGRAM p122
    tensor_pp(:,:,:),stress(:),totd_pp(:),qinc(:),p_pp(:),x_pp(:),         &
    xnew_pp(:),u_pp(:),utemp_pp(:,:),diag_precon_pp(:),d_pp(:),            &
    diag_precon_tmp(:,:),timest(:),g_coord_pp(:,:,:),val(:,:),ld0_pp(:),   &
-   disp_pp(:),temp(:)
+   disp_pp(:),temp(:),valf(:)
  INTEGER,ALLOCATABLE::rest(:,:),g(:),no(:),num(:),g_num_pp(:,:),          &
-   g_g_pp(:,:),no_local(:),no_local_temp(:),node(:)
+   g_g_pp(:,:),node(:),sense(:),no_pp_temp(:),no_global(:),no_pp(:),      &
+   store_pp(:),no_local_temp(:),nodef(:)
 !--------------------------input and initialisation----------------------
  ALLOCATE(timest(20)); timest=zero; timest(1)=elap_time()
  CALL find_pe_procs(numpe,npes); CALL getname(argv,nlen) 
@@ -40,8 +42,10 @@ PROGRAM p122
 !  READ(10,*)phi,c,psi,e,v,cons, nels,nxe,nze,nip,aa,bb,cc,incs,plasits,  &
 !  cjits,plastol,cjtol
 !END IF
- CALL read_p122(argv,numpe,c,cjits,cjtol,cons,e,element,loaded_nodes,  &
-   incs,meshgen,nels,nip,nn,nod,nr,phi,partitioner,plasits,plastol,psi,v)
+ fixed_freedoms=0; fixed_freedoms_pp=0
+ CALL read_p122(argv,numpe,c,cjits,cjtol,cons,e,element,fixed_freedoms,   &
+   loaded_nodes,incs,meshgen,nels,nip,nn,nod,nr,phi,partitioner,plasits,  &
+   plastol,psi,v)
  CALL calc_nels_pp(argv,nels,npes,numpe,partitioner,nels_pp)
  ndof=nod*nodof; ntot=ndof
  ALLOCATE(g_num_pp(nod, nels_pp),g_coord_pp(nod,ndim,nels_pp),            &
@@ -112,6 +116,28 @@ PROGRAM p122
    CALL read_loads(argv,numpe,node,val)
    CALL load(g_g_pp,g_num_pp,node,val,ld0_pp(1:))
  END IF
+ IF(fixed_freedoms>0) THEN
+   ALLOCATE(nodef(fixed_freedoms),no(fixed_freedoms),                   &
+     no_pp_temp(fixed_freedoms),sense(fixed_freedoms),                  &
+     valf(fixed_freedoms),no_global(fixed_freedoms))
+   nodef=0; no=0; no_pp_temp=0; sense=0; no_global=0; valf=zero
+   CALL read_fixed(argv,numpe,nodef,sense,valf)
+   CALL find_no2(g_g_pp,g_num_pp,nodef,sense,fixed_freedoms_pp,         &
+     fixed_freedoms_start,no) 
+   CALL MPI_ALLREDUCE(no,no_global,fixed_freedoms,MPI_INTEGER,MPI_MAX,  &
+     MPI_COMM_WORLD,ier)
+   CALL reindex_fixed_nodes(ieq_start,no_global,no_pp_temp,             &
+     fixed_freedoms_pp,fixed_freedoms_start,neq_pp)
+   ALLOCATE(no_pp(fixed_freedoms_pp),store_pp(fixed_freedoms_pp))
+   no_pp=0; store_pp=0; no_pp=no_pp_temp(1:fixed_freedoms_pp)
+   DEALLOCATE(nodef,no,sense,no_pp_temp) 
+ END IF
+ IF(fixed_freedoms_pp>0)THEN
+   DO i=1,fixed_freedoms_pp
+     j=no_pp(i)-ieq_start+1; diag_precon_pp(j)=diag_precon_pp(j)+penalty
+     store_pp(i)=diag_precon_pp(j)
+   END DO
+ END IF
  diag_precon_pp=1._iwp/diag_precon_pp
  IF(numpe==1)WRITE(11,'(A)')"reindex fixed nodes"
  CALL calc_nodes_pp(nn,npes,numpe,node_end,node_start,nodes_pp)
@@ -124,11 +150,26 @@ PROGRAM p122
    plastic_iterations: DO
      plasiters=plasiters+1
      loads_pp=zero
-!     DO i=1,num_no
-!       j= no_local(i)-ieq_start+1
-       loads_pp=ld0_pp*qinc(iy) 
-!     END DO
-     loads_pp=loads_pp+bdylds_pp
+     IF(plasiters==1) THEN
+       IF(fixed_freedoms_pp>0) THEN
+         DO i=1,fixed_freedoms_pp; j=no_pp(i)-ieq_start+1
+           k=fixed_freedoms_start+i-1
+           loads_pp(j)=store_pp(i)*valf(k)*qinc(iy)
+         END DO
+       END IF
+       IF(loaded_nodes>0) loads_pp=ld0_pp*qinc(iy)
+       loads_pp=loads_pp+bdylds_pp
+     ELSE
+       IF(loaded_nodes>0) loads_pp=ld0_pp*qinc(iy) 
+       loads_pp=loads_pp+bdylds_pp
+       IF(fixed_freedoms_pp>0)THEN
+         DO i=1,fixed_freedoms_pp
+           j=no_pp(i)-ieq_start+1; loads_pp(j)=zero
+         END DO
+       END IF
+     END IF 
+!    loads_pp=ld0_pp*qinc(iy) 
+!    loads_pp=loads_pp+bdylds_pp
 !------ if x=.0 p and r are just loads but in general p=r=loads-A*x ------
 !-----------------------so form r = A * x --------------------------------
      r_pp=zero
@@ -149,6 +190,12 @@ PROGRAM p122
          utemp_pp(:,iel)=MATMUL(storkm_pp(:,:,iel),pmul_pp(:,iel))
        END DO elements_4
        CALL scatter(u_pp,utemp_pp)
+       IF(fixed_freedoms_pp>0) THEN
+         DO i=1,fixed_freedoms_pp; j=no_pp(i)-ieq_start+1
+           IF(plasiters==1) THEN; u_pp(j)=p_pp(j)*store_pp(i)
+           ELSE; u_pp(j)=zero; END IF
+         END DO
+       END IF
 !-------------------------------pcg process ------------------------------
        up=DOT_PRODUCT_P(r_pp,d_pp); alpha=up/DOT_PRODUCT_P(p_pp,u_pp)
        xnew_pp=x_pp+p_pp*alpha; r_pp=r_pp-u_pp*alpha

@@ -1696,8 +1696,8 @@ MODULE INPUT
 !------------------------------------------------------------------------------
 
   SUBROUTINE READ_P122(job_name,numpe,c,cjits,cjtol,cons,e,element,           &
-    loaded_nodes,incs,mesh,nels,nip,nn,nod,nr,phi,partition,plasits,plastol,  &
-    psi,v)
+    fixed_freedoms,loaded_nodes,incs,mesh,nels,nip,nn,nod,nr,phi,partition,   &
+    plasits,plastol,psi,v)
 
   !/****f* input/read_p122
   !*  NAME
@@ -1783,14 +1783,14 @@ MODULE INPUT
   INTEGER, INTENT(IN)              :: numpe
   INTEGER, INTENT(INOUT)           :: nels,nn,nod,nr,nip,loaded_nodes
   INTEGER, INTENT(INOUT)           :: mesh,partition 
-  INTEGER, INTENT(INOUT)           :: incs,plasits,cjits
+  INTEGER, INTENT(INOUT)           :: incs,plasits,cjits,fixed_freedoms
   REAL(iwp), INTENT(INOUT)         :: phi,c,psi,e,v,cons,plastol,cjtol
 
 !------------------------------------------------------------------------------
 ! 1. Local variables
 !------------------------------------------------------------------------------
 
-  INTEGER                          :: bufsize,ier,integer_store(11)
+  INTEGER                          :: bufsize,ier,integer_store(12)
   REAL(iwp)                        :: real_store(8)
   CHARACTER(LEN=50)                :: fname
   
@@ -1801,8 +1801,9 @@ MODULE INPUT
   IF (numpe==1) THEN
     fname = job_name(1:INDEX(job_name, " ") -1) // ".dat"
     OPEN(10,FILE=fname,STATUS='OLD',ACTION='READ')
-    READ(10,*) element,mesh,partition,nels,nn,nr,nip,nod,loaded_nodes,        &
-               phi,c,psi,e,v,cons,incs,plasits,cjits,plastol,cjtol
+    READ(10,*) element,mesh,partition,nels,nn,nr,nip,nod,fixed_freedoms, &
+               loaded_nodes,phi,c,psi,e,v,cons,incs,plasits,cjits,       &
+               plastol,cjtol
     CLOSE(10)
    
     integer_store      = 0
@@ -1818,6 +1819,7 @@ MODULE INPUT
     integer_store(9)   = incs
     integer_store(10)  = plasits
     integer_store(11)  = cjits
+    integer_store(12)  = fixed_freedoms
 
     real_store         = 0.0_iwp
 
@@ -1836,7 +1838,7 @@ MODULE INPUT
 ! 3. Master processor broadcasts the temporary arrays to the slave processors
 !------------------------------------------------------------------------------
 
-  bufsize = 11
+  bufsize = 12
   CALL MPI_BCAST(integer_store,bufsize,MPI_INTEGER,0,MPI_COMM_WORLD,ier)
 
   bufsize = 8
@@ -1861,6 +1863,7 @@ MODULE INPUT
     incs            = integer_store(9)
     plasits         = integer_store(10)
     cjits           = integer_store(11)
+    fixed_freedoms  = integer_store(12)
 
     phi             = real_store(1)
     c               = real_store(2)
