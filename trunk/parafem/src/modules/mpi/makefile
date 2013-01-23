@@ -38,7 +38,8 @@ SHARED=	precision.o \
 	timing.o \
 	plasticity.o \
 	geometry.o \
-	fluid.o
+	fluid.o \
+	new_library.o
 
 all:	release
 
@@ -70,6 +71,7 @@ lib-debug:	$(SHARED) $(MPI)
 	$(FC) -c $(FFLAGS) ../shared/plasticity.f90
 	$(FC) -c $(FFLAGS) ../shared/geometry.f90
 	$(FC) -c $(FFLAGS) ../shared/fluid.f90
+	$(FC) -c $(FFLAGS) ../shared/new_library.f90
 	$(FC) -c $(FFLAGS) mpi_wrapper.f90
 	$(FC) -c $(FFLAGS) mp_interface.f90
 	$(FC) -c $(FFLAGS) input.f90
