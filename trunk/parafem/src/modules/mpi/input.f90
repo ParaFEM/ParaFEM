@@ -1785,11 +1785,122 @@ MODULE INPUT
   INTEGER, INTENT(INOUT)           :: incs,plasits,cjits
   REAL(iwp), INTENT(INOUT)         :: phi,c,psi,e,v,cons,plastol,cjtol
 
-  PRINT *, "READ_P122 is a dummy"
-  STOP
+!------------------------------------------------------------------------------
+! 1. Local variables
+!------------------------------------------------------------------------------
+
+  INTEGER                          :: bufsize,ier,integer_store(11)
+  REAL(iwp)                        :: real_store(8)
+  CHARACTER(LEN=50)                :: fname
+  
+!------------------------------------------------------------------------------
+! 2. Master processor reads the data and copies it into temporary arrays
+!------------------------------------------------------------------------------
+
+  IF (numpe==1) THEN
+    fname = job_name(1:INDEX(job_name, " ") -1) // ".dat"
+    OPEN(10,FILE=fname,STATUS='OLD',ACTION='READ')
+    READ(10,*) element,mesh,partition,nels,nn,nr,nip,nod,loaded_nodes,        &
+               phi,c,psi,e,v,cons,incs,plasits,cjits,plastol,cjtol
+    CLOSE(10)
+   
+    integer_store      = 0
+
+    integer_store(1)   = mesh
+    integer_store(2)   = partition
+    integer_store(3)   = nels
+    integer_store(4)   = nn
+    integer_store(5)   = nr 
+    integer_store(6)   = nip
+    integer_store(7)   = nod
+    integer_store(8)   = loaded_nodes
+    integer_store(9)   = incs
+    integer_store(10)  = plasits
+    integer_store(11)  = cjits
+
+    real_store         = 0.0_iwp
+
+    real_store(1)      = phi  
+    real_store(2)      = c  
+    real_store(3)      = psi  
+    real_store(4)      = e  
+    real_store(5)      = v  
+    real_store(6)      = cons
+    real_store(7)      = plastol
+    real_store(8)      = cjtol    
+
+  END IF
+
+!------------------------------------------------------------------------------
+! 3. Master processor broadcasts the temporary arrays to the slave processors
+!------------------------------------------------------------------------------
+
+  bufsize = 11
+  CALL MPI_BCAST(integer_store,bufsize,MPI_INTEGER,0,MPI_COMM_WORLD,ier)
+
+  bufsize = 8
+  CALL MPI_BCAST(real_store,bufsize,MPI_REAL8,0,MPI_COMM_WORLD,ier)
+
+  bufsize = 15
+  CALL MPI_BCAST(element,bufsize,MPI_CHARACTER,0,MPI_COMM_WORLD,ier)
+
+!------------------------------------------------------------------------------
+! 4. Slave processors extract the variables from the temporary arrays
+!------------------------------------------------------------------------------
+
+  IF (numpe/=1) THEN
+    mesh            = integer_store(1)
+    partition       = integer_store(2)
+    nels            = integer_store(3)
+    nn              = integer_store(4)
+    nr              = integer_store(5)
+    nip             = integer_store(6)
+    nod             = integer_store(7)
+    loaded_nodes    = integer_store(8)
+    incs            = integer_store(9)
+    plasits         = integer_store(10)
+    cjits           = integer_store(11)
+
+    phi             = real_store(1)
+    c               = real_store(2)
+    psi             = real_store(3)
+    e               = real_store(4)
+    v               = real_store(5)
+    cons            = real_store(6)
+    plastol         = real_store(7)
+    cjtol           = real_store(8)
+
+  END IF
   
   RETURN
   END SUBROUTINE READ_P122
+
+  SUBROUTINE READ_QINC(job_name,numpe,qinc)
+  
+  IMPLICIT NONE
+  
+  CHARACTER(LEN=50), INTENT(IN)    :: job_name
+  INTEGER, INTENT(IN)              :: numpe
+  INTEGER                          :: i,incs
+  REAL(iwp), INTENT(INOUT)         :: qinc
+  
+  qinc=0.0_iwp
+  
+  IF (numpe==1) THEN
+    fname = job_name(1:INDEX(job_name, " ") -1) // ".dat"
+    OPEN(10,FILE=fname,STATUS='OLD',ACTION='READ')
+    ! skip 6 lines
+    READ(10,*); READ(10,*); READ(10,*); READ(10,*); READ(10,*); READ(10,*)
+    incs = UBOUND(qinc,1)
+    DO i=1,incs
+      READ(10,*) qinc(i)
+    END DO
+    CLOSE(10)
+  END IF
+  
+  CALL MPI_BCAST(qinc,incs,MPI_REAL8,0,MPI_COMM_WORLD,ier)
+  
+  END SUBROUTINE READ_QINC
   
 !------------------------------------------------------------------------------
 !------------------------------------------------------------------------------
