@@ -29,10 +29,10 @@ PROGRAM p122
    tensor_pp(:,:,:),stress(:),totd_pp(:),qinc(:),p_pp(:),x_pp(:),         &
    xnew_pp(:),u_pp(:),utemp_pp(:,:),diag_precon_pp(:),d_pp(:),            &
    diag_precon_tmp(:,:),timest(:),g_coord_pp(:,:,:),val(:,:),ld0_pp(:),   &
-   disp_pp(:),temp(:),valf(:)
+   disp_pp(:),temp(:),valf(:),store_pp(:)
  INTEGER,ALLOCATABLE::rest(:,:),g(:),no(:),num(:),g_num_pp(:,:),          &
    g_g_pp(:,:),node(:),sense(:),no_pp_temp(:),no_global(:),no_pp(:),      &
-   store_pp(:),no_local_temp(:),nodef(:)
+   no_local_temp(:),nodef(:)
 !--------------------------input and initialisation----------------------
  ALLOCATE(timest(20)); timest=zero; timest(1)=elap_time()
  CALL find_pe_procs(numpe,npes); CALL getname(argv,nlen) 
@@ -61,14 +61,14 @@ PROGRAM p122
    deriv(ndim,nod),bee(nst,ntot),km(ntot,ntot),eld(ntot),eps(nst),        &
    sigma(nst),bload(ntot),eload(ntot),erate(nst),evp(nst),devp(nst),      &
    g(ntot),m3(nst,nst),flow(nst,nst),pmul_pp(ntot,nels_pp),               &
-   utemp_pp(ntot,nels_pp),no(loaded_nodes),                               &
+   utemp_pp(ntot,nels_pp),                                                &
    no_local_temp(loaded_nodes),qinc(incs))
  CALL read_qinc(argv,numpe,qinc); CALL rearrange(rest)
 !----------  find the steering array and equations per process -----------
  g_g_pp=0; neq=0
  elements_0: DO iel=1,nels_pp
-   CALL find_g3(g_num_pp(:,iel),g_g_pp(:,iel),rest)
-!  CALL find_g(g_num_pp(:,iel),g_g_pp(:,iel),rest)
+!  CALL find_g3(g_num_pp(:,iel),g_g_pp(:,iel),rest)
+   CALL find_g(g_num_pp(:,iel),g_g_pp(:,iel),rest)
  END DO elements_0
  neq=MAXVAL(g_g_pp); neq=MAX_INTEGER_P(neq); CALL calc_neq_pp
  CALL calc_npes_pp(npes,npes_pp); CALL make_ggl2(npes_pp,npes,g_g_pp)
@@ -105,6 +105,7 @@ PROGRAM p122
    diag_precon_tmp(i,iel) = diag_precon_tmp(i,iel)+storkm_pp(i,i,iel)
  END DO;  END DO elements_2
  CALL scatter(diag_precon_pp,diag_precon_tmp); DEALLOCATE(diag_precon_tmp)
+ PRINT *, "diag_precon_pp",diag_precon_pp
  IF(numpe==1)WRITE(11,'(A)')"element stiffness integration"
 !-------------------- invert preconditioner -----------------------------
 ! CALL reindex_fixed_nodes                                                 &
@@ -122,20 +123,38 @@ PROGRAM p122
      valf(fixed_freedoms),no_global(fixed_freedoms))
    nodef=0; no=0; no_pp_temp=0; sense=0; no_global=0; valf=zero
    CALL read_fixed(argv,numpe,nodef,sense,valf)
-   CALL find_no2(g_g_pp,g_num_pp,nodef,sense,fixed_freedoms_pp,         &
-     fixed_freedoms_start,no) 
+   PRINT *, "nodef = ", nodef
+   PRINT *, "sense = ", sense
+   PRINT *, "valf  = ", valf
+   CALL find_no(nodef,rest,sense,no)
+!  CALL find_no2(g_g_pp,g_num_pp,nodef,sense,fixed_freedoms_pp,          &
+!    fixed_freedoms_start,no)
+   PRINT *, "no= ", no
    CALL MPI_ALLREDUCE(no,no_global,fixed_freedoms,MPI_INTEGER,MPI_MAX,  &
      MPI_COMM_WORLD,ier)
+   PRINT *, "no_global= ", no_global
    CALL reindex_fixed_nodes(ieq_start,no_global,no_pp_temp,             &
      fixed_freedoms_pp,fixed_freedoms_start,neq_pp)
+   PRINT *, "fixed_freedoms_pp = ", fixed_freedoms_pp
+   PRINT *, "fixed_freedoms_start = ", fixed_freedoms_start
    ALLOCATE(no_pp(fixed_freedoms_pp),store_pp(fixed_freedoms_pp))
    no_pp=0; store_pp=0; no_pp=no_pp_temp(1:fixed_freedoms_pp)
+   PRINT *, "no_pp_temp =", no_pp_temp
+   PRINT *, "no_pp = ", no_pp
    DEALLOCATE(nodef,no,sense,no_pp_temp) 
  END IF
+ PRINT *, "diag_precon_pp = ", diag_precon_pp
+ PRINT *, "ieq_start = ", ieq_start
+
  IF(fixed_freedoms_pp>0)THEN
    DO i=1,fixed_freedoms_pp
-     j=no_pp(i)-ieq_start+1; diag_precon_pp(j)=diag_precon_pp(j)+penalty
+     j=no_pp(i)-ieq_start+1
+     PRINT *, "j = ", j
+     PRINT *, "diag_precon_pp(j) = ", diag_precon_pp(j)
+     diag_precon_pp(j)=diag_precon_pp(j)+penalty
+     PRINT *, "diag_precon_pp(j) = ", diag_precon_pp(j)
      store_pp(i)=diag_precon_pp(j)
+     PRINT *, "store_pp" ,store_pp(i)
    END DO
  END IF
  diag_precon_pp=1._iwp/diag_precon_pp
@@ -143,6 +162,12 @@ PROGRAM p122
  CALL calc_nodes_pp(nn,npes,numpe,node_end,node_start,nodes_pp)
  ALLOCATE(disp_pp(nodes_pp*ndim),temp(nodes_pp)); disp_pp=zero; temp=zero
 !------------------------  load  increment loop --------------------------
+ PRINT *, "loaded_nodes= ", loaded_nodes
+ PRINT *, "fixed_freedoms= ", fixed_freedoms
+ PRINT *, "fixed_freedoms_pp= ", fixed_freedoms_pp
+ PRINT *, "store_pp= ", store_pp
+ PRINT *, "no_pp= ", no_pp
+ PRINT *, "valf= ", valf
  load_increments: do iy=1,incs
    plasiters=0; bdylds_pp=zero; evpt_pp=zero; cjtot=0
    IF(numpe==npes)WRITE(11,'(/,A,I5)')"Load Increment   ",iy
@@ -157,8 +182,10 @@ PROGRAM p122
            loads_pp(j)=store_pp(i)*valf(k)*qinc(iy)
          END DO
        END IF
-       IF(loaded_nodes>0) loads_pp=ld0_pp*qinc(iy)
-       loads_pp=loads_pp+bdylds_pp
+       IF(loaded_nodes>0) THEN
+         loads_pp=ld0_pp*qinc(iy)
+         loads_pp=loads_pp+bdylds_pp
+       END IF
      ELSE
        IF(loaded_nodes>0) loads_pp=ld0_pp*qinc(iy) 
        loads_pp=loads_pp+bdylds_pp
