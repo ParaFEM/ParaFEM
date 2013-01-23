@@ -926,7 +926,7 @@ PROGRAM mg2d
        WRITE(14,'(A)') "2"            ! Abaqus node numbering scheme
      END IF
      WRITE(14,'(A)') "1"              ! Internal mesh partitioning
-     WRITE(14,'(7I9)') nels, nn, nr, nip, nod, loaded_freedoms
+     WRITE(14,'(5I9,A,I9)') nels, nn, nr, nip, nod, "  0  ",loaded_freedoms
      WRITE(14,'(6E12.4,I8,A)') phi, c, psi, e, v, cons
      WRITE(14,'(3I6,2E12.4)') incs, plasits, cjits, plastol, cjtol
      DO i=1,incs
@@ -1062,7 +1062,7 @@ PROGRAM mg2d
        WRITE(14,'(A)') "2"            ! Abaqus node numbering scheme
      END IF
      WRITE(14,'(A)') "1"              ! Internal mesh partitioning
-     WRITE(14,'(7I9)') nels, nn, nr, nip, nod, loaded_freedoms
+     WRITE(14,'(5I9,A,I9)') nels, nn, nr, nip, nod, "  0  ",loaded_freedoms
      WRITE(14,'(6E12.4,I8,A)') phi, c, psi, e, v, cons
      WRITE(14,'(3I6,2E12.4)') incs, plasits, cjits, plastol, cjtol
      DO i=1,incs
