@@ -44,7 +44,8 @@ PROGRAM p121
 !----------  find the steering array and equations per process -----------
  CALL rearrange(rest); g_g_pp=0; neq=0
  elements_1: DO iel=1,nels_pp
-    CALL find_g3(g_num_pp(:,iel),g_g_pp(:,iel),rest)
+   !CALL find_g3(g_num_pp(:,iel),g_g_pp(:,iel),rest)
+    CALL find_g(g_num_pp(:,iel),g_g_pp(:,iel),rest)
  END DO elements_1
  neq=MAXVAL(g_g_pp); neq=MAX_INTEGER_P(neq); CALL calc_neq_pp
  CALL calc_npes_pp(npes,npes_pp); CALL make_ggl2(npes_pp,npes,g_g_pp)
