@@ -1696,14 +1696,14 @@ MODULE INPUT
 !------------------------------------------------------------------------------
 
   SUBROUTINE READ_P122(job_name,numpe,c,cjits,cjtol,cons,e,element,           &
-    loaded_nodes,incs,mesh,nels,nip,nr,phi,partition,plasits,plastol,psi,v)
+    loaded_nodes,incs,mesh,nels,nip,nn,nr,phi,partition,plasits,plastol,psi,v)
 
   !/****f* input/read_p122
   !*  NAME
   !*    SUBROUTINE: read_p122
   !*  SYNOPSIS
   !*    Usage:      CALL read_p122(job_name,numpe,c,cjits,cjtol,cons,e,       &
-  !*                  element,loaded_nodes,incs,mesh,nels,nr,nip,phi,i        &
+  !*                  element,loaded_nodes,incs,mesh,nels,nip,nn,nr,phi,      &
   !*                  partition,plasits,plastol,psi,v)
   !*
   !*  FUNCTION
@@ -1776,6 +1776,14 @@ MODULE INPUT
   !*/
 
   IMPLICIT NONE
+
+  CHARACTER(LEN=50), INTENT(IN)    :: job_name
+  CHARACTER(LEN=15), INTENT(INOUT) :: element
+  INTEGER, INTENT(IN)              :: numpe
+  INTEGER, INTENT(INOUT)           :: nels,nn,nr,nip,loaded_nodes
+  INTEGER, INTENT(INOUT)           :: mesh,partition 
+  INTEGER, INTENT(INOUT)           :: incs,plasits,cjits
+  REAL(iwp), INTENT(INOUT)         :: phi,c,psi,e,v,cons,plastol,cjtol
 
   PRINT *, "READ_P122 is a dummy"
   STOP
