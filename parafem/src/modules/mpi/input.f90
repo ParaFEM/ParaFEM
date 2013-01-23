@@ -1696,7 +1696,8 @@ MODULE INPUT
 !------------------------------------------------------------------------------
 
   SUBROUTINE READ_P122(job_name,numpe,c,cjits,cjtol,cons,e,element,           &
-    loaded_nodes,incs,mesh,nels,nip,nn,nr,phi,partition,plasits,plastol,psi,v)
+    loaded_nodes,incs,mesh,nels,nip,nn,nod,nr,phi,partition,plasits,plastol,  &
+    psi,v)
 
   !/****f* input/read_p122
   !*  NAME
@@ -1780,7 +1781,7 @@ MODULE INPUT
   CHARACTER(LEN=50), INTENT(IN)    :: job_name
   CHARACTER(LEN=15), INTENT(INOUT) :: element
   INTEGER, INTENT(IN)              :: numpe
-  INTEGER, INTENT(INOUT)           :: nels,nn,nr,nip,loaded_nodes
+  INTEGER, INTENT(INOUT)           :: nels,nn,nod,nr,nip,loaded_nodes
   INTEGER, INTENT(INOUT)           :: mesh,partition 
   INTEGER, INTENT(INOUT)           :: incs,plasits,cjits
   REAL(iwp), INTENT(INOUT)         :: phi,c,psi,e,v,cons,plastol,cjtol
@@ -1882,16 +1883,18 @@ MODULE INPUT
   CHARACTER(LEN=50), INTENT(IN)    :: job_name
   INTEGER, INTENT(IN)              :: numpe
   INTEGER                          :: i,incs
-  REAL(iwp), INTENT(INOUT)         :: qinc
+  REAL(iwp), INTENT(INOUT)         :: qinc(:)
   
+  CHARACTER(LEN=50)                :: fname
+
   qinc=0.0_iwp
+  incs= UBOUND(qinc,1)
   
   IF (numpe==1) THEN
     fname = job_name(1:INDEX(job_name, " ") -1) // ".dat"
     OPEN(10,FILE=fname,STATUS='OLD',ACTION='READ')
     ! skip 6 lines
     READ(10,*); READ(10,*); READ(10,*); READ(10,*); READ(10,*); READ(10,*)
-    incs = UBOUND(qinc,1)
     DO i=1,incs
       READ(10,*) qinc(i)
     END DO
