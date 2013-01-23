@@ -26,7 +26,7 @@ PROGRAM mg2d
   INTEGER                :: nod,ndim,nodof,nip 
   INTEGER                :: nmodes,lalfa,leig,lx,lz
   INTEGER                :: i,j,iel,l,m,n,iargc,argc
-  INTEGER                :: plasits,cjits,limit,maxitr
+  INTEGER                :: plasits,cjits,limit,maxitr,incs
   INTEGER                :: ell
   INTEGER                :: fixed_nodes,fixed_freedoms,loaded_freedoms
   INTEGER                :: nev,ncv
@@ -55,8 +55,8 @@ PROGRAM mg2d
 ! 2. Declare dynamic arrays
 !------------------------------------------------------------------------------   
   INTEGER, ALLOCATABLE   :: g_num(:,:),rest(:,:),nf(:,:),no(:),no_f(:),num(:)
-  INTEGER, ALLOCATABLE   :: matID(:),qinc(:)
-  REAL(iwp), ALLOCATABLE :: g_coord(:,:),coord(:,:),val(:),val_f(:)
+  INTEGER, ALLOCATABLE   :: matID(:)
+  REAL(iwp), ALLOCATABLE :: g_coord(:,:),coord(:,:),val(:),val_f(:),qinc(:)
 
 !------------------------------------------------------------------------------
 ! 3. Read job_name from the command line
@@ -783,9 +783,9 @@ PROGRAM mg2d
 
     ALLOCATE(qinc(incs)); qinc=0.0_iwp
     
-    DO i=1,incs
-      READ(10,*) qinc(i)
-    END DO
+!   DO i=1,incs
+      READ(10,*) qinc(:); PRINT *, "qinc= ", qinc
+!   END DO
     
     nye   = nels/nxe/nze
 
@@ -892,7 +892,8 @@ PROGRAM mg2d
   
      IF(problem_type == 'ed4') THEN
        CALL load_p121(nle,nod,nxe,nze, no,val)
-       val = -val * aa * bb * (25._iwp / 12._iwp)
+!      val = -val * aa * bb * (25._iwp / 12._iwp)
+       val = -val * aa * bb / 12._iwp
        DO i = 1, loaded_freedoms
          WRITE(13,'(I12,2A,3E16.8)') no(i),"  0.00000000E+00  ",              &
                                     "0.00000000E+00",val(i) 
