@@ -11,7 +11,7 @@ PROGRAM p121
  USE steering; USE new_library; IMPLICIT NONE
 ! neq,ntot are now global variables - must not be declared
  INTEGER,PARAMETER::nodof=3,ndim=3,nst=6
- INTEGER::loaded_nodes,iel,i,j,k,l,iters,limit,nn,nr,nip,nod,nels,ndof,  &
+ INTEGER::loaded_nodes,iel,i,j,k,iters,limit,nn,nr,nip,nod,nels,ndof,    &
    npes_pp,node_end,node_start,nodes_pp,meshgen,partitioner,nlen
  REAL(iwp),PARAMETER::zero=0.0_iwp
  REAL(iwp)::e,v,det,tol,up,alpha,beta,q; LOGICAL::converged=.false.
@@ -19,9 +19,9 @@ PROGRAM p121
 !---------------------------- dynamic arrays -----------------------------
  REAL(iwp),ALLOCATABLE::points(:,:),dee(:,:),weights(:),val(:,:),        &
    disp_pp(:),g_coord_pp(:,:,:),jac(:,:),der(:,:),deriv(:,:),bee(:,:),   &
-   storkm_pp(:,:,:),eld(:),eps(:),sigma(:),diag_precon_pp(:),p_pp(:),    &
-   r_pp(:),x_pp(:),xnew_pp(:),u_pp(:),pmul_pp(:,:),utemp_pp(:,:),        &
-   d_pp(:),timest(:),diag_precon_tmp(:,:),eld_pp(:,:),temp(:)
+   storkm_pp(:,:,:),eps(:),sigma(:),diag_precon_pp(:),p_pp(:),r_pp(:),   &
+   x_pp(:),xnew_pp(:),u_pp(:),pmul_pp(:,:),utemp_pp(:,:),d_pp(:),        &
+   timest(:),diag_precon_tmp(:,:),eld_pp(:,:),temp(:)
  INTEGER,ALLOCATABLE::rest(:,:),g_num_pp(:,:),g_g_pp(:,:),node(:)
 !------------------------ input and initialisation -----------------------
  ALLOCATE(timest(20)); timest=zero; timest(1)=elap_time()
@@ -37,8 +37,8 @@ PROGRAM p121
  CALL read_g_coord_pp(argv,g_num_pp,nn,npes,numpe,g_coord_pp)
  CALL read_rest(argv,numpe,rest); timest(2)=elap_time()
  ALLOCATE(points(nip,ndim),dee(nst,nst),jac(ndim,ndim),der(ndim,nod),    &
-   deriv(ndim,nod),bee(nst,ntot),weights(nip),eld(ntot),eps(nst),        &
-   storkm_pp(ntot,ntot,nels_pp),sigma(nst),pmul_pp(ntot,nels_pp),        &
+   deriv(ndim,nod),bee(nst,ntot),weights(nip),eps(nst),sigma(nst),       &
+   storkm_pp(ntot,ntot,nels_pp),pmul_pp(ntot,nels_pp),                   &
    utemp_pp(ntot,nels_pp),g_g_pp(ntot,nels_pp))
 !----------  find the steering array and equations per process -----------
  CALL rearrange(rest); g_g_pp=0; neq=0
