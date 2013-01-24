@@ -1513,15 +1513,15 @@ MODULE INPUT
 !------------------------------------------------------------------------------
 !------------------------------------------------------------------------------
 
-  SUBROUTINE READ_P121(job_name,numpe,e,element,fixed_freedoms,limit,        &
-                       loaded_nodes,mesh,nels,nip,nn,nod,nr,partition,tol,v)
+  SUBROUTINE READ_P121(job_name,numpe,e,element,limit,loaded_nodes,mesh,nels, &
+                       nip,nn,nod,nr,partition,tol,v)
 
   !/****f* input/read_p121
   !*  NAME
   !*    SUBROUTINE: read_p121
   !*  SYNOPSIS
-  !*    Usage:      CALL read_p121(job_name,numpe,e,element,fixed_freedoms,
-  !*                               limit,loaded_nodes,mesh,nels,nip,nn,nod,nr,
+  !*    Usage:      CALL read_p121(job_name,numpe,e,element,limit,            &
+  !*                               loaded_nodes,mesh,nels,nip,nn,nod,nr,
   !*                               partition,tol,v)
   !*  FUNCTION
   !*    Master processor reads the general data for the problem and broadcasts 
@@ -1548,9 +1548,6 @@ MODULE INPUT
   !*    element                : Character
   !*                           : Element type
   !*                           : Values: 'hexahedron' or 'tetrahedron'
-  !*
-  !*    fixed_freedoms         : Integer
-  !*                           : Number of fixed displacements
   !*
   !*    limit                  : Integer
   !*                           : Maximum number of PCG iterations allowed
@@ -1588,7 +1585,7 @@ MODULE INPUT
   !*  CREATION DATE
   !*    03.03.2010
   !*  COPYRIGHT
-  !*    (c) University of Manchester 2010
+  !*    (c) University of Manchester 2010-2013
   !******
   !*  Place remarks that should not be included in the documentation here.
   !*  Need to add some error traps
@@ -1600,14 +1597,14 @@ MODULE INPUT
   CHARACTER(LEN=15), INTENT(INOUT) :: element
   INTEGER, INTENT(IN)              :: numpe
   INTEGER, INTENT(INOUT)           :: nels,nn,nr,nod,nip,loaded_nodes
-  INTEGER, INTENT(INOUT)           :: limit,mesh,fixed_freedoms,partition 
+  INTEGER, INTENT(INOUT)           :: limit,mesh,partition 
   REAL(iwp), INTENT(INOUT)         :: e,v,tol
 
 !------------------------------------------------------------------------------
 ! 1. Local variables
 !------------------------------------------------------------------------------
 
-  INTEGER                          :: bufsize,ier,integer_store(10)
+  INTEGER                          :: bufsize,ier,integer_store(9)
   REAL(iwp)                        :: real_store(3)
   CHARACTER(LEN=50)                :: fname
   
@@ -1619,7 +1616,7 @@ MODULE INPUT
     fname = job_name(1:INDEX(job_name, " ") -1) // ".dat"
     OPEN(10,FILE=fname,STATUS='OLD',ACTION='READ')
     READ(10,*) element,mesh,partition,nels,nn,nr,nip,nod,loaded_nodes,        &
-               fixed_freedoms,e,v,tol,limit
+               e,v,tol,limit
     CLOSE(10)
    
     integer_store      = 0
@@ -1631,9 +1628,8 @@ MODULE INPUT
     integer_store(5)   = nip
     integer_store(6)   = nod
     integer_store(7)   = loaded_nodes
-    integer_store(8)   = fixed_freedoms
-    integer_store(9)   = limit
-    integer_store(10)  = partition
+    integer_store(8)   = limit
+    integer_store(9)   = partition
 
     real_store         = 0.0_iwp
 
@@ -1647,7 +1643,7 @@ MODULE INPUT
 ! 3. Master processor broadcasts the temporary arrays to the slave processors
 !------------------------------------------------------------------------------
 
-  bufsize = 10
+  bufsize = 9
   CALL MPI_BCAST(integer_store,bufsize,MPI_INTEGER,0,MPI_COMM_WORLD,ier)
 
   bufsize = 3
@@ -1669,23 +1665,13 @@ MODULE INPUT
     nip             = integer_store(5)
     nod             = integer_store(6)
     loaded_nodes    = integer_store(7)
-    fixed_freedoms  = integer_store(8)
-    limit           = integer_store(9)
-    partition       = integer_store(10)
+    limit           = integer_store(8)
+    partition       = integer_store(9)
 
     e               = real_store(1)
     v               = real_store(2)
     tol             = real_store(3)
 
-  END IF
-
-  IF(fixed_freedoms > 0 .AND. loaded_nodes > 0) THEN
-    PRINT *
-    PRINT *, "Error - model has", fixed_freedoms, " fixed freedoms and"
-    PRINT *, loaded_nodes, " loaded nodes"
-    PRINT *, "Mixed displacement and load control not supported"
-    PRINT *
-    CALL shutdown()
   END IF
 
   RETURN
