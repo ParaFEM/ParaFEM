@@ -3,20 +3,19 @@ PROGRAM p121
 !      Program 12.1 three dimensional analysis of an elastic solid
 !      using 20-node brick elements, preconditioned conjugate gradient
 !      solver; diagonal preconditioner diag_precon; parallel version
-!      loaded_nodes only; set fixed_freedoms=0
+!      loaded_nodes only
 !------------------------------------------------------------------------- 
+!USE mpi_wrapper  !remove comment for serial compilation
  USE precision; USE global_variables; USE mp_interface; USE input
  USE output; USE loading; USE timing; USE maths; USE gather_scatter
- USE partition; USE elements; USE steering; USE pcg; IMPLICIT NONE
+ USE steering; USE new_library; IMPLICIT NONE
 ! neq,ntot are now global variables - must not be declared
  INTEGER,PARAMETER::nodof=3,ndim=3,nst=6
  INTEGER::loaded_nodes,iel,i,j,k,l,iters,limit,nn,nr,nip,nod,nels,ndof,  &
-   npes_pp,node_end,node_start,nodes_pp,meshgen,partitioner,             &
-   step,fixed_freedoms,nlen
+   npes_pp,node_end,node_start,nodes_pp,meshgen,partitioner,nlen
  REAL(iwp),PARAMETER::zero=0.0_iwp
- REAL(iwp)::e,v,det,tol,up,alpha,beta,tload
- CHARACTER(LEN=50)::argv; CHARACTER(LEN=15)::element
- CHARACTER(LEN=5)::ch; LOGICAL::converged=.false.
+ REAL(iwp)::e,v,det,tol,up,alpha,beta,tload; LOGICAL::converged=.false.
+ CHARACTER(LEN=50)::argv; CHARACTER(LEN=15)::element; CHARACTER(LEN=6)::ch 
 !---------------------------- dynamic arrays -----------------------------
  REAL(iwp),ALLOCATABLE::points(:,:),dee(:,:),weights(:),val(:,:),        &
    disp_pp(:),g_coord_pp(:,:,:),jac(:,:),der(:,:),deriv(:,:),bee(:,:),   &
@@ -27,33 +26,32 @@ PROGRAM p121
 !------------------------ input and initialisation -----------------------
  ALLOCATE(timest(20)); timest=zero; timest(1)=elap_time()
  CALL find_pe_procs(numpe,npes); CALL getname(argv,nlen) 
- CALL read_p121(argv,numpe,e,element,fixed_freedoms,limit,               &
-   loaded_nodes,meshgen,nels,nip,nn,nod,nr,partitioner,tol,v)
+ CALL read_p121(argv,numpe,e,element,limit,loaded_nodes,meshgen,nels,    &
+   nip,nn,nod,nr,partitioner,tol,v)
  CALL calc_nels_pp(argv,nels,npes,numpe,partitioner,nels_pp)
  ndof=nod*nodof; ntot=ndof
  ALLOCATE(g_num_pp(nod, nels_pp),g_coord_pp(nod,ndim,nels_pp),           &
    rest(nr,nodof+1)); g_num_pp=0; g_coord_pp=zero; rest=0
- CALL read_g_num_pp2(argv,iel_start,nn,npes,numpe,g_num_pp)
+ CALL read_g_num_pp(argv,iel_start,nn,npes,numpe,g_num_pp)
  IF(meshgen == 2) CALL abaqus2sg(element,g_num_pp)
  CALL read_g_coord_pp(argv,g_num_pp,nn,npes,numpe,g_coord_pp)
  CALL read_rest(argv,numpe,rest); timest(2)=elap_time()
- ALLOCATE(points(nip,ndim),dee(nst,nst),jac(ndim,ndim),                  &
-   der(ndim,nod),deriv(ndim,nod),bee(nst,ntot),weights(nip),             &
-   storkm_pp(ntot,ntot,nels_pp),eld(ntot),eps(nst),sigma(nst),           &
-   pmul_pp(ntot,nels_pp),utemp_pp(ntot,nels_pp),g_g_pp(ntot,nels_pp))
+ ALLOCATE(points(nip,ndim),dee(nst,nst),jac(ndim,ndim),der(ndim,nod),    &
+   deriv(ndim,nod),bee(nst,ntot),weights(nip),eld(ntot),eps(nst),        &
+   storkm_pp(ntot,ntot,nels_pp),sigma(nst),pmul_pp(ntot,nels_pp),        &
+   utemp_pp(ntot,nels_pp),g_g_pp(ntot,nels_pp))
 !----------  find the steering array and equations per process -----------
  CALL rearrange(rest); g_g_pp=0; neq=0
  elements_1: DO iel=1,nels_pp
-   !CALL find_g3(g_num_pp(:,iel),g_g_pp(:,iel),rest)
-    CALL find_g(g_num_pp(:,iel),g_g_pp(:,iel),rest)
+   CALL find_g3(g_num_pp(:,iel),g_g_pp(:,iel),rest)
  END DO elements_1
  neq=MAXVAL(g_g_pp); neq=MAX_INTEGER_P(neq); CALL calc_neq_pp
- CALL calc_npes_pp(npes,npes_pp); CALL make_ggl2(npes_pp,npes,g_g_pp)
+ CALL calc_npes_pp(npes,npes_pp); CALL make_ggl(npes_pp,npes,g_g_pp)
  ALLOCATE(p_pp(neq_pp),r_pp(neq_pp),x_pp(neq_pp),xnew_pp(neq_pp),        &
    u_pp(neq_pp),d_pp(neq_pp),diag_precon_pp(neq_pp)); diag_precon_pp=zero
  p_pp=zero;  r_pp=zero;  x_pp=zero; xnew_pp=zero; u_pp=zero; d_pp=zero
-!------ element stiffness integration and build the preconditioner ------
- dee=zero; CALL deemat(e,v,dee); CALL sample(element,points,weights)
+!------ element stiffness integration and build the preconditioner -------
+ dee=zero; CALL deemat(dee,e,v); CALL sample(element,points,weights)
  storkm_pp=zero
  elements_2: DO iel=1,nels_pp
    gauss_pts_1: DO i=1,nip
@@ -79,10 +77,10 @@ PROGRAM p121
  END IF
 !----------------------------- get starting r ----------------------------
  IF(loaded_nodes>0) THEN
-   ALLOCATE(node(loaded_nodes),val(ndim,loaded_nodes)); val=zero; node=0
+   ALLOCATE(node(loaded_nodes),val(ndim,loaded_nodes)); node=0; val=zero
    CALL read_loads(argv,numpe,node,val)
-   CALL load(g_g_pp,g_num_pp,node,val,r_pp(1:))
-   tload = SUM_P(r_pp(1:)); DEALLOCATE(node,val)
+   CALL load(g_g_pp,g_num_pp,node,val,r_pp(1:)); tload=SUM_P(r_pp(1:))
+   DEALLOCATE(node,val)
  END IF
  DEALLOCATE(g_g_pp); diag_precon_pp=1._iwp/diag_precon_pp
  d_pp=diag_precon_pp*r_pp; p_pp=d_pp; x_pp=zero
@@ -98,13 +96,12 @@ PROGRAM p121
    up=DOT_PRODUCT_P(r_pp,d_pp); alpha=up/DOT_PRODUCT_P(p_pp,u_pp)
    xnew_pp=x_pp+p_pp*alpha; r_pp=r_pp-u_pp*alpha
    d_pp=diag_precon_pp*r_pp; beta=DOT_PRODUCT_P(r_pp,d_pp)/up
-   p_pp=d_pp+p_pp*beta  
-   CALL checon_par(xnew_pp,tol,converged,x_pp)    
+   p_pp=d_pp+p_pp*beta; CALL checon_par(xnew_pp,tol,converged,x_pp)    
    IF(converged.OR.iters==limit)EXIT
  END DO iterations
  IF(numpe==1)THEN
    WRITE(11,'(A,I6)')"The number of iterations to convergence was ",iters
-   WRITE(11,'(A,F10.4)')"Time to solve equations was  :",                 &
+   WRITE(11,'(A,F10.4)')"Time to solve equations was  :",                &
                          elap_time()-timest(3)  
    WRITE(11,'(A,E12.4)')"The central nodal displacement is :",xnew_pp(1)
  END IF
@@ -115,7 +112,7 @@ PROGRAM p121
  IF(numpe==1)WRITE(11,'(A)')"The Centroid point stresses for element 1 are"
  gauss_pts_2: DO i=1,nip
    CALL shape_der(der,points,i); jac=MATMUL(der,g_coord_pp(:,:,iel))
-   CALL invert(jac); deriv=MATMUL(jac,der); CALL beemat(bee,deriv)
+   CALL invert(jac); deriv=MATMUL(jac,der); CALL beemat(deriv,bee)
    eps=MATMUL(bee,eld_pp(:,iel)); sigma=MATMUL(dee,eps)
    IF(numpe==1.AND.i==1) THEN
      WRITE(11,'(A,I5)')"Point ",i ; WRITE(11,'(6E12.4)') sigma
@@ -123,19 +120,19 @@ PROGRAM p121
  END DO gauss_pts_2; DEALLOCATE(g_coord_pp)
 !------------------------ write out displacements ------------------------
  CALL calc_nodes_pp(nn,npes,numpe,node_end,node_start,nodes_pp)
- IF(numpe==1) THEN;  step=1; WRITE(ch,'(I5.5)') step
-   OPEN(24,file=argv(1:nlen)//".ensi.DISPL-"//ch,status='replace',       &
+ IF(numpe==1) THEN;  WRITE(ch,'(I6.6)') numpe
+   OPEN(12,file=argv(1:nlen)//".ensi.DISPL-"//ch,status='replace',       &
      action='write')
-   WRITE(24,'(A)') "Alya Ensight Gold --- Vector per-node variable file"
-   WRITE(24,'(A/A/A)') "part", "     1","coordinates"
+   WRITE(12,'(A)') "Alya Ensight Gold --- Vector per-node variable file"
+   WRITE(12,'(A/A/A)') "part", "     1","coordinates"
  END IF
  ALLOCATE(disp_pp(nodes_pp*ndim),temp(nodes_pp)); disp_pp=zero; temp=zero
  CALL scatter_nodes(npes,nn,nels_pp,g_num_pp,nod,ndim,nodes_pp,          &
                     node_start,node_end,eld_pp,disp_pp,1)
  DO i=1,ndim ; temp=zero
    DO j=1,nodes_pp; k=i+(ndim*(j-1)); temp(j)=disp_pp(k); END DO
-   CALL dismsh_ensi_p(24,1,nodes_pp,npes,numpe,1,temp)
- END DO ; IF(numpe==1) CLOSE(24)
+   CALL dismsh_ensi_p(12,1,nodes_pp,npes,numpe,1,temp)
+ END DO ; IF(numpe==1) CLOSE(12)
  IF(numpe==1) WRITE(11,'(A,F10.4)')"This analysis took  :",              &
    elap_time()-timest(1)  
  CALL shutdown() 
