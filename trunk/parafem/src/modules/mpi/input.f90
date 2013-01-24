@@ -364,7 +364,7 @@ MODULE INPUT
 !------------------------------------------------------------------------------
 !------------------------------------------------------------------------------
     
-  SUBROUTINE READ_G_NUM_PP2(job_name,iel_start,nn,npes,numpe,g_num_pp)
+  SUBROUTINE READ_G_NUM_PP(job_name,iel_start,nn,npes,numpe,g_num_pp)
 
   !/****f* input/read_g_num_pp2
   !*  NAME
@@ -509,7 +509,7 @@ MODULE INPUT
  
   RETURN
 
-  END SUBROUTINE READ_G_NUM_PP2
+  END SUBROUTINE READ_G_NUM_PP
   
 !------------------------------------------------------------------------------
 !------------------------------------------------------------------------------
@@ -818,7 +818,7 @@ MODULE INPUT
 !------------------------------------------------------------------------------
 !------------------------------------------------------------------------------
     
-  SUBROUTINE READ_G_NUM_PP(job_name,iel_start,nels,nn,numpe,g_num_pp)
+  SUBROUTINE READ_G_NUM_PP2(job_name,iel_start,nels,nn,numpe,g_num_pp)
 
   !/****f* input/read_g_num_pp
   !*  NAME
@@ -935,7 +935,7 @@ MODULE INPUT
  
   RETURN
 
-  END SUBROUTINE READ_G_NUM_PP
+  END SUBROUTINE READ_G_NUM_PP2
                 
 !---------------------------------------------------------------------------
 !---------------------------------------------------------------------------
