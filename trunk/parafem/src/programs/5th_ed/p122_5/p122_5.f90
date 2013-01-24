@@ -55,15 +55,15 @@ PROGRAM p122
  CALL read_qinc(argv,numpe,qinc); CALL rearrange(rest)
 !----------  find the steering array and equations per process -----------
  g_g_pp=0; neq=0
- elements_0: DO iel=1,nels_pp
+ elements_1: DO iel=1,nels_pp
    CALL find_g(g_num_pp(:,iel),g_g_pp(:,iel),rest)
- END DO elements_0
+ END DO elements_1
  neq=MAXVAL(g_g_pp); neq=max_p(neq); CALL calc_neq_pp
  CALL calc_npes_pp(npes,npes_pp); CALL make_ggl(npes_pp,npes,g_g_pp)
  IF(numpe==1)THEN
    OPEN(11,FILE=argv(1:nlen)//'.res',STATUS='REPLACE',ACTION='WRITE')              
    WRITE(11,'(A,I5,A)')"This job ran on ", npes,"  processes"
-   WRITE(11,'(A,3(I5,A))')"There are ",nn," nodes",nr,                    &
+   WRITE(11,'(A,3(I7,A))')"There are ",nn," nodes",nr,                    &
      " restrained and   ",neq," equations"
    WRITE(11,*)"Time after setup  is  : ",elap_time()-timest(1)
  END IF 
@@ -76,7 +76,7 @@ PROGRAM p122
  IF(numpe==1)WRITE(11,'(A,E12.4)')"The critical timestep is   ",dt
 !---- element stiffness integration, preconditioner & set initial stress-- 
  CALL deemat(dee,e,v); CALL sample(element,points,weights); storkm_pp=zero
- elements_1: DO iel=1,nels_pp
+ elements_2: DO iel=1,nels_pp
    gauss_pts_1: DO i=1,nip    
      tensor_pp(1:3,i,iel)=cons; CALL shape_der(der,points,i)
      jac=MATMUL(der,g_coord_pp(:,:,iel)); det=determinant(jac)
@@ -84,11 +84,11 @@ PROGRAM p122
      storkm_pp(:,:,iel)=storkm_pp(:,:,iel)+                              &
                     MATMUL(MATMUL(TRANSPOSE(bee),dee),bee)*det*weights(i)
    END DO gauss_pts_1
- END DO elements_1
+ END DO elements_2
  ALLOCATE(diag_precon_tmp(ntot,nels_pp)); diag_precon_tmp=zero
- elements_2: DO iel=1,nels_pp ; DO i=1,ndof
+ elements_2a: DO iel=1,nels_pp ; DO i=1,ndof
    diag_precon_tmp(i,iel) = diag_precon_tmp(i,iel)+storkm_pp(i,i,iel)
- END DO;  END DO elements_2
+ END DO;  END DO elements_2a
  CALL scatter(diag_precon_pp,diag_precon_tmp); DEALLOCATE(diag_precon_tmp)
 !-------------------- invert preconditioner -----------------------------
  IF(loaded_nodes>0) THEN
@@ -123,7 +123,7 @@ PROGRAM p122
 !------------------------  load  increment loop --------------------------
  load_increments: do iy=1,incs
    plasiters=0; bdylds_pp=zero; evpt_pp=zero; cjtot=0
-   IF(numpe==npes)WRITE(11,'(/,A,I5)')"Load Increment   ",iy
+   IF(numpe==1) WRITE(11,'(/,A,I5)')"Load Increment   ",iy
 !--------------------------   plastic iteration loop   -------------------
    plastic_iterations: DO
      plasiters=plasiters+1; loads_pp=zero
@@ -149,9 +149,9 @@ PROGRAM p122
 !------ if x=.0 p and r are just loads but in general p=r=loads-A*x ------
 !-----------------------so form r = A * x --------------------------------
      r_pp=zero; CALL gather(x_pp,pmul_pp)
-     elements_3: DO iel=1,nels_pp
+     elements_2b: DO iel=1,nels_pp
        utemp_pp(:,iel)=MATMUL(storkm_pp(:,:,iel),pmul_pp(:,iel))
-     END DO elements_3; CALL scatter(r_pp,utemp_pp)
+     END DO elements_2b; CALL scatter(r_pp,utemp_pp)
 !------------------------now precondition r and p ------------------------
      r_pp=loads_pp-r_pp; d_pp=diag_precon_pp*r_pp; p_pp=d_pp
 !-------------------   solve the simultaneous equations by pcg -----------
@@ -159,9 +159,9 @@ PROGRAM p122
      conjugate_gradients: DO
        cjiters=cjiters+1; u_pp=zero; pmul_pp=zero
        CALL gather(p_pp,pmul_pp)
-       elements_4: DO iel=1,nels_pp
+       elements_3: DO iel=1,nels_pp
          utemp_pp(:,iel)=MATMUL(storkm_pp(:,:,iel),pmul_pp(:,iel))
-       END DO elements_4; CALL gather(u_pp,utemp_pp)
+       END DO elements_3; CALL scatter(u_pp,utemp_pp)
        IF(fixed_freedoms_pp>0) THEN
          DO i=1,fixed_freedoms_pp; j=no_pp(i)-ieq_start+1
            IF(plasiters==1) THEN; u_pp(j)=p_pp(j)*store_pp(i)
