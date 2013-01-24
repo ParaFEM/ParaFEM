@@ -14,7 +14,7 @@ PROGRAM p121
  INTEGER::loaded_nodes,iel,i,j,k,l,iters,limit,nn,nr,nip,nod,nels,ndof,  &
    npes_pp,node_end,node_start,nodes_pp,meshgen,partitioner,nlen
  REAL(iwp),PARAMETER::zero=0.0_iwp
- REAL(iwp)::e,v,det,tol,up,alpha,beta,tload; LOGICAL::converged=.false.
+ REAL(iwp)::e,v,det,tol,up,alpha,beta,q; LOGICAL::converged=.false.
  CHARACTER(LEN=50)::argv; CHARACTER(LEN=15)::element; CHARACTER(LEN=6)::ch 
 !---------------------------- dynamic arrays -----------------------------
  REAL(iwp),ALLOCATABLE::points(:,:),dee(:,:),weights(:),val(:,:),        &
@@ -42,10 +42,10 @@ PROGRAM p121
    utemp_pp(ntot,nels_pp),g_g_pp(ntot,nels_pp))
 !----------  find the steering array and equations per process -----------
  CALL rearrange(rest); g_g_pp=0; neq=0
- elements_1: DO iel=1,nels_pp
+ elements_0: DO iel=1,nels_pp
    CALL find_g3(g_num_pp(:,iel),g_g_pp(:,iel),rest)
- END DO elements_1
- neq=MAXVAL(g_g_pp); neq=MAX_INTEGER_P(neq); CALL calc_neq_pp
+ END DO elements_0
+ neq=MAXVAL(g_g_pp); neq=max_p(neq); CALL calc_neq_pp
  CALL calc_npes_pp(npes,npes_pp); CALL make_ggl(npes_pp,npes,g_g_pp)
  ALLOCATE(p_pp(neq_pp),r_pp(neq_pp),x_pp(neq_pp),xnew_pp(neq_pp),        &
    u_pp(neq_pp),d_pp(neq_pp),diag_precon_pp(neq_pp)); diag_precon_pp=zero
@@ -53,7 +53,7 @@ PROGRAM p121
 !------ element stiffness integration and build the preconditioner -------
  dee=zero; CALL deemat(dee,e,v); CALL sample(element,points,weights)
  storkm_pp=zero
- elements_2: DO iel=1,nels_pp
+ elements_1: DO iel=1,nels_pp
    gauss_pts_1: DO i=1,nip
      CALL shape_der(der,points,i); jac=MATMUL(der,g_coord_pp(:,:,iel))
      det=determinant(jac); CALL invert(jac); deriv=MATMUL(jac,der)
@@ -61,11 +61,11 @@ PROGRAM p121
      storkm_pp(:,:,iel)=storkm_pp(:,:,iel) +                             &
                     MATMUL(MATMUL(TRANSPOSE(bee),dee),bee)*det*weights(i)   
    END DO gauss_pts_1
- END DO elements_2
+ END DO elements_1
  ALLOCATE(diag_precon_tmp(ntot,nels_pp)); diag_precon_tmp=zero
- elements_3: DO iel=1,nels_pp ; DO i=1,ndof
+ elements_2: DO iel=1,nels_pp ; DO i=1,ndof
    diag_precon_tmp(i,iel) = diag_precon_tmp(i,iel)+storkm_pp(i,i,iel)
- END DO;  END DO elements_3
+ END DO;  END DO elements_2
  CALL scatter(diag_precon_pp,diag_precon_tmp); DEALLOCATE(diag_precon_tmp)
  IF(numpe==1)THEN
    OPEN(11,FILE=argv(1:nlen)//".res",STATUS='REPLACE',ACTION='WRITE')
@@ -79,7 +79,8 @@ PROGRAM p121
  IF(loaded_nodes>0) THEN
    ALLOCATE(node(loaded_nodes),val(ndim,loaded_nodes)); node=0; val=zero
    CALL read_loads(argv,numpe,node,val)
-   CALL load(g_g_pp,g_num_pp,node,val,r_pp(1:)); tload=SUM_P(r_pp(1:))
+   CALL load(g_g_pp,g_num_pp,node,val,r_pp(1:)); q=SUM_P(r_pp(1:))
+   IF(numpe==1) WRITE(11,'(A,E12.4)') "The total load is:",q
    DEALLOCATE(node,val)
  END IF
  DEALLOCATE(g_g_pp); diag_precon_pp=1._iwp/diag_precon_pp
@@ -89,9 +90,9 @@ PROGRAM p121
  iterations: DO 
    iters=iters+1; u_pp=zero; pmul_pp=zero; utemp_pp=zero
    CALL gather(p_pp,pmul_pp)
-   elements_4: DO iel=1,nels_pp
+   elements_3: DO iel=1,nels_pp
      utemp_pp(:,iel) = MATMUL(storkm_pp(:,:,iel),pmul_pp(:,iel))
-   END DO elements_4 ;CALL scatter(u_pp,utemp_pp)
+   END DO elements_3 ;CALL scatter(u_pp,utemp_pp)
 !-------------------------- pcg equation solution ------------------------
    up=DOT_PRODUCT_P(r_pp,d_pp); alpha=up/DOT_PRODUCT_P(p_pp,u_pp)
    xnew_pp=x_pp+p_pp*alpha; r_pp=r_pp-u_pp*alpha
@@ -135,5 +136,5 @@ PROGRAM p121
  END DO ; IF(numpe==1) CLOSE(12)
  IF(numpe==1) WRITE(11,'(A,F10.4)')"This analysis took  :",              &
    elap_time()-timest(1)  
- CALL shutdown() 
+ CALL SHUTDOWN() 
 END PROGRAM p121

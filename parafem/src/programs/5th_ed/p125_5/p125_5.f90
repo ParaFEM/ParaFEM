@@ -7,7 +7,7 @@ PROGRAM p125
 !USE mpi_wrapper !remove comment for serial compilation
  USE precision; USE global_variables; USE mp_interface; USE input
  USE output; USE loading; USE timing; USE maths; USE gather_scatter
- USE elements; USE steering; USE geometry
+ USE steering; USE geometry; USE new_library
  IMPLICIT NONE
 ! neq,ntot are now global variables - not declared
  INTEGER,PARAMETER::nodof=1,ndim=3

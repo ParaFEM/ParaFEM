@@ -8,8 +8,7 @@ PROGRAM p126
 !USE mpi_wrapper  !remove comment for serial compilation
  USE precision; USE global_variables; USE mp_interface; USE input; 
  USE output; USE loading; USE timing; USE maths; USE gather_scatter
- USE partition; USE elements; USE steering; USE bicg; USE fluid
- USE pcg ! This is to access CHECON_PAR, perhaps should move out of module
+ USE steering; USE fluid; USE new_library
  IMPLICIT NONE
 ! neq,ntot are now global variables - not declared
  INTEGER::nn,nip,nodof=4,nod=20,nodf=8,ndim=3,cj_tot,i,j,k,l,iel,ell,    &

@@ -5,8 +5,7 @@ PROGRAM p1210
 !-------------------------------------------------------------------------
  USE precision; USE global_variables; USE mp_interface; USE input
  USE output; USE loading; USE timing; USE maths; USE gather_scatter
- USE elements; USE steering; USE plasticity 
- IMPLICIT NONE
+ USE steering; USE new_library; IMPLICIT NONE
 ! neq,ntot are now global variables - not declared 
  INTEGER,PARAMETER::nodof=3,ndim=3,nst=6
  INTEGER::nn,nr,nip,loaded_nodes,nres=1,nod,i,j,k,ii,jj,iel,nstep,npri,  &
@@ -98,9 +97,9 @@ PROGRAM p1210
     elements_2: DO iel=1,nels_pp          
       bload=zero; eld=pmul_pp(:,iel)
       gauss_pts_2: DO i=1,nip
-        dee=zero; CALL deemat(e,v,dee); CALL shape_der(der,points,i)
+        dee=zero; CALL deemat(dee,e,v); CALL shape_der(der,points,i)
         jac=MATMUL(der,g_coord_pp(:,:,iel)); det=determinant(jac)
-        CALL invert(jac); deriv=MATMUL(jac,der); CALL beemat(deriv,bee)
+        CALL invert(jac); deriv=MATMUL(jac,der); CALL beemat(bee,deriv)
         eps=MATMUL(bee,pmul_pp(:,iel)); eps=eps-etensor_pp(:,i,iel)
         sigma=MATMUL(dee,eps); stressv=sigma+tensor_pp(:,i,iel)
         CALL invar(stressv,sigm,dsbar,lode_theta); fnew=dsbar-sbary

@@ -7,7 +7,7 @@ PROGRAM p122
 !USE mpi_wrapper  !remove comment for serial compilation
  USE precision; USE global_variables; USE mp_interface; USE input
  USE output; USE loading; USE timing; USE maths; USE gather_scatter
- USE elements; USE steering; USE plasticity; USE new_library; IMPLICIT NONE
+ USE steering; USE plasticity; USE new_library; IMPLICIT NONE
 !neq,ntot are now global variables - must not be declared
  INTEGER,PARAMETER::nodof=3,nst=6,ndim=3
  INTEGER::nn,nod,nr,nip,i,j,k,iel,plasiters,nels,ndof, &
@@ -89,13 +89,13 @@ PROGRAM p122
  dt=4._iwp*(1._iwp+v)*(1._iwp-2._iwp*v)/(e*(1._iwp-2._iwp*v+snph*snph))
  IF(numpe==1)WRITE(11,'(A,E12.4)')"The critical timestep is   ",dt
 !---- element stiffness integration, preconditioner & set initial stress-- 
- CALL deemat(e,v,dee); CALL sample(element,points,weights)
+ CALL deemat(dee,e,v); CALL sample(element,points,weights)
  storkm_pp=zero
  elements_1: DO iel=1,nels_pp
    gauss_pts_1: DO i=1,nip    
      tensor_pp(1:3,i,iel)=cons; CALL shape_der(der,points,i)
      jac=MATMUL(der,g_coord_pp(:,:,iel)); det=determinant(jac)
-     CALL invert(jac); deriv=MATMUL(jac,der); CALL beemat(deriv,bee)
+     CALL invert(jac); deriv=MATMUL(jac,der); CALL beemat(bee,deriv)
      storkm_pp(:,:,iel)=storkm_pp(:,:,iel)+                              &
                     MATMUL(MATMUL(TRANSPOSE(bee),dee),bee)*det*weights(i)
    END DO gauss_pts_1
@@ -245,7 +245,7 @@ PROGRAM p122
        gauss_points_2: DO i=1,nip
          CALL shape_der(der,points,i); jac=MATMUL(der,g_coord_pp(:,:,iel))
          det=determinant(jac); CALL invert(jac)
-         deriv=MATMUL(jac,der); CALL beemat(deriv,bee)
+         deriv=MATMUL(jac,der); CALL beemat(bee,deriv)
          eps=MATMUL(bee,eld); eps=eps-evpt_pp(:,i,iel)
          sigma=MATMUL(dee,eps); stress=sigma+tensor_pp(:,i,iel)
          CALL invar(stress,sigm,dsbar,lode_theta)                            
