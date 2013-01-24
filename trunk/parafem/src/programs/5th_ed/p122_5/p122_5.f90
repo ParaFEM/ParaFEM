@@ -50,7 +50,7 @@ PROGRAM p122
  ndof=nod*nodof; ntot=ndof
  ALLOCATE(g_num_pp(nod, nels_pp),g_coord_pp(nod,ndim,nels_pp),            &
    rest(nr,nodof+1)); g_num_pp=0; g_coord_pp=zero; rest=0
- CALL read_g_num_pp2(argv,iel_start,nn,npes,numpe,g_num_pp)
+ CALL read_g_num_pp(argv,iel_start,nn,npes,numpe,g_num_pp)
  IF(meshgen == 2) CALL abaqus2sg(element,g_num_pp)
  CALL read_g_coord_pp(argv,g_num_pp,nn,npes,numpe,g_coord_pp)
  CALL read_rest(argv,numpe,rest); timest(2)=elap_time()
