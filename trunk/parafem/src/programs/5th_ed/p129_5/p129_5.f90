@@ -6,7 +6,7 @@ PROGRAM p129
 !-------------------------------------------------------------------------
  USE precision; USE global_variables; USE mp_interface; USE input
  USE output; USE loading; USE timing; USE maths; USE gather_scatter
- USE partition; USE elements; USE steering; USE pcg; IMPLICIT NONE
+ USE steering; USE new_library; IMPLICIT NONE
 ! neq,ntot are now global variables - not declared 
  INTEGER,PARAMETER::nodof=3,nst=6
  INTEGER::nn,nr,nip,nod,i,j,k,iel,ndim=3,nstep,npri,iters,limit,ndof,    &
@@ -76,7 +76,7 @@ PROGRAM p129
  u_pp=zero; d2x0_pp=zero; loads_pp=zero; d1x1_pp=zero; d2x1_pp=zero
  d_pp=zero; p_pp=zero; x_pp=zero; xnew_pp=zero; fext_pp=zero 
 !--- element stiffness and mass integration, storage and preconditioner --
- CALL deemat(e,v,dee); CALL sample(element,points,weights)
+ CALL deemat(dee,e,v); CALL sample(element,points,weights)
  store_km_pp=zero; store_mm_pp=zero; diag_precon_tmp=zero
  pi=ACOS(-1._iwp); period=2._iwp*pi/omega; dtim=period/20._iwp
  c1=(1._iwp-theta)*dtim; c2=beta1-c1; c3=alpha1+1._iwp/(theta * dtim)
@@ -86,7 +86,7 @@ PROGRAM p129
    gauss_points_1: DO i=1,nip     
      CALL shape_der(der,points,i); jac=MATMUL(der,g_coord_pp(:,:,iel))
      det=determinant(jac); CALL invert(jac); deriv=matmul(jac,der)
-     CALL beemat(deriv,bee)
+     CALL beemat(bee,deriv)
      store_km_pp(:,:,iel)=store_km_pp(:,:,iel) +                         & 
                           MATMUL(MATMUL(TRANSPOSE(bee),dee),bee) *       &
                           det*weights(i)

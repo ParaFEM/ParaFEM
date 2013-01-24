@@ -1,13 +1,13 @@
 PROGRAM p121         
 !------------------------------------------------------------------------------ 
 !      Program 12.1 three dimensional analysis of an elastic solid
-!                   load control or displacement control
+!                   load control only
 !------------------------------------------------------------------------------ 
                                  
   USE precision     ; USE global_variables ; USE mp_interface
   USE input         ; USE output           ; USE loading
   USE timing        ; USE maths            ; USE gather_scatter
-  USE partition     ; USE elements         ; USE steering        ; USE pcg
+  USE steering      ; USE new_library
   
   IMPLICIT NONE
 
@@ -18,11 +18,11 @@ PROGRAM p121
  ! neq,ntot are now global variables - not declared
 
   INTEGER,PARAMETER     :: nodof=3,ndim=3,nst=6
-  INTEGER               :: loaded_nodes,fixed_freedoms,iel,i,j,k,l,idx1,idx2
+  INTEGER               :: loaded_nodes,fixed_freedoms=0,iel,i,j,k,l,idx1,idx2
   INTEGER               :: iters,limit,nn,nr,nip,nod,nels,ndof,npes_pp
   INTEGER               :: node_end,node_start,nodes_pp
   INTEGER               :: argc,iargc,meshgen,partitioner
-  INTEGER               :: fixed_freedoms_pp,fixed_freedoms_start
+  INTEGER               :: fixed_freedoms_pp=0,fixed_freedoms_start=0
   REAL(iwp)             :: e,v,det,tol,up,alpha,beta,tload
   REAL(iwp),PARAMETER   :: zero = 0.0_iwp
   REAL(iwp),PARAMETER   :: penalty = 1.0e20_iwp
@@ -63,7 +63,7 @@ PROGRAM p121
   IF (argc /= 1) CALL job_name_error(numpe,program_name)
   CALL GETARG(1, job_name) 
 
-  CALL read_p121(job_name,numpe,e,element,fixed_freedoms,limit,loaded_nodes, &
+  CALL read_p121(job_name,numpe,e,element,limit,loaded_nodes,                 &
                  meshgen,nels,nip,nn,nod,nr,partitioner,tol,v)
 
   CALL calc_nels_pp(job_name,nels,npes,numpe,partitioner,nels_pp)
@@ -173,7 +173,7 @@ PROGRAM p121
 !------------------------------------------------------------------------------
 
   dee = zero
-  CALL deemat(e,v,dee)
+  CALL deemat(dee,e,v)
   CALL sample(element,points,weights)
  
   storkm_pp       = zero
@@ -185,7 +185,7 @@ PROGRAM p121
       det   = determinant(jac)
       CALL invert(jac)
       deriv = MATMUL(jac,der)
-      CALL beemat(deriv,bee)
+      CALL beemat(bee,deriv)
       storkm_pp(:,:,iel)   = storkm_pp(:,:,iel) +                             &
                              MATMUL(MATMUL(TRANSPOSE(bee),dee),bee) *         &
                              det*weights(i)   
@@ -429,7 +429,7 @@ PROGRAM p121
       det   = DETERMINANT(jac) 
       CALL invert(jac)
       deriv = MATMUL(jac,der)
-      CALL beemat(deriv,bee)
+      CALL beemat(bee,deriv)
       eps   = MATMUL(bee,eld_pp(:,iel))
       sigma = MATMUL(dee,eps)
       CALL PRINCIPALSTRESS3D(sigma,principal)

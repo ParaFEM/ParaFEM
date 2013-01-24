@@ -9,10 +9,7 @@ PROGRAM p126
  USE precision       ; USE global_variables      ; USE mp_interface
  USE input           ; USE output                ; USE loading
  USE timing          ; USE maths                 ; USE gather_scatter
- USE partition       ; USE elements              ; USE steering
- USE bicg            ; USE fluid
-
- USE pcg ! This is to access CHECON_PAR - perhaps should move out of module
+ USE steering        ; USE new_library
  
  IMPLICIT NONE
  

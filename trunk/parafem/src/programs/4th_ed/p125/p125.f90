@@ -7,8 +7,7 @@ PROGRAM p125
  USE precision  ; USE global_variables ; USE mp_interface
  USE input      ; USE output           ; USE loading
  USE timing     ; USE maths            ; USE gather_scatter
- USE partition  ; USE elements         ; USE steering
- USE geometry   ; USE pcg
+ USE steering   ; USE new_library      ; USE geometry
  
  IMPLICIT NONE
 
