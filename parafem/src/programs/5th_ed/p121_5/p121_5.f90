@@ -57,7 +57,7 @@ PROGRAM p121
    gauss_pts_1: DO i=1,nip
      CALL shape_der(der,points,i); jac=MATMUL(der,g_coord_pp(:,:,iel))
      det=determinant(jac); CALL invert(jac); deriv=MATMUL(jac,der)
-     CALL beemat(deriv,bee)
+     CALL beemat(bee,deriv)
      storkm_pp(:,:,iel)=storkm_pp(:,:,iel) +                             &
                     MATMUL(MATMUL(TRANSPOSE(bee),dee),bee)*det*weights(i)   
    END DO gauss_pts_1
@@ -112,7 +112,7 @@ PROGRAM p121
  IF(numpe==1)WRITE(11,'(A)')"The Centroid point stresses for element 1 are"
  gauss_pts_2: DO i=1,nip
    CALL shape_der(der,points,i); jac=MATMUL(der,g_coord_pp(:,:,iel))
-   CALL invert(jac); deriv=MATMUL(jac,der); CALL beemat(deriv,bee)
+   CALL invert(jac); deriv=MATMUL(jac,der); CALL beemat(bee,deriv)
    eps=MATMUL(bee,eld_pp(:,iel)); sigma=MATMUL(dee,eps)
    IF(numpe==1.AND.i==1) THEN
      WRITE(11,'(A,I5)')"Point ",i ; WRITE(11,'(6E12.4)') sigma
