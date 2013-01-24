@@ -995,7 +995,7 @@ MODULE GATHER_SCATTER
 !---------------------------------------------------------------------------
 !---------------------------------------------------------------------------
 
-  SUBROUTINE MAKE_GGL(npes_pp,npes,gg_pp)
+  SUBROUTINE MAKE_GGL2(npes_pp,npes,gg_pp)
 
   !/****f* gather_scatter/make_ggl
   !*  NAME
@@ -1377,13 +1377,13 @@ MODULE GATHER_SCATTER
       CALL MPERROR('Error in last barrier in make_ggl',ier)
     END IF
 
-  END SUBROUTINE MAKE_GGL
+  END SUBROUTINE MAKE_GGL2
 
 !---------------------------------------------------------------------------
 !---------------------------------------------------------------------------
 !---------------------------------------------------------------------------
 
-  SUBROUTINE MAKE_GGL2(npes_pp,npes,gg_pp)
+  SUBROUTINE MAKE_GGL(npes_pp,npes,gg_pp)
 
   !/****f* gather_scatter/make_ggl2
   !*  NAME
@@ -1759,7 +1759,7 @@ MODULE GATHER_SCATTER
       CALL MPERROR('Error in last barrier in make_ggl2',ier)
     END IF
 
-  END SUBROUTINE MAKE_GGL2
+  END SUBROUTINE MAKE_GGL
 
 !------------------------------------------------------------------------------
 !------------------------------------------------------------------------------
