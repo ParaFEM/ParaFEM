@@ -24,6 +24,7 @@ MODULE NEW_LIBRARY
   !*/
   
   USE precision
+  USE maths
 
   CONTAINS
 
