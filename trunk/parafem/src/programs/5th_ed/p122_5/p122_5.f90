@@ -105,8 +105,8 @@ PROGRAM p122
    CALL find_no(nodef,rest,sense,no)
    CALL MPI_ALLREDUCE(no,no_global,fixed_freedoms,MPI_INTEGER,MPI_MAX,  &
      MPI_COMM_WORLD,ier)
-   CALL reindex_fixed_nodes(ieq_start,no_global,no_pp_temp,             &
-     fixed_freedoms_pp,fixed_freedoms_start,neq_pp)
+   CALL reindex(ieq_start,no_global,no_pp_temp,fixed_freedoms_pp,       &
+     fixed_freedoms_start,neq_pp)
    ALLOCATE(no_pp(fixed_freedoms_pp),store_pp(fixed_freedoms_pp))
    no_pp=0; store_pp=0; no_pp=no_pp_temp(1:fixed_freedoms_pp)
    DEALLOCATE(nodef,no,sense,no_pp_temp) 
