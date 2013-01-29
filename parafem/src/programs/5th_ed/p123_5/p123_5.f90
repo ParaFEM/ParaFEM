@@ -1,9 +1,9 @@
 PROGRAM p123         
-!------------------------------------------------------------------------------
-!      program p12.3 three dimensional analysis of steady state heat equation
-!      using 8-node brick elements, preconditioned conjugate gradient solver
-!      diagonal preconditioner ; parallel version ; externally generated model 
-!------------------------------------------------------------------------------
+!-------------------------------------------------------------------------
+!      program p12.3 three dimensional analysis of Laplace's equation
+!      using 8-node bricks, preconditioned conjugate gradient solver
+!      diagonal preconditioner; parallel; externally generated model 
+!-------------------------------------------------------------------------
  USE precision; USE global_variables; USE mp_interface; USE input
  USE output; USE loading; USE timing; USE maths; USE gather_scatter
  USE new_library; IMPLICIT NONE
@@ -13,31 +13,26 @@ PROGRAM p123
    idx1,node_end,node_start,nodes_pp,loaded_freedoms,fixed_freedoms,     &
    loaded_nodes,fixed_freedoms_pp,fixed_freedoms_start,nlen,             &
    loaded_freedoms_pp,loaded_freedoms_start,nels,ndof,ielpe,npes_pp,     &
-   argc,iargc,meshgen,partitioner
+   argc,iargc,meshgen,partitioner,nres,is,it
  REAL(iwp),PARAMETER::zero=0.0_iwp,penalty=1.e20_iwp
  REAL(iwp)::kx,ky,kz,det,tol,up,alpha,beta,q; CHARACTER(LEN=6)::ch
  CHARACTER(LEN=15)::element; CHARACTER(LEN=50)::argv 
  LOGICAL::converged=.false.
- REAL(iwp),ALLOCATABLE :: points(:,:),kc(:,:),coord(:,:), weights(:)
- REAL(iwp),ALLOCATABLE :: p_g_co_pp(:,:,:), jac(:,:), der(:,:), deriv(:,:)
- REAL(iwp),ALLOCATABLE :: col(:,:),row(:,:),kcx(:,:),kcy(:,:),kcz(:,:)
- REAL(iwp),ALLOCATABLE :: diag_precon_pp(:),p_pp(:),r_pp(:),x_pp(:)
- REAL(iwp),ALLOCATABLE :: xnew_pp(:),u_pp(:),pmul_pp(:,:),utemp_pp(:,:)
- REAL(iwp),ALLOCATABLE :: d_pp(:),diag_precon_tmp(:,:),val(:,:),val_f(:)
- REAL(iwp),ALLOCATABLE :: store_pp(:),storkc_pp(:,:,:),eld(:),timest(:)
- REAL(iwp),ALLOCATABLE :: g_coord_pp(:,:,:),ttr_pp(:),eld_pp(:,:)
- REAL(iwp),ALLOCATABLE :: flux_pp(:,:),storeflux_pp(:),kay(:,:),fun(:)
- REAL(iwp),ALLOCATABLE :: shape_integral_pp(:,:),flux_integral_pp(:,:),fluxnodes_pp(:)
- REAL(iwp),ALLOCATABLE :: shape_integral2_pp(:,:),flux_integral2_pp(:,:)
- INTEGER, ALLOCATABLE  :: rest(:,:),g(:),num(:),g_num_pp(:,:),g_g_pp(:,:),no(:)
- INTEGER, ALLOCATABLE  :: no_f(:),no_local_temp(:),no_local_temp_f(:)
- INTEGER, ALLOCATABLE  :: no_local(:),no_pp(:),no_f_pp(:),no_pp_temp(:),no_global(:)
- INTEGER, ALLOCATABLE  :: sense(:),node(:)
+ REAL(iwp),ALLOCATABLE::points(:,:),kc(:,:),coord(:,:),weights(:),       &
+   p_g_co_pp(:,:,:),jac(:,:),der(:,:),deriv(:,:),col(:,:),row(:,:),      &
+   kcx(:,:),kcy(:,:),kcz(:,:),diag_precon_pp(:),p_pp(:),r_pp(:),x_pp(:), &
+   xnew_pp(:),u_pp(:),pmul_pp(:,:),utemp_pp(:,:),d_pp(:),val(:,:),       &
+   diag_precon_tmp(:,:),store_pp(:),storkc_pp(:,:,:),eld(:),timest(:),   &
+   val_f(:),g_coord_pp(:,:,:),ptl_pp(:),eld_pp(:,:),kay(:,:),fun(:),     &
+   kay(:,:),fun(:)
+ INTEGER,ALLOCATABLE::rest(:,:),g(:),num(:),g_num_pp(:,:),g_g_pp(:,:),   &
+   no(:),no_f(:),no_local_temp(:),no_local_temp_f(:),no_local(:),        &
+   no_pp(:),no_f_pp(:),no_pp_temp(:),sense(:),node(:)
 !--------------------------input and initialisation-----------------------
  ALLOCATE(timest(20)); timest=zero; timest(1)=elap_time()
  CALL find_pe_procs(numpe,npes); CALL getname(argv,nlen)
  CALL read_p123(argv,numpe,element,fixed_freedoms,kx,ky,kz,limit,        &
-   loaded_nodes,meshgen,nels,nip,nn,nod,nr,partitioner,tol)
+   loaded_nodes,meshgen,nels,nip,nn,nod,nr,nres,partitioner,tol)
  CALL calc_nels_pp(argv,nels,npes,numpe,partitioner,nels_pp)
  ndof=nod*nodof; ntot=ndof 
  ALLOCATE(g_num_pp(nod,nels_pp),g_coord_pp(nod,ndim,nels_pp)) 
@@ -54,8 +49,8 @@ PROGRAM p123
    eld(ntot),no_f(1),no_local_temp_f(1),kcz(ntot,ntot),                  &
    storkc_pp(ntot,ntot,nels_pp))
 !----------  find the steering array and equations per process -----------
- IF(nr>0) CALL rearrange_2(rest);  g_g_pp=0; neq=0
- IF(nr>0) THEN
+ g_g_pp=0; neq=0
+ IF(nr>0) THEN; CALL rearrange_2(rest)
    elements_1: DO iel = 1, nels_pp
      CALL find_g4(g_num_pp(:,iel),g_g_pp(:,iel),rest)
    END DO elements_1
@@ -64,13 +59,14 @@ PROGRAM p123
  END IF
  neq=MAXVAL(g_g_pp); neq=max_p(neq); CALL calc_neq_pp
  CALL calc_npes_pp(npes,npes_pp); CALL make_ggl(npes_pp,npes,g_g_pp)
- IF(numpe==1)THEN
-   OPEN(11,FILE=argv(1:nlen)//'.res',STATUS='REPLACE',ACTION='WRITE')              
+ DO i=1,neq_pp;IF(nres==ieq_start+i-1)THEN;it=numpe;is=i;END IF;END DO
+ IF(numpe==it)THEN
+   OPEN(11,FILE=argv(1:nlen)//'.res',STATUS='REPLACE',ACTION='WRITE') 
    WRITE(11,'(A,I5,A)')"This job ran on ", npes,"  processes"
    WRITE(11,'(A,3(I7,A))')"There are ",nn," nodes",nr,                   &
      " restrained and   ",neq," equations"
-   WRITE(11,*)"Time after setup  is  : ",elap_time()-timest(1)
- END IF 
+   WRITE(11,'(A,F10.4)')"Time after setup is  : ",elap_time()-timest(1)
+ END IF
  ALLOCATE(p_pp(neq_pp),r_pp(neq_pp),x_pp(neq_pp),xnew_pp(neq_pp),        &
    u_pp(neq_pp),diag_precon_pp(neq_pp),d_pp(neq_pp))
  r_pp=zero; p_pp=zero; x_pp=zero; xnew_pp=zero; diag_precon_pp=zero
@@ -102,14 +98,11 @@ PROGRAM p123
  IF(fixed_freedoms>0) THEN
    ALLOCATE(node(fixed_freedoms),no(fixed_freedoms),                     &
      val_f(fixed_freedoms),no_pp_temp(fixed_freedoms),                   &
-     sense(fixed_freedoms),no_global(fixed_freedoms))
-   node=0; no=0; no_pp_temp=0; sense=0; no_global=0; val_f=zero
+     sense(fixed_freedoms))
+   node=0; no=0; no_pp_temp=0; sense=0; val_f=zero
    CALL read_fixed(argv,numpe,node,sense,val_f)
-   CALL find_no2(g_g_pp,g_num_pp,node,sense,fixed_freedoms_pp,           &
-     fixed_freedoms_start,no)
-   CALL MPI_ALLREDUCE(no,no_global,fixed_freedoms,MPI_INTEGER,MPI_MAX,   &
-     MPI_COMM_WORLD,ier)
-   CALL reindex(ieq_start,no_global,no_pp_temp,fixed_freedoms_pp,        &
+   CALL find_no2(g_g_pp,g_num_pp,node,sense,no)
+   CALL reindex(ieq_start,no,no_pp_temp,fixed_freedoms_pp,               &
      fixed_freedoms_start,neq_pp)
    ALLOCATE(no_f_pp(fixed_freedoms_pp),store_pp(fixed_freedoms_pp))
    no_f_pp=0; store_pp=zero
@@ -149,7 +142,7 @@ PROGRAM p123
  END IF
  d_pp=diag_precon_pp*r_pp; p_pp=d_pp; x_pp=zero
 !--------------- preconditioned conjugate gradient iterations ------------
- iters=0
+ iters=0; timest(2)=elap_time()
  iterations: DO 
    iters=iters+1; u_pp=zero; pmul_pp=zero; utemp_pp=zero 
    CALL gather(p_pp,pmul_pp) 
@@ -170,28 +163,34 @@ PROGRAM p123
    CALL checon_par(xnew_pp,tol,converged,x_pp)    
    IF(converged .OR. iters==limit) EXIT
  END DO iterations
- IF(numpe==1)THEN
+ timest(3)=elap_time()
+ IF(numpe==it)THEN
    WRITE(11,'(A,I5)')"The number of iterations to convergence was  ",iters 
    WRITE(11,'(A,E12.4)')"The total load is                            ",q
-   WRITE(11,'(A)')   "The  potentials are   :"
-   WRITE(11,'(A)') "   Freedom       Potential"
-   WRITE(11,'(A,E12.4)') "9901     ", xnew_pp(9901)
-   WRITE(11,'(A,E12.4)') "9902     ", xnew_pp(9902)
-   WRITE(11,'(A,E12.4)') "9903     ", xnew_pp(9903)
-   WRITE(11,'(A,E12.4)') "9904     ", xnew_pp(9904)
+   WRITE(11,'(A)')   "The potentials are:"
+   WRITE(11,'(A)') " Freedom       Potential"
+   DO i=1,4
+     WRITE(11,'(I8,A,E12.4)') nres+i-1, "     ", xnew_pp(is+i-1)
+   END DO
+   WRITE(11,'(A,F10.4)') "The time spent in the solver was  ",            &
+     timest(3)-timest(2)
  END IF
 !----------------------- output nodal temperatures -----------------------
  IF(numpe==1)THEN; WRITE(ch,'(I6.6)') numpe
-   OPEN(12,file=argv(1:nlen)//".ensi.TTR-"//ch,status='replace',         &
+   OPEN(12,file=argv(1:nlen)//".ensi.NDPTL-"//ch,status='replace',       &
      action='write')
-   WRITE(12,'(A)') "Alya Ensight Gold --- Vector per-node variable file"
+   WRITE(12,'(A)') "Alya Ensight Gold --- Scalar per-node variable file"
    WRITE(12,'(A/A/A)') "part", "    1","coordinates"
  END IF
- ttr_pp=zero; utemp_pp=zero; CALL gather(xnew_pp(1:),utemp_pp)
+ CALL calc_nodes_pp(nn,npes,numpe,node_end,node_start,nodes_pp)
+ ALLOCATE(ptl_pp(nodes_pp*ndim))
+ ptl_pp=zero; utemp_pp=zero; CALL gather(xnew_pp(1:),utemp_pp)
  CALL scatter_nodes(npes,nn,nels_pp,g_num_pp,nod,ndim,nodes_pp,          &
-   node_start,node_end,utemp_pp,ttr_pp,1)
- CALL dismsh_ensi_p(12,1,nodes_pp,npes,numpe,1,ttr_pp)
- IF(numpe==1)CLOSE(12)
- IF(numpe==1)WRITE(11,*)"This analysis took : ",elap_time()-timest(1)
+   node_start,node_end,utemp_pp,ptl_pp,1)
+ CALL dismsh_ensi_p(12,1,nodes_pp,npes,numpe,1,ptl_pp)
+ IF(numpe==it) THEN
+   WRITE(11,'(A,F10.4)') "This analysis took : ",elap_time()-timest(1)
+ END IF
+ IF(numpe==it) CLOSE(11); IF(numpe==1) CLOSE(12)
  CALL shutdown()
 END PROGRAM p123
