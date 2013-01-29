@@ -3380,14 +3380,14 @@ end subroutine formupvw
 !------------------------------------------------------------------------------
 !------------------------------------------------------------------------------ 
 
-  SUBROUTINE REINDEX_FIXED_NODES (ieq_start,no,no_local_temp,num_no,          &
+  SUBROUTINE REINDEX (ieq_start,no,no_local_temp,num_no,          &
                                     no_index_start,neq_pp)
   
-    !/****f* steering/reindex_fixed_nodes
+    !/****f* steering/reindex
     !*  NAME
-    !*    SUBROUTINE: reindex_fixed_nodes
+    !*    SUBROUTINE: reindex
     !*  SYNOPSIS
-    !*    Usage:      CALL reindex_fixed_nodes(ieq_start,no,no_local_temp,  &
+    !*    Usage:      CALL reindex(ieq_start,no,no_local_temp,             &
     !*                                         num_no,no_index_start,neq_pp)
     !*  FUNCTION
     !*    Creates a local index of loaded equations. Will function in both
@@ -3456,7 +3456,7 @@ end subroutine formupvw
       END IF
     END DO
 
-  END SUBROUTINE REINDEX_FIXED_NODES
+  END SUBROUTINE REINDEX
   
 !------------------------------------------------------------------------------
 !------------------------------------------------------------------------------
