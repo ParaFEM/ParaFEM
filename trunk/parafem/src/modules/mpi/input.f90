@@ -1900,7 +1900,7 @@ MODULE INPUT
 
 
   SUBROUTINE READ_P123(job_name,numpe,element,fixed_freedoms,kx,ky,kz,limit,  &
-                       loaded_nodes,mesh,nels,nip,nn,nod,nr,partition,tol)
+                       loaded_nodes,mesh,nels,nip,nn,nod,nr,nres,partition,tol)
 
   !/****f* input/read_p123
   !*  NAME
@@ -1908,7 +1908,7 @@ MODULE INPUT
   !*  SYNOPSIS
   !*    Usage:      CALL read_p123(job_name,numpe,element,fixed_freedoms,
   !*                               kx,ky,kz,limit,loaded_nodes,mesh,nels,nip,
-  !*                               nn,nod,nr,partition,tol,v)
+  !*                               nn,nod,nr,nres,partition,tol,v)
   !*  FUNCTION
   !*    Master processor reads the general data for the problem and broadcasts 
   !*    it to the slave processors.
@@ -1962,6 +1962,9 @@ MODULE INPUT
   !*                           : Number of nodes with restrained degrees of
   !*                             freedom 
   !*
+  !*    nres                   : Integer
+  !*                           : Equation to output summary data
+  !*
   !*    partition              : Integer
   !*                           : Type of partitioning 
   !*                           : 1 = internal partitioning
@@ -1975,7 +1978,7 @@ MODULE INPUT
   !*  CREATION DATE
   !*    08.03.2012
   !*  COPYRIGHT
-  !*    (c) University of Manchester 2012
+  !*    (c) University of Manchester 2012-2013
   !******
   !*  Place remarks that should not be included in the documentation here.
   !*  Need to add some error traps
@@ -1986,7 +1989,7 @@ MODULE INPUT
   CHARACTER(LEN=50), INTENT(IN)    :: job_name
   CHARACTER(LEN=15), INTENT(INOUT) :: element
   INTEGER, INTENT(IN)              :: numpe
-  INTEGER, INTENT(INOUT)           :: nels,nn,nr,nod,nip,loaded_nodes
+  INTEGER, INTENT(INOUT)           :: nels,nn,nr,nres,nod,nip,loaded_nodes
   INTEGER, INTENT(INOUT)           :: limit,mesh,fixed_freedoms,partition 
   REAL(iwp), INTENT(INOUT)         :: kx,ky,kz,tol
 
@@ -1994,7 +1997,7 @@ MODULE INPUT
 ! 1. Local variables
 !------------------------------------------------------------------------------
 
-  INTEGER                          :: bufsize,ier,integer_store(10)
+  INTEGER                          :: bufsize,ier,integer_store(11)
   REAL(iwp)                        :: real_store(4)
   CHARACTER(LEN=50)                :: fname
   
@@ -2006,7 +2009,7 @@ MODULE INPUT
     fname = job_name(1:INDEX(job_name, " ") -1) // ".dat"
     OPEN(10,FILE=fname,STATUS='OLD',ACTION='READ')
     READ(10,*) element,mesh,partition,nels,nn,nr,nip,nod,loaded_nodes,        &
-               fixed_freedoms,kx,ky,kz,tol,limit
+               fixed_freedoms,kx,ky,kz,tol,limit,nres
     CLOSE(10)
    
     integer_store      = 0
@@ -2021,6 +2024,7 @@ MODULE INPUT
     integer_store(8)   = fixed_freedoms
     integer_store(9)   = limit
     integer_store(10)  = partition
+    integer_store(11)  = nres
 
     real_store         = 0.0_iwp
 
@@ -2035,7 +2039,7 @@ MODULE INPUT
 ! 3. Master processor broadcasts the temporary arrays to the slave processors
 !------------------------------------------------------------------------------
 
-  bufsize = 10
+  bufsize = 11
   CALL MPI_BCAST(integer_store,bufsize,MPI_INTEGER,0,MPI_COMM_WORLD,ier)
 
   bufsize = 4
@@ -2060,6 +2064,7 @@ MODULE INPUT
     fixed_freedoms  = integer_store(8)
     limit           = integer_store(9)
     partition       = integer_store(10)
+    nres            = integer_store(11)
 
     kx              = real_store(1)
     ky              = real_store(2)
