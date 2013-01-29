@@ -99,13 +99,17 @@ PROGRAM p122
  IF(fixed_freedoms>0) THEN
    ALLOCATE(nodef(fixed_freedoms),no(fixed_freedoms),                   &
      no_pp_temp(fixed_freedoms),sense(fixed_freedoms),                  &
-     valf(fixed_freedoms),no_global(fixed_freedoms))
-   nodef=0; no=0; no_pp_temp=0; sense=0; no_global=0; valf=zero
+!    valf(fixed_freedoms),no_global(fixed_freedoms))
+     valf(fixed_freedoms))
+!  nodef=0; no=0; no_pp_temp=0; sense=0; no_global=0; valf=zero
+   nodef=0; no=0; no_pp_temp=0; sense=0; valf=zero
    CALL read_fixed(argv,numpe,nodef,sense,valf)
    CALL find_no(nodef,rest,sense,no)
-   CALL MPI_ALLREDUCE(no,no_global,fixed_freedoms,MPI_INTEGER,MPI_MAX,  &
-     MPI_COMM_WORLD,ier)
-   CALL reindex(ieq_start,no_global,no_pp_temp,fixed_freedoms_pp,       &
+!  CALL MPI_ALLREDUCE(no,no_global,fixed_freedoms,MPI_INTEGER,MPI_MAX,  &
+!    MPI_COMM_WORLD,ier)
+!  CALL reindex(ieq_start,no_global,no_pp_temp,fixed_freedoms_pp,       &
+!    fixed_freedoms_start,neq_pp)
+   CALL reindex(ieq_start,no,no_pp_temp,fixed_freedoms_pp,              &
      fixed_freedoms_start,neq_pp)
    ALLOCATE(no_pp(fixed_freedoms_pp),store_pp(fixed_freedoms_pp))
    no_pp=0; store_pp=0; no_pp=no_pp_temp(1:fixed_freedoms_pp)
