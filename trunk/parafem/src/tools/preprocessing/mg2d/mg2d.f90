@@ -1104,7 +1104,7 @@ PROGRAM mg2d
 
   CASE('p123')
 
-    READ(10,*) nels, nxe, nze, nip
+    READ(10,*) iotype, nels, nxe, nze, nip
     READ(10,*) aa, bb, cc, kx, ky, kz
     READ(10,*) tol, limit
     READ(10,*) loaded_freedoms, fixed_freedoms
@@ -1145,6 +1145,10 @@ PROGRAM mg2d
       g_coord(:,g_num(:,iel)) = TRANSPOSE(coord)
     END DO
     
+    SELECT CASE(iotype)
+
+    CASE('parafem')
+
     fname = job_name(1:INDEX(job_name, " ")-1) // ".d" 
     OPEN(11,FILE=fname,STATUS='REPLACE',ACTION='WRITE')
     
@@ -1154,11 +1158,13 @@ PROGRAM mg2d
     DO i = 1, nn
       WRITE(11,'(I12,3E14.6)') i, g_coord(:,i)
     END DO
-  
+ 
+    DEALLOCATE(g_coord)
+ 
     WRITE(11,'(A)') "*ELEMENTS"
     
     DO iel = 1, nels
-      WRITE(11,'(I12,A,8I12,A)') iel, " 3 8 1 ", g_num(1,iel),g_num(4,iel),  &
+      WRITE(11,'(I12,A,8I10,A)') iel, " 3 8 1 ", g_num(1,iel),g_num(4,iel),  &
                                    g_num(8,iel),g_num(5,iel),g_num(2,iel),   &
                                    g_num(3,iel),g_num(7,iel),g_num(6,iel),   &
                                     " 1"
@@ -1236,13 +1242,23 @@ PROGRAM mg2d
      WRITE(15,'(A)') "2"              ! Abaqus node numbering scheme
      WRITE(15,'(A)') "1"              ! Internal mesh partitioning
      WRITE(15,'(7I9)') nels, nn, nr, nip, nod, loaded_freedoms, fixed_freedoms
-     WRITE(15,'(4E12.4,I8)') kx, ky, kz, tol, limit
+     WRITE(15,'(4E12.4,2I8)') kx, ky, kz, tol, limit, nres
 
      CLOSE(15)
 
      PRINT *, "Output new control data file"
      PRINT *, "Job completed"
      PRINT *
+
+   CASE('paraview')
+
+     PRINT *, "  Output for ParaView not yet implemented"; PRINT *, ""
+
+   CASE DEFAULT
+
+     PRINT *, "  Option ", iotype, " not recognised."; PRINT *, ""
+
+   END SELECT
 
 !------------------------------------------------------------------------------
 !------------------------------------------------------------------------------
