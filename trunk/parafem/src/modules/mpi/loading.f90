@@ -667,7 +667,7 @@ MODULE LOADING
     nodof          = UBOUND(rest,2) - 1
     nr             = UBOUND(rest,1)
 
-    ALLOCATE(no_global(fixed_freedoms)
+    ALLOCATE(no_global(fixed_freedoms))
     
     no_global      = 0
     
@@ -724,7 +724,7 @@ MODULE LOADING
     
 
     CALL MPI_ALLREDUCE(no,no_global,fixed_freedoms,MPI_INTEGER,MPI_MAX,  &
-      MPI_COMM_WORK,ier)
+      MPI_COMM_WORLD,ier)
     
     no=no_global
     DEALLOCATE(no_global)
@@ -737,8 +737,9 @@ MODULE LOADING
 !------------------------------------------------------------------------------
 !------------------------------------------------------------------------------
    
-  SUBROUTINE FIND_NO2(G_G_PP,G_NUM_PP,NODE,SENSE,FIXED_FREEDOMS_PP,           &
-                      FIXED_FREEDOMS_START,NO)
+! SUBROUTINE FIND_NO2(G_G_PP,G_NUM_PP,NODE,SENSE,FIXED_FREEDOMS_PP,           &
+!                     FIXED_FREEDOMS_START,NO)
+  SUBROUTINE FIND_NO2(G_G_PP,G_NUM_PP,NODE,SENSE,NO)
 
     !/****f* steering/find_no2
     !*  NAME
@@ -768,8 +769,8 @@ MODULE LOADING
     INTEGER,INTENT(IN)    :: g_num_pp(:,:)
     INTEGER,INTENT(IN)    :: node(:)
     INTEGER,INTENT(IN)    :: sense(:)
-    INTEGER,INTENT(OUT)   :: fixed_freedoms_pp
-    INTEGER,INTENT(OUT)   :: fixed_freedoms_start
+!   INTEGER,INTENT(OUT)   :: fixed_freedoms_pp
+!   INTEGER,INTENT(OUT)   :: fixed_freedoms_start
     INTEGER,INTENT(OUT)   :: no(:)
     INTEGER,ALLOCATABLE   :: no_global(:)
     INTEGER               :: nodof          ! number of degrees of freedom
@@ -820,7 +821,7 @@ MODULE LOADING
     RETURN
 
     CALL MPI_ALLREDUCE(no,no_global,fixed_freedoms,MPI_INTEGER,MPI_MAX,  &
-      MPI_COMM_WORK,ier)
+      MPI_COMM_WORLD,ier)
     
     no=no_global
     DEALLOCATE(no_global)
