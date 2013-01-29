@@ -49,6 +49,7 @@ PROGRAM p123
    eld(ntot),no_f(1),no_local_temp_f(1),kcz(ntot,ntot),                  &
    storkc_pp(ntot,ntot,nels_pp))
 !----------  find the steering array and equations per process -----------
+ timest(2)=elap_time()
  g_g_pp=0; neq=0
  IF(nr>0) THEN; CALL rearrange_2(rest)
    elements_1: DO iel = 1, nels_pp
@@ -65,7 +66,7 @@ PROGRAM p123
    WRITE(11,'(A,I5,A)')"This job ran on ", npes,"  processes"
    WRITE(11,'(A,3(I7,A))')"There are ",nn," nodes",nr,                   &
      " restrained and   ",neq," equations"
-   WRITE(11,'(A,F10.4)')"Time after setup is  : ",elap_time()-timest(1)
+   WRITE(11,'(A,F10.4)')"Time after setup is ",elap_time()-timest(1)
  END IF
  ALLOCATE(p_pp(neq_pp),r_pp(neq_pp),x_pp(neq_pp),xnew_pp(neq_pp),        &
    u_pp(neq_pp),diag_precon_pp(neq_pp),d_pp(neq_pp))
@@ -142,7 +143,7 @@ PROGRAM p123
  END IF
  d_pp=diag_precon_pp*r_pp; p_pp=d_pp; x_pp=zero
 !--------------- preconditioned conjugate gradient iterations ------------
- iters=0; timest(2)=elap_time()
+ iters=0; timest(3)=elap_time()
  iterations: DO 
    iters=iters+1; u_pp=zero; pmul_pp=zero; utemp_pp=zero 
    CALL gather(p_pp,pmul_pp) 
@@ -163,17 +164,19 @@ PROGRAM p123
    CALL checon_par(xnew_pp,tol,converged,x_pp)    
    IF(converged .OR. iters==limit) EXIT
  END DO iterations
- timest(3)=elap_time()
+ timest(4)=elap_time()
  IF(numpe==it)THEN
-   WRITE(11,'(A,I5)')"The number of iterations to convergence was  ",iters 
-   WRITE(11,'(A,E12.4)')"The total load is                            ",q
+   WRITE(11,'(A,I5)')"The number of iterations to convergence was ",iters 
+   WRITE(11,'(A,E12.4)')"The total load is ",q
    WRITE(11,'(A)')   "The potentials are:"
    WRITE(11,'(A)') " Freedom       Potential"
    DO i=1,4
      WRITE(11,'(I8,A,E12.4)') nres+i-1, "     ", xnew_pp(is+i-1)
    END DO
-   WRITE(11,'(A,F10.4)') "The time spent in the solver was  ",            &
+   WRITE(11,'(A,F10.4)')"Integration, preconditioning and loading took ",&
      timest(3)-timest(2)
+   WRITE(11,'(A,F10.4)') "Time spent in the solver was ",                &
+     timest(4)-timest(3)
  END IF
 !----------------------- output nodal temperatures -----------------------
  IF(numpe==1)THEN; WRITE(ch,'(I6.6)') numpe
@@ -189,7 +192,7 @@ PROGRAM p123
    node_start,node_end,utemp_pp,ptl_pp,1)
  CALL dismsh_ensi_p(12,1,nodes_pp,npes,numpe,1,ptl_pp)
  IF(numpe==it) THEN
-   WRITE(11,'(A,F10.4)') "This analysis took : ",elap_time()-timest(1)
+   WRITE(11,'(A,F10.4)') "This analysis took ",elap_time()-timest(1)
  END IF
  IF(numpe==it) CLOSE(11); IF(numpe==1) CLOSE(12)
  CALL shutdown()
