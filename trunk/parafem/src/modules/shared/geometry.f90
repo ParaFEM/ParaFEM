@@ -33,10 +33,19 @@ MODULE GEOMETRY
    !*                           box
    !*
    !*    NS_LOADING             Simple lid displacement of a square 
-   !*                           Navier-Stokes patch 
+   !*                           Navier-Stokes patch
+   !*
+   !*    BIOT_LOADING           Simple loading of a square  Biot patch nle 
+   !*                           of surface width
    !*
    !*    NS_CUBE_BC20           Boundary conditions for simple Navier-Stokes 
    !*                           20-node element cuboid
+   !*
+   !*    BIOT_CUBE_BC20         Boundary conditions for simple Biot 
+   !*                           20-node element cuboid
+   !*
+   !*    G_T_G                  Finds g from g_t (Biot)
+   !*
    !*  AUTHOR
    !*    L. Margetts
    !*    I.M. Smith
@@ -811,6 +820,115 @@ MODULE GEOMETRY
 !---------------------------------------------------------------------------
 !---------------------------------------------------------------------------
 
+ SUBROUTINE biot_cube_bc20(nxe,nye,nze,rest)
+ ! boundary conditions for simple Biot 20-node element cuboid  
+ IMPLICIT NONE
+ INTEGER,INTENT(IN)::nxe,nye,nze; INTEGER,INTENT(OUT)::rest(:,:)
+ INTEGER:: i,j,k,l,m, count,node
+ node = 0;  count = 0; k = 2*nxe+1; l = nxe+1
+ DO m = 0 , nye
+        IF(m==0 .OR. m==nye) THEN    ! front or back
+         DO j=1,nze
+            DO i=1,k
+               IF((j==1.AND.i==1).OR.(j==1.AND.i==k)) THEN 
+                  node = node +1; count = count + 1
+                  rest(count,1)=node; rest(count,2:)=(/0,0,1,0/)
+               ELSE IF (j==1) THEN
+                  node = node +1; count = count + 1
+                  rest(count,1)=node; rest(count,2:)=(/1,0,1,0/)
+               ELSE IF ((j>1.AND.i==1).OR.(j>1.AND.i==k)) THEN
+                  node = node +1; count = count + 1
+                  rest(count,1)=node; rest(count,2:)=(/0,0,1,1/)
+               ELSE IF ((j>1.AND.mod(i,2)/=0)) THEN
+                  node = node +1 ; count = count + 1
+                  rest(count,1)=node; rest(count,2:)=(/1,0,1,1/)
+               ELSE IF (mod(i,2)==0) THEN
+                  node = node +1; count = count + 1
+                  rest(count,1)=node; rest(count,2:)=(/1,0,1,0/)
+               END IF
+            END DO
+            DO i=1,l
+               IF(i==1.OR.i==l) THEN 
+                  node = node +1; count = count + 1
+                  rest(count,1)=node; rest(count,2:)=(/0,0,1,0/)
+               ELSE
+                  node = node +1; count = count + 1
+                  rest(count,1)=node; rest(count,2:)=(/1,0,1,0/)
+               END IF
+            END DO
+         END DO
+         DO i = 1,k
+            IF(mod(i,2)/=0) THEN
+               node = node +1; count = count + 1
+               rest(count,1)=node; rest(count,2:)=(/0,0,0,1/)
+            ELSE
+               node = node + 1; count = count + 1
+               rest(count,1)=node; rest(count,2:)=(/0,0,0,0/)
+            END IF
+         END DO
+        ELSE
+         DO j=1,nze        !  interiors
+            DO i=1,k
+               IF((j==1.AND.i==1).OR.(j==1.AND.i==k)) THEN 
+                  node = node +1; count = count + 1
+                  rest(count,1)=node; rest(count,2:)=(/0,1,1,0/)
+               ELSE IF (j==1) THEN
+                  node = node +1; count = count + 1
+                  rest(count,1)=node; rest(count,2:)=(/1,1,1,0/)
+               ELSE IF ((j>1.AND.i==1).OR.(j>1.AND.i==k)) THEN
+                  node = node +1; count = count + 1
+                  rest(count,1)=node; rest(count,2:)=(/0,1,1,1/)
+               ELSE IF (j>1.AND.mod(i,2)/=0) THEN
+                  node = node +1 
+               ELSE IF (j>1.AND.mod(i,2)==0) THEN
+                  node = node +1; count = count + 1
+                  rest(count,1)=node; rest(count,2:)=(/1,1,1,0/)
+               END IF
+            END DO
+            DO i=1,l
+               IF(i==1.OR.i==l) THEN 
+                  node = node +1; count = count + 1
+                  rest(count,1)=node; rest(count,2:)=(/0,1,1,0/)
+               ELSE
+                  node = node +1; count = count + 1
+                  rest(count,1)=node; rest(count,2:)=(/1,1,1,0/)
+               END IF
+            END DO
+         END DO
+         DO i = 1,k
+            IF(mod(i,2)/=0) THEN
+               node = node +1; count = count + 1
+               rest(count,1)=node; rest(count,2:)=(/0,0,0,1/)
+            ELSE
+               node = node + 1; count = count + 1
+               rest(count,1)=node; rest(count,2:)=(/0,0,0,0/)
+            END IF
+         END DO
+        END IF
+        IF(m<nye) THEN
+         DO j=1,nze
+            DO i=1,l
+               IF(i==1.OR.i==l) THEN
+                node = node + 1; count = count + 1
+                rest(count,1)=node; rest(count,2:)=(/0,1,1,0/)
+               ELSE
+                node = node + 1; count = count + 1
+                rest(count,1)=node; rest(count,2:)=(/1,1,1,0/)
+               END IF
+            END DO
+         END DO
+         DO i=1,l
+             node = node + 1; count = count + 1
+             rest(count,1)=node; rest(count,2:)=(/0,0,0,0/)
+         END DO
+        END IF
+ END DO
+ END SUBROUTINE biot_cube_bc20
+
+!------------------------------------------------------------------------------
+!------------------------------------------------------------------------------
+!------------------------------------------------------------------------------
+
  SUBROUTINE ns_loading(no,nxe,nye,nze)
 
    !/****f* geometry/ns_loading
@@ -864,6 +982,75 @@ MODULE GEOMETRY
    RETURN
    
  END SUBROUTINE ns_loading
+
+!---------------------------------------------------------------------------
+!---------------------------------------------------------------------------
+!---------------------------------------------------------------------------
+
+ SUBROUTINE biot_loading(nxe,nze,nle,no,val)
+! simple loading of a square  Biot patch  nle  of surface width
+ IMPLICIT NONE
+ INTEGER,INTENT(IN)::nxe,nze,nle; INTEGER,INTENT(OUT)::no(:)
+ REAL(iwp),INTENT(OUT)::val(:)  ;  INTEGER::f1,f2,f3,count,i,j
+ f1 = 7*nxe*nze + nze; f2 = (3*nxe+1)*nze; f3 = 10*nxe*nze + 3*nze; count=1
+ DO  i = 1,4*nle+1,2   ! front face
+   no(count) = i
+   IF(i==1.OR.i==4*nle+1) THEN
+    val(count) = -1.
+   ELSE IF (mod(i+1,4)==0) THEN
+    val(count) = 4.
+   ELSE
+    val(count) = -2.
+   END IF
+   count = count + 1
+ END DO
+ DO j = 0 , nle - 1    ! other face pairs
+   DO i = 1 , 3*nle + 1 , 3
+    no(count) = i + f1 + j*(f2 + f3) + 1
+    IF(i==1.OR.i==3*nle+1) THEN
+     val(count) = 4.
+    ELSE
+     val(count) = 8.
+    END IF
+    count = count + 1
+   END DO
+   DO i = 1 , 6*nle+1 , 3
+    no(count) = i + f1 +(j+1) * f2 + j * f3  + 1
+    IF(j/=nle-1) THEN
+     IF(i==1.OR.i==6*nle+1) THEN
+      val(count) = -2.
+     ELSE IF (mod(i,2)==0) THEN
+      val(count) = 8.
+     ELSE
+      val(count) = -4.
+     END IF
+    ELSE
+     IF(i==1.OR.i==6*nle+1) THEN
+      val(count) = -1.
+     ELSE IF (mod(i,2)==0) THEN
+      val(count) = 4.
+     ELSE
+      val(count) = -2.
+     END IF
+    END IF
+   count = count + 1
+   END DO
+  END DO
+ END SUBROUTINE biot_loading
+
+!-------------------------------------------------------------------------
+!-------------------------------------------------------------------------
+!-------------------------------------------------------------------------
+
+ SUBROUTINE g_t_g(nod,g_t,g) 
+ ! finds g from g_t (Biot)
+ IMPLICIT NONE
+ INTEGER,INTENT(IN)::nod,g_t(:); INTEGER,INTENT(OUT)::g(:); INTEGER:: i
+             DO i=1,nod;g(3*i-2)=g_t(4*i-3); g(3*i-1)=g_t(4*i-2)
+                        g(3*i)=g_t(4*i-1) ; END DO
+             DO i=1,4 ; g(i+60) = g_t(8*i-4)
+                        g(i+64) = g_t(8*i+44); END DO
+ END SUBROUTINE g_t_g
 
 !---------------------------------------------------------------------------
 !---------------------------------------------------------------------------
