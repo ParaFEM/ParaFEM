@@ -26,6 +26,7 @@ MODULE INPUT
   !*    READ_NELS_PP           Reads number of elements assigned to processor
   !*    READ_P121              Reads the control data for program p121
   !*    BCAST_INPUTDATA_P123   Reads the control data for program p123
+  !*    BCAST_INPUTDATA_P127   Reads the control data for program p127
   !*    READ_P122              Reads the control data for program p122
   !*    READ_P123              Reads the control data for program p123
   !*    READ_P124_4            Reads the control data for program p124, 4th ed
@@ -2931,6 +2932,133 @@ MODULE INPUT
   end if
   
   END SUBROUTINE bcast_inputdata_p123
+
+!------------------------------------------------------------------------------
+!------------------------------------------------------------------------------
+!------------------------------------------------------------------------------
+
+SUBROUTINE bcast_inputdata_p127 (numpe,npes,nels,nxe,nze, aa,bb,cc,       &
+                        nip,kx,ky,kz,e,v,dtim,nstep,theta,cjits,cjtol)
+
+IMPLICIT NONE
+
+
+integer, INTENT(INOUT)::numpe,npes,nels,nxe,nze,nip,nstep,cjits  
+real(iwp), INTENT(INOUT)   ::aa,bb,cc,kx,ky,kz,e,v,dtim,theta,cjtol
+!
+! Assign temporary buffer for broadcast data
+!
+
+bufsizer=6*ilength + 11*rlength
+
+!------------------------------------------------------------------------------
+!---- Broadcast buffersize to allow slaves to allocate tempbuf
+!------------------------------------------------------------------------------
+
+call MPI_BCAST(bufsizer,1,MPI_INTEGER,npes-1,MPI_COMM_WORLD,ier)
+
+bufdecl=bufsizer/4
+allocate(tempbuf(bufdecl))
+
+!------------------------------------------------------------------------------
+!---- Pack all data ready for broadcast, broadcast, receive and unpack
+!------------------------------------------------------------------------------
+
+if (numpe==npes) then
+
+  position = 0
+
+!---- integers
+
+CALL MPI_PACK (nels,1,MPI_INTEGER,tempbuf,bufsizer,position,                  &
+     &      MPI_COMM_WORLD,ier) !
+CALL MPI_PACK (nxe,1,MPI_INTEGER,tempbuf,bufsizer,position,                   &
+      &      MPI_COMM_WORLD,ier) !
+CALL MPI_PACK (nze,1,MPI_INTEGER,tempbuf,bufsizer,position,                   &
+     &      MPI_COMM_WORLD,ier) !
+CALL MPI_PACK (nip,1,MPI_INTEGER,tempbuf,bufsizer,position,                   &
+     &      MPI_COMM_WORLD,ier) !
+CALL MPI_PACK (nstep,1,MPI_INTEGER,tempbuf,bufsizer,position,                 &
+     &      MPI_COMM_WORLD,ier) !
+CALL MPI_PACK (cjits,1,MPI_INTEGER,tempbuf,bufsizer,position,       &
+     &      MPI_COMM_WORLD,ier) !
+
+!----- reals
+
+CALL MPI_PACK (aa,1,MPI_REAL8,tempbuf,bufsizer,position,                   &
+     &      MPI_COMM_WORLD,ier) !
+CALL MPI_PACK (bb,1,MPI_REAL8,tempbuf,bufsizer,position,                   &
+     &      MPI_COMM_WORLD,ier) !
+CALL MPI_PACK (cc,1,MPI_REAL8,tempbuf,bufsizer,position,                   &
+     &      MPI_COMM_WORLD,ier) !
+CALL MPI_PACK (kx,1,MPI_REAL8,tempbuf,bufsizer,position,                  &
+     &      MPI_COMM_WORLD,ier) !
+CALL MPI_PACK (ky,1,MPI_REAL8,tempbuf,bufsizer,position,                   &
+     &      MPI_COMM_WORLD,ier) !
+CALL MPI_PACK (kz,1,MPI_REAL8,tempbuf,bufsizer,position,                   &
+     &      MPI_COMM_WORLD,ier) !
+CALL MPI_PACK (e,1,MPI_REAL8,tempbuf,bufsizer,position,                   &
+     &      MPI_COMM_WORLD,ier) !
+CALL MPI_PACK (v,1,MPI_REAL8,tempbuf,bufsizer,position,                   &
+     &      MPI_COMM_WORLD,ier) !
+CALL MPI_PACK (dtim,1,MPI_REAL8,tempbuf,bufsizer,position,                   &
+     &      MPI_COMM_WORLD,ier) !
+CALL MPI_PACK (theta,1,MPI_REAL8,tempbuf,bufsizer,position,                   &
+     &      MPI_COMM_WORLD,ier) !
+CALL MPI_PACK (cjtol,1,MPI_REAL8,tempbuf,bufsizer,position,                   &
+     &      MPI_COMM_WORLD,ier) !
+
+end if
+
+call MPI_BCAST(tempbuf,bufsizer,MPI_BYTE,npes-1,MPI_COMM_WORLD,ier)
+
+if (numpe/=npes) then
+
+position=0
+
+!---- integers
+
+CALL MPI_UNPACK (tempbuf,bufsizer,position,nels,1,MPI_INTEGER,                &
+     &      MPI_COMM_WORLD,ier) !
+CALL MPI_UNPACK (tempbuf,bufsizer,position,nxe,1,MPI_INTEGER,                 &
+     &      MPI_COMM_WORLD,ier) !
+CALL MPI_UNPACK (tempbuf,bufsizer,position,nze,1,MPI_INTEGER,                 &
+     &      MPI_COMM_WORLD,ier) !
+CALL MPI_UNPACK (tempbuf,bufsizer,position,nip,1,MPI_INTEGER,                 &
+     &      MPI_COMM_WORLD,ier) !
+CALL MPI_UNPACK (tempbuf,bufsizer,position,nstep,1,MPI_INTEGER,               &
+     &      MPI_COMM_WORLD,ier) !
+CALL MPI_UNPACK (tempbuf,bufsizer,position,cjits,1,MPI_INTEGER,     &
+     &      MPI_COMM_WORLD,ier) !
+
+!---- reals
+
+CALL MPI_UNPACK (tempbuf,bufsizer,position,aa,1,MPI_REAL8,                 &
+     &      MPI_COMM_WORLD,ier) !
+CALL MPI_UNPACK (tempbuf,bufsizer,position,bb,1,MPI_REAL8,                 &
+     &      MPI_COMM_WORLD,ier) !
+CALL MPI_UNPACK (tempbuf,bufsizer,position,cc,1,MPI_REAL8,                  &
+     &      MPI_COMM_WORLD,ier) !
+CALL MPI_UNPACK (tempbuf,bufsizer,position,kx,1,MPI_REAL8,                &
+     &      MPI_COMM_WORLD,ier) !
+CALL MPI_UNPACK (tempbuf,bufsizer,position,ky,1,MPI_REAL8,              &   
+     &      MPI_COMM_WORLD,ier) !
+CALL MPI_UNPACK (tempbuf,bufsizer,position,kz,1,MPI_REAL8,               &
+     &      MPI_COMM_WORLD,ier) !
+CALL MPI_UNPACK (tempbuf,bufsizer,position,e,1,MPI_REAL8,               &
+     &      MPI_COMM_WORLD,ier) !
+CALL MPI_UNPACK (tempbuf,bufsizer,position,v,1,MPI_REAL8,               &
+     &      MPI_COMM_WORLD,ier) !
+CALL MPI_UNPACK (tempbuf,bufsizer,position,dtim,1,MPI_REAL8,               &
+     &      MPI_COMM_WORLD,ier) !
+CALL MPI_UNPACK (tempbuf,bufsizer,position,theta,1,MPI_REAL8,               &
+     &      MPI_COMM_WORLD,ier) !
+CALL MPI_UNPACK (tempbuf,bufsizer,position,cjtol,1,MPI_REAL8,               &
+     &      MPI_COMM_WORLD,ier) !
+
+end if
+
+END SUBROUTINE bcast_inputdata_p127
 
 !------------------------------------------------------------------------------
 !------------------------------------------------------------------------------
