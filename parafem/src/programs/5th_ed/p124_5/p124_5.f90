@@ -9,7 +9,7 @@ PROGRAM p124
  USE geometry; USE new_library; IMPLICIT NONE
 ! neq,ntot are now global variables - not declared
  INTEGER, PARAMETER::ndim=3,nodof=1,nprops=5
- INTEGER::nod,nn,nr,nip,i,j,k,l,iters,limit,iel,nstep,npri,nres,it,is,   &
+ INTEGER::nod,nn,nr,nip,i,j,k,l,iters,limit,iel,nstep,npri,nres=1,it,is, &
    nlen,node_end,node_start,nodes_pp,loaded_freedoms,fixed_freedoms,     &
    loaded_nodes,fixed_freedoms_pp,fixed_freedoms_start,                  &
    loaded_freedoms_pp,loaded_freedoms_start,nels,ndof,ielpe,npes_pp,     &
@@ -18,13 +18,13 @@ PROGRAM p124
    rho,cp,val0
  REAL(iwp),PARAMETER::zero=0.0_iwp,penalty=1.e20_iwp,t0=0.0_iwp
  CHARACTER(LEN=15)::element; CHARACTER(LEN=50)::argv,fname
- LOGICAL::converged=.false.
+ CHARACTER(LEN=6)::ch; LOGICAL::converged=.false.
  REAL(iwp),ALLOCATABLE::loads_pp(:),u_pp(:),p_pp(:),points(:,:),kay(:,:),&
    coord(:,:),fun(:),jac(:,:),der(:,:),deriv(:,:),weights(:),d_pp(:),    &
    kc(:,:),pm(:,:),funny(:,:),p_g_co_pp(:,:,:),storka_pp(:,:,:),         &
    storkb_pp(:,:,:),x_pp(:),xnew_pp(:),pmul_pp(:,:),utemp_pp(:,:),       &
    diag_precon_pp(:),diag_precon_tmp(:,:),g_coord_pp(:,:,:),timest(:),   &
-   disp_pp(:),eld_pp(:,:),val(:,:),val_f(:),store_pp(:),r_pp(:),         &
+   ttr_pp(:),eld_pp(:,:),val(:,:),val_f(:),store_pp(:),r_pp(:),          &
    kcx(:,:),kcy(:,:),kcz(:,:),eld(:),col(:,:),row(:,:),storkc_pp(:,:,:), &
    prop(:,:)
  INTEGER,ALLOCATABLE::rest(:,:),g(:),num(:),g_num_pp(:,:),g_g_pp(:,:),   &
@@ -33,8 +33,8 @@ PROGRAM p124
  ALLOCATE(timest(20)); timest=zero; timest(1)=elap_time()
  CALL find_pe_procs(numpe,npes); CALL getname(argv,nlen)
  CALL read_p124(argv,numpe,dtim,element,fixed_freedoms,limit,            &
-   loaded_nodes,meshgen,nels,nip,nn,nod,npri,nr,nstep,partitioner,theta, &
-   tol,np_types,val0)
+   loaded_nodes,meshgen,nels,nip,nn,nod,npri,nr,nres,nstep,partitioner,  &
+   theta,tol,np_types,val0)
  CALL calc_nels_pp(argv,nels,npes,numpe,partitioner,nels_pp)
  ndof=nod*nodof; ntot=ndof
  ALLOCATE(g_num_pp(nod,nels_pp),g_coord_pp(nod,ndim,nels_pp),            &
@@ -43,16 +43,16 @@ PROGRAM p124
  IF (nr>0) THEN; ALLOCATE(rest(nr,nodof+1)); rest=0; END IF
  CALL read_elements(argv,iel_start,nn,npes,numpe,etype_pp,g_num_pp)
  IF(meshgen==2) CALL abaqus2sg(element,g_num_pp)
- CALL read_g_coord_pp(job_name,g_num_pp,nn,npes,numpe,g_coord_pp)
- IF (nr>0) CALL read_rest(job_name,numpe,rest)
- fname=argv(1:INDEX(job_name, " ")-1) // ".mat"  
+ CALL read_g_coord_pp(argv,g_num_pp,nn,npes,numpe,g_coord_pp)
+ IF (nr>0) CALL read_rest(argv,numpe,rest)
+ fname=argv(1:INDEX(argv, " ")-1) // ".mat"  
  CALL read_materialValue(prop,fname,numpe,npes)
  ALLOCATE (points(nip,ndim),weights(nip),kay(ndim,ndim),coord(nod,ndim), &
    fun(nod),jac(ndim,ndim),der(ndim,nod),g(ntot),deriv(ndim,nod),        &
    pm(ntot,ntot),kc(ntot,ntot),funny(1,nod),num(nod),                    &
    g_g_pp(ntot,nels_pp),storka_pp(ntot,ntot,nels_pp),                    &
    utemp_pp(ntot,nels_pp),storkb_pp(ntot,ntot,nels_pp),                  &
-   pmul_pp(ntot,nels_pp),(kcx(ntot,ntot),kcy(ntot,ntot),kcz(ntot,ntot),  &                     &
+   pmul_pp(ntot,nels_pp),kcx(ntot,ntot),kcy(ntot,ntot),kcz(ntot,ntot),   &
    eld(ntot),col(ntot,1),row(1,ntot),storkc_pp(ntot,ntot,nels_pp))
 !----------  find the steering array and equations per process -----------
  timest(2)=elap_time()
@@ -104,13 +104,13 @@ PROGRAM p124
  DEALLOCATE(diag_precon_tmp)  
 !------------- read in fixed freedoms and assign to equations ------------
  IF(fixed_freedoms > 0) THEN
-   ALLOCATE(node(fixed_freedoms),no(fixed_freedoms),                         &
-     no_pp_temp(fixed_freedoms),sense(fixed_freedoms),                  &
+   ALLOCATE(node(fixed_freedoms),no(fixed_freedoms),                     &
+     no_pp_temp(fixed_freedoms),sense(fixed_freedoms),                   &
      val_f(fixed_freedoms))
    node=0; no=0; no_pp_temp=0; sense=0; val_f = zero
-   CALL read_fixed(job_name,numpe,node,sense,val_f)
+   CALL read_fixed(argv,numpe,node,sense,val_f)
    CALL find_no2(g_g_pp,g_num_pp,node,sense,no)
-   CALL reindex(ieq_start,no,no_pp_temp,fixed_freedoms_pp,              &
+   CALL reindex(ieq_start,no,no_pp_temp,fixed_freedoms_pp,               &
      fixed_freedoms_start,neq_pp)
    ALLOCATE(no_f_pp(fixed_freedoms_pp),store_pp(fixed_freedoms_pp))
    no_f_pp=0; store_pp=zero; no_f_pp=no_pp_temp(1:fixed_freedoms_pp)
@@ -129,9 +129,9 @@ PROGRAM p124
 !--------------- read in loaded nodes and get starting r_pp --------------
  loaded_freedoms=loaded_nodes ! hack
    IF(loaded_freedoms>0) THEN
-     ALLOCATE(node(loaded_freedoms),val(nodof,loaded_freedoms)           &
+     ALLOCATE(node(loaded_freedoms),val(nodof,loaded_freedoms),          &
        no_pp_temp(loaded_freedoms)); val=zero; node=0; no_pp_temp=0
-     CALL read_loads(job_name,numpe,node,val)
+     CALL read_loads(argv,numpe,node,val)
      CALL reindex(ieq_start,node,no_pp_temp,loaded_freedoms_pp,          &
        loaded_freedoms_start,neq_pp); ALLOCATE(no_pp(loaded_freedoms_pp))
      no_pp=0; no_pp=no_pp_temp(1:loaded_freedoms_pp)
@@ -139,32 +139,23 @@ PROGRAM p124
     END IF
 !------------------------- start time stepping loop ----------------------
  CALL calc_nodes_pp(nn,npes,numpe,node_end,node_start,nodes_pp)
- ALLOCATE(ttr_pp(nodes_pp),(eld_pp(ntot,nels_pp))
+ ALLOCATE(ttr_pp(nodes_pp),eld_pp(ntot,nels_pp))
  ttr_pp=zero; eld_pp=zero
- IF(numpe==it) THEN
+ IF(numpe==it)                                                           &
    WRITE(11,'(A)') " Time  Temperature Iterations "
-
-! IF(numpe==1) THEN
-!   fname   = job_name(1:INDEX(job_name, " ")-1)//".ttr"
-!   OPEN(24, file=fname, status='replace', action='write')
-!   fname   = job_name(1:INDEX(job_name, " ")-1)//".ttrb"
-!   OPEN(25, file=fname, status='replace', action='write',                    &
-!        access='sequential', form='unformatted')
-!   fname   = job_name(1:INDEX(job_name, " ")-1)//".npp"
-!   OPEN(26, file=fname, status='replace', action='write')
-!   label   = "*TEMPERATURE"  
-!   WRITE(26,*) nn
-!   WRITE(26,*) nstep/npri
-!   WRITE(26,*) npes
-! END IF
-
+ IF(numpe==1) THEN
+   OPEN(13, file=argv(1:nlen)//'.npp', status='replace', action='write')
+   WRITE(13,*) nn; WRITE(13,*) nstep/npri; WRITE(13,*) npes
+ END IF
  timesteps: DO j=1,nstep
-    real_time=j*dtim
+    real_time=j*dtim; timest(3)=elap_time()
 !---- apply loads (sources and/or sinks) supplied as a boundary value ----
     loads_pp=zero
-    DO i = 1, loaded_freedoms_pp
-      loads_pp(no_pp(i)-ieq_start+1)=val(loaded_freedoms_start+i-1,1)*dtim
-    END DO;  q=q+SUM_P(loads_pp)
+    IF(loaded_freedoms_pp>0) THEN
+      DO i=1,loaded_freedoms_pp; k=no_pp(i)-ieq_start+1
+        loads_pp(k)=val(loaded_freedoms_start+i-1,1)*dtim
+      END DO;  q=q+SUM_P(loads_pp)
+    END IF
 !- compute RHS of time stepping equation, using storkb_pp, add to loads --
     u_pp=zero; pmul_pp=zero; utemp_pp=zero
     IF(j/=1) THEN
@@ -194,20 +185,19 @@ PROGRAM p124
 !----------------------- output "results" at t=0 -------------------------
       tz=0
       IF(numpe==1)THEN; WRITE(ch,'(I6.6)') tz
-        OPEN(12,file=argv(1:nlen)//".ensi.NDPTL-"//ch,status='replace',       &
+        OPEN(12,file=argv(1:nlen)//".ensi.NDTTR-"//ch,status='replace',  &
           action='write')
         WRITE(12,'(A)')                                                  &
           "Alya Ensight Gold --- Scalar per-node variable file"
         WRITE(12,'(A/A/A)') "part", "    1","coordinates"
       END IF
-      eld_pp=zero; disp_pp=zero; CALL gather(x_pp(1:),eld_pp)
-      CALL scatter_nodes(npes,nn,nels_pp,g_num_pp,nod,nodof,nodes_pp,         &
+      eld_pp=zero; ttr_pp=zero; CALL gather(x_pp(1:),eld_pp)
+      CALL scatter_nodes(npes,nn,nels_pp,g_num_pp,nod,nodof,nodes_pp,    &
         node_start,node_end,eld_pp,ttr_pp,1)
       CALL dismsh_ensi_p(12,1,nodes_pp,npes,numpe,1,ttr_pp)
-!     CALL write_nodal_variable_binary(label,25,tz,nodes_pp,npes,numpe,nodof, &
-!       ttr_pp)
+!     CALL dismsh_pb(12,1,nodes_pp,npes,numpe,1,ttr_pp)
     END IF
-!----- when x=0. p and r are just loads but in general p=r=loads-A*x ----------  
+!----- when x=0. p and r are just loads but in general p=r=loads-A*x -----
     r_pp=zero; pmul_pp=zero; utemp_pp=zero; x_pp=zero
     CALL gather(x_pp,pmul_pp)
     elements_2b: DO iel=1,nels_pp
@@ -236,10 +226,10 @@ PROGRAM p124
       p_pp=d_pp+p_pp*beta
       CALL checon_par(xnew_pp,tol,converged,x_pp)
       IF(converged.OR.iters==limit)EXIT
-    END DO iterations
-    IF(j/npri*npri==j)THEN
-      IF(numpe==1)THEN; WRITE(ch,'(I6.6)') numpe
-        OPEN(12,file=argv(1:nlen)//".ensi.NDTTR-"//ch,status='replace',       &
+    END DO iterations; timest(4)=timest(4)+(elap_time()-timest(3))
+    IF(j/npri*npri==j)THEN; timest(5)=elap_time()
+      IF(numpe==1)THEN; WRITE(ch,'(I6.6)') j
+        OPEN(12,file=argv(1:nlen)//".ensi.NDTTR-"//ch,status='replace',  &
           action='write')
         WRITE(12,'(A)')                                                  &
           "Alya Ensight Gold --- Scalar per-node variable file"
@@ -247,15 +237,17 @@ PROGRAM p124
       END IF; eld_pp=zero; ttr_pp=zero; CALL gather(xnew_pp(1:),eld_pp)
       CALL scatter_nodes(npes,nn,nels_pp,g_num_pp,nod,nodof,nodes_pp,    &
         node_start,node_end,eld_pp,ttr_pp,1)
-      CALL dismsh_ensi_p(12,1,nodes_pp,npes,numpe,1,ptl_pp)
+      CALL dismsh_ensi_p(12,1,nodes_pp,npes,numpe,1,ttr_pp)
+!     CALL dismsh_pb(12,1,nodes_pp,npes,numpe,1,ttr_pp)
       IF(numpe==1) CLOSE(12)
-!     CALL write_nodal_variable_binary(label,25,j,nodes_pp,npes,numpe,   &
-!       nodof,ttr_pp)
       IF(numpe==it) WRITE(11,'(2E12.4,I5)') real_time, xnew_pp(is), iters
+      timest(6)=timest(6)+(elap_time()-timest(5))
     END IF
   END DO timesteps
   IF(numpe==it) THEN
-    WRITE(11,'(A,F10.4)' "This analysis took ",elap_time()-timest(1)
+    WRITE(11,'(A,F10.4)') "The solution phase took ",timest(4)
+    WRITE(11,'(A,F10.4)') "Writing the output took ",timest(6)
+    WRITE(11,'(A,F10.4)') "This analysis took ",elap_time()-timest(1)
     CLOSE(11)
   END IF
   CALL shutdown()
