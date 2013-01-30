@@ -3630,4 +3630,19 @@ end subroutine formupvw
 !---------------------------------------------------------------------------
 !---------------------------------------------------------------------------
 
+  subroutine fmkdke(km,kp,c,ke,kd,theta)
+  ! builds up 'coupled' stiffnesses ke and kd from 'elastic'
+  ! stiffness km , fluid stiffness kp and coupling matrix c
+  implicit none
+  real(iwp),intent(in)::km(:,:),kp(:,:),c(:,:),theta
+  real(iwp),intent(out)::ke(:,:),kd(:,:)
+  integer::idof; idof=size(km,1)
+  ke(1:idof,1:idof)=theta*km; ke(1:idof,idof+1:)=theta*c
+  ke(idof+1:,1:idof)=theta*transpose(c); ke(idof+1:,idof+1:)=-theta**2*kp
+  kd(1:idof,1:idof)=(theta-1.)*km; kd(1:idof,idof+1:)=(theta-1.)*c
+  kd(idof+1:,1:idof)=ke(idof+1:,1:idof)
+  kd(idof+1:,idof+1:)=theta*(1.-theta)*kp
+  end subroutine fmkdke
+
+
 END MODULE NEW_LIBRARY
