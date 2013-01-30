@@ -1,26 +1,20 @@
 PROGRAM p127
 !-------------------------------------------------------------------------
-!      Program 9.5 3-D consolidation of a cuboidal Biot elastic
+!      Program 12.7 3-D consolidation of a cuboidal Biot elastic
 !      solid using 20-node solid hexahedral elements  coupled to 8-node
 !      fluid elements-parallel pcg version - biot_cube
 !-------------------------------------------------------------------------
- USE precision
- USE mp_module
- USE gather_scatter6
- USE utility
- USE timing
- USE global_variables1
- USE new_library
- USE geometry_lib
+!USE mpi_wrapper  !remove comment for serial compilation
+ USE precision; USE global_variables; USE mp_interface; USE loading
+ USE timing; USE maths; USE gather_scatter; USE new_library; USE geometry
  IMPLICIT NONE
-!------- nels,neq,ntot,ndof are now in global_variables1------------------
+! neq,ntot are now global variables - not declared
  INTEGER::nxe,nye,nze,nn,nr,nip,nodof=4,nod=20,nodf=8,nst=6,ndim=3,i,j,k, &
    l,iel,ns,nstep,cjiters,cjits,loaded_freedoms,num_no,no_index_start,n_t,&
    neq_temp,nn_temp,nle,nlen
  REAL(iwp)::kx,ky,kz,e,v,det,dtim,theta,real_time,up,alpha,beta,cjtol,aa, &
    bb,cc,q
- LOGICAL::cj_converged
- CHARACTER(LEN=15)::element='hexahedron',argv
+ LOGICAL::cj_converged; CHARACTER(LEN=15)::element='hexahedron',argv
 !---------------------------- dynamic arrays------------------------------
  REAL(iwp),ALLOCATABLE::dee(:,:),points(:,:),coord(:,:),derivf(:,:),      &
    jac(:,:),kay(:,:),der(:,:),deriv(:,:),weights(:),derf(:,:),funf(:),    &
@@ -32,26 +26,20 @@ PROGRAM p127
  INTEGER,ALLOCATABLE::rest(:,:),g(:),num(:),g_g_pp(:,:),g_num_pp(:,:),    &
    g_t(:),no(:),no_local_temp(:),no_local(:)
 !-------------------------input and initialisation------------------------
- timest(1)=elap_time()
- CALL find_pe_procs(numpe,npes)
- IF(numpe==npes)THEN 
-   CALL getname(argv,nlen)
+ ALLOCATE(timest(20)); timest=zero; timest(1)=elap_time()
+ CALL find_pe_procs(numpe,npes); CALL getname(argv,nlen)
+!CALL read_p127()
+ IF(numpe==1)THEN 
    OPEN(10,FILE=argv(1:nlen)//'.dat',STATUS='OLD',ACTION='READ')
    READ(10,*)nels,nxe,nze,aa,bb,cc,nip,kx,ky,kz,e,v,dtim,nstep,theta,     &
      cjits,cjtol
  END IF
  CALL bcast_inputdata_p127(numpe,npes,nels,nxe,nze,aa,bb,cc,nip,kx,ky,kz, &
    e,v,dtim,nstep,theta,cjits,cjtol)
- CALL calc_nels_pp
- ndof=nod*ndim
- ntot=ndof+nodf
- neq_temp=0
- nn_temp=0
- n_t=nod*nodof
- nye=nels/nxe/nze
- nle=nxe/5
+ CALL calc_nels_pp(argv,nels,npes,numpe,partitioner,nels_pp)
+ ndof=nod*ndim; ntot=ndof+nodf; n_t=nod*nodof
+ nye=nels/nxe/nze; nle=nxe/5; loaded_freedoms=3*nle*nle+4*nle+1
  nr=3*nxe*nye*nze+4*(nxe*nye+nye*nze+nze*nxe)+nxe+nye+nze+2
- loaded_freedoms=3*nle*nle+4*nle+1
  ALLOCATE(dee(nst,nst),points(nip,ndim),coord(nod,ndim),derivf(ndim,nodf),&
    jac(ndim,ndim),kay(ndim,ndim),der(ndim,nod),deriv(ndim,nod),           &
    derf(ndim,nodf),funf(nodf),coordf(nodf,ndim),bee(nst,ndof),            &
@@ -63,35 +51,21 @@ PROGRAM p127
    storkd_pp(ntot,ntot,nels_pp),pmul_pp(ntot,nels_pp),                    &
    utemp_pp(ntot,nels_pp),eld_pp(ntot,nels_pp),no(loaded_freedoms),       &
    val(loaded_freedoms),no_local_temp(loaded_freedoms))
- kay=0.0_iwp
- kay(1,1)=kx
- kay(2,2)=ky
- kay(3,3)=kz
- CALL biot_cube_bc20(nxe,nye,nze,rest)
- CALL rearrange(rest)
- CALL biot_loading(nxe,nze,nle,no,val)
- val=-val*aa*bb/12._iwp
- CALL sample(element,points,weights)
- CALL deemat(dee,e,v)
+ kay=0.0_iwp; kay(1,1)=kx; kay(2,2)=ky; kay(3,3)=kz
+ CALL biot_cube_bc20(nxe,nye,nze,rest); CALL rearrange(rest)
+ CALL biot_loading(nxe,nze,nle,no,val); val=-val*aa*bb/12._iwp
+ CALL sample(element,points,weights); CALL deemat(dee,e,v)
  ielpe=iel_start
 !----------------- loop the elements to  set up global arrays-------------
  elements_1: DO iel=1,nels_pp
    CALL geometry_20bxz(ielpe,nxe,nze,aa,bb,cc,coord,num)
-   CALL find_g3(num,g_t,rest)
-   CALL g_t_g(nod,g_t,g)
-   p_g_co_pp(:,:,iel)=coord
-   g_g_pp(:,iel)=g
-   ielpe=ielpe+1
-   i=MAXVAL(g)
-   j=MAXVAL(num)
-   g_num_pp(:,iel)=num
-   IF(i>neq_temp)neq_temp=i
-   IF(j>nn_temp)nn_temp=j
+   CALL find_g3(num,g_t,rest); CALL g_t_g(nod,g_t,g)
+   g_coord_pp(:,:,iel)=coord; g_g_pp(:,iel)=g; ielpe=ielpe+1
+   i=MAXVAL(g); j=MAXVAL(num); g_num_pp(:,iel)=num
+   IF(i>neq_temp)neq_temp=i; IF(j>nn_temp)nn_temp=j
  END DO elements_1
- neq=reduce(neq_temp)
- nn=reduce(nn_temp)
- CALL calc_neq_pp
- CALL make_ggl(g_g_pp)
+ neq=max_p(neq_temp); nn=max_p(nn_temp); CALL calc_neq_pp
+  CALL calc_npes_pp(npes,npes_pp); CALL make_ggl(g_g_pp)
  IF(numpe==1)THEN
    OPEN(11,FILE=argv(1:nlen)//'.res',STATUS='REPLACE',ACTION='WRITE')              
    WRITE(11,'(A,I5,A)')"This job ran on ",npes,"  processors"
@@ -109,41 +83,27 @@ PROGRAM p127
  END IF
  ALLOCATE(loads_pp(neq_pp),ans_pp(neq_pp),p_pp(neq_pp),x_pp(neq_pp),      &
    xnew_pp(neq_pp),u_pp(neq_pp),diag_precon_pp(neq_pp),d_pp(neq_pp))
- loads_pp=.0_iwp
- p_pp=.0_iwp
- xnew_pp=.0_iwp
- diag_precon_pp=.0_iwp
+ loads_pp=.0_iwp; p_pp=.0_iwp; xnew_pp=.0_iwp; diag_precon_pp=.0_iwp
  diag_precon_tmp=.0_iwp
 !-------- element stiffness integration , storage and preconditioner ----- 
  elements_2: DO iel=1,nels_pp 
-   coord=p_g_co_pp(:,:,iel)
-   coordf(1:4,:)=coord(1:7:2,:)
-   coordf(5:8,:)=coord(13:20:2,:)
-   km=.0_iwp
-   c=.0_iwp
-   kc=.0_iwp
+   coord=g_coord_pp(:,:,iel); coordf(1:4,:)=coord(1:7:2,:)
+   coordf(5:8,:)=coord(13:20:2,:); km=zero; c=zero; kc=zero
    gauss_points_1: DO i=1,nip
-     CALL shape_der(der,points,i)
-     jac=MATMUL(der,coord)
-     det=determinant(jac)
-     CALL invert(jac)
-     deriv=MATMUL(jac,der)
-     CALL beemat(bee,deriv)
+     CALL shape_der(der,points,i); jac=MATMUL(der,coord)
+     det=determinant(jac); CALL invert(jac)
+     deriv=MATMUL(jac,der); CALL beemat(bee,deriv)
      vol(:)=bee(1,:)+bee(2,:)+bee(3,:)
      km=km+MATMUL(MATMUL(TRANSPOSE(bee),dee),bee)*det*weights(i)
 !--------------------------now the fluid contribution---------------------
-     CALL shape_fun(funf,points,i)
-     CALL shape_der(derf,points,i)
+     CALL shape_fun(funf,points,i); CALL shape_der(derf,points,i)
      derivf=MATMUL(jac,derf)
      kc=kc+MATMUL(MATMUL(TRANSPOSE(derivf),kay),derivf)*det*weights(i)*dtim
-     DO l=1,nodf
-       volf(:,l)=vol(:)*funf(l)
-     END DO
+     DO l=1,nodf; volf(:,l)=vol(:)*funf(l); END DO
      c=c+volf*det*weights(i)               
    END DO gauss_points_1
    CALL fmkdke(km,kc,c,ke,kd,theta)
-   storke_pp(:,:,iel)=ke
-   storkd_pp(:,:,iel)=kd
+   storke_pp(:,:,iel)=ke; storkd_pp(:,:,iel)=kd
    DO k=1,ndof
      diag_precon_tmp(k,iel)=diag_precon_tmp(k,iel)+theta*km(k,k)
    END DO
@@ -156,67 +116,50 @@ PROGRAM p127
  diag_precon_pp=1._iwp/diag_precon_pp
  DEALLOCATE(diag_precon_tmp)
 !----------------------------loaded freedoms -----------------------------
- CALL reindex_fixed_nodes(ieq_start,no,no_local_temp,num_no,no_index_start)
- ALLOCATE(no_local(1:num_no))
- no_local=no_local_temp(1:num_no)
+ CALL reindex(ieq_start,no,no_local_temp,num_no,no_index_start)
+ ALLOCATE(no_local(1:num_no)); no_local=no_local_temp(1:num_no)
  DEALLOCATE(no_local_temp)
 ! ------------------------ enter the time-stepping loop-------------------
- real_time=.0_iwp     
+ real_time=zero     
  time_steps: DO ns=1,nstep
-   ans_pp=.0_iwp
-   real_time=real_time+dtim
-   IF(numpe==1)THEN
-     WRITE(11,'(A,E12.4)')"The time is",real_time
-   END IF
-   pmul_pp=.0_iwp
-   utemp_pp=.0_iwp
+   ans_pp=zero; real_time=real_time+dtim
+   IF(numpe==1) WRITE(11,'(A,E12.4)')"The time is", real_time
+   pmul_pp=zero; utemp_pp=zero
    CALL gather(loads_pp,pmul_pp)
    elements_3: DO iel=1,nels_pp
      utemp_pp(:,iel)=MATMUL(storkd_pp(:,:,iel),pmul_pp(:,iel))
-   END DO elements_3
-   CALL scatter(ans_pp,utemp_pp)
+   END DO elements_3; CALL scatter(ans_pp,utemp_pp)
 !--------------------------   ramp loading  ------------------------------
    IF(ns>10)THEN
-     DO i=1,num_no
-       j=no_local(i)-ieq_start+1
+     DO i=1,num_no; j=no_local(i)-ieq_start+1
        ans_pp(j)=ans_pp(j)+val(no_index_start+i-1) 
      END DO
    ELSE IF(ns<=10)THEN
-     DO i=1,num_no
-       j=no_local(i)-ieq_start+1
+     DO i=1,num_no; j=no_local(i)-ieq_start+1
        ans_pp(j)=ans_pp(j)+val(no_index_start+i-1)*                       &
          (.1_iwp*ns+.1_iwp*(theta-1._iwp))
      END DO
    END IF
-   d_pp=diag_precon_pp*ans_pp
-   p_pp=d_pp
-   x_pp=.0_iwp  ! depends on starting x = .0
+   d_pp=diag_precon_pp*ans_pp; p_pp=d_pp
+   x_pp=zero  ! depends on starting x = zero
 !-----------------   solve the simultaneous equations by pcg -------------
    cjiters=0
    conjugate_gradients: DO 
-     cjiters=cjiters+1
-     u_pp=.0_iwp
-     pmul_pp=.0_iwp
-     u_pp=.0_iwp
+     cjiters=cjiters+1; u_pp=zero; pmul_pp=zero; u_pp=zero
      CALL gather(p_pp,pmul_pp)
      elements_4: DO iel=1,nels_pp
        utemp_pp(:,iel)=MATMUL(storke_pp(:,:,iel),pmul_pp(:,iel))
-     END DO elements_4
-     CALL scatter(u_pp,utemp_pp)
+     END DO elements_4; CALL scatter(u_pp,utemp_pp)
 !----------------------------pcg process ---------------------------------
-     up=DOT_PRODUCT_P(ans_pp,d_pp)
-     alpha=up/DOT_PRODUCT_P(p_pp,u_pp)
-     xnew_pp=x_pp+p_pp*alpha
-     ans_pp=ans_pp-u_pp*alpha
-     d_pp=diag_precon_pp*ans_pp
-     beta=DOT_PRODUCT_P(ans_pp,d_pp)/up
+     up=DOT_PRODUCT_P(ans_pp,d_pp); alpha=up/DOT_PRODUCT_P(p_pp,u_pp)
+     xnew_pp=x_pp+p_pp*alpha; ans_pp=ans_pp-u_pp*alpha
+     d_pp=diag_precon_pp*ans_pp; beta=DOT_PRODUCT_P(ans_pp,d_pp)/up
      p_pp=d_pp+p_pp*beta
      CALL checon_par(xnew_pp,x_pp,cjtol,cj_converged,neq_pp)
      IF(cj_converged.OR.cjiters==cjits)EXIT
    END DO conjugate_gradients
 !----------- end of pcg process-------------------------------------------
-   ans_pp=xnew_pp
-   loads_pp=ans_pp
+   ans_pp=xnew_pp; loads_pp=ans_pp
    IF(numpe==1)THEN
      WRITE(11,'(A,I5,A)')                                                 &
        "Conjugate gradients took ",cjiters,"  iterations to converge"
@@ -224,20 +167,14 @@ PROGRAM p127
      WRITE(11,'(4E12.4)')ans_pp(1:4)
    END IF
 !-------------------recover stresses at  gauss-points --------------------
-   eld_pp=.0_iwp
-   CALL gather(ans_pp,eld_pp)
-   iel=1
-   coord=p_g_co_pp(:,:,iel)
-   eld=eld_pp(:,iel)
+   eld_pp=zero; CALL gather(ans_pp,eld_pp)
+   iel=1; coord=g_coord_pp(:,:,iel); eld=eld_pp(:,iel)
    IF(numpe==1)WRITE(11,'(A,I5,A)')                                       &
      "The Gauss Point effective stresses for element",iel,"  are"
    gauss_pts_2: DO i=1,nip
-     CALL shape_der(der,points,i)
-     jac=MATMUL(der,coord)
-     CALL invert(jac)
-     deriv=MATMUL(jac,der)
-     CALL beemat(bee,deriv)
-     sigma=MATMUL(dee,MATMUL(bee,eld))
+     CALL shape_der(der,points,i); jac=MATMUL(der,coord)
+     CALL invert(jac); deriv=MATMUL(jac,der)
+     CALL beemat(bee,deriv); sigma=MATMUL(dee,MATMUL(bee,eld))
      IF(numpe==1.AND.i==1)THEN
        WRITE(11,'(A,I5)')"Point  ",i
        WRITE(11,'(6E12.4)')sigma
