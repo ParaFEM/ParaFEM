@@ -32,11 +32,11 @@ PROGRAM mg2d
   INTEGER                :: nev,ncv
   INTEGER                :: meshgen,partitioner
   INTEGER                :: nstep,npri,count
-  INTEGER                :: np_types
+  INTEGER                :: np_types,nprops
   INTEGER                :: prnwidth,remainder
   REAL(iwp),PARAMETER    :: zero = 0.0_iwp, twelth = 1.0_iwp/12.0_iwp
   REAL(iwp)              :: aa,bb,cc
-  REAL(iwp)              :: kx,ky,kz
+  REAL(iwp)              :: kx,ky,kz,cp
   REAL(iwp)              :: cjtol  
   REAL(iwp)              :: rho,visc,e,v   
   REAL(iwp)              :: el,er,acc  
@@ -1268,28 +1268,31 @@ PROGRAM mg2d
 
   CASE('p124')
 
-    READ(10,*) nels, nxe, nze, nip
-    READ(10,*) aa, bb, cc, kx, ky, kz
-    READ(10,*) tol, limit
-    READ(10,*) loaded_freedoms, fixed_freedoms
- 
+    READ(10,*) iotype, nels, nxe, nze, nip
+    READ(10,*) aa, bb, cc, kx, ky, kz, rho, cp
+    READ(10,*) dtim, nsteps, theta
+    READ(10,*) npri, tol, limit, val0
+    READ(10,*) np_types, loaded_freedoms, fixed_freedoms
+  
+    IF(np_types>1) PRINT *, "NP_TYPES will be set to 1"
     PRINT *, "Read .mg file"
 
 !------------------------------------------------------------------------------
 ! 10.1 Initialize variables
 !------------------------------------------------------------------------------
 
-    nye   = nels/nxe/nze
-    ndim  = 3
-    nod   = 8
-    nr    = (nxe+1)*(nye+1) + (nxe+1)*nze + nye*nze
-    nn    = (nxe+1)*(nye+1)*(nze+1)
-    nodof = 1
-    nres  = nxe*(nze-1)+1
-    dtim  = 0.01_iwp
-    nstep = 150
-    theta = 0.5
-    npri  = 10
+    nye    = nels/nxe/nze
+    ndim   = 3
+    nod    = 8
+    nr     = (nxe+1)*(nye+1) + (nxe+1)*nze + nye*nze
+    nn     = (nxe+1)*(nye+1)*(nze+1)
+    nodof  = 1
+    nres   = nxe*(nze-1)+1
+    dtim   = 0.01_iwp
+    nstep  = 150
+    theta  = 0.5
+    npri   = 10
+    nprops = 5
 
 !------------------------------------------------------------------------------
 ! 10.2 Allocate dynamic arrays
@@ -1312,6 +1315,10 @@ PROGRAM mg2d
       CALL geometry_8bxz(iel,nxe,nze,aa,bb,cc,coord,g_num(:,iel))
       g_coord(:,g_num(:,iel)) = TRANSPOSE(coord)
     END DO
+
+    SELECT CASE(iotype)
+
+    CASE('parafem')
     
     fname = job_name(1:INDEX(job_name, " ")-1) // ".d" 
     OPEN(11,FILE=fname,STATUS='REPLACE',ACTION='WRITE')
@@ -1394,18 +1401,33 @@ PROGRAM mg2d
     END IF
 
 !------------------------------------------------------------------------------
-! 10.6 New control data
+! 10.6 Materials file
+!------------------------------------------------------------------------------
+
+     fname = job_name(1:INDEX(job_name, " ")-1) // ".mat" 
+     OPEN(15,FILE=fname,STATUS='REPLACE',ACTION='WRITE')
+
+     WRITE(15,'(A,2I5)')    "*MATERIAL", np_types, nprops
+     WRITE(15,'(A)')        "<material_name>"
+     WRITE(15,'(A,5E12.4)') " 1", kx, ky, kz, rho, cp
+     
+     CLOSE(15)
+     
+!------------------------------------------------------------------------------
+! 10.7 New control data
 !------------------------------------------------------------------------------
 
      fname = job_name(1:INDEX(job_name, " ")-1) // ".dat" 
-     OPEN(15,FILE=fname,STATUS='REPLACE',ACTION='WRITE')
+     OPEN(16,FILE=fname,STATUS='REPLACE',ACTION='WRITE')
   
-     WRITE(15,'(A)') "'hexahedron'"
-     WRITE(15,'(A)') "2"              ! Abaqus node numbering scheme
-     WRITE(15,'(A)') "1"              ! Internal mesh partitioning
-     WRITE(15,'(7I9)') nels, nn, nr, nip, nod, loaded_freedoms, fixed_freedoms
-     WRITE(15,'(4E12.4,I8)') kx, ky, kz, tol, limit
-     WRITE(15,'(E12.4,I8,I8,E12.4)') dtim, nstep, npri, theta
+     WRITE(16,'(A)') "'hexahedron'"
+     WRITE(16,'(A)') "2"              ! Abaqus node numbering scheme
+     WRITE(16,'(A)') "1"              ! Internal mesh partitioning
+     WRITE(16,'(A)') "1"              ! Number of materials
+     WRITE(16,'(7I9)') nels, nn, nr, nip, nod, loaded_freedoms, fixed_freedoms
+     WRITE(16,'(E12.4)') val0
+     WRITE(16,'(E12.4,2I8,E12.4)') dtim, nstep, npri, theta 
+     WRITE(16,'(E12.4,2I8) tol, limit, nres
 
      CLOSE(15)
 
@@ -1413,6 +1435,16 @@ PROGRAM mg2d
      PRINT *, "Some values have default values"
      PRINT *, "Job completed"
      PRINT *
+
+   CASE('paraview')
+
+     PRINT *, "  Output for ParaView not yet implemented"; PRINT *, ""
+
+   CASE DEFAULT
+
+     PRINT *, "  Option ", iotype, " not recognised."; PRINT *, ""
+
+   END SELECT
 
 !------------------------------------------------------------------------------
 ! 11. Program p125
