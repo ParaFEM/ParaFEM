@@ -8,8 +8,7 @@
  USE precision  ; USE global_variables ; USE mp_interface
  USE input      ; USE output           ; USE loading
  USE timing     ; USE maths            ; USE gather_scatter
- USE partition  ; USE elements         ; USE steering
- USE geometry   ; USE pcg
+ USE geometry   ; USE new_library
  
  IMPLICIT NONE
 
@@ -65,7 +64,7 @@
   IF(argc /= 1) CALL job_name_error(numpe,program_name)
   CALL GETARG(1,job_name)
 
-  CALL read_p124(job_name,numpe,dtim,element,fixed_freedoms,kx,ky,kz,limit,   &
+  CALL read_p124_4(job_name,numpe,dtim,element,fixed_freedoms,kx,ky,kz,limit, &
                  loaded_nodes,meshgen,nels,nip,nn,nod,npri,nr,nstep,          &
                  partitioner,theta,tol)
 
