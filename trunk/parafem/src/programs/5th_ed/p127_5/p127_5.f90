@@ -7,31 +7,34 @@ PROGRAM p127
 !USE mpi_wrapper  !remove comment for serial compilation
  USE precision; USE global_variables; USE mp_interface; USE loading
  USE timing; USE maths; USE gather_scatter; USE new_library; USE geometry
- IMPLICIT NONE
+ USE input; IMPLICIT NONE
 ! neq,ntot are now global variables - not declared
  INTEGER::nxe,nye,nze,nn,nr,nip,nodof=4,nod=20,nodf=8,nst=6,ndim=3,i,j,k, &
    l,iel,ns,nstep,cjiters,cjits,loaded_freedoms,num_no,no_index_start,n_t,&
-   neq_temp,nn_temp,nle,nlen
+   neq_temp,nn_temp,nle,nlen,nels,partitioner=1,ndof,ielpe,npes_pp
  REAL(iwp)::kx,ky,kz,e,v,det,dtim,theta,real_time,up,alpha,beta,cjtol,aa, &
    bb,cc,q
- LOGICAL::cj_converged; CHARACTER(LEN=15)::element='hexahedron',argv
+ REAL(iwp),PARAMETER::zero=0._iwp
+ LOGICAL::cj_converged; CHARACTER(LEN=15)::element='hexahedron'
+ CHARACTER(LEN=50)::argv
 !---------------------------- dynamic arrays------------------------------
- REAL(iwp),ALLOCATABLE::dee(:,:),points(:,:),coord(:,:),derivf(:,:),      &
-   jac(:,:),kay(:,:),der(:,:),deriv(:,:),weights(:),derf(:,:),funf(:),    &
-   coordf(:,:),bee(:,:),km(:,:),eld(:),sigma(:),kc(:,:),ke(:,:),          &
-   p_g_co_pp(:,:,:),kd(:,:),fun(:),c(:,:),loads_pp(:),pmul_pp(:,:),vol(:),&
-   storke_pp(:,:,:),ans_pp(:),volf(:,:),p_pp(:),x_pp(:),xnew_pp(:),       &
-   u_pp(:),eld_pp(:,:),diag_precon_pp(:),diag_precon_tmp(:,:),d_pp(:),    &
-   utemp_pp(:,:),storkd_pp(:,:,:),val(:)  
- INTEGER,ALLOCATABLE::rest(:,:),g(:),num(:),g_g_pp(:,:),g_num_pp(:,:),    &
+ REAL(iwp),ALLOCATABLE::dee(:,:),points(:,:),coord(:,:),derivf(:,:),     &
+   jac(:,:),kay(:,:),der(:,:),deriv(:,:),weights(:),derf(:,:),funf(:),   &
+   coordf(:,:),bee(:,:),km(:,:),eld(:),sigma(:),kc(:,:),ke(:,:),         &
+   g_coord_pp(:,:,:),kd(:,:),fun(:),c(:,:),loads_pp(:),pmul_pp(:,:),     &
+   storke_pp(:,:,:),ans_pp(:),volf(:,:),p_pp(:),x_pp(:),xnew_pp(:),      &
+   u_pp(:),eld_pp(:,:),diag_precon_pp(:),diag_precon_tmp(:,:),d_pp(:),   &
+   utemp_pp(:,:),storkd_pp(:,:,:),val(:),vol(:),timest(:) 
+ INTEGER,ALLOCATABLE::rest(:,:),g(:),num(:),g_g_pp(:,:),g_num_pp(:,:),   &
    g_t(:),no(:),no_local_temp(:),no_local(:)
 !-------------------------input and initialisation------------------------
  ALLOCATE(timest(20)); timest=zero; timest(1)=elap_time()
  CALL find_pe_procs(numpe,npes); CALL getname(argv,nlen)
-!CALL read_p127()
+!CALL read_p127(nels,nxe,nze,aa,bb,cc,nip,kx,ky,kz,e,v,dtim,nstep,       &
+!  theta,cjits,cjtol)
  IF(numpe==1)THEN 
    OPEN(10,FILE=argv(1:nlen)//'.dat',STATUS='OLD',ACTION='READ')
-   READ(10,*)nels,nxe,nze,aa,bb,cc,nip,kx,ky,kz,e,v,dtim,nstep,theta,     &
+   READ(10,*)nels,nxe,nze,aa,bb,cc,nip,kx,ky,kz,e,v,dtim,nstep,theta,    &
      cjits,cjtol
  END IF
  CALL bcast_inputdata_p127(numpe,npes,nels,nxe,nze,aa,bb,cc,nip,kx,ky,kz, &
@@ -46,7 +49,7 @@ PROGRAM p127
    km(ndof,ndof),eld(ndof),sigma(nst),kc(nodf,nodf),weights(nip),         &
    g_g_pp(ntot,nels_pp),diag_precon_tmp(ntot,nels_pp),ke(ntot,ntot),      &
    kd(ntot,ntot),fun(nod),c(ndof,nodf),g_t(n_t),vol(ndof),                &
-   rest(nr,nodof+1),g(ntot),volf(ndof,nodf),p_g_co_pp(nod,ndim,nels_pp),  &
+   rest(nr,nodof+1),g(ntot),volf(ndof,nodf),g_coord_pp(nod,ndim,nels_pp), &
    g_num_pp(nod,nels_pp),num(nod),storke_pp(ntot,ntot,nels_pp),           &
    storkd_pp(ntot,ntot,nels_pp),pmul_pp(ntot,nels_pp),                    &
    utemp_pp(ntot,nels_pp),eld_pp(ntot,nels_pp),no(loaded_freedoms),       &
@@ -65,16 +68,16 @@ PROGRAM p127
    IF(i>neq_temp)neq_temp=i; IF(j>nn_temp)nn_temp=j
  END DO elements_1
  neq=max_p(neq_temp); nn=max_p(nn_temp); CALL calc_neq_pp
-  CALL calc_npes_pp(npes,npes_pp); CALL make_ggl(g_g_pp)
+  CALL calc_npes_pp(npes,npes_pp); CALL make_ggl(npes_pp,npes,g_g_pp)
  IF(numpe==1)THEN
-   OPEN(11,FILE=argv(1:nlen)//'.res',STATUS='REPLACE',ACTION='WRITE')              
+   OPEN(11,FILE=argv(1:nlen)//'.res',STATUS='REPLACE',ACTION='WRITE') 
    WRITE(11,'(A,I5,A)')"This job ran on ",npes,"  processors"
    WRITE(11,'(A)')"Global coordinates and node numbers"
    DO i=1,nels_pp,nels_pp-1
      WRITE(11,'(A,I8)')"Element ",i
      num=g_num_pp(:,i)
      DO k=1,nod
-       WRITE(11,'(A,I8,3E12.4)')"   Node",num(k),p_g_co_pp(k,:,i)
+       WRITE(11,'(A,I8,3E12.4)')"   Node",num(k),g_coord_pp(k,:,i)
      END DO
    END DO
    WRITE(11,'(A,3(I8,A))')"There are ",nn," nodes",nr," restrained and ", &
@@ -116,7 +119,7 @@ PROGRAM p127
  diag_precon_pp=1._iwp/diag_precon_pp
  DEALLOCATE(diag_precon_tmp)
 !----------------------------loaded freedoms -----------------------------
- CALL reindex(ieq_start,no,no_local_temp,num_no,no_index_start)
+ CALL reindex(ieq_start,no,no_local_temp,num_no,no_index_start,neq_pp)
  ALLOCATE(no_local(1:num_no)); no_local=no_local_temp(1:num_no)
  DEALLOCATE(no_local_temp)
 ! ------------------------ enter the time-stepping loop-------------------
@@ -155,7 +158,7 @@ PROGRAM p127
      xnew_pp=x_pp+p_pp*alpha; ans_pp=ans_pp-u_pp*alpha
      d_pp=diag_precon_pp*ans_pp; beta=DOT_PRODUCT_P(ans_pp,d_pp)/up
      p_pp=d_pp+p_pp*beta
-     CALL checon_par(xnew_pp,x_pp,cjtol,cj_converged,neq_pp)
+     CALL checon_par(xnew_pp,cjtol,cj_converged,x_pp)
      IF(cj_converged.OR.cjiters==cjits)EXIT
    END DO conjugate_gradients
 !----------- end of pcg process-------------------------------------------
