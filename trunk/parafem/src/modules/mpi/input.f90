@@ -2943,8 +2943,11 @@ SUBROUTINE bcast_inputdata_p127 (numpe,npes,nels,nxe,nze, aa,bb,cc,       &
 IMPLICIT NONE
 
 
-integer, INTENT(INOUT)::numpe,npes,nels,nxe,nze,nip,nstep,cjits  
-real(iwp), INTENT(INOUT)   ::aa,bb,cc,kx,ky,kz,e,v,dtim,theta,cjtol
+INTEGER,INTENT(INOUT)    :: numpe,npes,nels,nxe,nze,nip,nstep,cjits  
+INTEGER,PARAMETER        :: ilength=4, rlength=8
+INTEGER                  :: bufsizer,bufdecl
+REAL(iwp), INTENT(INOUT) :: aa,bb,cc,kx,ky,kz,e,v,dtim,theta,cjtol
+
 !
 ! Assign temporary buffer for broadcast data
 !
