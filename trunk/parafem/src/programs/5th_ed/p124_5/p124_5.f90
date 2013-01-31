@@ -21,7 +21,7 @@ PROGRAM p124
  CHARACTER(LEN=6)::ch; LOGICAL::converged=.false.
  REAL(iwp),ALLOCATABLE::loads_pp(:),u_pp(:),p_pp(:),points(:,:),kay(:,:),&
    fun(:),jac(:,:),der(:,:),deriv(:,:),weights(:),d_pp(:),col(:,:),      &
-   kc(:,:),pm(:,:),funny(:,:),storka_pp(:,:,:),,row(:,:),prop(:,:),      &
+   kc(:,:),pm(:,:),funny(:,:),storka_pp(:,:,:),row(:,:),prop(:,:),       &
    storkb_pp(:,:,:),x_pp(:),xnew_pp(:),pmul_pp(:,:),utemp_pp(:,:),       &
    diag_precon_pp(:),diag_precon_tmp(:,:),g_coord_pp(:,:,:),timest(:),   &
    ttr_pp(:),eld_pp(:,:),val(:,:),val_f(:),store_pp(:),r_pp(:),          &
@@ -46,8 +46,8 @@ PROGRAM p124
  IF (nr>0) CALL read_rest(argv,numpe,rest)  
  CALL read_material(argv,prop,numpe,npes)
  ALLOCATE (points(nip,ndim),weights(nip),kay(ndim,ndim),fun(nod),        &
-   jac(ndim,ndim),der(ndim,nod),g(ntot),deriv(ndim,nod),pm(ntot,ntot),   &
-   kc(ntot,ntot),funny(1,nod),num(nod),g_g_pp(ntot,nels_pp),             &
+   jac(ndim,ndim),der(ndim,nod),deriv(ndim,nod),pm(ntot,ntot),           &
+   kc(ntot,ntot),funny(1,nod),g_g_pp(ntot,nels_pp),                      &
    storka_pp(ntot,ntot,nels_pp),eld(ntot),col(ntot,1),row(1,ntot),       &
    utemp_pp(ntot,nels_pp),storkb_pp(ntot,ntot,nels_pp),                  &
    pmul_pp(ntot,nels_pp),kcx(ntot,ntot),kcy(ntot,ntot),kcz(ntot,ntot))
