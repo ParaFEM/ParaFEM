@@ -4,37 +4,36 @@ PROGRAM p124
 !     equation using 8-node hexahedral elements; parallel pcg version
 !     implicit; integration in time using 'theta' method 
 !-------------------------------------------------------------------------
+!USE mpi_wrapper  !remove comment for serial compilation
  USE precision; USE global_variables; USE mp_interface; USE input
  USE output; USE loading; USE timing; USE maths; USE gather_scatter
  USE geometry; USE new_library; IMPLICIT NONE
-! neq,ntot are now global variables - not declared
+!neq,ntot are now global variables - not declared
  INTEGER, PARAMETER::ndim=3,nodof=1,nprops=5
- INTEGER::nod,nn,nr,nip,i,j,k,l,iters,limit,iel,nstep,npri,nres=1,it,is, &
-   nlen,node_end,node_start,nodes_pp,loaded_freedoms,fixed_freedoms,     &
-   loaded_nodes,fixed_freedoms_pp,fixed_freedoms_start,                  &
-   loaded_freedoms_pp,loaded_freedoms_start,nels,ndof,ielpe,npes_pp,     &
-   meshgen,partitioner,np_types,prog,tz
+ INTEGER::nod,nn,nr,nip,i,j,k,l,iters,limit,iel,nstep,npri,nres,it,prog, &
+   nlen,node_end,node_start,nodes_pp,loaded_freedoms,fixed_freedoms,is,  &
+   fixed_freedoms_pp,fixed_freedoms_start,loaded_freedoms_pp,np_types,   &
+   loaded_freedoms_start,nels,ndof,npes_pp,meshgen,partitioner,tz
  REAL(iwp)::kx,ky,kz,det,theta,dtim,real_time,tol,alpha,beta,up,big,q,   &
    rho,cp,val0
  REAL(iwp),PARAMETER::zero=0.0_iwp,penalty=1.e20_iwp,t0=0.0_iwp
  CHARACTER(LEN=15)::element; CHARACTER(LEN=50)::argv,fname
  CHARACTER(LEN=6)::ch; LOGICAL::converged=.false.
  REAL(iwp),ALLOCATABLE::loads_pp(:),u_pp(:),p_pp(:),points(:,:),kay(:,:),&
-   coord(:,:),fun(:),jac(:,:),der(:,:),deriv(:,:),weights(:),d_pp(:),    &
-   kc(:,:),pm(:,:),funny(:,:),p_g_co_pp(:,:,:),storka_pp(:,:,:),         &
+   fun(:),jac(:,:),der(:,:),deriv(:,:),weights(:),d_pp(:),col(:,:),      &
+   kc(:,:),pm(:,:),funny(:,:),storka_pp(:,:,:),,row(:,:),prop(:,:),      &
    storkb_pp(:,:,:),x_pp(:),xnew_pp(:),pmul_pp(:,:),utemp_pp(:,:),       &
    diag_precon_pp(:),diag_precon_tmp(:,:),g_coord_pp(:,:,:),timest(:),   &
    ttr_pp(:),eld_pp(:,:),val(:,:),val_f(:),store_pp(:),r_pp(:),          &
-   kcx(:,:),kcy(:,:),kcz(:,:),eld(:),col(:,:),row(:,:),storkc_pp(:,:,:), &
-   prop(:,:)
- INTEGER,ALLOCATABLE::rest(:,:),g(:),num(:),g_num_pp(:,:),g_g_pp(:,:),   &
-   no(:),no_pp(:),no_f_pp(:),no_pp_temp(:),sense(:),node(:),etype_pp(:)
+   kcx(:,:),kcy(:,:),kcz(:,:),eld(:)
+ INTEGER,ALLOCATABLE::rest(:,:),g_num_pp(:,:),g_g_pp(:,:),no(:),         &
+   no_pp(:),no_f_pp(:),no_pp_temp(:),sense(:),node(:),etype_pp(:)
 !--------------------------input and initialisation-----------------------
  ALLOCATE(timest(20)); timest=zero; timest(1)=elap_time()
  CALL find_pe_procs(numpe,npes); CALL getname(argv,nlen)
  CALL read_p124(argv,numpe,dtim,element,fixed_freedoms,limit,            &
-   loaded_nodes,meshgen,nels,nip,nn,nod,npri,nr,nres,nstep,partitioner,  &
-   theta,tol,np_types,val0)
+   loaded_freedoms,meshgen,nels,nip,nn,nod,npri,nr,nres,nstep,           &
+   partitioner,theta,tol,np_types,val0)
  CALL calc_nels_pp(argv,nels,npes,numpe,partitioner,nels_pp)
  ndof=nod*nodof; ntot=ndof
  ALLOCATE(g_num_pp(nod,nels_pp),g_coord_pp(nod,ndim,nels_pp),            &
@@ -44,19 +43,16 @@ PROGRAM p124
  CALL read_elements(argv,iel_start,nn,npes,numpe,etype_pp,g_num_pp)
  IF(meshgen==2) CALL abaqus2sg(element,g_num_pp)
  CALL read_g_coord_pp(argv,g_num_pp,nn,npes,numpe,g_coord_pp)
- IF (nr>0) CALL read_rest(argv,numpe,rest)
- fname=argv(1:INDEX(argv, " ")-1) // ".mat"  
- CALL read_materialValue(prop,fname,numpe,npes)
- ALLOCATE (points(nip,ndim),weights(nip),kay(ndim,ndim),coord(nod,ndim), &
-   fun(nod),jac(ndim,ndim),der(ndim,nod),g(ntot),deriv(ndim,nod),        &
-   pm(ntot,ntot),kc(ntot,ntot),funny(1,nod),num(nod),                    &
-   g_g_pp(ntot,nels_pp),storka_pp(ntot,ntot,nels_pp),                    &
+ IF (nr>0) CALL read_rest(argv,numpe,rest)  
+ CALL read_material(argv,prop,numpe,npes)
+ ALLOCATE (points(nip,ndim),weights(nip),kay(ndim,ndim),fun(nod),        &
+   jac(ndim,ndim),der(ndim,nod),g(ntot),deriv(ndim,nod),pm(ntot,ntot),   &
+   kc(ntot,ntot),funny(1,nod),num(nod),g_g_pp(ntot,nels_pp),             &
+   storka_pp(ntot,ntot,nels_pp),eld(ntot),col(ntot,1),row(1,ntot),       &
    utemp_pp(ntot,nels_pp),storkb_pp(ntot,ntot,nels_pp),                  &
-   pmul_pp(ntot,nels_pp),kcx(ntot,ntot),kcy(ntot,ntot),kcz(ntot,ntot),   &
-   eld(ntot),col(ntot,1),row(1,ntot),storkc_pp(ntot,ntot,nels_pp))
+   pmul_pp(ntot,nels_pp),kcx(ntot,ntot),kcy(ntot,ntot),kcz(ntot,ntot))
 !----------  find the steering array and equations per process -----------
- timest(2)=elap_time()
- g_g_pp=0; neq=0
+ timest(2)=elap_time(); g_g_pp=0; neq=0
  IF(nr>0) THEN; CALL rearrange_2(rest)
    elements_1: DO iel = 1, nels_pp
      CALL find_g4(g_num_pp(:,iel),g_g_pp(:,iel),rest)
@@ -104,9 +100,8 @@ PROGRAM p124
  DEALLOCATE(diag_precon_tmp)  
 !------------- read in fixed freedoms and assign to equations ------------
  IF(fixed_freedoms > 0) THEN
-   ALLOCATE(node(fixed_freedoms),no(fixed_freedoms),                     &
-     no_pp_temp(fixed_freedoms),sense(fixed_freedoms),                   &
-     val_f(fixed_freedoms))
+   ALLOCATE(node(fixed_freedoms),no_pp_temp(fixed_freedoms),             &
+     no(fixed_freedoms),sense(fixed_freedoms),val_f(fixed_freedoms))
    node=0; no=0; no_pp_temp=0; sense=0; val_f = zero
    CALL read_fixed(argv,numpe,node,sense,val_f)
    CALL find_no2(g_g_pp,g_num_pp,node,sense,no)
@@ -116,27 +111,24 @@ PROGRAM p124
    no_f_pp=0; store_pp=zero; no_f_pp=no_pp_temp(1:fixed_freedoms_pp)
    DEALLOCATE(node,no,sense,no_pp_temp)
  END IF
- IF(fixed_freedoms == 0) fixed_freedoms_pp = 0
+ IF(fixed_freedoms==0) fixed_freedoms_pp=0
 !-------------------------- invert preconditioner ------------------------
  IF(fixed_freedoms_pp > 0) THEN
-   DO i=1,fixed_freedoms_pp
-     l=no_f_pp(i)-ieq_start+1
+   DO i=1,fixed_freedoms_pp; l=no_f_pp(i)-ieq_start+1
      diag_precon_pp(l)=diag_precon_pp(l)+penalty
      store_pp(i)=diag_precon_pp(l)
    END DO
- END IF
- diag_precon_pp=1._iwp/diag_precon_pp
+ END IF; diag_precon_pp=1._iwp/diag_precon_pp
 !--------------- read in loaded nodes and get starting r_pp --------------
- loaded_freedoms=loaded_nodes ! hack
-   IF(loaded_freedoms>0) THEN
-     ALLOCATE(node(loaded_freedoms),val(nodof,loaded_freedoms),          &
-       no_pp_temp(loaded_freedoms)); val=zero; node=0; no_pp_temp=0
-     CALL read_loads(argv,numpe,node,val)
-     CALL reindex(ieq_start,node,no_pp_temp,loaded_freedoms_pp,          &
-       loaded_freedoms_start,neq_pp); ALLOCATE(no_pp(loaded_freedoms_pp))
-     no_pp=0; no_pp=no_pp_temp(1:loaded_freedoms_pp)
-     DEALLOCATE(no_pp_temp,node)
-    END IF
+ IF(loaded_freedoms>0) THEN
+   ALLOCATE(node(loaded_freedoms),val(nodof,loaded_freedoms),            &
+     no_pp_temp(loaded_freedoms)); val=zero; node=0; no_pp_temp=0
+   CALL read_loads(argv,numpe,node,val)
+   CALL reindex(ieq_start,node,no_pp_temp,loaded_freedoms_pp,            &
+     loaded_freedoms_start,neq_pp); ALLOCATE(no_pp(loaded_freedoms_pp))
+   no_pp=0; no_pp=no_pp_temp(1:loaded_freedoms_pp)
+   DEALLOCATE(no_pp_temp,node)
+ END IF
 !------------------------- start time stepping loop ----------------------
  CALL calc_nodes_pp(nn,npes,numpe,node_end,node_start,nodes_pp)
  ALLOCATE(ttr_pp(nodes_pp),eld_pp(ntot,nels_pp))
@@ -148,9 +140,8 @@ PROGRAM p124
    WRITE(13,*) nn; WRITE(13,*) nstep/npri; WRITE(13,*) npes
  END IF
  timesteps: DO j=1,nstep
-    real_time=j*dtim; timest(3)=elap_time()
+    real_time=j*dtim; timest(3)=elap_time(); loads_pp=zero
 !---- apply loads (sources and/or sinks) supplied as a boundary value ----
-    loads_pp=zero
     IF(loaded_freedoms_pp>0) THEN
       DO i=1,loaded_freedoms_pp; k=no_pp(i)-ieq_start+1
         loads_pp(k)=val(loaded_freedoms_start+i-1,1)*dtim
@@ -164,11 +155,10 @@ PROGRAM p124
         utemp_pp(:,iel)=MATMUL(storkb_pp(:,:,iel),pmul_pp(:,iel))
       END DO elements_2a; CALL scatter(u_pp,utemp_pp)
       IF(fixed_freedoms_pp>0) THEN
-        DO i=1,fixed_freedoms_pp
-          l=no_f_pp(i)-ieq_start+1; k=fixed_freedoms_start+i-1
-          u_pp(l)=store_pp(i)*val_f(k)
+        DO i=1,fixed_freedoms_pp; l=no_f_pp(i)-ieq_start+1
+          k=fixed_freedoms_start+i-1; u_pp(l)=store_pp(i)*val_f(k)
         END DO
-      END IF; loads_pp = loads_pp+u_pp
+      END IF; loads_pp=loads_pp+u_pp
     ELSE
 !------------------------ set initial temperature ------------------------
       x_pp=val0
@@ -181,9 +171,8 @@ PROGRAM p124
       elements_2c: DO iel=1,nels_pp
         utemp_pp(:,iel)=MATMUL(storka_pp(:,:,iel),pmul_pp(:,iel))
       END DO elements_2c; CALL scatter(u_pp,utemp_pp)
-      loads_pp=loads_pp+u_pp
+      loads_pp=loads_pp+u_pp; tz=0
 !----------------------- output "results" at t=0 -------------------------
-      tz=0
       IF(numpe==1)THEN; WRITE(ch,'(I6.6)') tz
         OPEN(12,file=argv(1:nlen)//".ensi.NDTTR-"//ch,status='replace',  &
           action='write')
@@ -208,9 +197,8 @@ PROGRAM p124
         k=fixed_freedoms_start+i-1; r_pp(l)=store_pp(i)*val_f(k)
       END DO
     END IF
-    r_pp=loads_pp-r_pp; d_pp=diag_precon_pp*r_pp; p_pp=d_pp
+    r_pp=loads_pp-r_pp; d_pp=diag_precon_pp*r_pp; p_pp=d_pp; iters=0
 !---------------- solve simultaneous equations by pcg --------------------
-    iters=0
     iterations: DO
       iters=iters+1; u_pp=zero; pmul_pp=zero; utemp_pp=zero
       CALL gather(p_pp,pmul_pp)
@@ -223,8 +211,7 @@ PROGRAM p124
       up=DOT_PRODUCT_P(r_pp,d_pp); alpha=up/DOT_PRODUCT_P(p_pp,u_pp)
       xnew_pp=x_pp+p_pp*alpha; r_pp=r_pp-u_pp*alpha
       d_pp=diag_precon_pp*r_pp; beta=DOT_PRODUCT_P(r_pp,d_pp)/up
-      p_pp=d_pp+p_pp*beta
-      CALL checon_par(xnew_pp,tol,converged,x_pp)
+      p_pp=d_pp+p_pp*beta; CALL checon_par(xnew_pp,tol,converged,x_pp)
       IF(converged.OR.iters==limit)EXIT
     END DO iterations; timest(4)=timest(4)+(elap_time()-timest(3))
     IF(j/npri*npri==j)THEN; timest(5)=elap_time()
@@ -249,6 +236,5 @@ PROGRAM p124
     WRITE(11,'(A,F10.4)') "Writing the output took ",timest(6)
     WRITE(11,'(A,F10.4)') "This analysis took ",elap_time()-timest(1)
     CLOSE(11)
-  END IF
-  CALL shutdown()
+  END IF; CALL SHUTDOWN()
 END PROGRAM p124
