@@ -23,6 +23,7 @@ MODULE INPUT
   !*    READ_RESTRAINTS        Reads the restraints
   !*    READ_MATERIALID_PP     Reads the material ID for each element
   !*    READ_MATERIALVALUE     Reads property values for each material ID
+  !*    READ_MATERIAL          Reads property values for each material ID
   !*    READ_NELS_PP           Reads number of elements assigned to processor
   !*    READ_P121              Reads the control data for program p121
   !*    BCAST_INPUTDATA_P123   Reads the control data for program p123
@@ -1416,6 +1417,47 @@ MODULE INPUT
     RETURN
 
   END SUBROUTINE READ_MATERIALVALUE
+
+!------------------------------------------------------------------------------
+!------------------------------------------------------------------------------
+!------------------------------------------------------------------------------
+
+  SUBROUTINE READ_MATERIAL(JOB_NAME,MATERIALVALUES,NUMPE,NPES)
+
+    !Master process reads the global array from a single file and 
+    !sends a copy to each slave. (I/O method 1: refer to notes)
+    !k is the material number in the file, it is read and discarded
+
+    IMPLICIT NONE
+    INTEGER                       :: i,k,nmats,nvals,bufsize,ier,ielpe
+    INTEGER,INTENT(IN)            :: numpe,npes
+    REAL(iwp),INTENT(INOUT)       :: materialValues(:,:)
+    CHARACTER(LEN=50), INTENT(IN) :: job_name
+    CHARACTER(LEN=50)             :: fname    
+    CHARACTER(LEN=10)             :: keyword
+
+    IF(numpe==1)THEN
+     fname=job_name(1:INDEX(job_name," ")-1 // ".mat"
+     OPEN(21,FILE=fname, STATUS='OLD', ACTION='READ')
+     !Read the *MATERIAL keyword, num of materials in file and num values per material line (2)
+     READ(21,*) keyword, nmats, nvals
+     !Read the material labels line
+     READ(21,*)                  ! skip line
+
+     PRINT *, "nmats =", nmats
+     DO i = 1,nmats
+       READ(21,*)k, materialValues(:,i)
+ !      PRINT *, "materialValues = ", materialValues(:,i)
+     END DO
+     CLOSE(21)
+    END IF
+    
+    bufsize       = ubound(materialValues,1)*ubound(materialValues,2)
+    CALL MPI_BCAST(materialValues,bufsize,MPI_REAL8,0,MPI_COMM_WORLD,ier)
+   
+    RETURN
+
+  END SUBROUTINE READ_MATERIAL
 
 !------------------------------------------------------------------------------
 !------------------------------------------------------------------------------
