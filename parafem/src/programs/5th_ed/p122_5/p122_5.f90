@@ -28,8 +28,8 @@ PROGRAM p122
    tensor_pp(:,:,:),stress(:),totd_pp(:),qinc(:),p_pp(:),x_pp(:),        &
    xnew_pp(:),u_pp(:),utemp_pp(:,:),diag_precon_pp(:),d_pp(:),disp_pp(:),&
    diag_precon_tmp(:,:),timest(:),g_coord_pp(:,:,:),val(:,:)
- INTEGER,ALLOCATABLE::rest(:,:),no(:),g_num_pp(:,:),nodef(:),            &
-   g_g_pp(:,:),node(:),sense(:),no_pp_temp(:),no_pp(:)
+ INTEGER,ALLOCATABLE::rest(:,:),no_f(:),g_num_pp(:,:),nodef(:),          &
+   g_g_pp(:,:),node(:),sense(:),no_pp_temp(:),no_f_pp(:)
 !------------------------ input and initialisation -----------------------
  ALLOCATE(timest(20)); timest=zero; timest(1)=elap_time()  
  CALL find_pe_procs(numpe,npes);  CALL getname(argv,nlen)
@@ -94,15 +94,15 @@ PROGRAM p122
  END IF
  IF(fixed_freedoms>0) THEN
    ALLOCATE(nodef(fixed_freedoms),no_pp_temp(fixed_freedoms),            &
-     no(fixed_freedoms),sense(fixed_freedoms),valf(fixed_freedoms))
-   nodef=0; no=0; no_pp_temp=0; sense=0; valf=zero
+     no_f(fixed_freedoms),sense(fixed_freedoms),valf(fixed_freedoms))
+   nodef=0; no_f=0; no_pp_temp=0; sense=0; valf=zero
    CALL read_fixed(argv,numpe,nodef,sense,valf)
-   CALL find_no(nodef,rest,sense,no)
-   CALL reindex(ieq_start,no,no_pp_temp,fixed_freedoms_pp,               &
+   CALL find_no(nodef,rest,sense,no_f)
+   CALL reindex(ieq_start,no_f,no_pp_temp,fixed_freedoms_pp,             &
      fixed_freedoms_start,neq_pp)
-   ALLOCATE(no_pp(fixed_freedoms_pp),store_pp(fixed_freedoms_pp))
-   no_pp=0; store_pp=0; no_pp=no_pp_temp(1:fixed_freedoms_pp)
-   DEALLOCATE(nodef,no,sense,no_pp_temp) 
+   ALLOCATE(no_f_pp(fixed_freedoms_pp),store_pp(fixed_freedoms_pp))
+   no_f_pp=0; store_pp=0; no_f_pp=no_pp_temp(1:fixed_freedoms_pp)
+   DEALLOCATE(nodef,no_f,sense,no_pp_temp) 
  END IF
  IF(fixed_freedoms_pp>0)THEN
    DO i=1,fixed_freedoms_pp; j=no_pp(i)-ieq_start+1
@@ -120,7 +120,7 @@ PROGRAM p122
    plastic_iterations: DO     ; plasiters=plasiters+1; loads_pp=zero
      IF(plasiters==1) THEN
        IF(fixed_freedoms_pp>0) THEN
-         DO i=1,fixed_freedoms_pp; j=no_pp(i)-ieq_start+1
+         DO i=1,fixed_freedoms_pp; j=no_f_pp(i)-ieq_start+1
            k=fixed_freedoms_start+i-1
            loads_pp(j)=store_pp(i)*valf(k)*qinc(iy)
          END DO
@@ -133,7 +133,7 @@ PROGRAM p122
        loads_pp=loads_pp+bdylds_pp
        IF(fixed_freedoms_pp>0)THEN
          DO i=1,fixed_freedoms_pp
-           j=no_pp(i)-ieq_start+1; loads_pp(j)=zero
+           j=no_f_pp(i)-ieq_start+1; loads_pp(j)=zero
          END DO
        END IF
      END IF 
@@ -150,7 +150,7 @@ PROGRAM p122
          utemp_pp(:,iel)=MATMUL(storkm_pp(:,:,iel),pmul_pp(:,iel))
        END DO elements_3; CALL scatter(u_pp,utemp_pp)
        IF(fixed_freedoms_pp>0) THEN
-         DO i=1,fixed_freedoms_pp; j=no_pp(i)-ieq_start+1
+         DO i=1,fixed_freedoms_pp; j=no_f_pp(i)-ieq_start+1
            IF(plasiters==1) THEN; u_pp(j)=p_pp(j)*store_pp(i)
            ELSE; u_pp(j)=zero; END IF
          END DO
