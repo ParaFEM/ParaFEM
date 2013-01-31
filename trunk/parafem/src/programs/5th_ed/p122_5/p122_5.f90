@@ -23,7 +23,7 @@ PROGRAM p122
  REAL(iwp),ALLOCATABLE::loads_pp(:),points(:,:),bdylds_pp(:),valf(:),    &
    evpt_pp(:,:,:),pmul_pp(:,:),dee(:,:),jac(:,:),weights(:),store_pp(:), &
    oldis_pp(:),der(:,:),deriv(:,:),bee(:,:),eld(:),eps(:),ld0_pp(:),     &
-   sigma(:),bload(:),eload(:),erate(:),p_g_co_pp(:,:,:),evp(:),devp(:),  &
+   sigma(:),bload(:),eload(:),erate(:),evp(:),devp(:),                   &
    m1(:,:),m2(:,:),m3(:,:),flow(:,:),storkm_pp(:,:,:),r_pp(:),temp(:),   &
    tensor_pp(:,:,:),stress(:),totd_pp(:),qinc(:),p_pp(:),x_pp(:),        &
    xnew_pp(:),u_pp(:),utemp_pp(:,:),diag_precon_pp(:),d_pp(:),disp_pp(:),&
@@ -169,7 +169,7 @@ PROGRAM p122
      IF(plasiters==1)plastic_converged=.FALSE. 
      IF(plastic_converged.OR.plasiters==plasits)bdylds_pp=zero
      CALL gather(loads_pp,pmul_pp); utemp_pp=zero
-     elements_5: DO iel=1,nels_pp
+     elements_4: DO iel=1,nels_pp
        bload=zero; eld=pmul_pp(:,iel)
        gauss_points_2: DO i=1,nip
          CALL shape_der(der,points,i); jac=MATMUL(der,g_coord_pp(:,:,iel))
@@ -199,7 +199,7 @@ PROGRAM p122
        END DO gauss_points_2
 !------------------ compute the total bodyloads vector -------------------
        utemp_pp(:,iel)=utemp_pp(:,iel)+bload
-     END DO elements_5; CALL scatter(bdylds_pp,utemp_pp)
+     END DO elements_4; CALL scatter(bdylds_pp,utemp_pp)
      IF(plastic_converged.OR.plasiters==plasits)EXIT
    END DO plastic_iterations;  totd_pp=totd_pp+loads_pp
    IF(numpe==1)THEN
@@ -211,7 +211,7 @@ PROGRAM p122
      WRITE(11,'(A,F11.2)')"cj iterations per plastic iteration were ",   &
        REAL(cjtot)/REAL(plasiters)
    END IF
-!----------------------- write out the displacements ---------------------
+!---------------- write out the displacements for ParaView ---------------
    IF(numpe==1)THEN; WRITE(ch,'(I6.6)') iy
      OPEN(12,file=argv(1:nlen)//".ensi.DISPL-"//ch,status='replace',     &
        action='write')
