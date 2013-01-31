@@ -79,7 +79,7 @@ PROGRAM p126
  xold_pp=zero; y_pp=zero; y1_pp=zero; store_pp=zero
 !-------------------------- organise fixed equations ---------------------
  CALL read_loads_ns(argv,numpe,no,val)
- CALL reindex_fixed_nodes(ieq_start,no,no_pp_temp,loaded_freedoms_pp,    &
+ CALL reindex(ieq_start,no,no_pp_temp,loaded_freedoms_pp,                &
    loaded_freedoms_start,neq_pp); ALLOCATE(no_pp(1:loaded_freedoms_pp))
  no_pp = no_pp_temp(1:loaded_freedoms_pp); DEALLOCATE(no_pp_temp)
 !------------------------- main iteration loop ---------------------------
