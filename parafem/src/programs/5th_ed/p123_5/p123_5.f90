@@ -10,23 +10,21 @@ PROGRAM p123
  USE new_library; IMPLICIT NONE
 !neq,ntot  are now global variables - not declared
  INTEGER, PARAMETER::ndim=3,nodof=1
- INTEGER::nod,nn,nr,nip,i,j,k,iters,limit,iel,num_no,no_index_start,l,   &
-   idx1,node_end,node_start,nodes_pp,loaded_freedoms,fixed_freedoms,     &
+ INTEGER::nod,nn,nr,nip,i,j,k,iters,limit,iel,partitioner,meshgen,       &
+   node_end,node_start,nodes_pp,loaded_freedoms,fixed_freedoms,          &
    fixed_freedoms_pp,fixed_freedoms_start,nlen,nres,is,it,               &
-   loaded_freedoms_pp,loaded_freedoms_start,nels,ndof,ielpe,npes_pp,     &
-   meshgen,partitioner
+   loaded_freedoms_pp,loaded_freedoms_start,nels,ndof,npes_pp   
  REAL(iwp),PARAMETER::zero=0.0_iwp,penalty=1.e20_iwp
  REAL(iwp)::kx,ky,kz,det,tol,up,alpha,beta,q; CHARACTER(LEN=6)::ch
  CHARACTER(LEN=15)::element; CHARACTER(LEN=50)::argv 
  LOGICAL::converged=.false.
- REAL(iwp),ALLOCATABLE::points(:,:),kc(:,:),coord(:,:),weights(:),       &
+ REAL(iwp),ALLOCATABLE::points(:,:),weights(:),eld_pp(:,:),kay(:,:),     &
    kay(:,:),fun(:),jac(:,:),der(:,:),deriv(:,:),col(:,:),row(:,:),       &
    kcx(:,:),kcy(:,:),kcz(:,:),diag_precon_pp(:),p_pp(:),r_pp(:),x_pp(:), &
    xnew_pp(:),u_pp(:),pmul_pp(:,:),utemp_pp(:,:),d_pp(:),val(:,:),       &
    diag_precon_tmp(:,:),store_pp(:),storkc_pp(:,:,:),eld(:),timest(:),   &
-   val_f(:),g_coord_pp(:,:,:),ptl_pp(:),eld_pp(:,:),kay(:,:),fun(:)
- INTEGER,ALLOCATABLE::rest(:,:),g(:),num(:),g_num_pp(:,:),g_g_pp(:,:),   &
-   no(:),no_f(:),no_local_temp(:),no_local_temp_f(:),no_local(:),        &
+   val_f(:),g_coord_pp(:,:,:),ptl_pp(:)
+ INTEGER,ALLOCATABLE::rest(:,:),g_num_pp(:,:),g_g_pp(:,:),no(:),         &
    no_pp(:),no_f_pp(:),no_pp_temp(:),sense(:),node(:)
 !--------------------------input and initialisation-----------------------
  ALLOCATE(timest(20)); timest=zero; timest(1)=elap_time()
@@ -42,18 +40,16 @@ PROGRAM p123
  CALL read_g_coord_pp(argv,g_num_pp,nn,npes,numpe,g_coord_pp)
  IF (nr>0) THEN; ALLOCATE(rest(nr,nodof+1)); rest=0
  CALL read_rest(argv,numpe,rest); END IF
- ALLOCATE (points(nip,ndim),coord(nod,ndim),jac(ndim,ndim),              &
-   deriv(ndim,nod),kcx(ntot,ntot),weights(nip),g(ntot),der(ndim,nod),    &
-   pmul_pp(ntot,nels_pp),utemp_pp(ntot,nels_pp),col(ntot,1),num(nod),    &
-   g_g_pp(ntot,nels_pp),kcy(ntot,ntot),no_local_temp(1),row(1,ntot),     &
-   eld(ntot),no_f(1),no_local_temp_f(1),kcz(ntot,ntot),                  &
-   storkc_pp(ntot,ntot,nels_pp))
+ ALLOCATE (points(nip,ndim),jac(ndim,ndim),storkc_pp(ntot,ntot,nels_pp), &
+   deriv(ndim,nod),kcx(ntot,ntot),weights(nip),der(ndim,nod),            &
+   pmul_pp(ntot,nels_pp),utemp_pp(ntot,nels_pp),col(ntot,1),eld(ntot),   &
+   g_g_pp(ntot,nels_pp),kcy(ntot,ntot),row(1,ntot),kcz(ntot,ntot))
 !----------  find the steering array and equations per process -----------
  timest(2)=elap_time(); g_g_pp=0; neq=0
  IF(nr>0) THEN; CALL rearrange_2(rest)
-   elements_1: DO iel = 1, nels_pp
+   elements_0: DO iel=1, nels_pp
      CALL find_g4(g_num_pp(:,iel),g_g_pp(:,iel),rest)
-   END DO elements_1
+   END DO elements_0
  ELSE
    g_g_pp=g_num_pp  !When nr = 0, g_num_pp and g_g_pp are identical
  END IF
@@ -72,7 +68,7 @@ PROGRAM p123
  r_pp=zero; p_pp=zero; x_pp=zero; xnew_pp=zero; diag_precon_pp=zero
 !-------------- element stiffness integration and storage ----------------
  CALL sample(element,points,weights); storkc_pp=zero
- elements_3: DO iel=1,nels_pp
+ elements_1: DO iel=1,nels_pp
    kcx=zero; kcy=zero; kcz=zero
    gauss_pts_1:  DO i=1,nip
      CALL shape_der (der,points,i); jac=MATMUL(der,g_coord_pp(:,:,iel))
@@ -85,14 +81,14 @@ PROGRAM p123
      kcz=kcz+MATMUL(col,row)*det*weights(i)
    END DO gauss_pts_1        
    storkc_pp(:,:,iel)=kcx*kx+kcy*ky+kcz*kz 
- END DO elements_3
+ END DO elements_1
 !------------------ build the diagonal preconditioner --------------------
  ALLOCATE(diag_precon_tmp(ntot,nels_pp)); diag_precon_tmp=zero
- elements_4: DO iel=1,nels_pp
+ elements_1a: DO iel=1,nels_pp
    DO i=1,ndof
      diag_precon_tmp(i,iel)=diag_precon_tmp(i,iel)+storkc_pp(i,i,iel)
    END DO
- END DO elements_4; CALL scatter(diag_precon_pp,diag_precon_tmp)
+ END DO elements_1b; CALL scatter(diag_precon_pp,diag_precon_tmp)
  DEALLOCATE(diag_precon_tmp)
 !------------- read in fixed freedoms and assign to equations ------------
  IF(fixed_freedoms>0) THEN
@@ -139,9 +135,9 @@ PROGRAM p123
  iterations: DO 
    iters=iters+1; u_pp=zero; pmul_pp=zero; utemp_pp=zero 
    CALL gather(p_pp,pmul_pp) 
-   elements_5 : DO iel = 1, nels_pp
+   elements_2 : DO iel = 1, nels_pp
      utemp_pp(:,iel) = MATMUL(storkc_pp(:,:,iel),pmul_pp(:,iel)) 
-   END DO elements_5 ; CALL scatter(u_pp,utemp_pp)
+   END DO elements_2 ; CALL scatter(u_pp,utemp_pp)
    IF(fixed_freedoms_pp>0) THEN
      DO i=1,fixed_freedoms_pp
        j=no_f_pp(i)-ieq_start+1; u_pp(j)=p_pp(j)*store_pp(i)
