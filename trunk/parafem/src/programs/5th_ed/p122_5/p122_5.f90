@@ -105,7 +105,7 @@ PROGRAM p122
    DEALLOCATE(nodef,no_f,sense,no_pp_temp) 
  END IF
  IF(fixed_freedoms_pp>0)THEN
-   DO i=1,fixed_freedoms_pp; j=no_pp(i)-ieq_start+1
+   DO i=1,fixed_freedoms_pp; j=no_f_pp(i)-ieq_start+1
      diag_precon_pp(j)=diag_precon_pp(j)+penalty
      store_pp(i)=diag_precon_pp(j)
    END DO
