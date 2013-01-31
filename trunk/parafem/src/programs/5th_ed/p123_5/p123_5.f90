@@ -88,7 +88,7 @@ PROGRAM p123
    DO i=1,ndof
      diag_precon_tmp(i,iel)=diag_precon_tmp(i,iel)+storkc_pp(i,i,iel)
    END DO
- END DO elements_1b; CALL scatter(diag_precon_pp,diag_precon_tmp)
+ END DO elements_1a; CALL scatter(diag_precon_pp,diag_precon_tmp)
  DEALLOCATE(diag_precon_tmp)
 !------------- read in fixed freedoms and assign to equations ------------
  IF(fixed_freedoms>0) THEN
