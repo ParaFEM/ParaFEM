@@ -61,7 +61,7 @@ PROGRAM p122
    WRITE(11,'(A,I5,A)')"This job ran on ", npes,"  processes"
    WRITE(11,'(A,3(I7,A))')"There are ",nn," nodes",nr,                   &
      " restrained and   ",neq," equations"
-   WRITE(11,*)"Time after setup  is  : ",elap_time()-timest(1)
+   WRITE(11,'(A,F10.4)')"Time after setup is:",elap_time()-timest(1)
  END IF 
  ALLOCATE(loads_pp(neq_pp),bdylds_pp(neq_pp),oldis_pp(neq_pp),           &
    r_pp(neq_pp),totd_pp(neq_pp),p_pp(neq_pp),x_pp(neq_pp),ld0_pp(neq_pp),&     
@@ -201,20 +201,19 @@ PROGRAM p122
        utemp_pp(:,iel)=utemp_pp(:,iel)+bload
      END DO elements_5; CALL scatter(bdylds_pp,utemp_pp)
      IF(plastic_converged.OR.plasiters==plasits)EXIT
-   END DO plastic_iterations
-   totd_pp=totd_pp+loads_pp
+   END DO plastic_iterations;  totd_pp=totd_pp+loads_pp
    IF(numpe==1)THEN
      WRITE(11,'(A,E12.4)')"The displacement is  ",totd_pp(1)
      WRITE(11,'(A)')"  sigma z    sigma x     sigma y"
      WRITE(11,'(3E12.4)')tensor_pp(3,1,1),tensor_pp(1,1,1),tensor_pp(2,1,1)
      WRITE(11,'(A,I12)')"The total number of cj iterations was  ",cjtot 
-     WRITE(11,'(A,I12)')"The number of plastic iterations was   ",plasiters 
-     WRITE(11,'(A,F11.2)')"cj iterations per plastic iteration were ",    &
+     WRITE(11,'(A,I12)')"The number of plastic iterations was  ",plasiters 
+     WRITE(11,'(A,F11.2)')"cj iterations per plastic iteration were ",   &
        REAL(cjtot)/REAL(plasiters)
    END IF
-!----------------------- write out the displacements ----------------------
+!----------------------- write out the displacements ---------------------
    IF(numpe==1)THEN; WRITE(ch,'(I6.6)') iy
-     OPEN(12,file=argv(1:nlen)//".ensi.DISPL-"//ch,status='replace',      &
+     OPEN(12,file=argv(1:nlen)//".ensi.DISPL-"//ch,status='replace',     &
        action='write')
      WRITE(12,'(A)') "Alya Ensight Gold --- Vector per-node variable file"
      WRITE(12,'(A/A/A)') "part", "    1","coordinates"
@@ -228,6 +227,6 @@ PROGRAM p122
    END DO; IF(numpe==1) CLOSE(12)
    IF(plasiters==plasits)EXIT
  END DO load_increments
- IF(numpe==1)WRITE(11,*)"This analysis took : ",elap_time()-timest(1)
- CALL SHUTDOWN()
+ IF(numpe==1)WRITE(11,'(A,F10.4)')"This analysis took: ",                &
+   elap_time()-timest(1); CALL SHUTDOWN()
 END PROGRAM p122
