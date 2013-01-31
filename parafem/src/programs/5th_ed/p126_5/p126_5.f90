@@ -12,15 +12,14 @@ PROGRAM p126
  IMPLICIT NONE
 ! neq,ntot are now global variables - not declared
  INTEGER::nn,nip,nodof=4,nod=20,nodf=8,ndim=3,cj_tot,i,j,k,l,iel,ell,    &
-   limit,fixed_equations,iters,cjiters,cjits,nr,n_t,num_no,              &
-   no_index_start,nres,is,it,nlen,nels,ndof,npes_pp,argc,iargc,meshgen,  &
-   partitioner,node_end,node_start,nodes_pp  
+   limit,fixed_equations,iters,cjiters,cjits,nr,n_t,loaded_freedoms_pp,  &
+   nres,is,it,nlen,nels,ndof,npes_pp,argc,iargc,meshgen,partitioner,     &
+   node_end,node_start,nodes_pp,loaded_freedoms_start  
  REAL(iwp):: visc,rho,rho1,det,ubar,vbar,wbar,tol,cjtol,alpha,beta,      &
    penalty,x0,pp,kappa,gama,omega,norm_r,r0_norm,error
  REAL(iwp),PARAMETER::zero=0.0_iwp,one=1.0_iwp
  LOGICAL::converged,cj_converged
- CHARACTER(LEN=15)::element='hexahedron'
- CHARACTER(LEN=50)::argv
+ CHARACTER(LEN=15)::element='hexahedron'; CHARACTER(LEN=50)::argv
 !--------------------------- dynamic arrays ------------------------------
  REAL(iwp),ALLOCATABLE::points(:,:),coord(:,:),derivf(:,:),fun(:),       &
    jac(:,:),kay(:,:),der(:,:),deriv(:,:),weights(:),derf(:,:),funf(:),   &
@@ -31,7 +30,7 @@ PROGRAM p126
    c42(:,:),row3(:,:),u_pp(:,:),rt_pp(:),y_pp(:),y1_pp(:),s(:),Gamma(:), &
    GG(:,:),diag_tmp(:,:),store_pp(:),pmul_pp(:,:),timest(:),disp_pp(:)
  INTEGER,ALLOCATABLE::rest(:,:),g(:),num(:),g_num_pp(:,:),g_g_pp(:,:),   &
-   no(:),g_t(:),no_local(:),no_local_temp(:)
+   no(:),g_t(:),no_pp(:),no_pp_temp(:)
 !---------------------- input and initialisation -------------------------
  ALLOCATE(timest(20)); timest=zero; timest(1)=elap_time()
  CALL find_pe_procs(numpe,npes); CALL getname(argv,nlen)
@@ -44,25 +43,24 @@ PROGRAM p126
  CALL read_g_num_pp(argv,iel_start,nels,nn,numpe,g_num_pp)
  IF(meshgen == 2) CALL abaqus2sg(element,g_num_pp)
  CALL read_g_coord_pp(argv,g_num_pp,nn,npes,numpe,g_coord_pp)
- CALL read_rest(argv,numpe,rest);timest(2)=elap_time()
- ALLOCATE(points(nip,ndim),coord(nod,ndim),derivf(ndim,nodf),fun(nod),   &
+ CALL read_rest(argv,numpe,rest); timest(2)=elap_time()
+ ALLOCATE(points(nip,ndim),derivf(ndim,nodf),pmul_pp(ntot,nels_pp),      &
    jac(ndim,ndim),kay(ndim,ndim),der(ndim,nod),deriv(ndim,nod),          &
    derf(ndim,nodf),funf(nodf),coordf(nodf,ndim),funny(nod,1),            &
    g_g_pp(ntot,nels_pp),c11(nod,nod),c12(nod,nodf),c21(nodf,nod),        &
-   ke(ntot,ntot),c24(nodf,nod),c42(nod,nodf),num(nod),c32(nod,nodf),     &
+   ke(ntot,ntot),c24(nodf,nod),c42(nod,nodf),c32(nod,nodf),fun(nod),     &
    c23(nodf,nod),uvel(nod),vvel(nod),row1(1,nod),funnyf(nodf,1),         &
-   rowf(1,nodf),no_local_temp(fixed_equations),wvel(nod),row3(1,nod),    &
-   storke_pp(ntot,ntot,nels_pp),g_t(n_t),GG(ell+1,ell+1),g(ntot),        &
-   Gamma(ell+1),no(fixed_equations),val(fixed_equations),                &
-   diag_tmp(ntot,nels_pp),utemp_pp(ntot,nels_pp),row2(1,nod),s(ell+1),   &
-   pmul_pp(ntot,nels_pp),weights(nip))
+   rowf(1,nodf),no_pp_temp(fixed_equations),wvel(nod),row3(1,nod),       &
+   storke_pp(ntot,ntot,nels_pp),g_t(n_t),GG(ell+1,ell+1),                &
+   Gamma(ell+1),no(fixed_equations),val(fixed_equations),weights(nip),   &
+   diag_tmp(ntot,nels_pp),utemp_pp(ntot,nels_pp),row2(1,nod),s(ell+1))
 !----------  find the steering array and equations per process -----------
  CALL rearrange(rest); g_g_pp=0; neq=0
  elements_0: DO iel=1,nels_pp
    CALL find_g3(g_num_pp(:,iel),g_t,rest)
    CALL g_t_g_ns(nod,g_t,g_g_pp(:,iel))
  END DO elements_0
- neq=MAXVAL(g_g_pp); neq=MAX_INTEGER_P(neq); CALL calc_neq_pp
+ neq=MAXVAL(g_g_pp); neq=max_p(neq); CALL calc_neq_pp
  CALL calc_npes_pp(npes,npes_pp)
  CALL make_ggl(npes_pp,npes,g_g_pp); DEALLOCATE(g_g_pp)
  DO i=1,neq_pp; IF(nres==ieq_start+i-1)THEN;it=numpe;is=i;END IF;END DO
@@ -81,9 +79,9 @@ PROGRAM p126
  xold_pp=zero; y_pp=zero; y1_pp=zero; store_pp=zero
 !-------------------------- organise fixed equations ---------------------
  CALL read_loads_ns(argv,numpe,no,val)
- CALL reindex_fixed_nodes(ieq_start,no,no_local_temp,num_no,             &
-   no_index_start,neq_pp); ALLOCATE(no_local(1:num_no))
- no_local = no_local_temp(1:num_no); DEALLOCATE(no_local_temp)
+ CALL reindex_fixed_nodes(ieq_start,no,no_pp_temp,loaded_freedoms_pp,    &
+   loaded_freedoms_start,neq_pp); ALLOCATE(no_pp(1:loaded_freedoms_pp))
+ no_pp = no_pp_temp(1:loaded_freedoms_pp); DEALLOCATE(no_pp_temp)
 !------------------------- main iteration loop ---------------------------
  CALL sample(element,points,weights); uvel=zero; vvel=zero; wvel=zero
  kay=zero; iters=0; cj_tot=0; kay(1,1)=visc/rho; kay(2,2)=visc/rho
@@ -139,9 +137,10 @@ PROGRAM p126
    diag_tmp(k,iel)=diag_tmp(k,iel)+storke_pp(k,k,iel); END DO
  END DO elements_2; CALL scatter(diag_pp,diag_tmp)
 !------------------- prescribed values of velocity and pressure ----------
- DO i=1,num_no; k=no_local(i)-ieq_start+1
+ DO i=1,loaded_freedoms_pp; k=no_pp(i)-ieq_start+1
    diag_pp(k)=diag_pp(k)+penalty
-   b_pp(k)=diag_pp(k)*val(no_index_start+i-1); store_pp(k)=diag_pp(k)
+   b_pp(k)=diag_pp(k)*val(loaded_freedoms_start+i-1)
+   store_pp(k)=diag_pp(k)
  END DO   
 !---------- solve the equations element-by-element using BiCGSTAB --------
 !-------------------------- initialisation phase -------------------------
@@ -150,7 +149,7 @@ PROGRAM p126
    elements_3: DO iel=1,nels_pp  
      utemp_pp(:,iel)=MATMUL(storke_pp(:,:,iel),pmul_pp(:,iel))
    END DO elements_3; CALL scatter(y1_pp,utemp_pp)
-   DO i=1,num_no; k=no_local(i)-ieq_start+1
+   DO i=1,loaded_freedoms_pp; k=no_pp(i)-ieq_start+1
      y1_pp(k)=y_pp(k)*store_pp(k)
    END DO; y_pp=y1_pp; rt_pp=b_pp-y_pp; r_pp=zero; r_pp(:,1)=rt_pp
    u_pp=zero; gama=one; omega=one; k=0; norm_r=norm_p(rt_pp)
@@ -166,7 +165,7 @@ PROGRAM p126
        elements_4: DO iel=1,nels_pp
          utemp_pp(:,iel)=MATMUL(storke_pp(:,:,iel),pmul_pp(:,iel))
        END DO elements_4; CALL scatter(y1_pp,utemp_pp)
-       DO i=1,num_no; l=no_local(i)-ieq_start+1
+       DO i=1,loaded_freedoms_pp; l=no_pp(i)-ieq_start+1
          y1_pp(l)=y_pp(l)*store_pp(l)
        END DO; y_pp=y1_pp; u_pp(:,j+1)=y_pp
        gama=DOT_PRODUCT_P(rt_pp,y_pp); alpha=rho1/gama
@@ -176,7 +175,7 @@ PROGRAM p126
        elements_5: DO iel=1,nels_pp
          utemp_pp(:,iel)=MATMUL(storke_pp(:,:,iel),pmul_pp(:,iel))
        END DO elements_5; CALL scatter(y1_pp,utemp_pp)
-       DO i=1,num_no; l=no_local(i)-ieq_start+1
+       DO i=1,loaded_freedoms_pp; l=no_pp(i)-ieq_start+1
          y1_pp(l)=y_pp(l)*store_pp(l)
        END DO; y_pp=y1_pp; r_pp(:,j+1)=y_pp
      END DO
@@ -225,5 +224,5 @@ PROGRAM p126
  END DO ; IF(numpe==1) CLOSE(12)
  IF(numpe==it) THEN 
    WRITE(11,'(A,F10.4)') "This analysis took :", elap_time()-timest(1)
-   CLOSE(11); END IF; CALL shutdown()    
+   CLOSE(11); END IF; CALL SHUTDOWN()    
 END PROGRAM p126
