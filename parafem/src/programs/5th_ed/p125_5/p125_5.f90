@@ -13,8 +13,8 @@ PROGRAM p125
  INTEGER::nels,ndof,npes_pp,nn,nr,nip,nod,i,j,k,iel,nstep,nlen,          &
    npri,nres,it,is,meshgen,partitioner,loaded_nodes=0,fixed_freedoms,    &
    nodes_pp,node_start,node_end
- REAL(iwp),PARAMETER::zero=0.0_iwp
  REAL(iwp)::kx,ky,kz,det,dtim,val0,real_time
+ REAL(iwp),PARAMETER::zero=0.0_iwp; CHARACTER(LEN=6)::ch
  CHARACTER(LEN=15)::element; CHARACTER(LEN=50)::argv
 !------------------------------ dynamic arrays --------------------------- 
  REAL(iwp),ALLOCATABLE::loads_pp(:),points(:,:),kay(:,:),jac(:,:),       &
@@ -103,7 +103,7 @@ PROGRAM p125
        WRITE(12,'(A)')"Alya Ensight Gold --- Scalar per-node variable file"
        WRITE(12,'(A/A/A)') "part", "    1","coordinates"
      END IF
-     ptl_pp=zero; utemp_pp=zero; CALL gather(xnew_pp(1:),utemp_pp)
+     ptl_pp=zero; utemp_pp=zero; CALL gather(loads_pp(1:),utemp_pp)
      CALL scatter_nodes(npes,nn,nels_pp,g_num_pp,nod,ndim,nodes_pp,      &
        node_start,node_end,utemp_pp,ptl_pp,1)
      CALL dismsh_ensi_p(12,1,nodes_pp,npes,numpe,1,ptl_pp); CLOSE(12)
