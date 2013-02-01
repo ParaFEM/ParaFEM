@@ -19,7 +19,7 @@ PROGRAM p123
  CHARACTER(LEN=15)::element; CHARACTER(LEN=50)::argv 
  LOGICAL::converged=.false.
  REAL(iwp),ALLOCATABLE::points(:,:),weights(:),eld_pp(:,:),kay(:,:),     &
-   kay(:,:),fun(:),jac(:,:),der(:,:),deriv(:,:),col(:,:),row(:,:),       &
+   fun(:),jac(:,:),der(:,:),deriv(:,:),col(:,:),row(:,:),                &
    kcx(:,:),kcy(:,:),kcz(:,:),diag_precon_pp(:),p_pp(:),r_pp(:),x_pp(:), &
    xnew_pp(:),u_pp(:),pmul_pp(:,:),utemp_pp(:,:),d_pp(:),val(:,:),       &
    diag_precon_tmp(:,:),store_pp(:),storkc_pp(:,:,:),eld(:),timest(:),   &
