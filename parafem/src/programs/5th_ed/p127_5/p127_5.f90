@@ -10,8 +10,9 @@ PROGRAM p127
  USE input; IMPLICIT NONE
 ! neq,ntot are now global variables - not declared
  INTEGER::nxe,nye,nze,nn,nr,nip,nodof=4,nod=20,nodf=8,nst=6,ndim=3,i,j,k, &
-   l,iel,ns,nstep,cjiters,cjits,loaded_freedoms,num_no,no_index_start,n_t,&
-   neq_temp,nn_temp,nle,nlen,nels,partitioner=1,ndof,ielpe,npes_pp
+   l,iel,ns,nstep,cjiters,cjits,loaded_freedoms,loaded_freedoms_pp,n_t,   &
+   neq_temp,nn_temp,nle,nlen,nels,partitioner=1,ndof,ielpe,npes_pp,       &
+   loaded_freedoms_start
  REAL(iwp)::kx,ky,kz,e,v,det,dtim,theta,real_time,up,alpha,beta,cjtol,aa, &
    bb,cc,q
  REAL(iwp),PARAMETER::zero=0._iwp
@@ -26,19 +27,12 @@ PROGRAM p127
    u_pp(:),eld_pp(:,:),diag_precon_pp(:),diag_precon_tmp(:,:),d_pp(:),   &
    utemp_pp(:,:),storkd_pp(:,:,:),val(:),vol(:),timest(:) 
  INTEGER,ALLOCATABLE::rest(:,:),g(:),num(:),g_g_pp(:,:),g_num_pp(:,:),   &
-   g_t(:),no(:),no_local_temp(:),no_local(:)
+   g_t(:),no(:),no_pp_temp(:),no_pp(:)
 !-------------------------input and initialisation------------------------
  ALLOCATE(timest(20)); timest=zero; timest(1)=elap_time()
  CALL find_pe_procs(numpe,npes); CALL getname(argv,nlen)
  CALL read_p127(argv,numpe,nels,nxe,nze,aa,bb,cc,nip,kx,ky,kz,e,v,dtim,  &
    nstep,theta,cjits,cjtol)
-! IF(numpe==1)THEN 
-!   OPEN(10,FILE=argv(1:nlen)//'.dat',STATUS='OLD',ACTION='READ')
-!   READ(10,*)nels,nxe,nze,aa,bb,cc,nip,kx,ky,kz,e,v,dtim,nstep,theta,    &
-!     cjits,cjtol
-! END IF
-! CALL bcast_inputdata_p127(numpe,npes,nels,nxe,nze,aa,bb,cc,nip,kx,ky,kz, &
-!   e,v,dtim,nstep,theta,cjits,cjtol)
  CALL calc_nels_pp(argv,nels,npes,numpe,partitioner,nels_pp)
  ndof=nod*ndim; ntot=ndof+nodf; n_t=nod*nodof
  nye=nels/nxe/nze; nle=nxe/5; loaded_freedoms=3*nle*nle+4*nle+1
@@ -53,7 +47,7 @@ PROGRAM p127
    g_num_pp(nod,nels_pp),num(nod),storke_pp(ntot,ntot,nels_pp),           &
    storkd_pp(ntot,ntot,nels_pp),pmul_pp(ntot,nels_pp),                    &
    utemp_pp(ntot,nels_pp),eld_pp(ntot,nels_pp),no(loaded_freedoms),       &
-   val(loaded_freedoms),no_local_temp(loaded_freedoms))
+   val(loaded_freedoms),no_pp_temp(loaded_freedoms))
  kay=0.0_iwp; kay(1,1)=kx; kay(2,2)=ky; kay(3,3)=kz
  CALL biot_cube_bc20(nxe,nye,nze,rest); CALL rearrange(rest)
  CALL biot_loading(nxe,nze,nle,no,val); val=-val*aa*bb/12._iwp
@@ -119,9 +113,10 @@ PROGRAM p127
  diag_precon_pp=1._iwp/diag_precon_pp
  DEALLOCATE(diag_precon_tmp)
 !----------------------------loaded freedoms -----------------------------
- CALL reindex(ieq_start,no,no_local_temp,num_no,no_index_start,neq_pp)
- ALLOCATE(no_local(1:num_no)); no_local=no_local_temp(1:num_no)
- DEALLOCATE(no_local_temp)
+ CALL reindex(ieq_start,no,no_pp_temp,loaded_freedoms_pp,                &
+   loaded_freedoms_start,neq_pp)
+ ALLOCATE(no_pp(1:loaded_freedoms_pp))
+ no_pp=no_pp_temp(1:loaded_freedoms_pp); DEALLOCATE(no_pp_temp)
 ! ------------------------ enter the time-stepping loop-------------------
  real_time=zero     
  time_steps: DO ns=1,nstep
@@ -134,12 +129,12 @@ PROGRAM p127
    END DO elements_3; CALL scatter(ans_pp,utemp_pp)
 !--------------------------   ramp loading  ------------------------------
    IF(ns>10)THEN
-     DO i=1,num_no; j=no_local(i)-ieq_start+1
-       ans_pp(j)=ans_pp(j)+val(no_index_start+i-1) 
+     DO i=1,loaded_freedoms_pp; j=no_pp(i)-ieq_start+1
+       ans_pp(j)=ans_pp(j)+val(loaded_freedoms_start+i-1) 
      END DO
    ELSE IF(ns<=10)THEN
-     DO i=1,num_no; j=no_local(i)-ieq_start+1
-       ans_pp(j)=ans_pp(j)+val(no_index_start+i-1)*                       &
+     DO i=1,loaded_freedoms_pp; j=no_pp(i)-ieq_start+1
+       ans_pp(j)=ans_pp(j)+val(loaded_freedoms_start+i-1)*               &
          (.1_iwp*ns+.1_iwp*(theta-1._iwp))
      END DO
    END IF
