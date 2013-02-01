@@ -88,7 +88,7 @@ PROGRAM p126
  kay=zero; iters=0; cj_tot=0; kay(1,1)=visc/rho; kay(2,2)=visc/rho
  kay(3,3)=visc/rho; timest(3)=elap_time()
  iterations: DO
-   iters=iters+1; ke=zero; storke_pp=zero; diag_pp=zero; utemp_pp=zero
+   iters=iters+1; storke_pp=zero; diag_pp=zero; utemp_pp=zero
    b_pp=zero; pmul_pp=zero; CALL gather(x_pp,utemp_pp)
    CALL gather(xold_pp,pmul_pp)
 !-------------------- element stiffness integration ----------------------
@@ -214,7 +214,7 @@ PROGRAM p126
    WRITE(12,'(A/A/A)') "part", "     1","coordinates"
  END IF
  CALL calc_nodes_pp(nn,npes,numpe,node_end,node_start,nodes_pp)
- ALLOCATE(upvw_pp(nodes_pp*nodof),temp(nodes_pp)); disp_pp=zero          
+ ALLOCATE(upvw_pp(nodes_pp*nodof),temp(nodes_pp)); upvw_pp=zero          
  temp=zero; utemp_pp=zero; CALL gather(x_pp(1:),utemp_pp)
  CALL scatter_nodes_ns(npes,nn,nels_pp,g_num_pp,nod,nodof,nodes_pp,      &
    node_start,node_end,utemp_pp,upvw_pp,1)
