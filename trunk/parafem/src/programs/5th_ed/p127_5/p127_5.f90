@@ -65,7 +65,7 @@ PROGRAM p127
   CALL calc_npes_pp(npes,npes_pp); CALL make_ggl(npes_pp,npes,g_g_pp)
  IF(numpe==1)THEN
    OPEN(11,FILE=argv(1:nlen)//'.res',STATUS='REPLACE',ACTION='WRITE') 
-   WRITE(11,'(A,I5,A)')"This job ran on ",npes,"  processors"
+   WRITE(11,'(A,I5,A)')"This job ran on ",npes,"  processes"
    WRITE(11,'(A)')"Global coordinates and node numbers"
    DO i=1,nels_pp,nels_pp-1
      WRITE(11,'(A,I8)')"Element ",i
