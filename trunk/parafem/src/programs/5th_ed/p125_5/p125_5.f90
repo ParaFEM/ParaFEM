@@ -94,8 +94,8 @@ PROGRAM p125
      utemp_pp(:,iel) = utemp_pp(:,iel)+MATMUL(pm,pmul_pp(:,iel)) 
    END DO elements_2; CALL scatter(newlo_pp,utemp_pp)
    loads_pp=newlo_pp*globma_pp; newlo_pp=zero 
-   IF(j/npri*npri==j.AND.numpe==it)                                      &
-     WRITE(11,'(2E12.4)')real_time,loads_pp(is)
+   IF(j/npri*npri==j) THEN
+     IF(numpe==it) WRITE(11,'(2E12.4)')real_time,loads_pp(is)
 !------------------- output potentials for ParaView ----------------------
      IF(numpe==1)THEN; WRITE(ch,'(I6.6)') j
        OPEN(12,file=argv(1:nlen)//".ensi.NDPTL-"//ch,status='replace',   &
@@ -107,6 +107,7 @@ PROGRAM p125
      CALL scatter_nodes(npes,nn,nels_pp,g_num_pp,nod,ndim,nodes_pp,      &
        node_start,node_end,utemp_pp,ptl_pp,1)
      CALL dismsh_ensi_p(12,1,nodes_pp,npes,numpe,1,ptl_pp); CLOSE(12)
+   END IF
  END DO timesteps; timest(5)=elap_time()
  IF(numpe==it) THEN
    WRITE(11,'(A,F10.4)')"Time stepping recursion took  :",               &
