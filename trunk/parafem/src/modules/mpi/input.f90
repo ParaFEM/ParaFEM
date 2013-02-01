@@ -34,6 +34,7 @@ MODULE INPUT
   !*    READ_P124              Reads the control data for program p124, 5th ed
   !*    READ_P125              Reads the control data for program p125
   !*    READ_P126              Reads the control data for program p126
+  !*    READ_P127              Reads the control data for program p127
   !*    READ_P129              Reads the control data for program p129
   !*    READ_XX2               Reads the control data for program xx2
   !*    BCAST_INPUTDATA_XX5    Reads the control data for program xx5
@@ -2672,6 +2673,167 @@ MODULE INPUT
 
   RETURN
   END SUBROUTINE READ_P125
+
+!------------------------------------------------------------------------------
+!------------------------------------------------------------------------------
+!------------------------------------------------------------------------------
+
+  SUBROUTINE READ_P127(job_name,numpe,nels,nxe,nze,aa,bb,cc,nip,kx,ky,kz,e,v, &
+    dtim,nstep,theta,cjits,cjtol)
+
+  !/****f* input/read_p127
+  !*  NAME
+  !*    SUBROUTINE: read_p127
+  !*  SYNOPSIS
+  !*    Usage:      CALL read_p127(job_name,numpe,nels,nxe,nze,aa,bb,cc,nip,  &
+  !*                               kx,ky,kz,e,v,dtim,nstep,theta,cjits,cjtol)
+  !*  FUNCTION
+  !*    Master processor reads the general data for the problem and broadcasts 
+  !*    it to the slave processors.
+  !*  INPUTS
+  !*
+  !*    The following scalar character has the INTENT(IN) attribute:
+  !*
+  !*    job_name               : File name that contains the data to be read
+  !*
+  !*    The following scalar integer has the INTENT(IN) attribute:
+  !*
+  !*    numpe                  : Processor number
+  !*
+  !*    The following scalar character has the INTENT(INOUT) attribute:
+  !*
+  !*    element                : Element type
+  !*                           : Values: 'hexahedron' or 'tetrahedron'
+  !*
+  !*    The following scalar integers have the INTENT(INOUT) attribute:
+  !*
+  !*    fixed_freedoms         : Number of fixed displacements
+  !*    loaded_nodes           : Number of nodes with applied forces
+  !*    mesh                   : 1 = Smith and Griffiths numbering scheme
+  !*                           : 2 = Abaqus numbering scheme
+  !*    nels                   : Total number of elements
+  !*    nip                    : Number of Gauss integration points
+  !*    nn                     : Total number of nodes in the mesh
+  !*    nod                    : Number of nodes per element
+  !*    npri                   : Number of timesteps to skip before printing
+  !*    nres                   : Equation number for print out
+  !*    nr                     : Number of nodes with restrained degrees of
+  !*                             freedom 
+  !*    nstep                  : Number of steps to complete in the simulation  
+  !*    partition              : Type of partitioning 
+  !*                           : 1 = internal partitioning
+  !*                           : 2 = external partitioning with .psize file
+  !*
+  !*    The following scalar reals have the INTENT(INOUT) attribute:
+  !*
+  !*    dtim                   : Time step
+  !*    kx                     : Conductivity in x-direction
+  !*    ky                     : Conductivity in y-direction
+  !*    kz                     : Conductivity in z-direction
+  !*    val0                   : Initial value
+  !*
+  !*  AUTHOR
+  !*    Lee Margetts
+  !*  CREATION DATE
+  !*    01.02.2013
+  !*  COPYRIGHT
+  !*    (c) University of Manchester 2013
+  !******
+  !*  Place remarks that should not be included in the documentation here.
+  !*  Need to add some error traps
+  !*/
+
+  IMPLICIT NONE
+
+  CHARACTER(LEN=50), INTENT(IN)    :: job_name
+  CHARACTER(LEN=15), INTENT(INOUT) :: element
+  INTEGER, INTENT(IN)              :: numpe
+  INTEGER, INTENT(INOUT)           :: nels,nxe,nze,nip,nstep,cjits
+  REAL(iwp), INTENT(INOUT)         :: kx,ky,kz,e,v,dtim,theta,cjtol,aa,bb,cc
+
+!------------------------------------------------------------------------------
+! 1. Local variables
+!------------------------------------------------------------------------------
+
+  INTEGER                          :: bufsize,ier,integer_store(6)
+  REAL(iwp)                        :: real_store(11)
+  CHARACTER(LEN=50)                :: fname
+  
+!------------------------------------------------------------------------------
+! 2. Master processor reads the data and copies it into temporary arrays
+!------------------------------------------------------------------------------
+
+  IF (numpe==1) THEN
+    fname = job_name(1:INDEX(job_name, " ") -1) // ".dat"
+    OPEN(10,FILE=fname,STATUS='OLD',ACTION='READ')
+    READ(10,*) nels,nxe,nze,aa,bb,cc,nip,kx,ky,kz,e,v,dtim,nstep,theta,      &
+               cjits,cjtol
+    CLOSE(10)
+   
+    integer_store      = 0
+
+    integer_store(1)   = nels
+    integer_store(2)   = nxe
+    integer_store(3)   = nze
+    integer_store(4)   = nip 
+    integer_store(5)   = nstep
+    integer_store(6)   = cjits
+
+    real_store         = 0.0_iwp
+
+    real_store(1)      = kx  
+    real_store(2)      = ky  
+    real_store(3)      = kz  
+    real_store(4)      = e  
+    real_store(5)      = v 
+    real_store(6)      = dtim  
+    real_store(7)      = theta  
+    real_store(8)      = cjtol  
+    real_store(9)      = aa  
+    real_store(10)     = bb 
+    real_store(11)     = cc 
+
+  END IF
+
+!------------------------------------------------------------------------------
+! 3. Master processor broadcasts the temporary arrays to the slave processors
+!------------------------------------------------------------------------------
+
+  bufsize = 6
+  CALL MPI_BCAST(integer_store,bufsize,MPI_INTEGER,0,MPI_COMM_WORLD,ier)
+
+  bufsize = 11
+  CALL MPI_BCAST(real_store,bufsize,MPI_REAL8,0,MPI_COMM_WORLD,ier)
+
+!------------------------------------------------------------------------------
+! 4. Slave processors extract the variables from the temporary arrays
+!------------------------------------------------------------------------------
+
+  IF (numpe/=1) THEN
+
+    nels            = integer_store(1)
+    nxe             = integer_store(2)
+    nze             = integer_store(3)
+    nip             = integer_store(4)
+    nstep           = integer_store(5)
+    cjits           = integer_store(6)
+
+    kx              = real_store(1)
+    ky              = real_store(2)
+    kz              = real_store(3)
+    e               = real_store(4)
+    v               = real_store(5)
+    dtim            = real_store(6)
+    theta           = real_store(7)
+    cjtol           = real_store(8)
+    aa              = real_store(9)
+    bb              = real_store(10)
+    cc              = real_store(11)
+
+  END IF
+
+  RETURN
+  END SUBROUTINE READ_P127
   
 !------------------------------------------------------------------------------
 !------------------------------------------------------------------------------
