@@ -57,10 +57,10 @@ PROGRAM p126
    diag_tmp(ntot,nels_pp),utemp_pp(ntot,nels_pp))
 !----------  find the steering array and equations per process -----------
  CALL rearrange(rest); g_g_pp=0; neq=0
- elements_0: DO iel=1,nels_pp
+ elements_1: DO iel=1,nels_pp
    CALL find_g3(g_num_pp(:,iel),g_t,rest)
    CALL g_t_g_ns(nod,g_t,g_g_pp(:,iel))
- END DO elements_0
+ END DO elements_1
  neq=MAXVAL(g_g_pp); neq=max_p(neq); CALL calc_neq_pp
  CALL calc_npes_pp(npes,npes_pp)
  CALL make_ggl(npes_pp,npes,g_g_pp); DEALLOCATE(g_g_pp)
@@ -92,7 +92,7 @@ PROGRAM p126
    b_pp=zero; pmul_pp=zero; CALL gather(x_pp,utemp_pp)
    CALL gather(xold_pp,pmul_pp)
 !-------------------- element stiffness integration ----------------------
-   elements_1: DO iel=1,nels_pp
+   elements_2: DO iel=1,nels_pp
      uvel=(utemp_pp(1:nod,iel)+pmul_pp(1:nod,iel))*.5_iwp
      DO i=nod+nodf+1,nod+nodf+nod
        vvel(i-nod-nodf)=(utemp_pp(i,iel)+pmul_pp(i,iel))*.5_iwp
@@ -131,12 +131,12 @@ PROGRAM p126
        c24=c24+MATMUL(funnyf,row3)*det*weights(i)
      END DO gauss_points_1
      CALL formupvw(storke_pp,iel,c11,c12,c21,c23,c32,c24,c42)
-   END DO elements_1
+   END DO elements_2
 !----------------------- build the preconditioner ------------------------
  diag_tmp=zero
- elements_2: DO iel=1,nels_pp; DO k=1,ntot
+ elements_2a: DO iel=1,nels_pp; DO k=1,ntot
    diag_tmp(k,iel)=diag_tmp(k,iel)+storke_pp(k,k,iel); END DO
- END DO elements_2; CALL scatter(diag_pp,diag_tmp)
+ END DO elements_2a; CALL scatter(diag_pp,diag_tmp)
 !------------------- prescribed values of velocity and pressure ----------
  DO i=1,fixed_freedoms_pp; k=no_pp(i)-ieq_start+1
    diag_pp(k)=diag_pp(k)+penalty
