@@ -2746,7 +2746,6 @@ MODULE INPUT
   IMPLICIT NONE
 
   CHARACTER(LEN=50), INTENT(IN)    :: job_name
-  CHARACTER(LEN=15), INTENT(INOUT) :: element
   INTEGER, INTENT(IN)              :: numpe
   INTEGER, INTENT(INOUT)           :: nels,nxe,nze,nip,nstep,cjits
   REAL(iwp), INTENT(INOUT)         :: kx,ky,kz,e,v,dtim,theta,cjtol,aa,bb,cc
