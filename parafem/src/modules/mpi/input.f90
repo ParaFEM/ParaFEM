@@ -1437,7 +1437,7 @@ MODULE INPUT
     CHARACTER(LEN=10)             :: keyword
 
     IF(numpe==1)THEN
-     fname=job_name(1:INDEX(job_name," ")-1 // ".mat"
+     fname=job_name(1:INDEX(job_name," ")-1) // ".mat"
      OPEN(21,FILE=fname, STATUS='OLD', ACTION='READ')
      !Read the *MATERIAL keyword, num of materials in file and num values per material line (2)
      READ(21,*) keyword, nmats, nvals
@@ -2986,7 +2986,7 @@ IMPLICIT NONE
 
 
 INTEGER,INTENT(INOUT)    :: numpe,npes,nels,nxe,nze,nip,nstep,cjits  
-INTEGER,PARAMETER        :: ilength=4, rlength=8
+INTEGER,PARAMETER        :: ilength=8, rlength=8
 INTEGER                  :: bufsizer,bufdecl
 REAL(iwp), INTENT(INOUT) :: aa,bb,cc,kx,ky,kz,e,v,dtim,theta,cjtol
 
