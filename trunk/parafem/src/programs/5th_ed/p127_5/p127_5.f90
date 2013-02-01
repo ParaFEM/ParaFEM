@@ -11,7 +11,7 @@ PROGRAM p127
 ! neq,ntot are now global variables - not declared
  INTEGER::nxe,nye,nze,nn,nr,nip,nodof=4,nod=20,nodf=8,nst=6,ndim=3,i,j,k, &
    l,iel,ns,nstep,cjiters,cjits,loaded_freedoms,num_no,no_index_start,n_t,&
-   neq_temp,nn_temp,nle,nlen,nels,partitioner=2,ndof,ielpe,npes_pp
+   neq_temp,nn_temp,nle,nlen,nels,partitioner=1,ndof,ielpe,npes_pp
  REAL(iwp)::kx,ky,kz,e,v,det,dtim,theta,real_time,up,alpha,beta,cjtol,aa, &
    bb,cc,q
  REAL(iwp),PARAMETER::zero=0._iwp
