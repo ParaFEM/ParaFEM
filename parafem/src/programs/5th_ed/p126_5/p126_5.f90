@@ -13,7 +13,7 @@ PROGRAM p126
 ! neq,ntot are now global variables - not declared
  INTEGER::nn,nip,nodof=4,nod=20,nodf=8,ndim=3,cj_tot,i,j,k,l,iel,ell,    &
    limit,fixed_equations,iters,cjiters,cjits,nr,n_t,loaded_freedoms_pp,  &
-   nres,is,it,nlen,nels,ndof,npes_pp,argc,iargc,meshgen,partitioner,     &
+   nres,is,it,nlen,nels,ndof,npes_pp,meshgen,partitioner,                &
    node_end,node_start,nodes_pp,loaded_freedoms_start  
  REAL(iwp):: visc,rho,rho1,det,ubar,vbar,wbar,tol,cjtol,alpha,beta,      &
    penalty,x0,pp,kappa,gama,omega,norm_r,r0_norm,error
@@ -40,7 +40,7 @@ PROGRAM p126
  ntot=nod+nodf+nod+nod; n_t=nod*nodof
  ALLOCATE(g_num_pp(nod,nels_pp),g_coord_pp(nod,ndim,nels_pp),            &
    rest(nr,nodof+1)); g_num_pp=0; g_coord_pp=zero; rest=0
- CALL read_g_num_pp(argv,iel_start,nels,nn,numpe,g_num_pp)
+ CALL read_g_num_pp(argv,iel_start,nn,npes,numpe,g_num_pp)
  IF(meshgen == 2) CALL abaqus2sg(element,g_num_pp)
  CALL read_g_coord_pp(argv,g_num_pp,nn,npes,numpe,g_coord_pp)
  CALL read_rest(argv,numpe,rest); timest(2)=elap_time()
