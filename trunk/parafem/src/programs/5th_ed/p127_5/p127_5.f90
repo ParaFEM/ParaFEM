@@ -30,15 +30,15 @@ PROGRAM p127
 !-------------------------input and initialisation------------------------
  ALLOCATE(timest(20)); timest=zero; timest(1)=elap_time()
  CALL find_pe_procs(numpe,npes); CALL getname(argv,nlen)
-!CALL read_p127(nels,nxe,nze,aa,bb,cc,nip,kx,ky,kz,e,v,dtim,nstep,       &
-!  theta,cjits,cjtol)
- IF(numpe==1)THEN 
-   OPEN(10,FILE=argv(1:nlen)//'.dat',STATUS='OLD',ACTION='READ')
-   READ(10,*)nels,nxe,nze,aa,bb,cc,nip,kx,ky,kz,e,v,dtim,nstep,theta,    &
-     cjits,cjtol
- END IF
- CALL bcast_inputdata_p127(numpe,npes,nels,nxe,nze,aa,bb,cc,nip,kx,ky,kz, &
-   e,v,dtim,nstep,theta,cjits,cjtol)
+ CALL read_p127(argv,numpe,nels,nxe,nze,aa,bb,cc,nip,kx,ky,kz,e,v,dtim,  &
+   nstep,theta,cjits,cjtol)
+! IF(numpe==1)THEN 
+!   OPEN(10,FILE=argv(1:nlen)//'.dat',STATUS='OLD',ACTION='READ')
+!   READ(10,*)nels,nxe,nze,aa,bb,cc,nip,kx,ky,kz,e,v,dtim,nstep,theta,    &
+!     cjits,cjtol
+! END IF
+! CALL bcast_inputdata_p127(numpe,npes,nels,nxe,nze,aa,bb,cc,nip,kx,ky,kz, &
+!   e,v,dtim,nstep,theta,cjits,cjtol)
  CALL calc_nels_pp(argv,nels,npes,numpe,partitioner,nels_pp)
  ndof=nod*ndim; ntot=ndof+nodf; n_t=nod*nodof
  nye=nels/nxe/nze; nle=nxe/5; loaded_freedoms=3*nle*nle+4*nle+1
