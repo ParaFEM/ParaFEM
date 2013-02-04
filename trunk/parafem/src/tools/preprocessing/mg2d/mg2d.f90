@@ -1861,20 +1861,8 @@ PROGRAM mg2d
 !------------------------------------------------------------------------------
 ! 14. Program p128
 !------------------------------------------------------------------------------
- 
-! PRINT*
-! PRINT*, "      The <my_job>.mg file should contain the following data:"
-! PRINT*
-! PRINT*, "      p128ar"
-! PRINT*, "      element"
-! PRINT*, "      nels, nxe, nze, nod, nip"
-! PRINT*, "      aa, bb, cc"
-! PRINT*, "      rho, e, v"
-! PRINT*, "      nev, ncv, bmat, which"
-! PRINT*, "      tol, maxitr"
-! PRINT*
 
-  CASE('p128')
+  CASE('p128ar')
   READ(10,*) element
   READ(10,*) meshgen
   READ(10,*) nels, nxe, nze, nod, nip
@@ -1968,8 +1956,121 @@ PROGRAM mg2d
   DEALLOCATE(rest)
 
 !------------------------------------------------------------------------------
+! 14. Program p128
+!------------------------------------------------------------------------------
+
+  CASE('p128')
+  
+  READ(10,*) ìotype,nels, nxe, nze, nip
+  READ(10,*) aa, bb, cc
+  READ(10,*) rho, e, v
+  READ(10,*) nmodes
+  READ(10,*) el,er
+  READ(10,*) lalfa,leig,lx,lz,acc
+
+  nye   = nels/nxe/nze
+  nr    = (nxe+1) * (nze+1)
+  nn    = (nxe+1) * (nze+1) * (nye+1)
+  ndim  = 3
+  nodof = 3
+
+!------------------------------------------------------------------------------
+! 15.1 Allocate dynamic arrays
+!------------------------------------------------------------------------------
+
+  SELECT CASE(iotype)
+
+  CASE('parafem')
+
+  ALLOCATE(g_coord(ndim,nn))
+  ALLOCATE(coord(nod,ndim))
+  ALLOCATE(g_num(nod,nels))
+  ALLOCATE(rest(nr,nodof+1))
+  
+  g_coord = 0.0_iwp
+  coord   = 0.0_iwp
+  g_num   = 0
+  rest    = 0
+
+  DO i=1,nr
+    rest(i,1) = i
+  END DO
+
+  DO iel=1,nels
+    CALL geometry_8bxz(iel,nxe,nze,aa,bb,cc,coord,g_num(:,iel))
+    g_coord(:,g_num(:,iel)) = TRANSPOSE(coord)    
+  END DO
+ 
+  fname = job_name(1:INDEX(job_name, " ")-1) // ".d" 
+  OPEN(11,FILE=fname,STATUS='REPLACE',ACTION='WRITE')
+  
+  WRITE(11,'(A)') "*THREE_DIMENSIONAL"
+  WRITE(11,'(A)') "*NODES"
+
+  DO i = 1, nn
+    WRITE(11,'(I6,3F12.4)') i, g_coord(:,i)
+  END DO
+
+  WRITE(11,'(A)') "*ELEMENTS"
+  DO iel = 1, nels
+    WRITE(11,'(I6,A,8I10,A)') iel, " 3 8 1 ", g_num(1,iel),g_num(4,iel),     & 
+                              g_num(8,iel),g_num(5,iel),g_num(2,iel),        &
+                              g_num(3,iel),g_num(7,iel),g_num(6,iel), " 1 "
+  END DO
+
+  CLOSE(11)  
+
+  fname = job_name(1:INDEX(job_name, " ")-1) // ".bnd" 
+  OPEN(12,FILE=fname,STATUS='REPLACE',ACTION='WRITE')
+ 
+  DO i = 1, nr
+    WRITE(12,'(4I6)') rest(i,:) 
+  END DO
+
+  CLOSE(12)
+ 
+!------------------------------------------------------------------------------
+! 15.6 Write new control data file
+!------------------------------------------------------------------------------
+
+  fname = job_name(1:INDEX(job_name, " ")-1) // ".dat" 
+  OPEN(14,FILE=fname,STATUS='REPLACE',ACTION='WRITE')
+
+  meshgen = 2 ! Default
+
+  WRITE(14,'(A)')         program_name
+  WRITE(14,'(I2)')        meshgen
+  WRITE(14,'(4I9)')       nels, nn, nr, nip
+  WRITE(14,'(3E12.4)')    rho, e, v
+  WRITE(14,'(I8)')        nmodes
+  WRITE(14,'(2E12.4)')    el,er
+  WRITE(14,'(4I6,E12.4)') lalfa,leig,lx,lz,acc
+
+  CLOSE(14)
+
+!------------------------------------------------------------------------------
+! 15.7 Deallocate arrays
+!------------------------------------------------------------------------------
+
+  DEALLOCATE(coord)
+  DEALLOCATE(g_coord)
+  DEALLOCATE(g_num)
+  DEALLOCATE(rest)
+
+  CASE('paraview')
+
+    PRINT *, "  Output for ParaView not yet implemented"; PRINT *, ""
+
+  CASE DEFAULT
+
+    PRINT *, "  Option ", iotype, " not recognised."; PRINT *, ""
+
+  END SELECT 
+
+!------------------------------------------------------------------------------
 ! 16. Program p129
 !------------------------------------------------------------------------------  
+
   CASE('p129')
  
   READ(10,*) iotype,nels,nxe,nze,nip
