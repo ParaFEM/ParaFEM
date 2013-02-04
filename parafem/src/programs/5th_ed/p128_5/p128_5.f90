@@ -2,7 +2,7 @@ PROGRAM p128
 !-------------------------------------------------------------------------
 !      Program 10.4 eigenvalues and eigenvectors of a cuboidal elastic
 !      solid in 3d using  uniform 8-node hexahedral elements  
-!      for lumped mass this is done element by element : parallel version
+!      for lumped mass this is done element by element : parallel
 !-------------------------------------------------------------------------
 !USE mpi_wrapper  !remove comment for serial compilation
  USE precision; USE global_variables; USE mp_interface; USE input
