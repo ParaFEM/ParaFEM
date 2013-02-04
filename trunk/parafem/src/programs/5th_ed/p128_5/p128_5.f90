@@ -7,25 +7,27 @@ PROGRAM p128
 !USE mpi_wrapper  !remove comment for serial compilation
  USE precision; USE global_variables; USE mp_interface; USE input
  USE output; USE loading; USE timing; USE maths; USE gather_scatter
- USE steering; USE new_library; USE lancz_lib; IMPLICIT NONE
+ USE steering; USE new_library; USE eigen; IMPLICIT NONE
 !------------ ndof,nels,neq,ntot are global - not declared----------------
- INTEGER::nxe,nye,nze,nn,nr,nip,nodof=3,nod=8,nst=6,i,j,k,iel,ndim=3,     &
-   nmodes,jflag,iflag=-1,lp=11,lalfa,leig,lx,lz,iters,neig=0,nlen
- REAL(iwp)::rho,e,v,det,el,er,acc  
- CHARACTER(LEN=15)::element='hexahedron',argv;  CHARACTER(LEN=50)::argv
+ INTEGER,PARAMETER::nodof=3,nod=8,nst=6,ndim=3
+ INTEGER::nels,nn,nr,nip,i,j,k,iel,nmodes,jflag,lalfa,leig,lx,lz,        &
+   iters,nlen,ndof,partitioner,meshgen,npes_pp,neig=0,iflag=-1,lp=11
+ REAL(iwp)::rho,e,v,det,el,er,acc ; REAL(iwp),PARAMETER::zero=0.0_iwp 
+ CHARACTER(LEN=15)::element='hexahedron';  CHARACTER(LEN=50)::argv
  CHARACTER(LEN=6)::ch
 !--------------------------- dynamic arrays-------------------------------
- REAL(iwp),ALLOCATABLE::points(:,:),dee(:,:),vdiag_pp(:),                &  
-   fun(:),jac(:,:),der(:,:),deriv(:,:),weights(:),bee(:,:),      &
-   emm(:,:),ecm(:,:),utemp_pp(:,:),ua_pp(:),va_pp(:),eig(:),del(:),      &
+ REAL(iwp),ALLOCATABLE::points(:,:),dee(:,:),vdiag_pp(:),eig(:),del(:),  &  
+   fun(:),jac(:,:),der(:,:),deriv(:,:),weights(:),bee(:,:),val_pp(:),    &
+   emm(:,:),ecm(:,:),utemp_pp(:,:),ua_pp(:),storkm_pp(:,:,:),timest(:),  &
    udiag_pp(:),diag_pp(:),alfa(:),beta(:),w1_pp(:),y_pp(:,:),z_pp(:,:),  &
-   pmul_pp(:,:),v_store_pp(:,:),g_coord_pp(:,:,:),diag_tmp(:,:),x(:)
+   pmul_pp(:,:),v_store_pp(:,:),g_coord_pp(:,:,:),diag_tmp(:,:),x(:),    &
+   va_pp(:)
  INTEGER,ALLOCATABLE::rest(:,:),g_num_pp(:,:),g_g_pp (:,:),nu(:),jeig(:,:)
 !----------------------input and initialisation---------------------------
  ALLOCATE(timest(20)); timest=zero; timest(1)=elap_time()
  CALL find_pe_procs(numpe,npes); CALL getname(argv,nlen) 
- CALL read_p128(argv,numpe,nels,nip,rho,e,v,nmodes,el,er,lalfa,leig,lx,  &
-   lz,acc
+ CALL read_p128(argv,numpe,acc,e,el,er,lalfa,leig,lx,lz,meshgen,nels,    &
+   nip,nmodes,nn,nr,partitioner,rho,v)
  CALL calc_nels_pp(argv,nels,npes,numpe,partitioner,nels_pp)
  ndof=nod*nodof; ntot=ndof
  ALLOCATE(g_num_pp(nod, nels_pp),g_coord_pp(nod,ndim,nels_pp),           &
@@ -36,9 +38,10 @@ PROGRAM p128
  CALL read_rest(argv,numpe,rest); timest(2)=elap_time()
  ALLOCATE(points(nip,ndim),pmul_pp(ntot,nels_pp),fun(nod),dee(nst,nst),  &
    jac(ndim,ndim),weights(nip),der(ndim,nod),deriv(ndim,nod),x(lx),      &
-   g_g_pp(ntot,nels_pp),ecm(ntot,ntot),eig(leig),,del(lx),nu(lx),        &
+   g_g_pp(ntot,nels_pp),ecm(ntot,ntot),eig(leig),del(lx),nu(lx),         &
    jeig(2,leig),alfa(lalfa),beta(lalfa),z_pp(lz,leig),bee(nst,ntot),     &
-   utemp_pp(ntot,nels_pp),emm(ntot,ntot),diag_tmp(ntot,nels_pp))
+   utemp_pp(ntot,nels_pp),emm(ntot,ntot),diag_tmp(ntot,nels_pp),         &
+   storkm_pp(ntot,ntot,nels_pp))
 !----------  find the steering array and equations per process -----------
  CALL rearrange(rest); g_g_pp=0; neq=0
  elements_0: DO iel=1,nels_pp
@@ -85,7 +88,7 @@ PROGRAM p128
      jeig,neig,x,del,nu,alfa,beta,v_store_pp)
    IF(iflag==0)EXIT
    IF(iflag>1)THEN  
-     IF(numpe==npes)THEN        
+     IF(numpe==1)THEN        
        WRITE(11,'(A,I5)')                                                 &
          " Lancz1 is signalling failure, with iflag = ",iflag
        EXIT
@@ -102,7 +105,7 @@ PROGRAM p128
    udiag_pp=udiag_pp*diag_pp; ua_pp=ua_pp+udiag_pp
  END DO
 !-------------- iflag = 0 therefore write out the spectrum --------------- 
- IF(numpe==npes)THEN 
+ IF(numpe==1)THEN 
    WRITE(11,'(2(A,E12.4))')"The range is",el,"  to ",er
    WRITE(11,'(A,I8,A)')"There are ",neig," eigenvalues in the range"
    WRITE(11,'(A,I8,A)')"It took ",iters,"  iterations"
