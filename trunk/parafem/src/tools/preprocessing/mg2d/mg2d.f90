@@ -1270,7 +1270,7 @@ PROGRAM mg2d
 
     READ(10,*) iotype, nels, nxe, nze, nip
     READ(10,*) aa, bb, cc, kx, ky, kz, rho, cp
-    READ(10,*) dtim, nsteps, theta
+    READ(10,*) dtim, nstep, theta
     READ(10,*) npri, tol, limit, val0
     READ(10,*) np_types, loaded_freedoms, fixed_freedoms
   
@@ -1287,7 +1287,7 @@ PROGRAM mg2d
     nr     = (nxe+1)*(nye+1) + (nxe+1)*nze + nye*nze
     nn     = (nxe+1)*(nye+1)*(nze+1)
     nodof  = 1
-    nres   = nxe*(nze-1)+1
+    nres   = (nxe)*(nze-1)+1
     dtim   = 0.01_iwp
     nstep  = 150
     theta  = 0.5
@@ -1427,7 +1427,7 @@ PROGRAM mg2d
      WRITE(16,'(7I9)') nels, nn, nr, nip, nod, loaded_freedoms, fixed_freedoms
      WRITE(16,'(E12.4)') val0
      WRITE(16,'(E12.4,2I8,E12.4)') dtim, nstep, npri, theta 
-     WRITE(16,'(E12.4,2I8) tol, limit, nres
+     WRITE(16,'(E12.4,2I8)') tol, limit, nres
 
      CLOSE(15)
 
@@ -1961,9 +1961,9 @@ PROGRAM mg2d
 
   CASE('p128')
   
-  READ(10,*) ìotype,nels, nxe, nze, nip
-  READ(10,*) aa, bb, cc
-  READ(10,*) rho, e, v
+  READ(10,*) iotype,nels,nxe,nze,nip
+  READ(10,*) aa,bb,cc
+  READ(10,*) rho,e,v
   READ(10,*) nmodes
   READ(10,*) el,er
   READ(10,*) lalfa,leig,lx,lz,acc
@@ -1973,6 +1973,7 @@ PROGRAM mg2d
   nn    = (nxe+1) * (nze+1) * (nye+1)
   ndim  = 3
   nodof = 3
+  nod   = 8
 
 !------------------------------------------------------------------------------
 ! 15.1 Allocate dynamic arrays
@@ -2036,10 +2037,11 @@ PROGRAM mg2d
   fname = job_name(1:INDEX(job_name, " ")-1) // ".dat" 
   OPEN(14,FILE=fname,STATUS='REPLACE',ACTION='WRITE')
 
-  meshgen = 2 ! Default
+  meshgen     = 2 ! default
+  partitioner = 1 ! default
 
-  WRITE(14,'(A)')         program_name
   WRITE(14,'(I2)')        meshgen
+  WRITE(14,'(I2)')        partitioner
   WRITE(14,'(4I9)')       nels, nn, nr, nip
   WRITE(14,'(3E12.4)')    rho, e, v
   WRITE(14,'(I8)')        nmodes
