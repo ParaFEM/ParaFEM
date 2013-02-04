@@ -10,7 +10,7 @@ PROGRAM p129
  USE new_library; IMPLICIT NONE
 ! neq,ntot are now global variables - not declared 
  INTEGER,PARAMETER::nodof=3,nst=6
- INTEGER::nn,nr,nip,nod,i,j,k,iel,ndim=3,nstep,npri,iters,limit,ndof,    &
+ INTEGER::nn,nr,nip,nod,i,j,k,l,iel,ndim=3,nstep,npri,iters,limit,ndof,  &
    nels,npes_pp,node_end,node_start,nodes_pp,loaded_nodes,nlen,nres,     &
    meshgen,partitioner,it,is
  REAL(iwp),PARAMETER::zero=0.0_iwp    
@@ -41,12 +41,11 @@ PROGRAM p129
  IF(meshgen==2) CALL abaqus2sg(element,g_num_pp)
  CALL read_g_coord_pp(argv,g_num_pp,nn,npes,numpe,g_coord_pp)
  CALL read_rest(argv,numpe,rest)
- ALLOCATE(points(nip,ndim),g(ntot),fun(nod),dee(nst,nst),jac(ndim,ndim), &
-   weights(nip),der(ndim,nod),deriv(ndim,nod),bee(nst,ntot),             &
+ ALLOCATE(points(nip,ndim),bee(nst,ntot),dee(nst,nst),jac(ndim,ndim),    &
+   weights(nip),der(ndim,nod),deriv(ndim,nod),g_g_pp(ntot,nels_pp),      &
    store_km_pp(ntot,ntot,nels_pp),utemp_pp(ntot,nels_pp),ecm(ntot,ntot), &
    pmul_pp(ntot,nels_pp),store_mm_pp(ntot,ntot,nels_pp),emm(ntot,ntot),  &
-   temp_pp(ntot,ntot,nels_pp),diag_precon_tmp(ntot,nels_pp),             &
-   g_g_pp(ntot,nels_pp))
+   temp_pp(ntot,ntot,nels_pp),diag_precon_tmp(ntot,nels_pp),fun(ntot))
 !----------  find the steering array and equations per process -----------
  CALL rearrange(rest); g_g_pp=0; neq=0
  elements_1: DO iel = 1, nels_pp
@@ -78,7 +77,7 @@ PROGRAM p129
  pi=ACOS(-1._iwp); period=2._iwp*pi/omega; dtim=period/20._iwp
  c1=(1._iwp-theta)*dtim; c2=beta1-c1; c3=alpha1+1._iwp/(theta * dtim)
  c4=beta1+theta*dtim
- elements_3: DO iel=1,nels_pp;   volume=zero; emm=zero; ecm=zero
+ elements_2: DO iel=1,nels_pp;   volume=zero; emm=zero; ecm=zero
    gauss_points_1: DO i=1,nip     
      CALL shape_der(der,points,i); jac=MATMUL(der,g_coord_pp(:,:,iel))
      det=determinant(jac); CALL invert(jac); deriv=matmul(jac,der)
@@ -101,14 +100,14 @@ PROGRAM p129
      DO i=39,57,6; emm(i,i)=emm(4,4)*.125_iwp; END DO
    END IF
    store_mm_pp(:,:,iel)=emm
- END DO elements_3
+ END DO elements_2
  diag_precon_tmp=zero
- elements_4: DO iel=1,nels_pp
+ elements_2a: DO iel=1,nels_pp
    DO k=1,ntot
      diag_precon_tmp(k,iel)=diag_precon_tmp(k,iel)    +                  &
                            store_mm_pp(k,k,iel)*c3+store_km_pp(k,k,iel)*c4
    END DO
- END DO elements_4; CALL scatter(diag_precon_pp,diag_precon_tmp)
+ END DO elements_2a; CALL scatter(diag_precon_pp,diag_precon_tmp)
  diag_precon_pp=1._iwp/diag_precon_pp; DEALLOCATE(diag_precon_tmp)
 !---------------------------------- loads --------------------------------
  IF(loaded_nodes>0) THEN
@@ -125,9 +124,9 @@ PROGRAM p129
  END IF
  timesteps: DO j=1,nstep
    real_time=real_time+dtim; loads_pp=zero; u_pp=zero; vu_pp=zero
-   elements_5: DO iel=1,nels_pp    ! gather for rhs multiply
+   elements_3: DO iel=1,nels_pp    ! gather for rhs multiply
      temp_pp(:,:,iel)=store_km_pp(:,:,iel)*c2+store_mm_pp(:,:,iel)*c3
-   END DO elements_5; CALL gather(x0_pp,pmul_pp)
+   END DO elements_3; CALL gather(x0_pp,pmul_pp)
    DO iel=1,nels_pp
      utemp_pp(:,iel)=MATMUL(temp_pp(:,:,iel),pmul_pp(:,iel))
    END DO; CALL scatter(u_pp,utemp_pp)
@@ -145,9 +144,9 @@ PROGRAM p129
      iters=iters+1; u_pp=zero; vu_pp=zero
      temp_pp=store_mm_pp*c3+store_km_pp*c4
      CALL gather(p_pp,pmul_pp)
-     elements_6: DO iel=1,nels_pp
+     elements_4: DO iel=1,nels_pp
        utemp_pp(:,iel)=MATMUL(temp_pp(:,:,iel),pmul_pp(:,iel))
-     END DO elements_6; CALL scatter(u_pp,utemp_pp)
+     END DO elements_4; CALL scatter(u_pp,utemp_pp)
      up=DOT_PRODUCT_P(loads_pp,d_pp); alpha=up/DOT_PRODUCT_P(p_pp,u_pp)
      xnew_pp=x_pp+p_pp*alpha; loads_pp=loads_pp-u_pp*alpha
      d_pp=diag_precon_pp*loads_pp; beta=DOT_PRODUCT_P(loads_pp,d_pp)/up
