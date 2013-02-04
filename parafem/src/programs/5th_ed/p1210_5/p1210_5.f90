@@ -3,19 +3,19 @@ PROGRAM p1210
 !  Program 12.10 forced vibration of an elastic-plastic(Von Mises) solid
 !  Viscoplastic strain method, lumped mass, explicit integration
 !-------------------------------------------------------------------------
+!USE mpi_wrapper  !remove comment for serial compilation
  USE precision; USE global_variables; USE mp_interface; USE input
  USE output; USE loading; USE timing; USE maths; USE gather_scatter
- USE steering; USE new_library; IMPLICIT NONE
+ USE new_library; IMPLICIT NONE
 ! neq,ntot are now global variables - not declared 
  INTEGER,PARAMETER::nodof=3,ndim=3,nst=6
  INTEGER::nn,nr,nip,loaded_nodes,nres=1,nod,i,j,k,ii,jj,iel,nstep,npri,  &
-   num_no,no_index_start,is,it,nlen,ndof,nels,npes_pp,node_end,          &
-   node_start,nodes_pp,argc,iargc,meshgen,partitioner=1
+   is,it,nlen,ndof,nels,npes_pp,node_end,node_start,nodes_pp,meshgen,    &
+   partitioner
  REAL(iwp)::rho,dtim,e,v,det,sbary,sigm,f,fnew,fac,volume,sbar,          &
    dsbar,lode_theta,real_time,tload,pload
  REAL(iwp),PARAMETER::zero=0.0_iwp    
- CHARACTER(LEN=15)::element,io_type; CHARACTER(LEN=50)::argv
- CHARACTER(LEN=6)::ch
+ CHARACTER(LEN=15)::element; CHARACTER(LEN=50)::argv; CHARACTER(LEN=6)::ch
 !------------------------- dynamic arrays --------------------------------
  REAL(iwp),ALLOCATABLE::points(:,:),bdylds_pp(:),x1_pp(:),d1x1_pp(:),    &
    stressv(:),pl(:,:),emm(:),d2x1_pp(:),tensor_pp(:,:,:),                &
@@ -23,8 +23,8 @@ PROGRAM p1210
    der(:,:),deriv(:,:),bee(:,:),eld(:),eps(:),sigma(:),bload(:),         &
    eload(:),mm_tmp(:,:),g_coord_pp(:,:,:),pmul_pp(:,:),utemp_pp(:,:),    &
    disp_pp(:),fext_pp(:),temp(:)
- INTEGER,ALLOCATABLE::timest(:),rest(:,:),no(:),no_local(:),node(:),     &
-   g_num_pp(:,:),g_g_pp(:,:),no_local_temp(:)
+ INTEGER,ALLOCATABLE::timest(:),rest(:,:),no(:),node(:),g_num_pp(:,:),   &
+   g_g_pp(:,:)
 !----------------------- input and initialisation ------------------------
  ALLOCATE(timest(20)); timest=zero; timest(1)=elap_time()
  CALL find_pe_procs(numpe,npes); CALL getname(argv,nlen)
@@ -32,7 +32,7 @@ PROGRAM p1210
    nip,nn,nod,npri,nr,nres,nstep,partitioner,pload,rho,sbary,v)
  CALL calc_nels_pp(argv,nels,npes,numpe,partitioner,nels_pp)
  ndof=nod*nodof; ntot=ndof
- ALLOCATE(g_num_pp(nod, nels_pp),g_coord_pp(nod,ndim,nels_pp),           & 
+ ALLOCATE(g_num_pp(nod,nels_pp),g_coord_pp(nod,ndim,nels_pp),            & 
    rest(nr,nodof+1)); g_num_pp=0; g_coord_pp=zero; rest=0
  CALL read_g_num_pp(argv,iel_start,nels,nn,numpe,g_num_pp)
  IF(meshgen == 2) THEN
@@ -51,7 +51,7 @@ PROGRAM p1210
  elements_0: DO iel=1,nels_pp
    CALL find_g(g_num_pp(:,iel),g_g_pp(:,iel),rest)
  END DO elements_0
- neq=MAXVAL(g_g_pp); neq=MAX_INTEGER_P(neq); CALL calc_neq_pp
+ neq=MAXVAL(g_g_pp); neq=max_p(neq); CALL calc_neq_pp
  CALL calc_npes_pp(npes,npes_pp); CALL make_ggl(npes_pp,npes,g_g_pp)
  DO i=1,neq_pp; IF(nres==ieq_start+i-1)THEN;it=numpe;is=i;END IF;END DO
  IF(numpe==it) THEN
@@ -142,6 +142,6 @@ PROGRAM p1210
     END IF
   END DO time_steps
   IF(numpe==it) THEN
-    WRITE(11,'(A,F10.4)')"This analysis took  :",elap_time()-timest(1)
-  END IF; CALL shutdown() 
+    WRITE(11,'(A,F10.4)')"This analysis took:",elap_time()-timest(1)
+  END IF; CALL SHUTDOWN() 
 END PROGRAM p1210
