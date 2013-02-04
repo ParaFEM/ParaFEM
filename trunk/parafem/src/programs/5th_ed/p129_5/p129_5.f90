@@ -4,29 +4,29 @@ PROGRAM p129
 !      Lumped or consistent mass
 !      Implicit integration by theta method : parallel version
 !-------------------------------------------------------------------------
+!USE mpi_wrapper  !remove comment for serial compilation
  USE precision; USE global_variables; USE mp_interface; USE input
  USE output; USE loading; USE timing; USE maths; USE gather_scatter
- USE steering; USE new_library; IMPLICIT NONE
+ USE new_library; IMPLICIT NONE
 ! neq,ntot are now global variables - not declared 
  INTEGER,PARAMETER::nodof=3,nst=6
  INTEGER::nn,nr,nip,nod,i,j,k,iel,ndim=3,nstep,npri,iters,limit,ndof,    &
    nels,npes_pp,node_end,node_start,nodes_pp,loaded_nodes,nlen,nres,     &
-   meshgen,partitioner,it,is,jj
+   meshgen,partitioner,it,is
  REAL(iwp),PARAMETER::zero=0.0_iwp    
  REAL(iwp)::e,v,det,rho,alpha1,beta1,omega,theta,period,pi,dtim,volume,  &
    c1,c2,c3,c4,real_time,tol,big,up,alpha,beta,tload     
- CHARACTER(LEN=15)::element,io_type; CHARACTER(LEN=50)::argv
- CHARACTER(LEN=6)::ch; LOGICAL::consistent=.TRUE.,converged
+ CHARACTER(LEN=15)::element; CHARACTER(LEN=50)::argv; CHARACTER(LEN=6)::ch
+ LOGICAL::consistent=.TRUE.,converged
 !------------------------- dynamic arrays --------------------------------
  REAL(iwp),ALLOCATABLE::loads_pp(:),points(:,:),dee(:,:),fun(:),jac(:,:),&
-   der(:,:),deriv(:,:),weights(:),bee(:,:),km(:,:),g_coord_pp(:,:,:),    &
+   der(:,:),deriv(:,:),weights(:),bee(:,:),g_coord_pp(:,:,:),fext_pp(:), &
    x1_pp(:),d1x1_pp(:),d2x1_pp(:),emm(:,:),ecm(:,:),x0_pp(:),d1x0_pp(:), &
    d2x0_pp(:),store_km_pp(:,:,:),vu_pp(:),store_mm_pp(:,:,:),u_pp(:),    &
-   p_pp(:),d_pp(:),x_pp(:),xnew_pp(:),pmul_pp(:,:),utemp_pp(:,:),        &
+   p_pp(:),d_pp(:),x_pp(:),xnew_pp(:),pmul_pp(:,:),utemp_pp(:,:),temp(:),&
    diag_precon_pp(:),diag_precon_tmp(:,:),temp_pp(:,:,:),disp_pp(:),     &
-   loadNodeValue(:,:),fext_pp(:),val(:,:),timest(:),temp(:),eld_pp(:,:)
- INTEGER,ALLOCATABLE::rest(:,:),g(:),g_num_pp(:,:),g_g_pp(:,:),          &
-   loadNodeNum(:),node(:)       
+   val(:,:),timest(:),eld_pp(:,:)
+ INTEGER,ALLOCATABLE::rest(:,:),g_num_pp(:,:),g_g_pp(:,:),node(:)       
 !----------------------- input and initialisation ------------------------
  ALLOCATE(timest(20)); timest=zero; timest(1)=elap_time()
  CALL find_pe_procs(numpe,npes); CALL getname(argv,nlen)
@@ -52,11 +52,8 @@ PROGRAM p129
  elements_1: DO iel = 1, nels_pp
    CALL find_g3(g_num_pp(:,iel),g_g_pp(:,iel),rest)
  END DO elements_1
- elements_2: DO iel=1,nels_pp  
-   i=MAXVAL(g_g_pp(:,iel)); IF(i>neq) neq=i
- END DO elements_2  
- neq=MAX_INTEGER_P(neq); CALL calc_neq_pp; CALL calc_npes_pp(npes,npes_pp)
- CALL make_ggl2(npes_pp,npes,g_g_pp)
+ neq=MAXVAL(g_g_pp); neq=max_p(neq); CALL calc_neq_pp
+ CALL calc_npes_pp(npes,npes_pp); CALL make_ggl2(npes_pp,npes,g_g_pp)
  DO i=1,neq_pp; IF(nres==ieq_start+i-1)THEN;it=numpe;is=i;END IF;END DO
  IF(numpe==it) THEN
    OPEN(11,FILE=argv(1:nlen)//".res",STATUS='REPLACE',ACTION='WRITE')
@@ -81,8 +78,7 @@ PROGRAM p129
  pi=ACOS(-1._iwp); period=2._iwp*pi/omega; dtim=period/20._iwp
  c1=(1._iwp-theta)*dtim; c2=beta1-c1; c3=alpha1+1._iwp/(theta * dtim)
  c4=beta1+theta*dtim
- elements_3: DO iel=1,nels_pp
-   volume=zero; emm=zero; ecm=zero
+ elements_3: DO iel=1,nels_pp;   volume=zero; emm=zero; ecm=zero
    gauss_points_1: DO i=1,nip     
      CALL shape_der(der,points,i); jac=MATMUL(der,g_coord_pp(:,:,iel))
      det=determinant(jac); CALL invert(jac); deriv=matmul(jac,der)
@@ -176,12 +172,12 @@ PROGRAM p129
      CALL scatter_nodes(npes,nn,nels_pp,g_num_pp,nod,ndim,nodes_pp,        &
                          node_start,node_end,eld_pp,disp_pp,1)
      DO i=1,ndim ; temp=zero
-       DO jj=1,nodes_pp; k=i+(ndim*(jj-1)); temp(jj)=disp_pp(k); END DO
-         CALL dismsh_ensi_p(12,jj,nodes_pp,npes,numpe,1,temp)
+       DO l=1,nodes_pp; k=i+(ndim*(l-1)); temp(l)=disp_pp(k); END DO
+         CALL dismsh_ensi_p(12,l,nodes_pp,npes,numpe,1,temp)
      END DO ; IF(numpe==1) CLOSE(12)
    END IF
  END DO timesteps
  IF(numpe==it) THEN
-   WRITE(11,'(A,F10.4)')"This analysis took  :",elap_time()-timest(1)
- END IF; CALL shutdown() 
+   WRITE(11,'(A,F10.4)')"This analysis took:",elap_time()-timest(1)
+ END IF; CALL SHUTDOWN() 
 END PROGRAM p129
