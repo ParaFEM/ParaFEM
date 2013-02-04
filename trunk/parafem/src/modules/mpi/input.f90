@@ -3801,7 +3801,7 @@ END SUBROUTINE bcast_inputdata_p127
 !------------------------------------------------------------------------------
 !------------------------------------------------------------------------------
   
-  SUBROUTINE READ_P128(job_name,numpe,acc,e,el,er,lalfa,leig,lx,lz,meshgen,   &
+  SUBROUTINE READ_P128(job_name,numpe,acc,e,el,er,lalfa,leig,lx,lz,mesh,      &
     nels,nip,nmodes,nn,nr,partitioner,rho,v)
 
   !/****f* input/read_p128
@@ -3809,7 +3809,7 @@ END SUBROUTINE bcast_inputdata_p127
   !*    SUBROUTINE: read_p128
   !*  SYNOPSIS
   !*    Usage:      CALL read_p128(job_name,numpe,acc,e,el,er,lalfa,leig,lx,  &
-  !*                               lz,meshgen,nels,nip,nmodes,nn,nr,          &
+  !*                               lz,mesh,nels,nip,nmodes,nn,nr,             &
   !*                               partitioner,rho,v)
   !*  FUNCTION
   !*    Master processor reads the general data for the problem and broadcasts 
@@ -3871,7 +3871,6 @@ END SUBROUTINE bcast_inputdata_p127
   IMPLICIT NONE
 
   CHARACTER(LEN=50), INTENT(IN)    :: job_name
-  CHARACTER(LEN=15), INTENT(INOUT) :: element
   CHARACTER(LEN=50)                :: fname
   INTEGER, INTENT(IN)              :: numpe
   INTEGER, INTENT(INOUT)           :: nels,nn,nr,nip,lalfa,leig,lx,lz
@@ -3892,7 +3891,7 @@ END SUBROUTINE bcast_inputdata_p127
   IF (numpe==1) THEN
     fname = job_name(1:INDEX(job_name, " ") -1) // ".dat"
     OPEN(10,FILE=fname,STATUS='OLD',ACTION='READ')
-    READ(10,*) element,mesh,partitioner,nels,nn,nr,nip,rho,e,v,nmodes,el,er,  &
+    READ(10,*) mesh,partitioner,nels,nn,nr,nip,rho,e,v,nmodes,el,er,          &
       lalfa,leig,lx,lz,acc
     CLOSE(10)
    

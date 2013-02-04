@@ -29,7 +29,8 @@ MPI=	mpi_wrapper.o \
 	pcg.o \
 	loading.o \
 	large_strain.o \
-	bicg.o
+	bicg.o \
+	eigen.o
 SHARED=	precision.o \
 	global_variables.o \
 	partition.o \
@@ -82,6 +83,7 @@ lib-debug:	$(SHARED) $(MPI)
 	$(FC) -c $(FFLAGS) loading.f90
 	$(FC) -c $(FFLAGS) bicg.f90
 	$(FC) -c $(FFLAGS) large_strain.f90
+	$(FC) -c $(FFLAGS) eigen.f90
 
 clean:
 	rm -f *.o *.mod *.a
