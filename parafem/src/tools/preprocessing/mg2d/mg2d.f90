@@ -2009,12 +2009,12 @@ PROGRAM mg2d
   WRITE(11,'(A)') "*NODES"
 
   DO i = 1, nn
-    WRITE(11,'(I6,3F12.4)') i, g_coord(:,i)
+    WRITE(11,'(I10,3F12.4)') i, g_coord(:,i)
   END DO
 
   WRITE(11,'(A)') "*ELEMENTS"
   DO iel = 1, nels
-    WRITE(11,'(I6,A,8I10,A)') iel, " 3 8 1 ", g_num(1,iel),g_num(4,iel),     & 
+    WRITE(11,'(I10,A,8I10,A)') iel, " 3 8 1 ", g_num(1,iel),g_num(4,iel),     & 
                               g_num(8,iel),g_num(5,iel),g_num(2,iel),        &
                               g_num(3,iel),g_num(7,iel),g_num(6,iel), " 1 "
   END DO
@@ -2025,7 +2025,7 @@ PROGRAM mg2d
   OPEN(12,FILE=fname,STATUS='REPLACE',ACTION='WRITE')
  
   DO i = 1, nr
-    WRITE(12,'(4I6)') rest(i,:) 
+    WRITE(12,'(I10,3I3)') rest(i,:) 
   END DO
 
   CLOSE(12)
@@ -2042,7 +2042,7 @@ PROGRAM mg2d
 
   WRITE(14,'(I2)')        meshgen
   WRITE(14,'(I2)')        partitioner
-  WRITE(14,'(4I9)')       nels, nn, nr, nip
+  WRITE(14,'(4I10)')       nels, nn, nr, nip
   WRITE(14,'(3E12.4)')    rho, e, v
   WRITE(14,'(I8)')        nmodes
   WRITE(14,'(2E12.4)')    el,er
