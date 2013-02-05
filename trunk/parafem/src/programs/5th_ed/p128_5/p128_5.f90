@@ -10,9 +10,9 @@ PROGRAM p128
  USE new_library; USE eigen; IMPLICIT NONE
 ! neq,ntot are now global variables - not declared 
  INTEGER,PARAMETER::nodof=3,nod=8,nst=6,ndim=3
- INTEGER::nels,nn,nr,nip,i,j,k,iel,nmodes,jflag,lalfa,leig,lx,lz,        &
+ INTEGER::nels,nn,nr,nip,i,j,k,l,iel,nmodes,jflag,lalfa,leig,lx,lz,      &
    iters,nlen,ndof,partitioner,meshgen,npes_pp,neig=0,iflag=-1,lp=11,    &
-   nodes_end,nodes_start,nodes_pp
+   node_end,node_start,nodes_pp
  REAL(iwp)::rho,e,v,det,el,er,acc ; REAL(iwp),PARAMETER::zero=0.0_iwp 
  CHARACTER(LEN=15)::element='hexahedron';  CHARACTER(LEN=50)::argv
  CHARACTER(LEN=6)::ch
@@ -22,7 +22,7 @@ PROGRAM p128
    emm(:,:),ecm(:,:),utemp_pp(:,:),ua_pp(:),storkm_pp(:,:,:),timest(:),  &
    udiag_pp(:),diag_pp(:),alfa(:),beta(:),w1_pp(:),y_pp(:,:),z_pp(:,:),  &
    pmul_pp(:,:),v_store_pp(:,:),g_coord_pp(:,:,:),diag_tmp(:,:),x(:),    &
-   va_pp(:),eigv_pp(:,:),temp(:)
+   va_pp(:),eigv_pp(:),temp(:)
  INTEGER,ALLOCATABLE::rest(:,:),g_num_pp(:,:),g_g_pp (:,:),nu(:),jeig(:,:)
 !----------------------input and initialisation---------------------------
  ALLOCATE(timest(20)); timest=zero; timest(1)=elap_time()

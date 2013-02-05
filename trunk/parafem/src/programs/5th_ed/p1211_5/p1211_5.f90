@@ -6,14 +6,14 @@ PROGRAM p1211
 !               assembly. Diagonally preconditioned conjugate gradient 
 !               solver. GPU version.
 !-------------------------------------------------------------------------
- USE main; USE geom; IMPLICIT NONE
- include 'altcublas.inc' ! Include HMPPALT cublas proxy interface
- INTEGER,PARAMETER::iwp=SELECTED_REAL_KIND(15)
+ USE new_library; USE geometry; USE precision; USE timing
+ USE maths; USE global_variables; USE input; IMPLICIT NONE
+!INCLUDE 'altcublas.inc' ! Include HMPPALT cublas proxy interface
+!neq is global, must not be declared 
  INTEGER::err ! For HMPPALT error management
  REAL(iwp)::coeffa=1_iwp, coeffb=0_iwp ! Coefficents for DGEMM 
  INTEGER::cg_iters,cg_limit,fixed_freedoms,i,iel,k,loaded_nodes,ndim=3,   &
-   ndof,nels,neq,nip,nn,nprops=2,np_types,nod,nodof=3,nr,nst=6,nxe,nye,   &
-   nze,nlen
+   ndof,nels,nip,nn,nprops=2,np_types,nod,nodof=3,nr,nst=6,nxe,nye,nze,nlen
  REAL(iwp)::alpha,beta,big,cg_tol,det,one=1.0_iwp,penalty=1.0e20_iwp,up,  &
    zero=0.0_iwp
  CHARACTER(LEN=15)::element='hexahedron',argv
@@ -93,7 +93,8 @@ PROGRAM p1211
    !$hmpp htspt1 advancedload data["g_pmul"]
    !$hmpp htspt1 waitload data["km"]
    !$hmppalt cublas call, name="dgemm", error="err"
-   CALL DGEMM('N', 'N', ndof, nels, ndof, coeffa, km, ndof, g_pmul, ndof, coeffb, g_utemp, ndof)
+   CALL DGEMM('N','N',ndof,nels,ndof,coeffa,km,ndof,g_pmul,ndof,coeffb,  &
+     g_utemp,ndof)
    !$hmpp htspt1 delegatedstore data["g_utemp"]
    elements_2a: DO iel=1,nels
      u(g_g(:,iel)) = u(g_g(:,iel))+g_utemp(:,iel)
@@ -107,7 +108,7 @@ PROGRAM p1211
  END DO pcg
  !$hmpp htspt1 release
  WRITE(11,'(/A)')"       Node   x-disp      y-disp      z-disp"
- DO k=1,nn; WRITE(11,'(I10,3E12.4)')k,xnew(nf(:,k)); END DO
+ DO k=1,nn,nn-1; WRITE(11,'(I10,3E12.4)')k,xnew(nf(:,k)); END DO
 !-----------------------recover stresses at nip integrating point---------
  nip       = 1; DEALLOCATE(points,weights)
  ALLOCATE(points(nip,ndim),weights(nip))
@@ -115,21 +116,20 @@ PROGRAM p1211
  WRITE(11,'(/A,I2,A)')" The integration point (nip=",nip,") stresses are:"
  WRITE(11,'(A,/,A)')"    Element     x-coord     y-coord     z-coord",    &
   "    sig_x       sig_y       sig_z       tau_xy      tau_yz      tau_zx" 
- xnew(0)=zero
- elements_4: DO iel=1,nels
-   CALL deemat(dee,prop(1,etype(iel)),prop(2,etype(iel)))
-   num=g_num(:,iel); coord=TRANSPOSE(g_coord(:,num)); g=g_g(:,iel)
-   eld=xnew(g)
-   gauss_pts_2: DO i=1,nip
-     CALL shape_der(der,points,i); CALL shape_fun(fun,points,i)
-     gc=MATMUL(fun,coord); jac=MATMUL(der,coord)
-     CALL invert(jac); deriv=MATMUL(jac,der)
-     CALL beemat(bee,deriv); sigma=MATMUL(dee,MATMUL(bee,eld))
-     WRITE(11,'(I8,4X,3E12.4)')iel,gc; WRITE(11,'(6E12.4)')sigma
-   END DO gauss_pts_2
- END DO elements_4
+ xnew(0)=zero; iel=1
+ CALL deemat(dee,prop(1,etype(iel)),prop(2,etype(iel)))
+ num=g_num(:,iel); coord=TRANSPOSE(g_coord(:,num)); g=g_g(:,iel)
+ eld=xnew(g)
+ gauss_pts_2: DO i=1,nip
+   CALL shape_der(der,points,i); CALL shape_fun(fun,points,i)
+   gc=MATMUL(fun,coord); jac=MATMUL(der,coord)
+   CALL invert(jac); deriv=MATMUL(jac,der)
+   CALL beemat(bee,deriv); sigma=MATMUL(dee,MATMUL(bee,eld))
+   WRITE(11,'(I8,4X,3E12.4)')iel,gc; WRITE(11,'(6E12.4)')sigma
+ END DO gauss_pts_2
  WRITE(11,'(/A,F12.4,A)')" Time for setup was                        ",   &
                            timest(2)-timest(1),"s"
  WRITE(11,'(A,F12.4,A)')" Total time for this analysis was          ",    &
-                           elap_time()-timest(1),"s"STOP
-END PROGRAM p56
+                           elap_time()-timest(1),"s"
+ STOP
+END PROGRAM p1211
