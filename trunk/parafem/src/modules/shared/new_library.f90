@@ -3644,5 +3644,84 @@ end subroutine formupvw
   kd(idof+1:,idof+1:)=theta*(1.-theta)*kp
   end subroutine fmkdke
 
+!---------------------------------------------------------------------------
+!---------------------------------------------------------------------------
+!---------------------------------------------------------------------------
+
+ SUBROUTINE formnf(nf)
+ !
+ ! This subroutine forms the nf matrix.
+ !
+  IMPLICIT NONE
+  INTEGER,INTENT(INOUT)::nf(:,:)
+  INTEGER::i,j,m
+  m=0
+  DO j=1,UBOUND(nf,2)
+    DO i=1,UBOUND(nf,1)
+      IF(nf(i,j)/=0)THEN
+        m=m+1
+        nf(i,j)=m
+      END IF
+    END DO
+  END DO
+ RETURN
+ END SUBROUTINE formnf 
+
+!---------------------------------------------------------------------------
+!---------------------------------------------------------------------------
+!---------------------------------------------------------------------------
+
+ SUBROUTINE mesh_size(element,nod,nels,nn,nxe,nye,nze)
+ !
+ !  This subroutine returns the number of elements (nels) and the number
+ !  of nodes (nn) in a 2-d geometry-created mesh.
+ !
+  IMPLICIT NONE
+  CHARACTER(LEN=15),INTENT(IN)::element
+  INTEGER,INTENT(IN)::nod,nxe,nye
+  INTEGER,INTENT(IN),OPTIONAL::nze
+  INTEGER,INTENT(OUT)::nels,nn
+  IF(element=="triangle")THEN
+    nels=nxe*nye*2
+    IF(nod==3)nn=(nxe+1)*(nye+1)
+    IF(nod==6)nn=(2*nxe+1)*(2*nye+1)
+    IF(nod==10)nn=(3*nxe+1)*(3*nye+1)
+    IF(nod==15)nn=(4*nxe+1)*(4*nye+1)
+  ELSE IF(element=="quadrilateral")THEN
+    nels=nxe*nye
+    IF(nod==4)nn=(nxe+1)*(nye+1)
+    IF(nod==5)nn=(nxe+1)*(nye+1)+nxe*nye
+    IF(nod==8)nn=(2*nxe+1)*(nye+1)+(nxe+1)*nye
+    IF(nod==9)nn=(2*nxe+1)*(2*nye+1)
+  ELSE IF(element=="hexahedron")THEN
+    nels=nxe*nye*nze
+    IF(nod==8)nn=(nxe+1)*(nye+1)*(nze+1)
+    IF(nod==14)nn=4*nxe*nye*nze+2*(nxe*nye+nye*nze+nze*nxe)+nxe+nye+nze+1
+    IF(nod==20)nn=((2*nxe+1)*(nze+1)+(nxe+1)*nze)*(nye+1)+                 &
+      (nxe+1)*(nze+1)*nye
+  END IF
+ RETURN
+ END SUBROUTINE mesh_size
+
+!---------------------------------------------------------------------------
+!---------------------------------------------------------------------------
+!---------------------------------------------------------------------------
+
+ SUBROUTINE num_to_g(num,nf,g)
+ !
+ ! This subroutine finds the g vector from num and nf.
+ !
+  IMPLICIT NONE
+  INTEGER,INTENT(IN)::num(:),nf(:,:)  
+  INTEGER,INTENT(OUT)::g(:)
+  INTEGER::i,k,nod,nodof 
+  nod=UBOUND(num,1) 
+  nodof=UBOUND(nf,1)
+  DO i=1,nod
+    k=i*nodof
+    g(k-nodof+1:k)=nf(:,num(i))
+  END DO
+ RETURN
+ END SUBROUTINE num_to_g 
 
 END MODULE NEW_LIBRARY
