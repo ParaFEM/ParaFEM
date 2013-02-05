@@ -52,7 +52,7 @@ PROGRAM p129
    CALL find_g3(g_num_pp(:,iel),g_g_pp(:,iel),rest)
  END DO elements_1
  neq=MAXVAL(g_g_pp); neq=max_p(neq); CALL calc_neq_pp
- CALL calc_npes_pp(npes,npes_pp); CALL make_ggl2(npes_pp,npes,g_g_pp)
+ CALL calc_npes_pp(npes,npes_pp); CALL make_ggl(npes_pp,npes,g_g_pp)
  DO i=1,neq_pp; IF(nres==ieq_start+i-1)THEN;it=numpe;is=i;END IF;END DO
  IF(numpe==it) THEN
    OPEN(11,FILE=argv(1:nlen)//".res",STATUS='REPLACE',ACTION='WRITE')
