@@ -34,9 +34,9 @@ PROGRAM p1210
  ndof=nod*nodof; ntot=ndof
  ALLOCATE(g_num_pp(nod,nels_pp),g_coord_pp(nod,ndim,nels_pp),            & 
    rest(nr,nodof+1)); g_num_pp=0; g_coord_pp=zero; rest=0
- CALL read_g_num_pp(argv,iel_start,nels,nn,numpe,g_num_pp)
+ CALL read_g_num_pp(argv,iel_start,nn,npes,numpe,g_num_pp)
  IF(meshgen == 2) THEN
-   CALL abaqus2sg(element,g_num_pp); PRINT *, "Renumbered nodes"
+   CALL abaqus2sg(element,g_num_pp)
  END IF
  CALL read_g_coord_pp(argv,g_num_pp,nn,npes,numpe,g_coord_pp)
  CALL read_rest(argv,numpe,rest)
@@ -90,7 +90,7 @@ PROGRAM p1210
 !---------------------- explicit integration loop ------------------------
  tensor_pp=zero; etensor_pp=zero; real_time=zero
  IF(numpe==it) THEN
-   WRITE(11,'(A)') "  Time   Displacement  Velocity  Acceleration "
+   WRITE(11,'(A)') "  Time      Displacement  Velocity   Acceleration "
    WRITE(11,'(4E12.4)') real_time,x1_pp(is),d1x1_pp(is),d2x1_pp(is)
  END IF
  time_steps: DO jj=1,nstep
