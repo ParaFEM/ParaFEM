@@ -89,6 +89,10 @@ PROGRAM p1210
  END IF
 !---------------------- explicit integration loop ------------------------
  tensor_pp=zero; etensor_pp=zero; real_time=zero
+ IF(numpe==it) THEN
+   WRITE(11,'(A)') "  Time   Displacement  Velocity  Acceleration "
+   WRITE(11,'(4E12.4)') real_time,x1_pp(is),d1x1_pp(is),d2x1_pp(is)
+ END IF
  time_steps: DO jj=1,nstep
     real_time=real_time+dtim; bdylds_pp=zero
     x1_pp=x1_pp+(d1x1_pp+d2x1_pp*dtim*.5_iwp)*dtim
