@@ -75,7 +75,7 @@ PROGRAM p1211
    store=diag_precon(no)
  END IF
  diag_precon(1:)=one/diag_precon(1:); diag_precon(0)=zero
- d=diag_precon*loads; p=d;
+ d=diag_precon*loads; p=d
 !-----------------------pcg equation solution-----------------------------
  !$hmpp htspt1 acquire
  !$hmpp htspt1 region, target=CUDA
@@ -103,33 +103,41 @@ PROGRAM p1211
    up=DDOT(neq,loads,1,d,1); alpha=up/DDOT(neq,p,1,u,1)
    xnew=x+p*alpha; loads=loads-u*alpha; d=diag_precon*loads
    beta=DDOT(neq,loads,1,d,1)/up; p=d+p*beta
-   CALL checon(xnew,x,cg_tol,cg_converged)
+   CALL checon(xnew(1:),x(1:),cg_tol,cg_converged)
    IF(cg_converged.OR.cg_iters==cg_limit)EXIT
  END DO pcg
  !$hmpp htspt1 release
+ WRITE(11,'(A)')                                                         &
+  "This analysis ran on 1 process and was accelerated using 1 GPU"
+ WRITE(11,'(A,I8,A)') "There are",neq," equations"
+ WRITE(11,'(A,I5)') "Number of iterations to convergence was ",cg_iters
  WRITE(11,'(/A)')"       Node   x-disp      y-disp      z-disp"
  DO k=1,nn,nn-1; WRITE(11,'(I10,3E12.4)')k,xnew(nf(:,k)); END DO
-!-----------------------recover stresses at nip integrating point---------
+!----------------- recover stresses at nip integrating point ---------------
  nip       = 1; DEALLOCATE(points,weights)
  ALLOCATE(points(nip,ndim),weights(nip))
  CALL sample(element,points,weights)
- WRITE(11,'(/A,I2,A)')" The integration point (nip=",nip,") stresses are:"
+ WRITE(11,'(/A,I2,A)')"The integration point (nip=",nip,") stresses are:"
  WRITE(11,'(A,/,A)')"    Element     x-coord     y-coord     z-coord",    &
   "    sig_x       sig_y       sig_z       tau_xy      tau_yz      tau_zx" 
- xnew(0)=zero; iel=1
- CALL deemat(dee,prop(1,etype(iel)),prop(2,etype(iel)))
- num=g_num(:,iel); coord=TRANSPOSE(g_coord(:,num)); g=g_g(:,iel)
- eld=xnew(g)
- gauss_pts_2: DO i=1,nip
-   CALL shape_der(der,points,i); CALL shape_fun(fun,points,i)
-   gc=MATMUL(fun,coord); jac=MATMUL(der,coord)
-   CALL invert(jac); deriv=MATMUL(jac,der)
-   CALL beemat(bee,deriv); sigma=MATMUL(dee,MATMUL(bee,eld))
-   WRITE(11,'(I8,4X,3E12.4)')iel,gc; WRITE(11,'(6E12.4)')sigma
- END DO gauss_pts_2
- WRITE(11,'(/A,F12.4,A)')" Time for setup was                        ",   &
+ xnew(0)=zero
+ elements_3: DO iel=1,nels
+   CALL deemat(dee,prop(1,etype(iel)),prop(2,etype(iel)))
+   num=g_num(:,iel); coord=TRANSPOSE(g_coord(:,num)); g=g_g(:,iel)
+   eld=xnew(g)
+   gauss_pts_2: DO i=1,nip
+     CALL shape_der(der,points,i); CALL shape_fun(fun,points,i)
+     gc=MATMUL(fun,coord); jac=MATMUL(der,coord)
+     CALL invert(jac); deriv=MATMUL(jac,der)
+     CALL beemat(bee,deriv); sigma=MATMUL(dee,MATMUL(bee,eld))
+     IF(iel<4) THEN 
+       WRITE(11,'(I8,4X,3E12.4)')iel,gc; WRITE(11,'(6E12.4)')sigma
+     END IF
+   END DO gauss_pts_2
+ END DO elements_3
+ WRITE(11,'(/A,F12.4,A)') "Time for setup was                        ",   &
                            timest(2)-timest(1),"s"
- WRITE(11,'(A,F12.4,A)')" Total time for this analysis was          ",    &
+ WRITE(11,'(A,F12.4,A)') "Total time for this analysis was          ",    &
                            elap_time()-timest(1),"s"
  STOP
 END PROGRAM p1211
