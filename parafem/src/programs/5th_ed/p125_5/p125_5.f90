@@ -47,7 +47,7 @@ PROGRAM p125
  elements_0: DO iel = 1, nels_pp
    CALL find_g4(g_num_pp(:,iel),g_g_pp(:,iel),rest)
  END DO elements_0
- neq=MAXVAL(g_g_pp); neq=MAX_INTEGER_P(neq); CALL calc_neq_pp
+ neq=MAXVAL(g_g_pp); neq=max_p(neq); CALL calc_neq_pp
  CALL calc_npes_pp(npes,npes_pp); CALL make_ggl(npes_pp,npes,g_g_pp)
  DO i=1,neq_pp; IF(nres==ieq_start+i-1)THEN;it=numpe;is=i;END IF;END DO
  IF(numpe==it)THEN
