@@ -17,7 +17,7 @@ PROGRAM p122
  LOGICAL::plastic_converged,cj_converged; CHARACTER(LEN=50)::argv
  CHARACTER(LEN=15)::element='hexahedron'; CHARACTER(LEN=6)::ch
  REAL(iwp)::e,v,det,phi,c,psi,dt,f,dsbar,dq1,dq2,dq3,lode_theta,presc,   &
-   sigm,pi,snph,cons,plastol,cjtol,up,alpha,beta,big
+   sigm,pi,snph,plastol,cjtol,up,alpha,beta,big
  REAL(iwp),PARAMETER::zero=0.0_iwp,penalty=1.e20_iwp
 !---------------------------- dynamic arrays -----------------------------
  REAL(iwp),ALLOCATABLE::loads_pp(:),points(:,:),bdylds_pp(:),valf(:),    &
@@ -33,7 +33,7 @@ PROGRAM p122
 !------------------------ input and initialisation -----------------------
  ALLOCATE(timest(20)); timest=zero; timest(1)=elap_time()  
  CALL find_pe_procs(numpe,npes);  CALL getname(argv,nlen)
- CALL read_p122(argv,numpe,c,cjits,cjtol,cons,e,element,fixed_freedoms,  &
+ CALL read_p122(argv,numpe,c,cjits,cjtol,e,element,fixed_freedoms,       &
    loaded_nodes,incs,meshgen,nels,nip,nn,nod,nr,phi,partitioner,plasits, &
    plastol,psi,v); IF(fixed_freedoms==0) fixed_freedoms_pp=0
  CALL calc_nels_pp(argv,nels,npes,numpe,partitioner,nels_pp)
@@ -72,9 +72,10 @@ PROGRAM p122
  IF(numpe==1)WRITE(11,'(A,E12.4)')"The critical timestep is   ",dt
 !---- element stiffness integration, preconditioner & set initial stress-- 
  CALL deemat(dee,e,v); CALL sample(element,points,weights); storkm_pp=zero
+ tensor_pp=zero
  elements_2: DO iel=1,nels_pp
    gauss_pts_1: DO i=1,nip    
-     tensor_pp(1:3,i,iel)=cons; CALL shape_der(der,points,i)
+     CALL shape_der(der,points,i)
      jac=MATMUL(der,g_coord_pp(:,:,iel)); det=determinant(jac)
      CALL invert(jac); deriv=MATMUL(jac,der); CALL beemat(bee,deriv)
      storkm_pp(:,:,iel)=storkm_pp(:,:,iel)+                              &
