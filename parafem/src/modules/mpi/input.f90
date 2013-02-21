@@ -1726,7 +1726,7 @@ MODULE INPUT
 !------------------------------------------------------------------------------
 !------------------------------------------------------------------------------
 
-  SUBROUTINE READ_P122(job_name,numpe,c,cjits,cjtol,cons,e,element,           &
+  SUBROUTINE READ_P122(job_name,numpe,c,cjits,cjtol,e,element,                &
     fixed_freedoms,loaded_nodes,incs,mesh,nels,nip,nn,nod,nr,phi,partition,   &
     plasits,plastol,psi,v)
 
@@ -1734,7 +1734,7 @@ MODULE INPUT
   !*  NAME
   !*    SUBROUTINE: read_p122
   !*  SYNOPSIS
-  !*    Usage:      CALL read_p122(job_name,numpe,c,cjits,cjtol,cons,e,       &
+  !*    Usage:      CALL read_p122(job_name,numpe,c,cjits,cjtol,e,            &
   !*                  element,loaded_nodes,incs,mesh,nels,nip,nn,nr,phi,      &
   !*                  partition,plasits,plastol,psi,v)
   !*
@@ -1815,14 +1815,14 @@ MODULE INPUT
   INTEGER, INTENT(INOUT)           :: nels,nn,nod,nr,nip,loaded_nodes
   INTEGER, INTENT(INOUT)           :: mesh,partition 
   INTEGER, INTENT(INOUT)           :: incs,plasits,cjits,fixed_freedoms
-  REAL(iwp), INTENT(INOUT)         :: phi,c,psi,e,v,cons,plastol,cjtol
+  REAL(iwp), INTENT(INOUT)         :: phi,c,psi,e,v,plastol,cjtol
 
 !------------------------------------------------------------------------------
 ! 1. Local variables
 !------------------------------------------------------------------------------
 
   INTEGER                          :: bufsize,ier,integer_store(12)
-  REAL(iwp)                        :: real_store(8)
+  REAL(iwp)                        :: real_store(7)
   CHARACTER(LEN=50)                :: fname
   
 !------------------------------------------------------------------------------
@@ -1833,7 +1833,7 @@ MODULE INPUT
     fname = job_name(1:INDEX(job_name, " ") -1) // ".dat"
     OPEN(10,FILE=fname,STATUS='OLD',ACTION='READ')
     READ(10,*) element,mesh,partition,nels,nn,nr,nip,nod,fixed_freedoms, &
-               loaded_nodes,phi,c,psi,e,v,cons,incs,plasits,cjits,       &
+               loaded_nodes,phi,c,psi,e,v,incs,plasits,cjits,            &
                plastol,cjtol
     CLOSE(10)
    
@@ -1859,9 +1859,8 @@ MODULE INPUT
     real_store(3)      = psi  
     real_store(4)      = e  
     real_store(5)      = v  
-    real_store(6)      = cons
-    real_store(7)      = plastol
-    real_store(8)      = cjtol    
+    real_store(6)      = plastol
+    real_store(7)      = cjtol    
 
   END IF
 
@@ -1872,7 +1871,7 @@ MODULE INPUT
   bufsize = 12
   CALL MPI_BCAST(integer_store,bufsize,MPI_INTEGER,0,MPI_COMM_WORLD,ier)
 
-  bufsize = 8
+  bufsize = 7
   CALL MPI_BCAST(real_store,bufsize,MPI_REAL8,0,MPI_COMM_WORLD,ier)
 
   bufsize = 15
@@ -1901,9 +1900,8 @@ MODULE INPUT
     psi             = real_store(3)
     e               = real_store(4)
     v               = real_store(5)
-    cons            = real_store(6)
-    plastol         = real_store(7)
-    cjtol           = real_store(8)
+    plastol         = real_store(6)
+    cjtol           = real_store(7)
 
   END IF
   
