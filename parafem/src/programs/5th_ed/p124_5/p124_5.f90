@@ -77,7 +77,7 @@ PROGRAM p124
 !-------------- element stiffness integration and storage ----------------
  CALL sample(element,points,weights); storka_pp=zero; storkb_pp=zero
  elements_3: DO iel=1,nels_pp
-   kay=zero; kc=zero; pm=zero; kay(1,1)=prop(1,etype_pp(iel))                       
+   kay=zero; kc=zero; pm=zero; kay(1,1)=prop(1,etype_pp(iel)) 
    kay(2,2)=prop(2,etype_pp(iel)); kay(3,3)=prop(3,etype_pp(iel)) 
    rho=prop(4,etype_pp(iel)); cp=prop(5,etype_pp(iel))
    gauss_pts: DO i=1,nip
@@ -133,8 +133,8 @@ PROGRAM p124
  CALL calc_nodes_pp(nn,npes,numpe,node_end,node_start,nodes_pp)
  ALLOCATE(ttr_pp(nodes_pp),eld_pp(ntot,nels_pp))
  ttr_pp=zero; eld_pp=zero
- IF(numpe==it)                                                           &
-   WRITE(11,'(A)') " Time  Temperature Iterations "
+ IF(numpe==it)                                                           & 
+   WRITE(11,'(A)') "  Time       Temperature  Iterations "
  IF(numpe==1) THEN
    OPEN(13, file=argv(1:nlen)//'.npp', status='replace', action='write')
    WRITE(13,*) nn; WRITE(13,*) nstep/npri; WRITE(13,*) npes
@@ -161,7 +161,7 @@ PROGRAM p124
       END IF; loads_pp=loads_pp+u_pp
     ELSE
 !------------------------ set initial temperature ------------------------
-      x_pp=val0
+      x_pp=val0; IF(numpe==it) WRITE(11,'(2e12.4)') 0.0_iwp, x_pp(is)
       IF(fixed_freedoms_pp>0) THEN
         DO i=1,fixed_freedoms_pp; l=no_f_pp(i)-ieq_start+1
           k=fixed_freedoms_start+i-1; x_pp(l)=val_f(k)
@@ -227,7 +227,7 @@ PROGRAM p124
       CALL dismsh_ensi_p(12,1,nodes_pp,npes,numpe,1,ttr_pp)
 !     CALL dismsh_pb(12,1,nodes_pp,npes,numpe,1,ttr_pp)
       IF(numpe==1) CLOSE(12)
-      IF(numpe==it) WRITE(11,'(2E12.4,I5)') real_time, xnew_pp(is), iters
+      IF(numpe==it) WRITE(11,'(2E12.4,I10)') real_time,xnew_pp(is),iters
       timest(6)=timest(6)+(elap_time()-timest(5))
     END IF
   END DO timesteps

@@ -82,12 +82,15 @@ PROGRAM p125
   CALL scatter(globma_pp,globma_tmp); globma_pp = 1._iwp/globma_pp
   loads_pp=val0; DEALLOCATE(globma_tmp); timest(4)=elap_time()
 !------------------------- time stepping recursion -----------------------
- IF(numpe==it)THEN; WRITE(11,'(A)')"    Time     Pressure"; END IF
+ IF(numpe==it)THEN
+   WRITE(11,'(A)')"  Time        Pressure"
+   WRITE(11,'(2E12.4)') 0.0_iwp, loads_pp(is)
+ END IF
  CALL calc_nodes_pp(nn,npes,numpe,node_end,node_start,nodes_pp)
  ALLOCATE(ptl_pp(nodes_pp*ndim))
  timesteps: DO j=1,nstep
    real_time = j*dtim              
-!---------------  go round the elements  ---------------------------------
+!------------------------- go round the elements -------------------------
    utemp_pp=zero; pmul_pp=zero; CALL gather(loads_pp,pmul_pp)
    elements_2: DO iel=1,nels_pp  
      pm = store_pm_pp(:,:,iel) 
@@ -96,9 +99,9 @@ PROGRAM p125
    loads_pp=newlo_pp*globma_pp; newlo_pp=zero 
    IF(j/npri*npri==j) THEN
      IF(numpe==it) WRITE(11,'(2E12.4)')real_time,loads_pp(is)
-!------------------- output potentials for ParaView ----------------------
+!--------------------- output pressures for ParaView ---------------------
      IF(numpe==1)THEN; WRITE(ch,'(I6.6)') j
-       OPEN(12,file=argv(1:nlen)//".ensi.NDPTL-"//ch,status='replace',   &
+       OPEN(12,file=argv(1:nlen)//".ensi.NDPRE-"//ch,status='replace',   &
          action='write')
        WRITE(12,'(A)')"Alya Ensight Gold --- Scalar per-node variable file"
        WRITE(12,'(A/A/A)') "part", "    1","coordinates"
