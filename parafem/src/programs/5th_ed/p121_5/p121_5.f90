@@ -92,6 +92,8 @@ PROGRAM p121
    CALL gather(p_pp,pmul_pp)
    elements_3: DO iel=1,nels_pp
      utemp_pp(:,iel) = MATMUL(storkm_pp(:,:,iel),pmul_pp(:,iel))
+!    CALL dgemv('n',ntot,ntot,1.0_iwp,storkm_pp(:,:,iel),ntot,           &
+!               pmul_pp(:,iel),1,0.0_iwp,utemp_pp(:,iel),1)
    END DO elements_3 ;CALL scatter(u_pp,utemp_pp)
 !-------------------------- pcg equation solution ------------------------
    up=DOT_PRODUCT_P(r_pp,d_pp); alpha=up/DOT_PRODUCT_P(p_pp,u_pp)
