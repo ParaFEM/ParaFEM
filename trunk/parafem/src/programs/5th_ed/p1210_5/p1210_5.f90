@@ -12,7 +12,7 @@ PROGRAM p1210
  INTEGER::nn,nr,nip,loaded_nodes,nres=1,nod,i,j,k,ii,jj,iel,nstep,npri,  &
    is,it,nlen,ndof,nels,npes_pp,node_end,node_start,nodes_pp,meshgen,    &
    partitioner
- REAL(iwp)::rho,dtim,e,v,det,sbary,sigm,f,fnew,fac,volume,sbar,          &
+ REAL(iwp)::rho,dtim,e,v,det,sbary,sigm,f,fnew,fac,fmax,volume,sbar,     &
    dsbar,lode_theta,real_time,tload,pload
  REAL(iwp),PARAMETER::zero=0.0_iwp    
  CHARACTER(LEN=15)::element; CHARACTER(LEN=50)::argv; CHARACTER(LEN=6)::ch
@@ -95,7 +95,7 @@ PROGRAM p1210
  END IF
  time_steps: DO jj=1,nstep
     real_time=real_time+dtim; bdylds_pp=zero
-    x1_pp=x1_pp+(d1x1_pp+d2x1_pp*dtim*.5_iwp)*dtim
+    x1_pp=x1_pp+(dtim*d1x1_pp)+(0.5_iwp*dtim**2*d2x1_pp)
 !------------------ element stress-strain relationship -------------------
     pmul_pp=zero; utemp_pp=zero; CALL gather(x1_pp,pmul_pp)
     elements_2: DO iel=1,nels_pp          
@@ -116,7 +116,9 @@ PROGRAM p1210
           CALL vmpl(e,v,stressv,pl); dee=dee-fac*pl
         END IF
         sigma=MATMUL(dee,eps); sigma=sigma+tensor_pp(:,i,iel)
-        eload=MATMUL(sigma,bee); bload=bload+eload*det*weights(i)
+        CALL invar(sigma,sigm,dsbar,lode_theta)
+        f=dsbar-sbary; IF(f>fmax) fmax=f; eload=MATMUL(sigma,bee)
+        bload=bload+eload*det*weights(i)
 !--------------------- update the gauss points ---------------------------
         tensor_pp(:,i,iel)=sigma
         etensor_pp(:,i,iel)=etensor_pp(:,i,iel)+eps
