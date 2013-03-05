@@ -12,7 +12,7 @@ PROGRAM p127
  INTEGER::nxe,nye,nze,nn,nr,nip,nodof=4,nod=20,nodf=8,nst=6,ndim=3,i,j,k,&
    l,iel,ns,nstep,cjiters,cjits,loaded_freedoms,loaded_freedoms_pp,n_t,  &
    neq_temp,nn_temp,nle,nlen,nels,partitioner=1,ndof,ielpe,npes_pp,      &
-   loaded_freedoms_start
+   loaded_freedoms_start,nlfp,nls
  REAL(iwp)::kx,ky,kz,e,v,det,dtim,theta,real_time,up,alpha,beta,cjtol,aa,&
    bb,cc,q
  REAL(iwp),PARAMETER::zero=0._iwp
@@ -25,7 +25,7 @@ PROGRAM p127
    g_coord_pp(:,:,:),kd(:,:),fun(:),c(:,:),loads_pp(:),pmul_pp(:,:),     &
    storke_pp(:,:,:),ans_pp(:),volf(:,:),p_pp(:),x_pp(:),xnew_pp(:),      &
    u_pp(:),eld_pp(:,:),diag_precon_pp(:),diag_precon_tmp(:,:),d_pp(:),   &
-   utemp_pp(:,:),storkd_pp(:,:,:),val(:),vol(:),timest(:) 
+   utemp_pp(:,:),storkc_pp(:,:,:),val(:),vol(:),timest(:),al(:),lf(:,:)
  INTEGER,ALLOCATABLE::rest(:,:),g(:),num(:),g_g_pp(:,:),g_num_pp(:,:),   &
    g_t(:),no(:),no_pp_temp(:),no_pp(:)
 !-------------------------input and initialisation------------------------
@@ -45,7 +45,7 @@ PROGRAM p127
    kd(ntot,ntot),fun(nod),c(ndof,nodf),g_t(n_t),vol(ndof),               &
    rest(nr,nodof+1),g(ntot),volf(ndof,nodf),g_coord_pp(nod,ndim,nels_pp),&
    g_num_pp(nod,nels_pp),num(nod),storke_pp(ntot,ntot,nels_pp),          &
-   storkd_pp(ntot,ntot,nels_pp),pmul_pp(ntot,nels_pp),dee(nst,nst),      &
+   storkc_pp(ntot,ntot,nels_pp),pmul_pp(ntot,nels_pp),dee(nst,nst),      &
    utemp_pp(ntot,nels_pp),eld_pp(ntot,nels_pp),no(loaded_freedoms),      &
    val(loaded_freedoms),no_pp_temp(loaded_freedoms))
  kay=0.0_iwp; kay(1,1)=kx; kay(2,2)=ky; kay(3,3)=kz
@@ -53,6 +53,12 @@ PROGRAM p127
  CALL biot_loading(nxe,nze,nle,no,val); val=-val*aa*bb/12._iwp
  CALL sample(element,points,weights); CALL deemat(dee,e,v)
  ielpe=iel_start
+ nlfp=3; ALLOCATE(lf(2,nlfp)) 
+ lf(1,1)=0.0_iwp; lf(2,1)=0.0_iwp
+ lf(1,2)=10.0_iwp; lf(2,2)=1.0_iwp
+ lf(1,3)=20.0_iwp; lf(2,3)=1.0_iwp
+ nls=FLOOR(lf(1,nlfp)/dtim); IF(nstep>nls)nstep=nls
+ ALLOCATE(al(nstep)); CALL load_function(lf,dtim,al)
 !----------------- loop the elements to  set up global arrays-------------
  elements_1: DO iel=1,nels_pp
    CALL geometry_20bxz(ielpe,nxe,nze,aa,bb,cc,coord,num)
@@ -62,7 +68,7 @@ PROGRAM p127
    IF(i>neq_temp)neq_temp=i; IF(j>nn_temp)nn_temp=j
  END DO elements_1
  neq=max_p(neq_temp); nn=max_p(nn_temp); CALL calc_neq_pp
-  CALL calc_npes_pp(npes,npes_pp); CALL make_ggl(npes_pp,npes,g_g_pp)
+ CALL calc_npes_pp(npes,npes_pp); CALL make_ggl(npes_pp,npes,g_g_pp)
  IF(numpe==1)THEN
    OPEN(11,FILE=argv(1:nlen)//'.res',STATUS='REPLACE',ACTION='WRITE') 
    WRITE(11,'(A,I5,A)')"This job ran on ",npes,"  processes"
@@ -99,8 +105,10 @@ PROGRAM p127
      DO l=1,nodf; volf(:,l)=vol(:)*funf(l); END DO
      c=c+volf*det*weights(i)               
    END DO gauss_points_1
-   CALL fmkdke(km,kc,c,ke,kd,theta)
-   storke_pp(:,:,iel)=ke; storkd_pp(:,:,iel)=kd
+!  CALL fmkdke(km,kc,c,ke,kd,theta)
+!  storke_pp(:,:,iel)=ke; storkd_pp(:,:,iel)=kd
+   storkc_pp(:,:,iel)=kc; CALL formke(km,kc,c,ke,theta)
+   storke_pp(:,:,iel)=ke 
    DO k=1,ndof
      diag_precon_tmp(k,iel)=diag_precon_tmp(k,iel)+theta*km(k,k)
    END DO
@@ -125,19 +133,23 @@ PROGRAM p127
    pmul_pp=zero; utemp_pp=zero
    CALL gather(loads_pp,pmul_pp)
    elements_3: DO iel=1,nels_pp
-     utemp_pp(:,iel)=MATMUL(storkd_pp(:,:,iel),pmul_pp(:,iel))
+!    utemp_pp(:,iel)=MATMUL(storkd_pp(:,:,iel),pmul_pp(:,iel))
+     utemp_pp(:,iel)=MATMUL(storkc_pp(:,:,iel),pmul_pp(:,iel))
    END DO elements_3; CALL scatter(ans_pp,utemp_pp)
 !---------------------------- ramp loading -------------------------------
-   IF(ns>10)THEN
-     DO i=1,loaded_freedoms_pp; j=no_pp(i)-ieq_start+1
-       ans_pp(j)=ans_pp(j)+val(loaded_freedoms_start+i-1) 
-     END DO
-   ELSE IF(ns<=10)THEN
-     DO i=1,loaded_freedoms_pp; j=no_pp(i)-ieq_start+1
-       ans_pp(j)=ans_pp(j)+val(loaded_freedoms_start+i-1)*               &
-         (.1_iwp*ns+.1_iwp*(theta-1._iwp))
-     END DO
-   END IF
+   DO i=1,loaded_freedoms_pp; j=no_pp(i)-ieq_start+1
+     ans_pp(j)=val(loaded_freedoms_start+i-1)*al(j)
+   END DO
+!  IF(ns>10)THEN
+!    DO i=1,loaded_freedoms_pp; j=no_pp(i)-ieq_start+1
+!     ans_pp(j)=ans_pp(j)+val(loaded_freedoms_start+i-1) 
+!    END DO
+!  ELSE IF(ns<=10)THEN
+!    DO i=1,loaded_freedoms_pp; j=no_pp(i)-ieq_start+1
+!      ans_pp(j)=ans_pp(j)+val(loaded_freedoms_start+i-1)*               &
+!        (.1_iwp*ns+.1_iwp*(theta-1._iwp))
+!    END DO
+!  END IF
    d_pp=diag_precon_pp*ans_pp; p_pp=d_pp
    x_pp=zero  ! depends on starting x = zero
 !----------------- solve the simultaneous equations by pcg ---------------
