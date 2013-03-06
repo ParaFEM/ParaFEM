@@ -10,7 +10,7 @@ PROGRAM xx12
   USE input      ; USE output           ; USE loading
   USE timing     ; USE maths            ; USE gather_scatter
   USE partition  ; USE elements         ; USE steering
-  USE geometry   ; USE pcg
+  USE geometry   ; USE pcg              ; USE new_library
   
   IMPLICIT NONE
   
@@ -346,12 +346,9 @@ PROGRAM xx12
     val_f = zero
     
     CALL read_fixed(job_name,numpe,node,sense,val_f)
-    CALL find_no2(g_g_pp,g_num_pp,node,sense,fixed_freedoms_pp,               &
-                  fixed_freedoms_start,no)
-    CALL MPI_ALLREDUCE(no,no_global,fixed_freedoms,MPI_INTEGER,MPI_MAX,       &
-                       MPI_COMM_WORLD,ier)
-    CALL reindex_fixed_nodes(ieq_start,no_global,no_pp_temp,                  &
-                             fixed_freedoms_pp,fixed_freedoms_start,neq_pp)
+    CALL find_no2(g_g_pp,g_num_pp,node,sense,no)
+    CALL reindex(ieq_start,no_global,no_pp_temp,                              &
+                 fixed_freedoms_pp,fixed_freedoms_start,neq_pp)
     
     ALLOCATE(no_f_pp(fixed_freedoms_pp),store_pp(fixed_freedoms_pp))
     
@@ -400,8 +397,8 @@ PROGRAM xx12
       val = zero ; node = 0
       
       CALL read_loads(job_name,numpe,node,val)
-      CALL reindex_fixed_nodes(ieq_start,node,no_pp_temp,                     &
-                               loaded_freedoms_pp,loaded_freedoms_start,neq_pp)
+      CALL reindex(ieq_start,node,no_pp_temp,loaded_freedoms_pp,             &
+                   loaded_freedoms_start,neq_pp)
  
       ALLOCATE(no_pp(loaded_freedoms_pp))
 
