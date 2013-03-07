@@ -159,16 +159,18 @@ The ".mat" file has the following format:
 
 {{{
 *MATERIAL
-np_types
+nmats nvals
+
 matID-1 e v
 matID-2 e v
 matID-3 e v
 ...
-matID-np_types e v
+matID-nmats e v
 }}}
 
 || *Variable Name* || *Type* || *Purpose* ||
-||{{{np_types}}} || Integer || Number of different property types.||
+||{{{nmats}}} || Integer || Number of different materials.||
+||{{{nvals}}} || Integer || Number of different property types.||
 ||{{{matID}}} || Integer || A unique number that identifies the material type.||
 ||{{{e}}} || Real || Young's modulus. ||
 ||{{{v}}} || Real || Poisson's ratio. ||
@@ -177,7 +179,8 @@ A real example follows:
 
 {{{
 *MATERIAL
-5
+5 2
+
 1  500.0 0.15
 2 1000.0 0.20
 3 1500.0 0.25
