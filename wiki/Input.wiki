@@ -158,6 +158,7 @@ A real example follows:
 The ".mat" file has the following format:
 
 {{{
+*MATERIAL
 np_types
 matID-1 e v
 matID-2 e v
@@ -175,6 +176,7 @@ matID-np_types e v
 A real example follows:
 
 {{{
+*MATERIAL
 5
 1  500.0 0.15
 2 1000.0 0.20
