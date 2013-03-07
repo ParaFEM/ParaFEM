@@ -53,12 +53,12 @@ PROGRAM p127
  CALL biot_loading(nxe,nze,nle,no,val); val=-val*aa*bb/12._iwp
  CALL sample(element,points,weights); CALL deemat(dee,e,v)
  ielpe=iel_start
- nlfp=3; ALLOCATE(lf(2,nlfp)) 
+ nlfp=3; ALLOCATE(lf(2,nlfp)); lf=zero
  lf(1,1)=0.0_iwp; lf(2,1)=0.0_iwp
  lf(1,2)=10.0_iwp; lf(2,2)=1.0_iwp
  lf(1,3)=20.0_iwp; lf(2,3)=1.0_iwp
  nls=FLOOR(lf(1,nlfp)/dtim); IF(nstep>nls)nstep=nls
- ALLOCATE(al(nstep)); CALL load_function(lf,dtim,al)
+ ALLOCATE(al(nstep)); al=zero; CALL load_function(lf,dtim,al)
  IF(numpe==1) PRINT *, al
 !----------------- loop the elements to set up global arrays -------------
  neq_temp=0; nn_temp=0
@@ -103,7 +103,8 @@ PROGRAM p127
 !------------------------- now the fluid contribution --------------------
      CALL shape_fun(funf,points,i); CALL shape_der(derf,points,i)
      derivf=MATMUL(jac,derf)
-     kc=kc+MATMUL(MATMUL(TRANSPOSE(derivf),kay),derivf)*det*weights(i)*dtim
+     kc=kc+                                                              &
+        MATMUL(MATMUL(TRANSPOSE(derivf),kay),derivf)*det*weights(i)*dtim
      DO l=1,nodf; volf(:,l)=vol(:)*funf(l); END DO
      c=c+volf*det*weights(i)               
    END DO gauss_points_1
@@ -121,9 +122,10 @@ PROGRAM p127
  diag_precon_pp=1._iwp/diag_precon_pp
  DEALLOCATE(diag_precon_tmp)
 !----------------------------loaded freedoms -----------------------------
+ no_pp_temp=0
  CALL reindex(ieq_start,no,no_pp_temp,loaded_freedoms_pp,                &
    loaded_freedoms_start,neq_pp)
- ALLOCATE(no_pp(1:loaded_freedoms_pp))
+ ALLOCATE(no_pp(1:loaded_freedoms_pp)); no_pp=0
  no_pp=no_pp_temp(1:loaded_freedoms_pp); DEALLOCATE(no_pp_temp)
 !----------------------- enter the time-stepping loop --------------------
  real_time=zero     
@@ -146,12 +148,12 @@ PROGRAM p127
 !----------------- solve the simultaneous equations by pcg ---------------
    cjiters=0
    conjugate_gradients: DO 
-     cjiters=cjiters+1; u_pp=zero; pmul_pp=zero
+     cjiters=cjiters+1; u_pp=zero; pmul_pp=zero; utemp_pp=zero
      CALL gather(p_pp,pmul_pp)
      elements_4: DO iel=1,nels_pp
        utemp_pp(:,iel)=MATMUL(storke_pp(:,:,iel),pmul_pp(:,iel))
      END DO elements_4; CALL scatter(u_pp,utemp_pp)
-!----------------------------pcg process ---------------------------------
+!--------------------------- pcg process ---------------------------------
      up=DOT_PRODUCT_P(ans_pp,d_pp); alpha=up/DOT_PRODUCT_P(p_pp,u_pp)
      xnew_pp=x_pp+p_pp*alpha; ans_pp=ans_pp-u_pp*alpha
      d_pp=diag_precon_pp*ans_pp; beta=DOT_PRODUCT_P(ans_pp,d_pp)/up
@@ -163,7 +165,7 @@ PROGRAM p127
    IF(numpe==1)THEN
      WRITE(11,'(A,I5,A)')                                                &
        "Conjugate gradients took ",cjiters,"  iterations to converge"
-     WRITE(11,'(A)')" The nodal displacements and porepressures are    :"
+     WRITE(11,'(A)')" The nodal displacements and pore pressures are    :"
      WRITE(11,'(4E12.4)')loads_pp(1:4)
    END IF
 !------------------ recover stresses at gauss-points ---------------------
