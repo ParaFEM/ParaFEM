@@ -31,7 +31,7 @@ PROGRAM xx12
   INTEGER             :: loaded_freedoms_pp,loaded_freedoms_start
   INTEGER             :: nels,ndof,ielpe,npes_pp
   INTEGER             :: argc,iargc,meshgen,partitioner
-  INTEGER             :: np_types
+  INTEGER             :: np_types,el_print
   INTEGER             :: prog,tz
   REAL(iwp)           :: aa,bb,cc,kx,ky,kz,det,theta,dtim,real_time
   !REAL(iwp)           :: val0 = 100.0_iwp
@@ -59,9 +59,9 @@ PROGRAM xx12
   REAL(iwp),ALLOCATABLE :: val(:,:),val_f(:),store_pp(:),r_pp(:)
   REAL(iwp),ALLOCATABLE :: kcx(:,:),kcy(:,:),kcz(:,:)
   REAL(iwp),ALLOCATABLE :: eld(:),col(:,:),row(:,:),storkc_pp(:,:,:)
-  REAL(iwp),ALLOCATABLE :: prop(:,:)
+  REAL(iwp),ALLOCATABLE :: prop(:,:),amp(:)
   INTEGER,ALLOCATABLE   :: rest(:,:),g(:),num(:),g_num_pp(:,:),g_g_pp(:,:),no(:)
-  INTEGER,ALLOCATABLE   :: no_pp(:),no_f_pp(:),no_pp_temp(:),no_global(:)
+  INTEGER,ALLOCATABLE   :: no_pp(:),no_f_pp(:),no_pp_temp(:)
   INTEGER,ALLOCATABLE   :: sense(:),node(:)
   INTEGER,ALLOCATABLE   :: etype_pp(:)
   
@@ -88,7 +88,7 @@ PROGRAM xx12
   
   CALL read_xx12(job_name,numpe,dtim,element,fixed_freedoms,limit,            &
                  loaded_nodes,meshgen,nels,nip,nn,nod,npri,nr,nstep,          &
-                 partitioner,theta,tol,np_types,val0)
+                 partitioner,theta,tol,np_types,val0,el_print)
 
   CALL calc_nels_pp(job_name,nels,npes,numpe,partitioner,nels_pp)
   
@@ -152,7 +152,8 @@ PROGRAM xx12
             pmul_pp(ntot,nels_pp))
   ALLOCATE (kcx(ntot,ntot),kcy(ntot,ntot),kcz(ntot,ntot),                     &
             eld(ntot),col(ntot,1),row(1,ntot),storkc_pp(ntot,ntot,nels_pp))
-  
+  ALLOCATE (amp(nstep))
+
   IF(numpe==1) PRINT *, " *** Allocated dynamic arrays in: ",                 &
                           elap_time()-timest(6)," s"
   
@@ -193,9 +194,10 @@ PROGRAM xx12
   
   CALL calc_neq_pp          
   CALL calc_npes_pp(npes,npes_pp)
-  CALL make_ggl2(npes_pp,npes,g_g_pp)
+  CALL make_ggl(npes_pp,npes,g_g_pp)
   
-  nres = 11488731 ! 11488731 25% model or 118564 5% model
+  !nres = 11488731 ! 11488731 25% model or 118564 5% model
+  nres = el_print
   
   DO i = 1,neq_pp
     IF(nres==ieq_start+i-1) THEN
@@ -340,15 +342,20 @@ PROGRAM xx12
     
     ALLOCATE(node(fixed_freedoms),no(fixed_freedoms),                         &
              no_pp_temp(fixed_freedoms),sense(fixed_freedoms))
-    ALLOCATE(val_f(fixed_freedoms),no_global(fixed_freedoms))
+    ALLOCATE(val_f(fixed_freedoms))
     
-    node  = 0 ; no = 0 ; no_pp_temp = 0 ; sense = 0 ; no_global = 0
+    node  = 0 ; no = 0 ; no_pp_temp = 0 ; sense = 0
     val_f = zero
     
     CALL read_fixed(job_name,numpe,node,sense,val_f)
     CALL find_no2(g_g_pp,g_num_pp,node,sense,no)
-    CALL reindex(ieq_start,no_global,no_pp_temp,                              &
+
+    PRINT *, "After find_no2 no = ", no, " on PE ", numpe
+
+    CALL reindex(ieq_start,no,no_pp_temp,                              &
                  fixed_freedoms_pp,fixed_freedoms_start,neq_pp)
+
+    PRINT *, "After reindex no = ", no, " on PE ", numpe
     
     ALLOCATE(no_f_pp(fixed_freedoms_pp),store_pp(fixed_freedoms_pp))
     
@@ -357,7 +364,6 @@ PROGRAM xx12
     no_f_pp  = no_pp_temp(1:fixed_freedoms_pp)
     
     DEALLOCATE(node,no,sense,no_pp_temp)
-    DEALLOCATE(no_global)
     
   END IF
   
@@ -396,6 +402,7 @@ PROGRAM xx12
       
       val = zero ; node = 0
       
+      CALL read_amplitude(job_name,numpe,nstep,amp)
       CALL read_loads(job_name,numpe,node,val)
       CALL reindex(ieq_start,node,no_pp_temp,loaded_freedoms_pp,             &
                    loaded_freedoms_start,neq_pp)
@@ -428,8 +435,16 @@ PROGRAM xx12
     loads_pp  = zero
 
     DO i = 1, loaded_freedoms_pp
-      loads_pp(no_pp(i)-ieq_start+1) = val(loaded_freedoms_start+i-1,1)*dtim
+      IF(amp(j)==0.0)THEN
+        loads_pp(no_pp(i)-ieq_start+1) = val(loaded_freedoms_start+i-1,1)*dtim*(1.0E-34)
+      ELSE
+        loads_pp(no_pp(i)-ieq_start+1) = val(loaded_freedoms_start+i-1,1)*dtim*amp(j)
+      END IF
     END DO
+    
+!    DO i = 1, loaded_freedoms_pp
+!      loads_pp(no_pp(i)-ieq_start+1) = val(loaded_freedoms_start+i-1,1)*dtim
+!    END DO
     
     q = q + SUM_P(loads_pp)
 
