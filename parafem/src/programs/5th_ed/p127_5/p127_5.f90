@@ -45,7 +45,7 @@ PROGRAM p127
    kd(ntot,ntot),fun(nod),c(ndof,nodf),g_t(n_t),vol(ndof),               &
    rest(nr,nodof+1),g(ntot),volf(ndof,nodf),g_coord_pp(nod,ndim,nels_pp),&
    g_num_pp(nod,nels_pp),num(nod),storke_pp(ntot,ntot,nels_pp),          &
-   storkc_pp(ntot,ntot,nels_pp),pmul_pp(ntot,nels_pp),dee(nst,nst),      &
+   storkc_pp(nodf,nodf,nels_pp),pmul_pp(ntot,nels_pp),dee(nst,nst),      &
    utemp_pp(ntot,nels_pp),eld_pp(ntot,nels_pp),no(loaded_freedoms),      &
    val(loaded_freedoms),no_pp_temp(loaded_freedoms))
  kay=0.0_iwp; kay(1,1)=kx; kay(2,2)=ky; kay(3,3)=kz
@@ -59,7 +59,9 @@ PROGRAM p127
  lf(1,3)=20.0_iwp; lf(2,3)=1.0_iwp
  nls=FLOOR(lf(1,nlfp)/dtim); IF(nstep>nls)nstep=nls
  ALLOCATE(al(nstep)); CALL load_function(lf,dtim,al)
-!----------------- loop the elements to  set up global arrays-------------
+ IF(numpe==1) PRINT *, al
+!----------------- loop the elements to set up global arrays -------------
+ neq_temp=0; nn_temp=0
  elements_1: DO iel=1,nels_pp
    CALL geometry_20bxz(ielpe,nxe,nze,aa,bb,cc,coord,num)
    CALL find_g3(num,g_t,rest); CALL g_t_g(nod,g_t,g)
@@ -105,8 +107,6 @@ PROGRAM p127
      DO l=1,nodf; volf(:,l)=vol(:)*funf(l); END DO
      c=c+volf*det*weights(i)               
    END DO gauss_points_1
-!  CALL fmkdke(km,kc,c,ke,kd,theta)
-!  storke_pp(:,:,iel)=ke; storkd_pp(:,:,iel)=kd
    storkc_pp(:,:,iel)=kc; CALL formke(km,kc,c,ke,theta)
    storke_pp(:,:,iel)=ke 
    DO k=1,ndof
@@ -125,37 +125,28 @@ PROGRAM p127
    loaded_freedoms_start,neq_pp)
  ALLOCATE(no_pp(1:loaded_freedoms_pp))
  no_pp=no_pp_temp(1:loaded_freedoms_pp); DEALLOCATE(no_pp_temp)
-! ---------------------- enter the time-stepping loop --------------------
+!----------------------- enter the time-stepping loop --------------------
  real_time=zero     
  time_steps: DO ns=1,nstep
-   ans_pp=zero; real_time=real_time+dtim
+   real_time=real_time+dtim
    IF(numpe==1) WRITE(11,'(A,E12.4)')"The time is", real_time
-   pmul_pp=zero; utemp_pp=zero
+   pmul_pp=zero; utemp_pp=zero; ans_pp=zero
    CALL gather(loads_pp,pmul_pp)
    elements_3: DO iel=1,nels_pp
-!    utemp_pp(:,iel)=MATMUL(storkd_pp(:,:,iel),pmul_pp(:,iel))
-     utemp_pp(:,iel)=MATMUL(storkc_pp(:,:,iel),pmul_pp(:,iel))
+     utemp_pp(ndof+1:,iel)=MATMUL(storkc_pp(:,:,iel),pmul_pp(ndof+1:,iel))
    END DO elements_3; CALL scatter(ans_pp,utemp_pp)
 !---------------------------- ramp loading -------------------------------
-   DO i=1,loaded_freedoms_pp; j=no_pp(i)-ieq_start+1
-     ans_pp(j)=val(loaded_freedoms_start+i-1)*al(j)
-   END DO
-!  IF(ns>10)THEN
-!    DO i=1,loaded_freedoms_pp; j=no_pp(i)-ieq_start+1
-!     ans_pp(j)=ans_pp(j)+val(loaded_freedoms_start+i-1) 
-!    END DO
-!  ELSE IF(ns<=10)THEN
-!    DO i=1,loaded_freedoms_pp; j=no_pp(i)-ieq_start+1
-!      ans_pp(j)=ans_pp(j)+val(loaded_freedoms_start+i-1)*               &
-!        (.1_iwp*ns+.1_iwp*(theta-1._iwp))
-!    END DO
-!  END IF
+   IF(loaded_freedoms_pp>0) THEN
+     DO i=1,loaded_freedoms_pp; j=no_pp(i)-ieq_start+1
+       ans_pp(j)=val(loaded_freedoms_start+i-1)*al(ns)
+     END DO
+   END IF
    d_pp=diag_precon_pp*ans_pp; p_pp=d_pp
    x_pp=zero  ! depends on starting x = zero
 !----------------- solve the simultaneous equations by pcg ---------------
    cjiters=0
    conjugate_gradients: DO 
-     cjiters=cjiters+1; u_pp=zero; pmul_pp=zero; u_pp=zero
+     cjiters=cjiters+1; u_pp=zero; pmul_pp=zero
      CALL gather(p_pp,pmul_pp)
      elements_4: DO iel=1,nels_pp
        utemp_pp(:,iel)=MATMUL(storke_pp(:,:,iel),pmul_pp(:,iel))
@@ -168,15 +159,15 @@ PROGRAM p127
      CALL checon_par(xnew_pp,cjtol,cj_converged,x_pp)
      IF(cj_converged.OR.cjiters==cjits)EXIT
    END DO conjugate_gradients
-   ans_pp=xnew_pp; loads_pp=ans_pp
+   ans_pp=xnew_pp; loads_pp=loads_pp+ans_pp
    IF(numpe==1)THEN
      WRITE(11,'(A,I5,A)')                                                &
        "Conjugate gradients took ",cjiters,"  iterations to converge"
      WRITE(11,'(A)')" The nodal displacements and porepressures are    :"
-     WRITE(11,'(4E12.4)')ans_pp(1:4)
+     WRITE(11,'(4E12.4)')loads_pp(1:4)
    END IF
 !------------------ recover stresses at gauss-points ---------------------
-   eld_pp=zero; CALL gather(ans_pp,eld_pp)
+   eld_pp=zero; CALL gather(loads_pp,eld_pp)
    iel=1; coord=g_coord_pp(:,:,iel); eld=eld_pp(:,iel)
    IF(numpe==1)WRITE(11,'(A,I5,A)')                                      &
      "The Gauss Point effective stresses for element",iel,"  are"
