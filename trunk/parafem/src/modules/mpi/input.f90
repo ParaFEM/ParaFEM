@@ -2838,7 +2838,7 @@ MODULE INPUT
 
   SUBROUTINE READ_XX12(job_name,numpe,dtim,element,fixed_freedoms,            &
                        limit,loaded_nodes,mesh,nels,nip,nn,nod,npri,nr,       &
-                       nstep,partition,theta,tol,np_types,val0)
+                       nstep,partition,theta,tol,np_types,val0,el_print)
 
   !/****f* input/read_xx12
   !*  NAME
@@ -2847,7 +2847,7 @@ MODULE INPUT
   !*    Usage:      CALL read_xx12(job_name,numpe,dtim,element,fixed_freedoms,
   !*                               kx,ky,kz,limit,loaded_nodes,mesh,nels,nip,
   !*                               nn,nod,npri,nr,nstep,partition,theta,tol,
-  !*                               np_types,rho,cp,val0)
+  !*                               np_types,rho,cp,val0,el_print)
   !*  FUNCTION
   !*    Master processor reads the general data for the problem and broadcasts 
   !*    it to the slave processors.
@@ -2885,6 +2885,7 @@ MODULE INPUT
   !*                           : 1 = internal partitioning
   !*                           : 2 = external partitioning with .psize file
   !*    np_types               : Number of property types
+  !*    el_print               : Element number to print its values to .ttr2
   !*
   !*    The following scalar reals have the INTENT(INOUT) attribute:
   !*
@@ -2912,7 +2913,7 @@ MODULE INPUT
   INTEGER, INTENT(IN)              :: numpe
   INTEGER, INTENT(INOUT)           :: nels,nn,nr,nod,nip,loaded_nodes
   INTEGER, INTENT(INOUT)           :: limit,mesh,fixed_freedoms,partition 
-  INTEGER, INTENT(INOUT)           :: npri,nstep
+  INTEGER, INTENT(INOUT)           :: npri,nstep,el_print
   INTEGER, INTENT(INOUT)           :: np_types
   REAL(iwp), INTENT(INOUT)         :: tol
   REAL(iwp), INTENT(INOUT)         :: dtim,theta
@@ -2922,7 +2923,7 @@ MODULE INPUT
 ! 1. Local variables
 !------------------------------------------------------------------------------
 
-  INTEGER                          :: bufsize,ier,integer_store(13)
+  INTEGER                          :: bufsize,ier,integer_store(14)
   REAL(iwp)                        :: real_store(4)
   CHARACTER(LEN=50)                :: fname
   
@@ -2935,7 +2936,7 @@ MODULE INPUT
     OPEN(10,FILE=fname,STATUS='OLD',ACTION='READ')
     READ(10,*) element,mesh,partition,np_types,nels,nn,nr,nip,nod,            &
                loaded_nodes,fixed_freedoms,val0,                              &
-               dtim,nstep,npri,theta,tol,limit
+               dtim,nstep,npri,theta,tol,limit,el_print
     CLOSE(10)
    
     integer_store      = 0
@@ -2953,6 +2954,7 @@ MODULE INPUT
     integer_store(11)  = npri
     integer_store(12)  = nstep
     integer_store(13)  = np_types
+    integer_store(14)  = el_print
 
     real_store         = 0.0_iwp
 
@@ -2967,7 +2969,7 @@ MODULE INPUT
 ! 3. Master processor broadcasts the temporary arrays to the slave processors
 !------------------------------------------------------------------------------
 
-  bufsize = 13
+  bufsize = 14
   CALL MPI_BCAST(integer_store,bufsize,MPI_INTEGER,0,MPI_COMM_WORLD,ier)
 
   bufsize = 4
@@ -2995,6 +2997,7 @@ MODULE INPUT
     npri            = integer_store(11)
     nstep           = integer_store(12)
     np_types        = integer_store(13)
+    el_print        = integer_store(14)
 
     tol             = real_store(1)
     dtim            = real_store(2)
@@ -3016,6 +3019,70 @@ MODULE INPUT
 
   RETURN
   END SUBROUTINE READ_xx12
+
+!---------------------------------------------------------------------------
+!---------------------------------------------------------------------------
+!---------------------------------------------------------------------------
+
+  SUBROUTINE READ_AMPLITUDE(JOB_NAME,NUMPE,NSTEP,VALUE)
+  
+  !/****f* input/read_amplitude
+  !*  NAME
+  !*    SUBROUTINE: read_amplitude
+  !*  SYNOPSIS
+  !*    Usage:      CALL read_amplitude(job_name,numpe,nstep,value)
+  !*  FUNCTION
+  !*    Master processor reads the global array of nodal force amplitudes 
+  !*    and broadcasts them to the slave processors.
+  !*  INPUTS
+  !*    The following arguments have the INTENT(IN) attribute:
+  !*
+  !*    job_name                 : Character
+  !*                             : Used to generate file name to read
+  !*
+  !*    numpe                    : Integer
+  !*                             : Processor number used for I/O
+  !*
+  !*    nstep                    : Integer
+  !*                             : Total number of time steps
+  !*
+  !*    The following arguments have the INTENT(OUT) attribute:
+  !*
+  !*    value(load_amp)          : Real
+  !*                             : Amplitude of force applied for given time step
+  !*                             : Factor value to be multiplied with loaded_freedoms
+  !*  AUTHOR
+  !*    Lee Margetts
+  !*    Llion Marc Evans
+  !*  COPYRIGHT
+  !*    (c) University of Manchester 2007-2010
+  !******
+  !*  The method is modified version of the subroutine read_loads
+  !*
+  !*/
+  
+  IMPLICIT NONE
+  CHARACTER(LEN=50), INTENT(IN) :: job_name
+  CHARACTER(LEN=50)             :: fname  
+  INTEGER                       :: i,bufsize,ier,ielpe
+  INTEGER,INTENT(IN)            :: numpe,nstep
+  REAL(iwp),INTENT(INOUT)       :: value(:)
+  
+  IF(numpe==1)THEN
+    fname = job_name(1:INDEX(job_name, " ")-1) // ".amp"
+    OPEN(24, FILE=fname, STATUS='OLD', ACTION='READ')
+    DO i = 1,nstep
+      READ(24,*) value(i)
+    END DO
+    CLOSE(24)
+  END IF
+  
+  bufsize = nstep
+  CALL MPI_BCAST(value,bufsize,MPI_REAL8,0,MPI_COMM_WORLD,ier)
+  
+  RETURN
+  
+  END SUBROUTINE READ_AMPLITUDE
 
 !------------------------------------------------------------------------------
 !------------------------------------------------------------------------------
