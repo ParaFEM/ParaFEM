@@ -818,14 +818,13 @@ MODULE LOADING
       END DO
     END DO
 
-    RETURN
-
     CALL MPI_ALLREDUCE(no,no_global,fixed_freedoms,MPI_INTEGER,MPI_MAX,  &
       MPI_COMM_WORLD,ier)
     
     no=no_global
     DEALLOCATE(no_global)
-    
+  
+  RETURN  
   END SUBROUTINE FIND_NO2
 
   
