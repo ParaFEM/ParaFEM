@@ -3734,7 +3734,7 @@ end subroutine formupvw
  ! and oldlds is greater than tol and updates oldlds.
  !
   IMPLICIT NONE
-  INTEGER,PARAMETER::iwp=SELECTED_REAL_KIND(15)
+ !INTEGER,PARAMETER::iwp=SELECTED_REAL_KIND(15)
   REAL(iwp),INTENT(IN)::loads(0:),tol
   REAL(iwp),INTENT(IN OUT)::oldlds(0:)
   LOGICAL,INTENT(OUT)::converged
@@ -3754,10 +3754,10 @@ SUBROUTINE load_function(lf,dtim,al)
 ! calculation time step.
 !
  IMPLICIT NONE
- INTEGER,PARAMETER::iwp=SELECTED_REAL_KIND(15)
+!INTEGER,PARAMETER::iwp=SELECTED_REAL_KIND(15)
  REAL(iwp),INTENT(IN)::lf(:,:),dtim
  REAL(iwp),INTENT(IN OUT)::al(:)
- REAL::time,aold,anew
+ REAL(iwp)::time,aold,anew
  INTEGER::nlfp,nincs,i,j
  nincs=SIZE(al)
  nlfp=UBOUND(lf,2)
@@ -3787,7 +3787,7 @@ SUBROUTINE formke(km,kp,c,ke,theta)
 ! This subroutine creates the ke matrix for incremental Biot.
 !
  IMPLICIT NONE
- INTEGER,PARAMETER::iwp=SELECTED_REAL_KIND(15)
+!INTEGER,PARAMETER::iwp=SELECTED_REAL_KIND(15)
  REAL(iwp),INTENT(IN)::km(:,:),kp(:,:),c(:,:),theta
  REAL(iwp),INTENT(OUT)::ke(:,:)
  INTEGER::ndof
