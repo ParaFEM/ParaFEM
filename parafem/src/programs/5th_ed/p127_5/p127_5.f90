@@ -12,7 +12,7 @@ PROGRAM p127
  INTEGER::nxe,nye,nze,nn,nr,nip,nodof=4,nod=20,nodf=8,nst=6,ndim=3,i,j,k,&
    l,iel,ns,nstep,cjiters,cjits,loaded_freedoms,loaded_freedoms_pp,n_t,  &
    neq_temp,nn_temp,nle,nlen,nels,partitioner=1,ndof,ielpe,npes_pp,      &
-   loaded_freedoms_start,nlfp,nls
+   loaded_freedoms_start,nlfp,nls,is,it,nres
  REAL(iwp)::kx,ky,kz,e,v,det,dtim,theta,real_time,up,alpha,beta,cjtol,aa,&
    bb,cc,q
  REAL(iwp),PARAMETER::zero=0._iwp
@@ -32,11 +32,12 @@ PROGRAM p127
  ALLOCATE(timest(20)); timest=zero; timest(1)=elap_time()
  CALL find_pe_procs(numpe,npes); CALL getname(argv,nlen)
  CALL read_p127(argv,numpe,nels,nxe,nze,aa,bb,cc,nip,kx,ky,kz,e,v,dtim,  &
-   nstep,theta,cjits,cjtol)
+   nstep,theta,cjits,cjtol,nlfp)
  CALL calc_nels_pp(argv,nels,npes,numpe,partitioner,nels_pp)
  ndof=nod*ndim; ntot=ndof+nodf; n_t=nod*nodof
  nye=nels/nxe/nze; nle=nxe/5; loaded_freedoms=3*nle*nle+4*nle+1
  nr=3*nxe*nye*nze+4*(nxe*nye+nye*nze+nze*nxe)+nxe+nye+nze+2
+ nres=2*nxe*2+nxe*2+1
  ALLOCATE(points(nip,ndim),coord(nod,ndim),derivf(ndim,nodf),            &
    jac(ndim,ndim),kay(ndim,ndim),der(ndim,nod),deriv(ndim,nod),          &
    derf(ndim,nodf),funf(nodf),coordf(nodf,ndim),bee(nst,ndof),           &
@@ -52,16 +53,11 @@ PROGRAM p127
  CALL biot_cube_bc20(nxe,nye,nze,rest); CALL rearrange(rest)
  CALL biot_loading(nxe,nze,nle,no,val); val=-val*aa*bb/12._iwp
  CALL sample(element,points,weights); CALL deemat(dee,e,v)
- ielpe=iel_start
- nlfp=3; ALLOCATE(lf(2,nlfp)); lf=zero
- lf(1,1)=0.0_iwp; lf(2,1)=0.0_iwp
- lf(1,2)=10.0_iwp; lf(2,2)=1.0_iwp
- lf(1,3)=20.0_iwp; lf(2,3)=1.0_iwp
+ ALLOCATE(lf(2,nlfp)); lf=zero; CALL read_lf(argv,numpe,lf)
  nls=FLOOR(lf(1,nlfp)/dtim); IF(nstep>nls)nstep=nls
  ALLOCATE(al(nstep)); al=zero; CALL load_function(lf,dtim,al)
- IF(numpe==1) PRINT *, al
 !----------------- loop the elements to set up global arrays -------------
- neq_temp=0; nn_temp=0
+ neq_temp=0; nn_temp=0; ielpe=iel_start
  elements_1: DO iel=1,nels_pp
    CALL geometry_20bxz(ielpe,nxe,nze,aa,bb,cc,coord,num)
    CALL find_g3(num,g_t,rest); CALL g_t_g(nod,g_t,g)
@@ -71,17 +67,11 @@ PROGRAM p127
  END DO elements_1
  neq=max_p(neq_temp); nn=max_p(nn_temp); CALL calc_neq_pp
  CALL calc_npes_pp(npes,npes_pp); CALL make_ggl(npes_pp,npes,g_g_pp)
- IF(numpe==1)THEN
+ nres=6*nxe+1
+ DO i=1,neq_pp; IF(nres==ieq_start+i-1)THEN; it=numpe; is=i; END IF;END DO
+ IF(numpe==it)THEN
    OPEN(11,FILE=argv(1:nlen)//'.res',STATUS='REPLACE',ACTION='WRITE') 
    WRITE(11,'(A,I5,A)')"This job ran on ",npes,"  processes"
-   WRITE(11,'(A)')"Global coordinates and node numbers"
-   DO i=1,nels_pp,nels_pp-1
-     WRITE(11,'(A,I8)')"Element ",i
-     num=g_num_pp(:,i)
-     DO k=1,nod
-       WRITE(11,'(A,I8,3E12.4)')"   Node",num(k),g_coord_pp(k,:,i)
-     END DO
-   END DO
    WRITE(11,'(A,3(I8,A))')"There are ",nn," nodes",nr," restrained and ",&
      neq,"  equations"
    WRITE(11,'(A,F10.4)')"Time after setup is:",elap_time()-timest(1)
@@ -162,27 +152,27 @@ PROGRAM p127
      IF(cj_converged.OR.cjiters==cjits)EXIT
    END DO conjugate_gradients
    ans_pp=xnew_pp; loads_pp=loads_pp+ans_pp
-   IF(numpe==1)THEN
+   IF(numpe==it)THEN
      WRITE(11,'(A,I5,A)')                                                &
        "Conjugate gradients took ",cjiters,"  iterations to converge"
-     WRITE(11,'(A)')" The nodal displacements and pore pressures are    :"
-     WRITE(11,'(4E12.4)')loads_pp(1:4)
+     WRITE(11,'(A)')" The vertical displacement and pore pressure is    :"
+     WRITE(11,'(2E12.4)')loads_pp(is), loads_pp(is+1)
    END IF
 !------------------ recover stresses at gauss-points ---------------------
    eld_pp=zero; CALL gather(loads_pp,eld_pp)
-   iel=1; coord=g_coord_pp(:,:,iel); eld=eld_pp(:,iel)
-   IF(numpe==1)WRITE(11,'(A,I5,A)')                                      &
+   iel=1; coord=g_coord_pp(:,:,iel); eld=eld_pp(:ndof,iel)
+   IF(numpe==it)WRITE(11,'(A,I5,A)')                                      &
      "The Gauss Point effective stresses for element",iel,"  are"
    gauss_pts_2: DO i=1,nip
      CALL shape_der(der,points,i); jac=MATMUL(der,coord)
      CALL invert(jac); deriv=MATMUL(jac,der)
      CALL beemat(bee,deriv); sigma=MATMUL(dee,MATMUL(bee,eld))
-     IF(numpe==1.AND.i==1)THEN
+     IF(numpe==it.AND.i==1)THEN
        WRITE(11,'(A,I5)')"Point  ",i
        WRITE(11,'(6E12.4)')sigma
      END IF
    END DO gauss_pts_2 
  END DO time_steps
- IF(numpe==1) THEN; WRITE(11,'(A,F10.4)')"This analysis took:",          &
+ IF(numpe==it) THEN; WRITE(11,'(A,F10.4)')"This analysis took:",          &
    elap_time()-timest(1); CLOSE(11); END IF; CALL SHUTDOWN()
 END PROGRAM p127
