@@ -1940,6 +1940,37 @@ MODULE INPUT
 !------------------------------------------------------------------------------
 !------------------------------------------------------------------------------
 !------------------------------------------------------------------------------
+ 
+  SUBROUTINE READ_LF(job_name,numpe,lf)
+  
+  IMPLICIT NONE
+  
+  CHARACTER(LEN=50), INTENT(IN)    :: job_name
+  INTEGER, INTENT(IN)              :: numpe
+  INTEGER                          :: i,incs
+  REAL(iwp), INTENT(INOUT)         :: lf(:,:)
+  
+  CHARACTER(LEN=50)                :: fname
+
+  lf=0.0_iwp
+  incs= UBOUND(lf,2)
+  
+  IF (numpe==1) THEN
+    fname = job_name(1:INDEX(job_name, " ") -1) // ".dat"
+    OPEN(10,FILE=fname,STATUS='OLD',ACTION='READ')
+    ! skip 2 lines
+    READ(10,*); READ(10,*)
+    READ(10,*) lf
+    CLOSE(10)
+  END IF
+  
+  CALL MPI_BCAST(lf,incs*2,MPI_REAL8,0,MPI_COMM_WORLD,ier)
+  
+  END SUBROUTINE READ_LF
+
+!------------------------------------------------------------------------------
+!------------------------------------------------------------------------------
+!------------------------------------------------------------------------------
 
 
   SUBROUTINE READ_P123(job_name,numpe,element,fixed_freedoms,kx,ky,kz,limit,  &
