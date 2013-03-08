@@ -2677,14 +2677,15 @@ MODULE INPUT
 !------------------------------------------------------------------------------
 
   SUBROUTINE READ_P127(job_name,numpe,nels,nxe,nze,aa,bb,cc,nip,kx,ky,kz,e,v, &
-    dtim,nstep,theta,cjits,cjtol)
+    dtim,nstep,theta,cjits,cjtol,nlfp)
 
   !/****f* input/read_p127
   !*  NAME
   !*    SUBROUTINE: read_p127
   !*  SYNOPSIS
   !*    Usage:      CALL read_p127(job_name,numpe,nels,nxe,nze,aa,bb,cc,nip,  &
-  !*                               kx,ky,kz,e,v,dtim,nstep,theta,cjits,cjtol)
+  !*                               kx,ky,kz,e,v,dtim,nstep,theta,cjits,cjtol, &
+  !*                               nlfp)
   !*  FUNCTION
   !*    Master processor reads the general data for the problem and broadcasts 
   !*    it to the slave processors.
@@ -2721,6 +2722,7 @@ MODULE INPUT
   !*    partition              : Type of partitioning 
   !*                           : 1 = internal partitioning
   !*                           : 2 = external partitioning with .psize file
+  !*    nlfp                   :
   !*
   !*    The following scalar reals have the INTENT(INOUT) attribute:
   !*
@@ -2745,14 +2747,14 @@ MODULE INPUT
 
   CHARACTER(LEN=50), INTENT(IN)    :: job_name
   INTEGER, INTENT(IN)              :: numpe
-  INTEGER, INTENT(INOUT)           :: nels,nxe,nze,nip,nstep,cjits
+  INTEGER, INTENT(INOUT)           :: nels,nxe,nze,nip,nstep,cjits,nlfp
   REAL(iwp), INTENT(INOUT)         :: kx,ky,kz,e,v,dtim,theta,cjtol,aa,bb,cc
 
 !------------------------------------------------------------------------------
 ! 1. Local variables
 !------------------------------------------------------------------------------
 
-  INTEGER                          :: bufsize,ier,integer_store(6)
+  INTEGER                          :: bufsize,ier,integer_store(7)
   REAL(iwp)                        :: real_store(11)
   CHARACTER(LEN=50)                :: fname
   
@@ -2764,7 +2766,7 @@ MODULE INPUT
     fname = job_name(1:INDEX(job_name, " ") -1) // ".dat"
     OPEN(10,FILE=fname,STATUS='OLD',ACTION='READ')
     READ(10,*) nels,nxe,nze,aa,bb,cc,nip,kx,ky,kz,e,v,dtim,nstep,theta,      &
-               cjits,cjtol
+               cjits,cjtol,nlfp
     CLOSE(10)
    
     integer_store      = 0
@@ -2775,6 +2777,7 @@ MODULE INPUT
     integer_store(4)   = nip 
     integer_store(5)   = nstep
     integer_store(6)   = cjits
+    integer_store(7)   = nlfp
 
     real_store         = 0.0_iwp
 
@@ -2796,7 +2799,7 @@ MODULE INPUT
 ! 3. Master processor broadcasts the temporary arrays to the slave processors
 !------------------------------------------------------------------------------
 
-  bufsize = 6
+  bufsize = 7
   CALL MPI_BCAST(integer_store,bufsize,MPI_INTEGER,0,MPI_COMM_WORLD,ier)
 
   bufsize = 11
@@ -2814,6 +2817,7 @@ MODULE INPUT
     nip             = integer_store(4)
     nstep           = integer_store(5)
     cjits           = integer_store(6)
+    nlfp            = integer_store(7)
 
     kx              = real_store(1)
     ky              = real_store(2)
