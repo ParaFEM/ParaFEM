@@ -11,10 +11,10 @@ mesh
 partitioner
 np_types
 nels nn nr nip nod loaded_nodes fixed_freedoms
-kx ky kz 
-rho cp val0
+val0
 dtim nsteps npri theta
 tol limit
+nres
 }}}
 
 ||*Variable Name*||*Type*||*Meaning*||
@@ -29,11 +29,6 @@ tol limit
 ||{{{nod}}} || Integer || Number of nodes per element.||
 ||{{{loaded_nodes}}} || Integer || Number of nodes with externally applied loads.||
 ||{{{fixed_freedoms}}} || Integer || Number of freedoms with fixed displacements.||
-||{{{kx}}} || Real || Thermal conductivity in x-direction.||
-||{{{ky}}} || Real || Thermal conductivity in y-direction.||
-||{{{kz}}} || Real || Thermal conductivity in z-direction.||
-||{{{rho}}} || Real || Density.||
-||{{{cp}}} || Real || Specific heat capacity at constant pressure.||
 ||{{{val0}}} || Real || Initial temperature of whole model.||
 ||{{{dtim}}} || Real || Timestep.||
 ||{{{nsteps}}} || Integer || Number of timesteps in analysis.||
@@ -41,6 +36,7 @@ tol limit
 ||{{{theta}}} || Real || Parameter in theta integrator (0.5 recommended).||
 ||{{{tol}}} || Real || Convergence tolerance for PCG.||
 ||{{{limit}}} || Integer || Iteration ceiling for PCG.||
+||{{{nres}}} || Integer || Element number to print its values to .ttr2.||
 
 
 A real example follows:
@@ -51,10 +47,10 @@ hexahedron
 1
 1
 64 125 0 8 8 25 25
-1.0000E+02 1.0000E+02 1.0000E+02
-0.0 0.0 0.0
+10.0
 0.01 150 10 0.5
 0.1000E-04 500
+43
 }}}
 
 Compare with source code for SUBROUTINE READ_XX12 in src/input.f90 
