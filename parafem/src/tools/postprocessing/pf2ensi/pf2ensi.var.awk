@@ -1,10 +1,13 @@
 # @(#) pf2ensi.var.awk - Basic conversion of ParaFEM data file to EnSight Variable file
 # @(#) Usage:awk -f pf2ensi.var.awk <filename>.{bnd,dis,fix,lds,nset,pri,rea,str,vms,ttr,flx}
 # Author: Louise M. Lever (louise.lever@manchester.ac.uk)
-# Version: 1.0.3
-# Date: 2012-07-30
+# Version: 1.0.4
+# Date: 2013-03-14
 
 # CHANGES:
+# v1.0.4
+#   LML: Fixed handling of LDS files.
+#   LML: Currently this version no longer produces partial EnSight datasets.
 # v1.0.3
 #   LML: Added support for partial or full dataset processing for BND,FIX,LDS datasets
 #   LML: Full datasets output by default; use -partial as argument to pf2ensi
@@ -32,6 +35,9 @@ BEGIN {
     # --------------------------------------------------------------------------------
 
     vec_file = ARGV[1];
+
+    print "pf2ensi.var.awk: vec_file:", vec_file > "/dev/stderr";
+    print "pf2ensi.var.awk: num_nodes:", num_nodes > "/dev/stderr";
 
     # determine type and get extension position
     if( (file_ext_pos = match(vec_file,/.[dD][iI][sS]$/) - 1) != -1 ) {
@@ -71,6 +77,7 @@ BEGIN {
 	mode = "NODE";
 	dtype = "VECTOR";
 	dset = "PARTIAL";
+	dopt = "LDS";
     } else if( (file_ext_pos = match(vec_file,/.[vV][mM][sS]$/) - 1) != -1 ) {
 	var_type = "NDVMS";
 	mode = "NODE";
@@ -204,6 +211,8 @@ END {
 	} else if( dtype == "VECTOR" ) {
 	    if( (var_type == "NDFIX") && !do_partial ) {
 		end_fix_nopartial_vector();
+	    } else if( (var_type == "NDLDS") && !do_partial ) {
+		end_lds_nopartial_vector();
 	    }
 	}
     } else { # dset == FULL
@@ -410,8 +419,56 @@ function start_lds() {
     print "Alya Ensight Gold --- Vector per-partial-node variable file" > var_file;
     print "part" > var_file;
     print "1" > var_file;
-    print "coordinates partial" > var_file;
+    if( !do_partial ) {
+	print "coordinates" > var_file;
+    } else {
+	print "coordinates partial" > var_file;
+    }
 }
+
+function do_lds_vector_partial_data() {
+    gsub(/^ */,"");
+    if( ($1 - cur_pid) > 1 ) {
+	do_lds_vector_nopartial_fill( cur_pid+1, $1-1 )
+    }
+    cur_pid = $1;
+    print cur_pid > tmp_pid_file;
+    print $2 > tmp_icomp_file;
+    print $3 > tmp_jcomp_file;
+    print $4 > tmp_kcomp_file;
+    node_count++;
+}
+
+function do_lds_vector_nopartial_fill( from, to) {
+    for( i=from; i<=to; i++ ) {
+	print i > tmp_pid_file;
+	print 0.0 > tmp_icomp_file;
+	print 0.0 > tmp_jcomp_file;
+	print 0.0 > tmp_kcomp_file;
+	node_count++;
+    }
+}
+
+function end_lds_nopartial_vector() {
+    do_lds_vector_nopartial_fill( cur_pid+1, num_nodes );
+
+    # close the var_file and temporary files
+    close(var_file);
+    close(tmp_pid_file);
+    close(tmp_icomp_file);
+    close(tmp_jcomp_file);
+    close(tmp_kcomp_file);
+
+    # append each node id and vector component to the var_file
+    # system("cat " tmp_pid_file " >> " var_file);
+    system("cat " tmp_icomp_file " >> " var_file);
+    system("cat " tmp_jcomp_file " >> " var_file);
+    system("cat " tmp_kcomp_file " >> " var_file);
+
+    # clean up and remove the tmp files
+    system("rm -f " tmp_pid_file " " tmp_icomp_file " " tmp_jcomp_file " " tmp_kcomp_file);
+}
+
 
 # ---- NSET ---------------------------------------------------------------------------
 
@@ -866,6 +923,7 @@ mode == "ELEMENT" && dtype == "MULTISCALAR" && dset == "FULL" && dopt == "MAT" {
 mode == "NODE" && dtype == "VECTOR" && dset == "FULL" { do_vector_data(); }
 mode == "NODE" && dtype == "VECTOR" && dset == "PARTIAL" && dopt == "NONE" { do_vector_partial_data(); }
 mode == "NODE" && dtype == "VECTOR" && dset == "PARTIAL" && dopt == "FIX" { do_fix_vector_partial_data(); }
+mode == "NODE" && dtype == "VECTOR" && dset == "PARTIAL" && dopt == "LDS" { do_lds_vector_partial_data(); }
 # tensor inputs
 mode == "NODE" && dtype == "TENSOR" && dset == "FULL" { do_tensor_data(); }
 
