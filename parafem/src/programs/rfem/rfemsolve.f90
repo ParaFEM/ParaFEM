@@ -10,7 +10,8 @@ PROGRAM rfemsolve
   USE precision     ; USE global_variables ; USE mp_interface
   USE input         ; USE output           ; USE loading
   USE timing        ; USE maths            ; USE gather_scatter
-  USE partition     ; USE elements         ; USE steering        ; USE pcg
+! USE partition     ; USE elements         ; USE steering        ; USE pcg
+  USE new_library
   
   IMPLICIT NONE
 
@@ -46,7 +47,7 @@ PROGRAM rfemsolve
   REAL(iwp),ALLOCATABLE :: bee(:,:),storkm_pp(:,:,:),eld(:),eps(:),sigma(:)
   REAL(iwp),ALLOCATABLE :: diag_precon_pp(:),p_pp(:),r_pp(:),x_pp(:),xnew_pp(:)
   REAL(iwp),ALLOCATABLE :: u_pp(:),pmul_pp(:,:),utemp_pp(:,:),d_pp(:),timest(:)
-  REAL(iwp),ALLOCATABLE :: diag_precon_tmp(:,:),eld_pp(:,:),tensor_pp(:,:,:)
+  REAL(iwp),ALLOCATABLE :: diag_precon_tmp(:,:),eld_pp(:,:)!,tensor_pp(:,:,:)
   REAL(iwp),ALLOCATABLE :: valf(:),store_pp(:),prop(:,:)
   REAL(iwp),ALLOCATABLE :: fun(:),shape_integral_pp(:,:)
   REAL(iwp),ALLOCATABLE :: stress_integral_pp(:,:),stressnodes_pp(:)
@@ -205,7 +206,7 @@ PROGRAM rfemsolve
     v   = prop(2,etype_pp(iel))
     dee = zero
     
-    CALL deemat(e,v,dee)
+    CALL deemat(dee,e,v)
     
     gauss_pts_1: DO i=1,nip
       CALL shape_der(der,points,i)
@@ -255,7 +256,7 @@ PROGRAM rfemsolve
 
     CALL read_fixed(job_in,numpe,node,sense,valf)
     CALL find_no(node,rest,sense,no)
-    CALL reindex_fixed_nodes(ieq_start,no,no_pp_temp,fixed_freedoms_pp,       &
+    CALL reindex(ieq_start,no,no_pp_temp,fixed_freedoms_pp,                   &
                              fixed_freedoms_start,neq_pp)
 
     ALLOCATE(no_pp(fixed_freedoms_pp),store_pp(fixed_freedoms_pp))
