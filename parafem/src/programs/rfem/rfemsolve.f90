@@ -214,7 +214,7 @@ PROGRAM rfemsolve
       det   = determinant(jac)
       CALL invert(jac)
       deriv = MATMUL(jac,der)
-      CALL beemat(deriv,bee)
+      CALL beemat(bee,deriv)
       storkm_pp(:,:,iel)   = storkm_pp(:,:,iel) +                             &
                              MATMUL(MATMUL(TRANSPOSE(bee),dee),bee) *         &
                              det*weights(i)   
@@ -440,7 +440,7 @@ PROGRAM rfemsolve
       det   = DETERMINANT(jac) 
       CALL invert(jac)
       deriv = MATMUL(jac,der)
-      CALL beemat(deriv,bee)
+      CALL beemat(bee,deriv)
       eps   = MATMUL(bee,eld_pp(:,iel))
       sigma = MATMUL(dee,eps)
       CALL PRINCIPALSTRESS3D(sigma,principal)
