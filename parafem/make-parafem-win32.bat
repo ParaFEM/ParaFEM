@@ -2,9 +2,9 @@ echo
 rem  *** EDIT THE NEXT THREE LINES IF NECESSARY ***
 rem
 rem
-set PARAFEM=d:\parafem\parafem
-set G95=c:\g95\bin\g95
-set AR=c:\g95\bin\ar
+set PARAFEM=c:\parafem\parafem
+set G95=c:\MinGW\g95\bin\g95
+set AR=c:\MinGW\g95\bin\ar
 set FFLAGS=-c -r8 -i4 -Wall -ftrace=full -fbounds-check -I%PARAFEM%\include
 set VER=1
 rem
@@ -16,6 +16,8 @@ cd /D %PARAFEM%\bin
 del *.a *.o *.mod *.exe
 cd /D %PARAFEM%\lib
 del *.a
+cd /D %PARAFEM%\include
+del *.a *.o *.mod *.exe
 rem
 rem
 rem *** BUILD DUMMY_MPI LIBRARY ***
@@ -56,6 +58,7 @@ cd /D %PARAFEM%\src\modules\shared
 %G95% %FFLAGS% partition.f90
 %G95% %FFLAGS% plasticity.f90
 %G95% %FFLAGS% fluid.f90
+%G95% %FFLAGS% new_library.f90
 move *.o %PARAFEM%\src\modules\mpi
 move *.mod %PARAFEM%\src\modules\mpi
 cd /D %PARAFEM%\src\modules\mpi
