@@ -5,7 +5,7 @@ PROGRAM rfemsolve
 !                        material types; sequential version
 !------------------------------------------------------------------------------ 
                       
-  USE mpi_wrapper   ! uncomment line to compile without MPI
+! USE mpi_wrapper   ! uncomment line to compile without MPI
 
   USE precision     ; USE global_variables ; USE mp_interface
   USE input         ; USE output           ; USE loading
@@ -119,6 +119,7 @@ PROGRAM rfemsolve
   
   CALL read_elements(inst_in,iel_start,nn,npes,numpe,etype_pp,g_num_pp)
   timest(3) = elap_time()
+  IF(numpe==1) PRINT *, "READ_ELEMENTS COMPLETED"
 
 ! CALL read_g_num_pp(job_in,iel_start,nels,nn,numpe,g_num_pp)
 
@@ -127,12 +128,15 @@ PROGRAM rfemsolve
 
   CALL read_g_coord_pp(inst_in,g_num_pp,nn,npes,numpe,g_coord_pp)
   timest(5) = elap_time()
+  IF(numpe==1) PRINT *, "READ_G_COORD_PP COMPLETED"
 
   CALL read_rest(job_in,numpe,rest)
   timest(6) = elap_time()
+  IF(numpe==1) PRINT *, "READ_REST COMPLETED"
   
   fname = inst_in(1:LEN_TRIM(inst_in)) // ".mat" ! Move to subroutine
   CALL read_materialValue(prop,fname,numpe,npes)       ! CALL read_prop? 
+  IF(numpe==1) PRINT *, "READ_MATERIALVALUE COMPLETED"
   
 !------------------------------------------------------------------------------
 ! 4. Allocate dynamic arrays used in main program
@@ -150,6 +154,7 @@ PROGRAM rfemsolve
 !------------------------------------------------------------------------------
 
   CALL rearrange(rest)
+  IF(numpe==1) PRINT *, "REARRANGE COMPLETED"
   
   g_g_pp = 0
 
@@ -157,6 +162,8 @@ PROGRAM rfemsolve
 !   CALL find_g3(g_num_pp(:,iel),g_g_pp(:,iel),rest)
     CALL find_g(g_num_pp(:,iel),g_g_pp(:,iel),rest)
   END DO elements_1
+
+  IF(numpe==1) PRINT *, "FIND_G COMPLETED"
 
   neq = 0
   
@@ -180,6 +187,9 @@ PROGRAM rfemsolve
   timest(8) = elap_time()
 
   CALL MPI_BARRIER(MPI_COMM_WORLD,ier)
+
+  IF(numpe==1) PRINT *, "CREATED INTERPROCESSOR COMMUNICATION TABLES"
+
 !------------------------------------------------------------------------------
 ! 7. Allocate arrays dimensioned by neq_pp 
 !------------------------------------------------------------------------------
@@ -224,6 +234,8 @@ PROGRAM rfemsolve
   
   timest(10) = elap_time()
 
+  IF(numpe==1) PRINT *, "COMPLETED ELEMENT STIFFNESS INTEGRATION AND STORAGE"
+
 !------------------------------------------------------------------------------
 ! 9. Build the diagonal preconditioner
 !------------------------------------------------------------------------------
@@ -242,6 +254,8 @@ PROGRAM rfemsolve
   DEALLOCATE(diag_precon_tmp)
 
   timest(11) = elap_time()
+
+  IF(numpe==1) PRINT *, "BUILT THE DIAGONAL PRECONDITIONER"
 
 !------------------------------------------------------------------------------
 ! 10. Read in fixed nodal displacements and assign to equations
@@ -272,6 +286,8 @@ PROGRAM rfemsolve
   IF(fixed_freedoms == 0) fixed_freedoms_pp = 0
 
   DEALLOCATE(rest)
+
+  IF(numpe==1) PRINT *, "READ FIXED NODAL DISPLACEMENTS"
 
 !------------------------------------------------------------------------------
 ! 11. Read in loaded nodes and get starting r_pp
@@ -364,6 +380,8 @@ PROGRAM rfemsolve
     beta    = DOT_PRODUCT_P(r_pp,d_pp)/up
     p_pp    = d_pp + p_pp*beta  
 
+    IF(numpe==1) PRINT *, "ITERATION", iters
+
     CALL checon_par(xnew_pp,tol,converged,x_pp)    
     IF(converged.OR.iters==limit)EXIT
 
@@ -413,6 +431,8 @@ PROGRAM rfemsolve
   DEALLOCATE(disp_pp)
 
   IF(numpe==1) CLOSE(24)
+
+  IF(numpe==1) PRINT *, "OUTPUT DISPLACEMENTS"
 
 !------------------------------------------------------------------------------
 ! 16b. Stresses
