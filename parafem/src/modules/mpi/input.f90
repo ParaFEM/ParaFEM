@@ -36,6 +36,7 @@ MODULE INPUT
   !*    READ_P126              Reads the control data for program p126
   !*    READ_P127              Reads the control data for program p127
   !*    READ_P129              Reads the control data for program p129
+  !*    READ_XX1               Reads the control data for program xx1
   !*    READ_XX2               Reads the control data for program xx2
   !*    BCAST_INPUTDATA_XX5    Reads the control data for program xx5
   !*    CHECK_INPUTDATA_XX5    Checks the control data for program xx5
@@ -45,7 +46,7 @@ MODULE INPUT
   !*  AUTHOR
   !*    L. Margetts
   !*  COPYRIGHT
-  !*    2004-2011 University of Manchester
+  !*    2004-2013 University of Manchester
   !******
   !*  Place remarks that should not be included in the documentation here.
   !*
@@ -2867,6 +2868,179 @@ MODULE INPUT
   RETURN
   END SUBROUTINE READ_P127
   
+!------------------------------------------------------------------------------
+!------------------------------------------------------------------------------
+!------------------------------------------------------------------------------
+
+  SUBROUTINE READ_XX1(job_name,numpe,e,element,fixed_freedoms,limit,          &
+                      loaded_nodes,mesh,nels,nip,nn,nod,nr,partition,tol,v)
+
+  !/****f* input/read_xx1
+  !*  NAME
+  !*    SUBROUTINE: read_xx1
+  !*  SYNOPSIS
+  !*    Usage:      CALL read_xx1(job_name,numpe,e,element,fixed_freedoms,    &
+  !*                              limit,loaded_nodes,mesh,nels,nip,nn,nod,    &
+  !*                              nr,partition,tol,v)
+  !*  FUNCTION
+  !*    Master processor reads the general data for the problem and broadcasts 
+  !*    it to the slave processors.
+  !*  INPUTS
+  !*    The following arguments have the INTENT(IN) attribute:
+  !*
+  !*    job_name               : Character
+  !*                           : File name that contains the data to be read
+  !*
+  !*    numpe                  : Integer
+  !*                           : Processor number
+  !*
+  !*    partition              : Integer
+  !*                           : Type of partitioning 
+  !*                           : 1 = internal partitioning
+  !*                           : 2 = external partitioning with .psize file
+  !*
+  !*    The following arguments have the INTENT(INOUT) attribute:
+  !*
+  !*    e                      : Real
+  !*                           : Young's modulus
+  !*
+  !*    element                : Character
+  !*                           : Element type
+  !*                           : Values: 'hexahedron' or 'tetrahedron'
+  !*
+  !*    fixed_freedoms         : Integer
+  !*                           : Number of fixed freedoms
+  !*
+  !*    limit                  : Integer
+  !*                           : Maximum number of PCG iterations allowed
+  !*
+  !*    loaded_nodes           : Integer
+  !*                           : Number of nodes with applied forces
+  !*
+  !*    mesh                   : Integer
+  !*                           : 1 = Smith and Griffiths numbering scheme
+  !*                           : 2 = Abaqus numbering scheme
+  !*
+  !*    nels                   : Integer
+  !*                           : Total number of elements
+  !*
+  !*    nip                    : Integer
+  !*                           : Number of Gauss integration points
+  !*
+  !*    nn                     : Integer
+  !*                           : Total number of nodes in the mesh
+  !*
+  !*    nod                    : Integer
+  !*                           : Number of nodes per element
+  !*
+  !*    nr                     : Integer
+  !*                           : Number of nodes with restrained degrees of
+  !*                             freedom 
+  !*
+  !*    tol                    : Real
+  !*                           : Tolerance for PCG
+  !*
+  !*    v                      : Real
+  !*                           : Poisson coefficient
+  !*  AUTHOR
+  !*    Lee Margetts
+  !*  CREATION DATE
+  !*    10.06.2013
+  !*  COPYRIGHT
+  !*    (c) University of Manchester 2013
+  !******
+  !*  Place remarks that should not be included in the documentation here.
+  !*  Need to add some error traps
+  !*/
+
+  IMPLICIT NONE
+
+  CHARACTER(LEN=50), INTENT(IN)    :: job_name
+  CHARACTER(LEN=15), INTENT(INOUT) :: element
+  INTEGER, INTENT(IN)              :: numpe
+  INTEGER, INTENT(INOUT)           :: nels,nn,nr,nod,nip,loaded_nodes
+  INTEGER, INTENT(INOUT)           :: limit,mesh,partition,fixed_freedoms 
+  REAL(iwp), INTENT(INOUT)         :: e,v,tol
+
+!------------------------------------------------------------------------------
+! 1. Local variables
+!------------------------------------------------------------------------------
+
+  INTEGER                          :: bufsize,ier,integer_store(10)
+  REAL(iwp)                        :: real_store(3)
+  CHARACTER(LEN=50)                :: fname
+  
+!------------------------------------------------------------------------------
+! 2. Master processor reads the data and copies it into temporary arrays
+!------------------------------------------------------------------------------
+
+  IF (numpe==1) THEN
+    fname = job_name(1:INDEX(job_name, " ") -1) // ".dat"
+    OPEN(10,FILE=fname,STATUS='OLD',ACTION='READ')
+    READ(10,*) element,mesh,partition,nels,nn,nr,nip,nod,fixed_freedoms,
+               loaded_nodes,e,v,tol,limit
+    CLOSE(10)
+   
+    integer_store      = 0
+
+    integer_store(1)   = mesh
+    integer_store(2)   = nels
+    integer_store(3)   = nn
+    integer_store(4)   = nr 
+    integer_store(5)   = nip
+    integer_store(6)   = nod
+    integer_store(7)   = loaded_nodes
+    integer_store(8)   = limit
+    integer_store(9)   = partition
+    integer_store(10)  = fixed_freedoms
+
+    real_store         = 0.0_iwp
+
+    real_store(1)      = e  
+    real_store(2)      = v  
+    real_store(3)      = tol  
+
+  END IF
+
+!------------------------------------------------------------------------------
+! 3. Master processor broadcasts the temporary arrays to the slave processors
+!------------------------------------------------------------------------------
+
+  bufsize = 10
+  CALL MPI_BCAST(integer_store,bufsize,MPI_INTEGER,0,MPI_COMM_WORLD,ier)
+
+  bufsize = 3
+  CALL MPI_BCAST(real_store,bufsize,MPI_REAL8,0,MPI_COMM_WORLD,ier)
+
+  bufsize = 15
+  CALL MPI_BCAST(element,bufsize,MPI_CHARACTER,0,MPI_COMM_WORLD,ier)
+
+!------------------------------------------------------------------------------
+! 4. Slave processors extract the variables from the temporary arrays
+!------------------------------------------------------------------------------
+
+  IF (numpe/=1) THEN
+
+    mesh            = integer_store(1)
+    nels            = integer_store(2)
+    nn              = integer_store(3)
+    nr              = integer_store(4)
+    nip             = integer_store(5)
+    nod             = integer_store(6)
+    loaded_nodes    = integer_store(7)
+    limit           = integer_store(8)
+    partition       = integer_store(9)
+    fixed_freedoms  = integer_store(9)
+
+    e               = real_store(1)
+    v               = real_store(2)
+    tol             = real_store(3)
+
+  END IF
+
+  RETURN
+  END SUBROUTINE READ_XX1
+
 !------------------------------------------------------------------------------
 !------------------------------------------------------------------------------
 !------------------------------------------------------------------------------
