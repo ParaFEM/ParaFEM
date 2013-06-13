@@ -9,6 +9,7 @@ PROGRAM xx1
   USE input         ; USE output           ; USE loading
   USE timing        ; USE maths            ; USE gather_scatter
   USE partition     ; USE elements         ; USE steering        ; USE pcg
+  USE new_library
   
   IMPLICIT NONE
 
@@ -90,8 +91,11 @@ PROGRAM xx1
   IF (argc /= 1) CALL job_name_error(numpe,program_name)
   CALL GETARG(1, job_name) 
 
-  CALL read_p121(job_name,numpe,e,element,fixed_freedoms,limit,loaded_nodes, &
+  CALL read_xx1(job_name,numpe,e,element,fixed_freedoms,limit,loaded_nodes, &
                  meshgen,nels,nip,nn,nod,nr,partitioner,tol,v)
+
+  PRINT *, "numpe =", numpe,e,fixed_freedoms,limit,loaded_nodes,meshgen,    &
+            nels,nip,nn,nod,nr,partitioner,tol,v
 
   CALL calc_nels_pp(job_name,nels,npes,numpe,partitioner,nels_pp)
 
@@ -108,10 +112,8 @@ PROGRAM xx1
 
   timest(2) = elap_time()
 
-  CALL read_g_num_pp2(job_name,iel_start,nn,npes,numpe,g_num_pp)
+  CALL read_g_num_pp(job_name,iel_start,nn,npes,numpe,g_num_pp)
   timest(3) = elap_time()
-
-! CALL read_g_num_pp(job_name,iel_start,nels,nn,numpe,g_num_pp)
 
   IF(meshgen == 2) CALL abaqus2sg(element,g_num_pp)
   timest(4) = elap_time()
@@ -149,21 +151,14 @@ PROGRAM xx1
 
   CALL rearrange(rest)
   
-  g_g_pp = 0
+  g_g_pp = 0 ; neq = 0
 
   elements_1: DO iel = 1, nels_pp
-    CALL find_g3(g_num_pp(:,iel),g_g_pp(:,iel),rest)
-!   CALL find_g(g_num_pp(:,iel),g_g_pp(:,iel),rest)
+!   CALL find_g3(g_num_pp(:,iel),g_g_pp(:,iel),rest)
+    CALL find_g(g_num_pp(:,iel),g_g_pp(:,iel),rest)
   END DO elements_1
 
-  neq = 0
-  
-  elements_2: DO iel = 1, nels_pp  
-    i = MAXVAL(g_g_pp(:,iel))
-    IF(i > neq) neq = i
-  END DO elements_2  
-
-  neq = MAX_INTEGER_P(neq)
+  neq = MAXVAL(g_g_pp); neq= MAX_P(neq)
  
   timest(7) = elap_time()
 
@@ -219,7 +214,7 @@ PROGRAM xx1
       det   = determinant(jac)
       CALL invert(jac)
       deriv = MATMUL(jac,der)
-      CALL beemat(deriv,bee)
+      CALL beemat(bee,deriv)
       storkm_pp(:,:,iel)   = storkm_pp(:,:,iel) +                             &
                              MATMUL(MATMUL(TRANSPOSE(bee),dee),bee) *         &
                              det*weights(i)   
@@ -251,6 +246,10 @@ PROGRAM xx1
 ! 10. Read in fixed nodal displacements and assign to equations
 !------------------------------------------------------------------------------
 
+  PRINT *, "fixed_freedoms=", fixed_freedoms
+
+  fixed_freedoms_pp = 0
+
   IF(fixed_freedoms > 0) THEN
 
     ALLOCATE(node(fixed_freedoms),no(fixed_freedoms),valf(fixed_freedoms),    &
@@ -260,7 +259,8 @@ PROGRAM xx1
 
     CALL read_fixed(job_name,numpe,node,sense,valf)
     CALL find_no(node,rest,sense,no)
-    CALL reindex_fixed_nodes(ieq_start,no,no_pp_temp,fixed_freedoms_pp,       &
+!   CALL reindex_fixed_nodes(ieq_start,no,no_pp_temp,fixed_freedoms_pp,       &
+    CALL reindex(ieq_start,no,no_pp_temp,fixed_freedoms_pp,                   &
                              fixed_freedoms_start,neq_pp)
 
     ALLOCATE(no_pp(fixed_freedoms_pp),store_pp(fixed_freedoms_pp))
@@ -279,6 +279,8 @@ PROGRAM xx1
 ! 11. Read in loaded nodes and get starting r_pp
 !------------------------------------------------------------------------------
  
+  PRINT *, "loaded_nodes= ", loaded_nodes
+
   IF(loaded_nodes > 0) THEN
 
     ALLOCATE(node(loaded_nodes),val(ndim,loaded_nodes))
@@ -371,6 +373,8 @@ PROGRAM xx1
 
   END DO iterations
 
+  PRINT *, "Iters= ", iters
+
   DEALLOCATE(p_pp,r_pp,x_pp,u_pp,d_pp,diag_precon_pp,storkm_pp,pmul_pp) 
   
   timest(13) = elap_time()
@@ -416,6 +420,8 @@ PROGRAM xx1
 
   IF(numpe==1) CLOSE(24)
 
+  PRINT *, "Write Displacement"
+
 !------------------------------------------------------------------------------
 ! 16b. Stresses
 !------------------------------------------------------------------------------
@@ -444,7 +450,7 @@ PROGRAM xx1
       det   = DETERMINANT(jac) 
       CALL invert(jac)
       deriv = MATMUL(jac,der)
-      CALL beemat(deriv,bee)
+      CALL beemat(bee,deriv)
       eps   = MATMUL(bee,eld_pp(:,iel))
 !     sigma = MATMUL(dee,eps) ! umat replaces this line
       dee   = zero
@@ -491,6 +497,8 @@ PROGRAM xx1
   DEALLOCATE(stress_integral_pp,stressnodes_pp)
 
   IF(numpe==1) CLOSE(25)
+
+  PRINT *, "Write Stress"
 
 !------------------------------------------------------------------------------
 ! 16d. Principal stress
