@@ -81,10 +81,8 @@ PROGRAM p121
 
   timest(2) = elap_time()
   
-  CALL read_g_num_pp2(job_name,iel_start,nn,npes,numpe,g_num_pp)
+  CALL read_g_num_pp(job_name,iel_start,nn,npes,numpe,g_num_pp)
   timest(3) = elap_time()
-
-! CALL read_g_num_pp(job_name,iel_start,nels,nn,numpe,g_num_pp)
 
   IF(meshgen == 2) CALL abaqus2sg(element,g_num_pp)
   timest(4) = elap_time()
@@ -95,8 +93,6 @@ PROGRAM p121
   CALL read_rest(job_name,numpe,rest)
   timest(6) = elap_time()
 
-  IF(numpe==1) PRINT *, " *** Read input data in: ", timest(6)-timest(1)," s"   
-
 !------------------------------------------------------------------------------
 ! 4. Allocate dynamic arrays used in main program
 !------------------------------------------------------------------------------
@@ -106,9 +102,6 @@ PROGRAM p121
            storkm_pp(ntot,ntot,nels_pp),eld(ntot),eps(nst),sigma(nst),        &
            pmul_pp(ntot,nels_pp),utemp_pp(ntot,nels_pp),                      &
            weights(nip),g_g_pp(ntot,nels_pp),fun(nod))
-
-  IF(numpe==1) PRINT *, " *** Allocated dynamic arrays in: ",                 &
-                          elap_time()-timest(6)," s"   
 
 !------------------------------------------------------------------------------
 ! 5. Loop the elements to find the steering array and the number of equations
@@ -124,8 +117,6 @@ PROGRAM p121
 !   CALL find_g(g_num_pp(:,iel),g_g_pp(:,iel),rest)
   END DO elements_1
 
-  CALL MPI_BARRIER(MPI_COMM_WORLD,ier)
-
   neq = 0
   
   elements_2: DO iel = 1, nels_pp  
@@ -133,7 +124,7 @@ PROGRAM p121
     IF(i > neq) neq = i
   END DO elements_2  
 
-  neq = MAX_INTEGER_P(neq)
+  neq = MAX_P(neq)
  
   timest(7) = elap_time()
 
@@ -143,15 +134,9 @@ PROGRAM p121
 
   CALL calc_neq_pp
   CALL calc_npes_pp(npes,npes_pp)
-!  CALL make_ggl(npes_pp,npes,g_g_pp)
-! LML: use fixed make_ggl2 to avoid deadlock
-  CALL make_ggl2(npes_pp,npes,g_g_pp)
+  CALL make_ggl(npes_pp,npes,g_g_pp)
  
   timest(8) = elap_time()
-
-  CALL MPI_BARRIER(MPI_COMM_WORLD,ier)
-
-  IF(numpe==1) PRINT *, " *** Created ggl in: ", timest(8)-timest(7)," s"   
 
 !------------------------------------------------------------------------------
 ! 7. Allocate arrays dimensioned by neq_pp 
@@ -164,9 +149,6 @@ PROGRAM p121
   xnew_pp = zero  ;  u_pp = zero  ;  d_pp = zero  ; diag_precon_pp = zero
 
   timest(9) = elap_time()
-
-  IF(numpe==1) PRINT *, " *** Allocated arrays dimensioned by neq_pp in: ",   &
-                          timest(9)-timest(8), " s"   
 
 !------------------------------------------------------------------------------
 ! 8. Element stiffness integration and storage
@@ -194,9 +176,6 @@ PROGRAM p121
   
   timest(10) = elap_time()
 
-  IF(numpe==1) PRINT *, " *** Computed element stiffness matrices in: ",      &
-                          timest(10)-timest(9), " s"   
-
 !------------------------------------------------------------------------------
 ! 9. Build the diagonal preconditioner
 !------------------------------------------------------------------------------
@@ -216,9 +195,6 @@ PROGRAM p121
 
   timest(11) = elap_time()
 
-  IF(numpe==1) PRINT *, " *** Built diagonal preconditioner in: ",            &
-                          timest(11)-timest(10), " s"   
-
 !------------------------------------------------------------------------------
 ! 10. Read in fixed nodal displacements and assign to equations
 !------------------------------------------------------------------------------
@@ -234,12 +210,10 @@ PROGRAM p121
 
     CALL read_fixed(job_name,numpe,node,sense,valf)
     CALL find_no(node,rest,sense,no)
-!   CALL find_no2(g_g_pp,g_num_pp,node,sense,fixed_freedoms_pp,               &
-!                  fixed_freedoms_start,no)
     CALL MPI_ALLREDUCE(no,no_global,fixed_freedoms,MPI_INTEGER,MPI_MAX,       &
                        MPI_COMM_WORLD,ier)
-    CALL reindex_fixed_nodes(ieq_start,no_global,no_pp_temp,                  &
-                             fixed_freedoms_pp,fixed_freedoms_start,neq_pp)
+    CALL reindex(ieq_start,no_global,no_pp_temp,fixed_freedoms_pp,            &
+                 fixed_freedoms_start,neq_pp)
 
     ALLOCATE(no_pp(fixed_freedoms_pp),store_pp(fixed_freedoms_pp))
 
@@ -282,9 +256,6 @@ PROGRAM p121
   
   timest(12) = elap_time()
 
-  IF(numpe==1) PRINT *, " *** Applied loads in: ",                            &
-                          timest(12)-timest(11), " s" 
-  
 !------------------------------------------------------------------------------
 ! 12. Invert the preconditioner.
 !     If there are fixed freedoms, first apply a penalty
@@ -316,7 +287,6 @@ PROGRAM p121
   p_pp  = d_pp
   x_pp  = zero
 
-  IF(numpe==1) PRINT *, " *** Initiallized preconditioned conjugate gradients"   
 !------------------------------------------------------------------------------
 ! 14. Preconditioned conjugate gradient iterations
 !------------------------------------------------------------------------------
@@ -358,9 +328,6 @@ PROGRAM p121
   DEALLOCATE(p_pp,r_pp,x_pp,u_pp,d_pp,diag_precon_pp,storkm_pp,pmul_pp) 
   
   timest(13) = elap_time()
-
-  IF(numpe==1) PRINT *, " *** Solved equations in: ",                        &
-                          timest(13)-timest(12), " s" 
 
 !------------------------------------------------------------------------------
 ! 15. Print out displacements, stress, principal stress and reactions
