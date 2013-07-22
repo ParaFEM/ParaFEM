@@ -1,4 +1,4 @@
-# MAKEFILE src/programs/rfem/makefile
+# MAKEFILE src/programs/rfem/rfemsolve/makefile
 # Author: Louise M. Lever
 # -----------------------------------------------------------------------
 # Compiles rfemsolve program executable as RELEASE or DEBUG
@@ -18,11 +18,11 @@
 # Notes:
 # -----------------------------------------------------------------------
 
-include ../../../build/mk_defs.inc
-include ../../../build/$(MACHINE).inc
+include ../../../../build/mk_defs.inc
+include ../../../../build/$(MACHINE).inc
 
-MODULE	= ../../../include/mpi
-LIB	= ../../../lib
+MODULE	= ../../../../include/mpi
+LIB	= ../../../../lib
 .SUFFIXES: .o .f90
 
 all:	release
@@ -53,9 +53,9 @@ clean:
 	rm -f *.o
 
 execlean:
-	rm -f rfemsolve ../../../bin/rfemsolve
+	rm -f rfemsolve ../../../../bin/rfemsolve
 
 relink: rfemsolve
 
 install:
-	cp rfemsolve ../../../bin
+	cp rfemsolve ../../../../bin
