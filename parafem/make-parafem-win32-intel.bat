@@ -1,13 +1,12 @@
 echo
-rem  *** EDIT THE NEXT THREE LINES IF NECESSARY ***
+rem  *** EDIT THE NEXT 5 LINES IF NECESSARY ***
 rem
 rem
-set PARAFEM=D:\dev\parafem\parafem
-rem !set G95=c:\MinGW\g95\bin\g95
+set PARAFEM=c:\parafem\parafem
 set G95=ifort /integer-size:32 /real-size:64 /Od
 set FFLAGS=-c -I%PARAFEM%\include
 set AR=lib /out:
-set VER=1
+set VER=1470
 rem
 rem 
 rem *** CLEAN ***
@@ -57,6 +56,7 @@ cd /D %PARAFEM%\src\modules\shared
 %G95% %FFLAGS%  partition.f90
 %G95% %FFLAGS%  plasticity.f90
 %G95% %FFLAGS%  fluid.f90
+%G95% %FFLAGS%  new_library.f90
 move *.obj %PARAFEM%\src\modules\mpi
 move *.mod %PARAFEM%\src\modules\mpi
 cd /D %PARAFEM%\src\modules\mpi
@@ -117,10 +117,17 @@ move rfemreduce.exe %PARAFEM%\bin
 rem
 rem *** BUILD RFEMSOLVE ***
 rem
-cd /D %PARAFEM%\src\programs\rfem
+cd /D %PARAFEM%\src\programs\rfem\rfemsolve
 %G95% rfemsolve.f90 %PARAFEM%\lib\libmpi_stubs.lib %PARAFEM%\lib\libparafem.lib -I%PARAFEM%\include -o rfemsolve.exe
 del *.obj *.lib
 move rfemsolve.exe %PARAFEM%\bin
 cd /D %PARAFEM%
-
+rem
+rem *** BUILD RFEMSOLVE_TE ***
+rem
+cd /D %PARAFEM%\src\programs\rfem\rfemsolve_te
+%G95% rfemsolve_te.f90 %PARAFEM%\lib\libmpi_stubs.lib %PARAFEM%\lib\libparafem.lib -I%PARAFEM%\include -o rfemsolve_te.exe
+del *.obj *.lib
+move rfemsolve_te.exe %PARAFEM%\bin
+cd /D %PARAFEM%
 :end
