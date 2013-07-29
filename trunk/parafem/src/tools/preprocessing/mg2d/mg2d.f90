@@ -1353,7 +1353,7 @@ PROGRAM mg2d
     CALL box_bc8(rest,nxe,nye,nze)
   
     DO i = 1, nr
-      WRITE(12,'(I8,3I6)') rest(i,:) 
+      WRITE(12,'(I12,3I6)') rest(i,:) 
     END DO
   
     CLOSE(12)
@@ -1373,7 +1373,7 @@ PROGRAM mg2d
       val  = 10.0_iwp
   
       DO i = 1, loaded_freedoms
-        WRITE(13,'(I10,E16.8)') no(i),val(i)
+        WRITE(13,'(I12,E16.8)') no(i),val(i)
       END DO
 
       CLOSE(13)
@@ -1391,7 +1391,7 @@ PROGRAM mg2d
       val_f = 100.0_iwp
 
       DO i = 1, fixed_freedoms
-        WRITE(14,'(I10,E16.8)') no_f(i),val_f(i)
+        WRITE(14,'(I12,E16.8)') no_f(i),val_f(i)
       END DO
 
       CLOSE(14)
@@ -1408,7 +1408,7 @@ PROGRAM mg2d
      OPEN(15,FILE=fname,STATUS='REPLACE',ACTION='WRITE')
 
      WRITE(15,'(A,2I5)')    "*MATERIAL", np_types, nprops
-     WRITE(15,'(A)')        "<material_name>"
+     WRITE(15,'(A)')        "<edit material_name>"
      WRITE(15,'(A,5E12.4)') " 1", kx, ky, kz, rho, cp
      
      CLOSE(15)
@@ -1424,7 +1424,7 @@ PROGRAM mg2d
      WRITE(16,'(A)') "2"              ! Abaqus node numbering scheme
      WRITE(16,'(A)') "1"              ! Internal mesh partitioning
      WRITE(16,'(A)') "1"              ! Number of materials
-     WRITE(16,'(7I9)') nels, nn, nr, nip, nod, loaded_freedoms, fixed_freedoms
+     WRITE(16,'(2I12,5I9)') nels, nn, nr, nip, nod, loaded_freedoms, fixed_freedoms
      WRITE(16,'(E12.4)') val0
      WRITE(16,'(E12.4,2I8,E12.4)') dtim, nstep, npri, theta 
      WRITE(16,'(E12.4,2I8)') tol, limit, nres
