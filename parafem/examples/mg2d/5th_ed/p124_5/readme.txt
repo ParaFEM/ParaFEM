@@ -1,4 +1,4 @@
-Explanation of the variables used in the p124_5_size.mg files.
+Explanation of the variables used in the p124_5_size.mg files
 
 program
 'p124'
