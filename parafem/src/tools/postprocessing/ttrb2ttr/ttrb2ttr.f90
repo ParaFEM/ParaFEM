@@ -54,7 +54,7 @@ DO i=1,nstep+1   ! +1 for step 0
     READ(10) ttr(1:rl(j))
     DO k=1,rl(j)
      l=l+1
-     WRITE(11,'(I8,(1P,E12.4))') l, ttr(k)
+     WRITE(11,'(I8,(1P,E16.8))') l, ttr(k)
     END DO
   END DO
 END DO
