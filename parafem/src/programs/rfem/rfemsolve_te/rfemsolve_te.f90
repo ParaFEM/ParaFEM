@@ -5,7 +5,7 @@ PROGRAM rfemsolve_te
 !                        material types; sequential version
 !------------------------------------------------------------------------------ 
                       
-! USE mpi_wrapper   ! uncomment line to compile without MPI
+  USE mpi_wrapper   ! uncomment line to compile without MPI
 
   USE precision     ; USE global_variables ; USE mp_interface
   USE input         ; USE output           ; USE loading
@@ -34,9 +34,13 @@ PROGRAM rfemsolve_te
   REAL(iwp),PARAMETER   :: zero    = 0.0_iwp
   REAL(iwp),PARAMETER   :: penalty = 1.0e20_iwp
   CHARACTER(LEN=15)     :: element
+  CHARACTER(LEN=15)     :: keyword
   CHARACTER(LEN=50)     :: program_name='rfemsolve'
   CHARACTER(LEN=50)     :: fname,inst_in,job_in,label,instance_id
   LOGICAL               :: converged = .false.
+
+  !Temperature value
+  REAL(iwp)             :: gtemp
 
 !------------------------------------------------------------------------------
 ! 2. Declare dynamic arrays
@@ -55,7 +59,15 @@ PROGRAM rfemsolve_te
   REAL(iwp),ALLOCATABLE :: principal(:),reacnodes_pp(:)  
   INTEGER,  ALLOCATABLE :: rest(:,:),g_num_pp(:,:),g_g_pp(:,:),node(:)
   INTEGER,  ALLOCATABLE :: no(:),no_pp(:),no_pp_temp(:),sense(:),etype_pp(:)
+  
+  !Temperature variables
 
+  REAL(iwp),ALLOCATABLE :: dtel(:),dtemp(:),etl(:),cte(:),teps(:),vector(:)
+  INTEGER(iwp),ALLOCATABLE :: num(:) 
+  
+  REAL(iwp),ALLOCATABLE :: tempload(:,:)
+  REAL(iwp),ALLOCATABLE :: tpload(:) 
+ 
 !------------------------------------------------------------------------------
 ! 3. Read job_in and instance_id from the command line. 
 !    Read control data, mesh data, boundary and loading conditions. 
@@ -88,7 +100,7 @@ PROGRAM rfemsolve_te
      PRINT*, "          <model_name>-<instance-id>.res" 
      PRINT*
      CALL job_name_error(numpe,program_name)
-     STOP
+     
   END IF
   CALL GETARG(1, job_in) 
   CALL GETARG(2, instance_id) 
@@ -107,14 +119,23 @@ PROGRAM rfemsolve_te
   ALLOCATE(rest(nr,nodof+1)) 
   ALLOCATE(etype_pp(nels_pp))
   ALLOCATE(prop(nprops,np_types))
- 
+
+  !Force Vector
+  ALLOCATE(vector(6))
+  ALLOCATE(num(nod))
+  ALLOCATE(etl(ndof))
+  ALLOCATE(dtel(nod))
+  ALLOCATE(dtemp(nn))
+  ALLOCATE(teps(nst))
+  
+  ALLOCATE(tempload(ndof,nels))
+    
   g_num_pp   = 0
   rest       = 0
   etype_pp   = 0
   g_coord_pp = zero
   prop       = zero
   
-
   timest(2) = elap_time()
   
   CALL read_elements(inst_in,iel_start,nn,npes,numpe,etype_pp,g_num_pp)
@@ -136,7 +157,42 @@ PROGRAM rfemsolve_te
   
   fname = inst_in(1:LEN_TRIM(inst_in)) // ".mat" ! Move to subroutine
   CALL read_materialValue(prop,fname,numpe,npes)       ! CALL read_prop? 
-  IF(numpe==1) PRINT *, "READ_MATERIALVALUE COMPLETED"
+  
+  !OPEN TEMPERATURE FILES
+
+  OPEN(55,File='Temperature.txt',STATUS='OLD',ACTION='read')
+  READ(55,*)keyword,nn
+
+  READ(55,*)
+ 
+  !PRINT*,keyword,nn
+  
+  ALLOCATE(cte(3))
+
+  !PRINT*,'The material properties are:'
+  DO i= 1, 3
+      READ(55,*)cte(i)
+      !PRINT*,cte(i)
+  END DO
+
+  READ(55,*)
+  !PRINT*,"nn = "
+  !PRINT*,nn
+
+  !PRINT*,'The temperature are:'
+
+  DO i=1, nn
+      READ(55,*)k,dtemp(i)
+      !PRINT*,dtemp(i)
+  END DO
+
+  CLOSE(55) 
+  
+  bufsize = nn
+ 
+  CALL MPI_BCAST(dtemp,bufsize,MPI_REAL8,0,MPI_COMM_WORLD,ier)
+ 
+PRINT *, "READ_MATERIALVALUE COMPLETED"
   
 !------------------------------------------------------------------------------
 ! 4. Allocate dynamic arrays used in main program
@@ -161,7 +217,11 @@ PROGRAM rfemsolve_te
   elements_1: DO iel = 1, nels_pp
 !   CALL find_g3(g_num_pp(:,iel),g_g_pp(:,iel),rest)
     CALL find_g(g_num_pp(:,iel),g_g_pp(:,iel),rest)
+   
   END DO elements_1
+  
+  !PRINT*,'g_num_pp'
+  !PRINT*,g_num_pp
 
   IF(numpe==1) PRINT *, "FIND_G COMPLETED"
 
@@ -173,7 +233,7 @@ PROGRAM rfemsolve_te
   END DO elements_2  
 
   neq = MAX_INTEGER_P(neq)
- 
+  
   timest(7) = elap_time()
 
 !------------------------------------------------------------------------------
@@ -200,25 +260,42 @@ PROGRAM rfemsolve_te
   p_pp    = zero  ;  r_pp = zero  ;  x_pp = zero
   xnew_pp = zero  ;  u_pp = zero  ;  d_pp = zero  ; diag_precon_pp = zero
 
+  ALLOCATE(tpload(neq_pp))
+  
   timest(9) = elap_time()
 
 !------------------------------------------------------------------------------
 ! 8. Element stiffness integration and storage
 !------------------------------------------------------------------------------
 
+  points = zero
+
   CALL sample(element,points,weights)
- 
+
+  teps=zero
   storkm_pp       = zero
  
   elements_3: DO iel=1,nels_pp
-  
+        
     e   = prop(1,etype_pp(iel))
     v   = prop(2,etype_pp(iel))
     dee = zero
     
     CALL deemat(dee,e,v)
-    
+        
+    !NEW LINES******************************
+    num=g_num_pp(:,iel)
+    dtel=dtemp(num)
+    !***************************************
+  
+    etl=zero
+            
     gauss_pts_1: DO i=1,nip
+        
+      CALL shape_fun(fun,points,i)
+      gtemp=dot_product(fun,dtel)
+      teps(1:3)=gtemp*cte(1:3)
+
       CALL shape_der(der,points,i)
       jac   = MATMUL(der,g_coord_pp(:,:,iel))
       det   = determinant(jac)
@@ -227,14 +304,23 @@ PROGRAM rfemsolve_te
       CALL beemat(bee,deriv)
       storkm_pp(:,:,iel)   = storkm_pp(:,:,iel) +                             &
                              MATMUL(MATMUL(TRANSPOSE(bee),dee),bee) *         &
-                             det*weights(i)   
+                             det*weights(i)
+                 
+      etl=etl+MATMUL(MATMUL(TRANSPOSE(bee),dee),teps)*det*weights(i)
+ 
+      
     END DO gauss_pts_1
+    
+    tempload(:,iel)=tempload(:,iel)+etl
+
     
   END DO elements_3
   
   timest(10) = elap_time()
-
-  IF(numpe==1) PRINT *, "COMPLETED ELEMENT STIFFNESS INTEGRATION AND STORAGE"
+  
+  IF(numpe==1) PRINT*, "COMPLETED ELEMENT STIFFNESS INTEGRATION AND STORAGE"
+    
+  CALL scatter(tpload,tempload)
 
 !------------------------------------------------------------------------------
 ! 9. Build the diagonal preconditioner
@@ -244,11 +330,11 @@ PROGRAM rfemsolve_te
   diag_precon_tmp = zero
  
   elements_4: DO iel = 1,nels_pp 
-    DO i = 1,ndof
+   DO i = 1,ndof
       diag_precon_tmp(i,iel) = diag_precon_tmp(i,iel) + storkm_pp(i,i,iel)
-    END DO
+   END DO
   END DO elements_4
-
+  
   CALL scatter(diag_precon_pp,diag_precon_tmp)
 
   DEALLOCATE(diag_precon_tmp)
@@ -265,7 +351,7 @@ PROGRAM rfemsolve_te
 
     ALLOCATE(node(fixed_freedoms),no(fixed_freedoms),valf(fixed_freedoms),    &
              no_pp_temp(fixed_freedoms),sense(fixed_freedoms))
-
+    
     node = 0 ; no = 0 ; no_pp_temp = 0 ; sense = 0 ; valf = zero
 
     CALL read_fixed(job_in,numpe,node,sense,valf)
@@ -330,7 +416,7 @@ PROGRAM rfemsolve_te
   END IF
 
   diag_precon_pp = 1._iwp/diag_precon_pp
-
+ 
 !------------------------------------------------------------------------------
 ! 13. Initiallize preconditioned conjugate gradient
 !------------------------------------------------------------------------------
@@ -342,7 +428,9 @@ PROGRAM rfemsolve_te
        r_pp(j) = store_pp(i) * valf(k)
     END DO
   END IF
-
+  
+  r_pp = tpload-r_pp
+  
   d_pp  = diag_precon_pp*r_pp
   p_pp  = d_pp
   x_pp  = zero
@@ -358,12 +446,14 @@ PROGRAM rfemsolve_te
     u_pp     = zero
     pmul_pp  = zero
     utemp_pp = zero
-
+    
     CALL gather(p_pp,pmul_pp)
+    
     elements_5: DO iel=1,nels_pp
       utemp_pp(:,iel) = MATMUL(storkm_pp(:,:,iel),pmul_pp(:,iel))
     END DO elements_5
-    CALL scatter(u_pp,utemp_pp)
+    
+   CALL scatter(u_pp,utemp_pp)
 
     IF(fixed_freedoms_pp > 0) THEN
       DO i = 1, fixed_freedoms_pp
