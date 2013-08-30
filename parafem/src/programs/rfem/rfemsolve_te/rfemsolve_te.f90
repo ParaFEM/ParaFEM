@@ -544,6 +544,9 @@ PRINT *, "READ_MATERIALVALUE COMPLETED"
   utemp_pp              = zero
 
   DO iel = 1,nels_pp
+    e   = prop(1,etype_pp(iel))
+    v   = prop(2,etype_pp(iel))
+    dee = zero
     DO i = 1,nip
       CALL shape_der(der,points,i)
       jac   = MATMUL(der,g_coord_pp(:,:,iel))
