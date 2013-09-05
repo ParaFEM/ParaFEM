@@ -1,10 +1,14 @@
 # @(#) inp2pf.awk - Basic conversion of Abaqus Input Deck .inp to ParaFEM input files .d .bnd .lds .dat
 # @(#) Usage:awk -f inp2pf.awk <filename.inp>
 # Author: Louise M. Lever (louise.lever@manchester.ac.uk)
-# Version: 1.1.2
-# Date: 2012-11-13
+# Version: 1.1.3
+# Date: 2013-09-05
 
 # CHANGES:
+# v1.1.3
+#   LML: Added ltrim, rtrim, trim functions to help trim strings with whitespace
+#   LML: Added missing C3D20 element type support for both do_elements() and do_elements_renumber()
+#   LML: Used trim of elem_type[2] element name in start_elements()
 # v1.1.2
 #   LML: Modified output of nodes to use %s as format for coords rather than %g which truncates precision
 # v1.1.1
@@ -38,6 +42,7 @@
 #   Use field counting for all element types
 #   Add support for more element types
 #   Add check to *Nodes processing to prevent empty *NODES fields in output
+#   Use trim() in other functions that rely on absence of whitespace
 
 # FUNCTIONS:
 #
@@ -196,6 +201,10 @@ END {
 #
 # Called below from MAIN BODY
 
+function ltrim(s) { sub(/^ +/, "", s); return s }
+function rtrim(s) { sub(/ +$/, "", s); return s }
+function trim(s)  { return rtrim(ltrim(s)); }
+
 # FUNCTION: start_nodes()
 #
 # Triggered by *Nodes keyword
@@ -243,6 +252,7 @@ function start_elements() {
     mat_id++;	
   }
   split( $2,elem_type,"=" );
+  elem_type[2] = trim(elem_type[2]);
   print "Processing Element Type", elem_type[2] > "/dev/stderr";
   if( elem_type[2] == "C3D4" ) {
     dat_elem_type = "'tetrahedron'";
@@ -334,8 +344,31 @@ function do_elements() {
     }
     printf "%d\n", mat_id > d_file;
     element_count++;
+  } else if( elem_type[2] == "C3D20" ) {
+    gsub(/^ */,"");
+    node_remain = 20;
+    field_remain = NF - 1; # subtract one for first line (the element id)
+    field = 2
+    printf "%d %s ", $1, "3 20 2" > d_file;
+    while( node_remain ) {
+	if( field_remain ) {
+	    if( $field ) {
+		printf "%d ", $field > d_file;
+		node_remain--;
+	    }
+	    field_remain--;
+	    field++;
+	} else {
+	    getline;
+	    gsub(/^ */,"");
+	    field_remain = NF;
+	    field = 1;
+	}
+    }
+    printf "%d\n", mat_id > d_file;
+    element_count++;
   } else {
-    print "Element Type", elem_type[2], "Not Supported" > "/dev/stderr";
+    print "Element Type [", elem_type[2], "] Not Supported" > "/dev/stderr";
   }
 }
 
@@ -378,8 +411,31 @@ function do_elements_renumber() {
     }
     printf "%d\n", mat_id > d_file;
     element_count++;
+  } else if( elem_type[2] == "C3D20" ) {
+    gsub(/^ */,"");
+    node_remain = 20;
+    field_remain = NF - 1; # subtract one for first line (the element id)
+    field = 2
+    printf "%d %s ", $1, "3 20 2" > d_file;
+    while( node_remain ) {
+	if( field_remain ) {
+	    if( $field ) {
+		printf "%d ", node_id_lut[$field] > d_file;
+		node_remain--;
+	    }
+	    field_remain--;
+	    field++;
+	} else {
+	    getline;
+	    gsub(/^ */,"");
+	    field_remain = NF;
+	    field = 1;
+	}
+    }
+    printf "%d\n", mat_id > d_file;
+    element_count++;
   } else {
-    print "Element Type", elem_type[2], "Not Supported" > "/dev/stderr";
+    print "Element Type [", elem_type[2], "] Not Supported" > "/dev/stderr";
   }
 }
 
