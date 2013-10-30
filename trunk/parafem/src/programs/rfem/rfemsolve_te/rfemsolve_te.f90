@@ -65,9 +65,24 @@ PROGRAM rfemsolve_te
   REAL(iwp),ALLOCATABLE :: dtel(:),dtemp(:),etl(:),cte(:),teps(:),vector(:)
   INTEGER(iwp),ALLOCATABLE :: num(:) 
   
-  REAL(iwp),ALLOCATABLE :: tempload(:,:)
-  REAL(iwp),ALLOCATABLE :: tpload(:) 
+  REAL(iwp),ALLOCATABLE :: etl_pp(:,:)
+  REAL(iwp),ALLOCATABLE :: tload_pp(:) 
  
+!------------------------------------------------------------------------------
+! 2a. Definition of variable names not listed in the 5th edition
+!------------------------------------------------------------------------------
+
+! Scalar reals
+
+! ctex      coefficient thermal expansion in x-direction
+! ctey      coefficient thermal expansion in y-direction
+! ctez      coefficient thermal expansion in z-direction
+
+! Dynamic real arrays
+
+! etl_pp    distributed element thermal forces array
+! tload_pp  distributed global thermal forces vector
+
 !------------------------------------------------------------------------------
 ! 3. Read job_in and instance_id from the command line. 
 !    Read control data, mesh data, boundary and loading conditions. 
@@ -128,7 +143,7 @@ PROGRAM rfemsolve_te
   ALLOCATE(dtemp(nn))
   ALLOCATE(teps(nst))
   
-  ALLOCATE(tempload(ndof,nels))
+  ALLOCATE(etl_pp(ndof,nels_pp))
     
   g_num_pp   = 0
   rest       = 0
@@ -260,7 +275,7 @@ PRINT *, "READ_MATERIALVALUE COMPLETED"
   p_pp    = zero  ;  r_pp = zero  ;  x_pp = zero
   xnew_pp = zero  ;  u_pp = zero  ;  d_pp = zero  ; diag_precon_pp = zero
 
-  ALLOCATE(tpload(neq_pp))
+  ALLOCATE(tload_pp(neq_pp))
   
   timest(9) = elap_time()
 
@@ -311,7 +326,7 @@ PRINT *, "READ_MATERIALVALUE COMPLETED"
       
     END DO gauss_pts_1
     
-    tempload(:,iel)=tempload(:,iel)+etl
+    etl_pp(:,iel)=etl_pp(:,iel)+etl
 
     
   END DO elements_3
@@ -320,7 +335,7 @@ PRINT *, "READ_MATERIALVALUE COMPLETED"
   
   IF(numpe==1) PRINT*, "COMPLETED ELEMENT STIFFNESS INTEGRATION AND STORAGE"
     
-  CALL scatter(tpload,tempload)
+  CALL scatter(tload_pp,etl_pp)
 
 !------------------------------------------------------------------------------
 ! 9. Build the diagonal preconditioner
@@ -429,7 +444,7 @@ PRINT *, "READ_MATERIALVALUE COMPLETED"
     END DO
   END IF
   
-  r_pp = tpload-r_pp
+  r_pp = tload_pp-r_pp
   
   d_pp  = diag_precon_pp*r_pp
   p_pp  = d_pp
