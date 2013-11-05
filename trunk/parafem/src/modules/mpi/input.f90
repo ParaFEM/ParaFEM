@@ -62,31 +62,59 @@ MODULE INPUT
 !------------------------------------------------------------------------------
 !------------------------------------------------------------------------------
 
-  SUBROUTINE getname(argv,nlen)
-  !
-  ! This subroutine gets the base name of data file.
-  !
-   IMPLICIT NONE
-   INTEGER::narg
-   INTEGER,INTENT(OUT)::nlen
-   INTEGER::lnblnk,iargc
-   CHARACTER(*),INTENT(OUT)::argv
-   LOGICAL found
-   narg=iargc()
-   IF(narg.lt.1)THEN
-     WRITE(*,*)'Please enter the base name of data file: '
-     READ(*,*) argv
+ SUBROUTINE getname(argv,nlen)
+ 
+   !/****f* input/getname
+   !*  NAME
+   !*    SUBROUTINE: getname
+   !*  SYNOPSIS
+   !*    Usage:      CALL getname(argv,nlen)
+   !*  FUNCTION
+   !*    Returns the base name of the data file.
+   !*  OUTPUTS
+   !*    Scalar integer
+   !*    nlen               : number of characters in data file base name 
+   !*
+   !*    Scalar character
+   !*    argv               : holds data file base name
+   !*  AUTHOR
+   !*    I.M. Smith
+   !*    D.V. Griffiths
+   !*    L. Margetts
+   !*  COPYRIGHT
+   !*    (c) University of Manchester 2004-2014
+   !******
+   !*  Place remarks that should not be included in the documentation here.
+   !*  
+   !*  Subroutine required by the 5th Edition of "Programming the Finite
+   !*  Element Method". Take care when modifying
+   !*/
+  
+    IMPLICIT NONE
+    INTEGER                  :: narg
+    INTEGER,INTENT(OUT)      :: nlen
+    INTEGER                  :: lnblnk,iargc
+    CHARACTER(*),INTENT(OUT) :: argv
+    LOGICAL                  :: found=.false.
+ 
+    narg=iargc()
+    IF(narg.lt.1)THEN
+      WRITE(*,*)'Please enter the base name of data file: '
+      READ(*,*) argv
     ELSE
-     CALL getarg(1,argv)
-   ENDIF
-  !nlen=lnblnk(argv)
-   nlen=len_trim(argv)
-   INQUIRE(file=argv(1:nlen)//'.dat',exist=found)
-   IF(.not.found)THEN
-    WRITE(*,*)'Data file not found: ',argv(1:nlen)//'.dat'
-    WRITE(*,*)'Please create or check spelling.'
-    STOP
-   ENDIF
+      CALL getarg(1,argv)
+    ENDIF
+
+   !nlen=lnblnk(argv)
+    nlen=len_trim(argv)
+    INQUIRE(file=argv(1:nlen)//'.dat',exist=found)
+
+    IF(.not.found)THEN
+      WRITE(*,*)'Data file not found: ',argv(1:nlen)//'.dat'
+      WRITE(*,*)'Please create or check spelling.'
+      STOP
+    ENDIF
+
   RETURN
   END SUBROUTINE getname
 
@@ -5121,23 +5149,68 @@ END SUBROUTINE bcast_inputdata_p127
 !------------------------------------------------------------------------------
 !------------------------------------------------------------------------------
 
-  SUBROUTINE MESH_ENSI(argv,nlen,g_coord,g_num,element,etype,nf,loads,          &
+  SUBROUTINE MESH_ENSI(argv,nlen,g_coord,g_num,element,etype,nf,loads,        &
                        nstep,npri,dtim,solid)
-  !
-  ! This subroutine outputs a set of files in the Ensight gold format.
-  ! Models in this format can be viewed in the visualisation tool ParaView.
-  ! 
-  ! Element types supported:                Tested with:
-  !
-  ! 2-node bar
-  ! 3-node triangle                         p51  (4th edition p51_1.dat)
-  ! 6-node triangle
-  ! 4-node quadrilateral                    p115 (4th edition)
-  ! 8-node quadrilateral                    p116 (4th edition)
-  ! 4-node tetrahedron                      p54  (4th edition p54_2.dat)
-  ! 8-node hexahedron                       p86  (4th edition)       
-  ! 20-node hexahedron                      p55  (4th edition)
-   
+
+   !/****f* input/mesh_ensi
+   !*  NAME
+   !*    SUBROUTINE: mesh_ensi
+   !*  SYNOPSIS
+   !*    Usage:      CALL mesh_ensi(argv,nlen,g_coord,g_num,element,etype,nf, &
+   !*                               loads,nstep,npri,dtim,solid)
+   !*  FUNCTION
+   !*    This subroutine outputs a set of files in the Ensight gold format.
+   !*    Models in this format can be viewed in ParaView.
+   !* 
+   !*    Element types supported:                Tested with:
+   !*
+   !*    2-node bar
+   !*    3-node triangle                         p51  (4th edition p51_1.dat)
+   !*    6-node triangle
+   !*    4-node quadrilateral                    p115 (4th edition)
+   !*    8-node quadrilateral                    p116 (4th edition)
+   !*    4-node tetrahedron                      p54  (4th edition p54_2.dat)
+   !*    8-node hexahedron                       p86  (4th edition)       
+   !*    20-node hexahedron                      p55  (4th edition)
+   !*  INPUTS
+   !*    Scalar integers
+   !*    nlen             : number of characters in data file base name
+   !*    npri             : print interval
+   !*	 nstep            : number of time steps in analysis
+   !*
+   !*    Scalar reals
+   !*    dtim             : time step
+   !*
+   !*    Scalar characters
+   !*    argv             : holds data file base name
+   !*	 element          : element type
+   !*
+   !*    Scalar logicals
+   !*    solid            : type of analysis solid if .true. fluid if .false.
+   !*
+   !*    Dynamic scalar arrays
+   !*    g_num            : global element node numbers vector
+   !*    etype            : element property type vector
+   !*    nf               : nodal freedom matrix
+   !* 
+   !*    Dynamic real arrays
+   !* 	 g_coord          : global nodal coordinates
+   !*	 oldlds           : initial loads vector
+   !*
+   !*  OUTPUTS
+   !*  AUTHOR
+   !*    I.M. Smith
+   !*    D.V. Griffiths
+   !*    L. Margetts
+   !*  COPYRIGHT
+   !*    (c) University of Manchester 2004-2014
+   !******
+   !*  Place remarks that should not be included in the documentation here.
+   !*
+   !*  Subroutine required by the 5th Edition of "Programming the Finite
+   !*  Element Method". Take care when modifying
+   !*/
+
     IMPLICIT none
   
     INTEGER,PARAMETER             :: iwp=SELECTED_REAL_KIND(15)
@@ -5148,6 +5221,7 @@ END SUBROUTINE bcast_inputdata_p127
     REAL(iwp), INTENT(IN)         :: g_coord(:,:),loads(:),dtim
     CHARACTER(LEN=15), INTENT(IN) :: argv,element  
     LOGICAL, INTENT(IN)           :: solid
+    
   !------------------------------------------------------------------------------
   ! 1. Initialisation
   !------------------------------------------------------------------------------
