@@ -9,7 +9,8 @@ MODULE NEW_LIBRARY
   !*    Contains subroutines provided in the Smith and Griffiths text book
   !*    
   !*    Subroutine             Purpose
-  !*    
+  !*    GETNAME                Returns base name of the data file
+  !*    MESH_ENSI              Outputs data files in Ensight Gold format
   !*  AUTHORS
   !*    I.M. Smith
   !*    D.V. Griffiths
@@ -31,6 +32,409 @@ MODULE NEW_LIBRARY
 !-------------------------------------------------------------------------
 !-------------------------------------------------------------------------
 !-------------------------------------------------------------------------
+
+ SUBROUTINE getname(argv,nlen)
+ 
+   !/****f* new_library/getname
+   !*  NAME
+   !*    SUBROUTINE: getname
+   !*  SYNOPSIS
+   !*    Usage:      CALL getname(argv,nlen)
+   !*  FUNCTION
+   !*    Returns the base name of the data file.
+   !*  OUTPUTS
+   !*    Scalar integer
+   !*    nlen               : number of characters in data file base name 
+   !*
+   !*    Scalar character
+   !*    argv               : holds data file base name
+   !*  AUTHOR
+   !*    I.M. Smith
+   !*    D.V. Griffiths
+   !*    L. Margetts
+   !*  COPYRIGHT
+   !*    (c) University of Manchester 2004-2014
+   !******
+   !*  Place remarks that should not be included in the documentation here.
+   !*  
+   !*  Subroutine required by the 5th Edition of "Programming the Finite
+   !*  Element Method". Take care when modifying
+   !*/
+ 
+   IMPLICIT NONE
+   INTEGER                  :: narg
+   INTEGER,INTENT(OUT)      :: nlen
+   INTEGER                  :: lnblnk,iargc
+   CHARACTER(*),INTENT(OUT) :: argv
+   LOGICAL                  :: found=.false.
+
+   narg=iargc()
+   IF(narg.lt.1)THEN
+     WRITE(*,*)'Please enter the base name of data file: '
+     READ(*,*) argv
+   ELSE
+     CALL getarg(1,argv)
+   ENDIF
+
+  !nlen=lnblnk(argv)
+   nlen=len_trim(argv)
+   INQUIRE(file=argv(1:nlen)//'.dat',exist=found)
+
+   IF(.not.found)THEN
+     WRITE(*,*)'Data file not found: ',argv(1:nlen)//'.dat'
+     WRITE(*,*)'Please create or check spelling.'
+     STOP
+   ENDIF
+
+ RETURN
+ END SUBROUTINE getname
+
+!------------------------------------------------------------------------------
+!------------------------------------------------------------------------------
+!------------------------------------------------------------------------------
+
+ SUBROUTINE mesh_ensi(argv,nlen,g_coord,g_num,element,etype,nf,loads,         &
+                      nstep,npri,dtim,solid)
+
+   !/****f* new_library/mesh_ensi
+   !*  NAME
+   !*    SUBROUTINE: mesh_ensi
+   !*  SYNOPSIS
+   !*    Usage:      CALL mesh_ensi(argv,nlen,g_coord,g_num,element,etype,nf, &
+   !*                               loads,nstep,npri,dtim,solid)
+   !*  FUNCTION
+   !*    This subroutine outputs a set of files in the Ensight gold format.
+   !*    Models in this format can be viewed in ParaView.
+   !* 
+   !*    Element types supported:                Tested with:
+   !*
+   !*    2-node bar
+   !*    3-node triangle                         p51  (4th edition p51_1.dat)
+   !*    6-node triangle
+   !*    4-node quadrilateral                    p115 (4th edition)
+   !*    8-node quadrilateral                    p116 (4th edition)
+   !*    4-node tetrahedron                      p54  (4th edition p54_2.dat)
+   !*    8-node hexahedron                       p86  (4th edition)       
+   !*    20-node hexahedron                      p55  (4th edition)
+   !*  INPUTS
+   !*    Scalar integers
+   !*    nlen             : number of characters in data file base name
+   !*    npri             : print interval
+   !*	 nstep            : number of time steps in analysis
+   !*
+   !*    Scalar reals
+   !*    dtim             : time step
+   !*
+   !*    Scalar characters
+   !*    argv             : holds data file base name
+   !*	 element          : element type
+   !*
+   !*    Scalar logicals
+   !*    solid            : type of analysis solid if .true. fluid if .false.
+   !*
+   !*    Dynamic scalar arrays
+   !*    g_num            : global element node numbers vector
+   !*    etype            : element property type vector
+   !*    nf               : nodal freedom matrix
+   !* 
+   !*    Dynamic real arrays
+   !* 	 g_coord          : global nodal coordinates
+   !*	 oldlds           : initial loads vector
+   !*
+   !*  OUTPUTS
+   !*  AUTHOR
+   !*    I.M. Smith
+   !*    D.V. Griffiths
+   !*    L. Margetts
+   !*  COPYRIGHT
+   !*    (c) University of Manchester 2004-2014
+   !******
+   !*  Place remarks that should not be included in the documentation here.
+   !*
+   !*  Subroutine required by the 5th Edition of "Programming the Finite
+   !*  Element Method". Take care when modifying
+   !*/
+
+   IMPLICIT none
+ 
+   INTEGER,PARAMETER             :: iwp=SELECTED_REAL_KIND(15)
+   INTEGER,   INTENT(IN)         :: nlen,nstep,npri
+   INTEGER,   INTENT(IN)         :: g_num(:,:),etype(:),nf(:,:)
+   INTEGER                       :: i,j,k,l,m,n,nfe,nod,nels,ndim,nn
+   INTEGER                       :: prnwidth,remainder
+   REAL(iwp), INTENT(IN)         :: g_coord(:,:),loads(:),dtim
+   CHARACTER(LEN=15), INTENT(IN) :: argv,element  
+   LOGICAL, INTENT(IN)           :: solid
+!------------------------------------------------------------------------------
+! 1. Initialisation
+!------------------------------------------------------------------------------
+
+   nn   = UBOUND(g_coord,2) ; ndim = UBOUND(g_coord,1)
+   nels = UBOUND(g_num,2)   ; nod  = UBOUND(g_num,1)
+
+!------------------------------------------------------------------------------
+! 2. Write case file
+!------------------------------------------------------------------------------
+
+   OPEN(12,FILE=argv(1:nlen)//'.ensi.case')
+ 
+   WRITE(12,'(A/A)')    "#", "# Post-processing file generated by subroutine &
+                              &WRITE_ENSI in "
+   WRITE(12,'(A,A,/A)') "#", " Smith, Griffiths and Margetts, 'Programming the &
+                              &Finite Element Method',","# Wiley, 2013."        
+   WRITE(12,'(A/A/A)')  "#","# Ensight Gold Format","#"
+   WRITE(12,'(2A/A)')   "# Problem name: ",argv(1:nlen),"#"
+   WRITE(12,'(A/A/A)')  "FORMAT","type:  ensight gold","GEOMETRY"
+   WRITE(12,'(2A/A)')   "model: 1  ",argv(1:nlen)//'.ensi.geo',"VARIABLE"
+   WRITE(12,'(2A)')     "scalar per element:  material      ",                 &
+                         argv(1:nlen)//'.ensi.MATID'
+   IF(solid) THEN
+     WRITE(12,'(2A)')   "scalar per node:     restraint     ",                 &
+                         argv(1:nlen)//'.ensi.NDBND'
+     WRITE(12,'(2A)')   "vector per node:     displacement  ",                 &
+                         argv(1:nlen)//'.ensi.DISPL-*****'
+   ELSE
+     WRITE(12,'(2A)')   "scalar per node:     pressure      ",                 &
+                         argv(1:nlen)//'.ensi.PRESSURE-*****'
+   END IF
+   WRITE(12,'(2A)')     "vector per node:     load          ",                 &
+                         argv(1:nlen)//'.ensi.NDLDS'
+   WRITE(12,'(A/A)')     "TIME","time set:     1"
+   WRITE(12,'(A,I5)')    "number of steps:",nstep/npri
+   WRITE(12,'(A,I5)')    "filename start number:",npri
+   WRITE(12,'(A,I5)')    "filename increment:",npri
+   WRITE(12,'(A)')       "time values:"
+   prnwidth  = 5
+   remainder = mod(nstep/npri,prnwidth)
+   n         = ((nstep/npri) - remainder)/prnwidth
+   IF(nstep/npri<=prnwidth) THEN
+     DO i=1,nstep,npri
+       IF(i==nstep) THEN
+         WRITE(12,'(E12.5)') i*dtim
+       ELSE
+         WRITE(12,'(E12.5)',ADVANCE='no') i*dtim
+       END IF
+     END DO
+   ELSE
+     IF(remainder==0) THEN
+       DO j=1,n
+         m = ((j-1)*prnwidth)+1
+         l = ((j-1)*prnwidth)+prnwidth
+         WRITE(12,'(5E12.5)') (k*dtim,k=m,l)
+       END DO
+     ELSE
+ !     DO j=1,n-1
+       DO j=1,n
+         m = ((j-1)*prnwidth)+1
+         l = ((j-1)*prnwidth)+prnwidth
+         WRITE(12,'(5E12.5)') (k*dtim,k=m,l)
+       END DO
+       m = (n*prnwidth)+1
+       l = (n*prnwidth)+remainder
+       DO i=m,l
+         IF(i==l) THEN
+           WRITE(12,'(E12.5)') dtim*i
+         ELSE
+           WRITE(12,'(E12.5)',ADVANCE='no') dtim*i
+         END IF
+       END DO
+     END IF
+   END IF
+  
+   CLOSE(12)
+
+!------------------------------------------------------------------------------
+! 3. Write geometry file
+!------------------------------------------------------------------------------
+
+   OPEN(13,FILE=argv(1:nlen)//'.ensi.geo')
+   WRITE(13,'(/2A)')   "Problem name: ", argv(1:nlen)
+   WRITE(13,'(A/A/A)') "Geometry files","node id given","element id given"
+   WRITE(13,'(A/A)')   "part","      1"
+   IF(ndim==2) WRITE(13,'(A)') "2d-mesh"
+   IF(ndim==3) WRITE(13,'(A)') "Volume Mesh"
+   WRITE(13,'(A)')     "coordinates"
+   
+   WRITE(13,'(I10)') nn
+   DO j=1,ndim
+     DO i=1,nn  
+       WRITE(13,'(E12.5)') g_coord(j,i)
+     END DO
+   END DO
+ 
+   IF(ndim==2) THEN ! ensight requires zeros for the z-ordinate
+     DO i=1,nn
+       WRITE(13,'(A)') " 0.00000E+00"
+     END DO
+   END IF
+ 
+   SELECT CASE(element)
+     CASE('triangle')
+       SELECT CASE(nod)
+         CASE(3)
+           WRITE(13,'(A/I10)') "tria3", nels
+           DO i = 1,nels
+             WRITE(13,'(3I10)')g_num(3,i),g_num(2,i),g_num(1,i)
+           END DO
+         CASE DEFAULT
+           WRITE(13,'(A)')   "# Element type not recognised"
+       END SELECT
+     CASE('quadrilateral')
+       SELECT CASE(nod)
+         CASE(4)
+           WRITE(13,'(A/I10)') "quad4", nels
+           DO i = 1,nels
+             WRITE(13,'(4I10)')g_num(1,i),g_num(4,i),g_num(3,i),g_num(2,i)
+           END DO
+         CASE(8)
+           WRITE(13,'(A/I10)') "quad8", nels
+           DO i = 1,nels
+             WRITE(13,'(8I10)')g_num(1,i),g_num(7,i),g_num(5,i),g_num(3,i),    &
+                               g_num(8,i),g_num(6,i),g_num(4,i),g_num(2,i)
+           END DO
+         CASE DEFAULT
+           WRITE(13,'(A)')   "# Element type not recognised"
+       END SELECT
+     CASE('hexahedron')
+       SELECT CASE(nod)
+         CASE(8)
+           WRITE(13,'(A/I10)') "hexa8", nels
+           DO i = 1,nels
+             WRITE(13,'(8I10)') g_num(1,i),g_num(4,i),g_num(8,i),g_num(5,i),   &
+                                g_num(2,i),g_num(3,i),g_num(7,i),g_num(6,i)
+           END DO
+         CASE(20)
+           WRITE(13,'(A/I10)') "hexa20", nels
+           DO i = 1,nels
+             WRITE(13,'(20I10)')                                               &
+               g_num(1,i), g_num(7,i), g_num(19,i),g_num(13,i),g_num(3,i),     &
+               g_num(5,i), g_num(17,i),g_num(15,i),g_num(8,i), g_num(12,i),    &
+               g_num(20,i),g_num(9,i), g_num(4,i), g_num(11,i),g_num(16,i),    &
+               g_num(10,i),g_num(2,i), g_num(6,i), g_num(18,i),g_num(14,i) 
+           END DO
+         CASE DEFAULT
+           WRITE(13,'(A)')   "# Element type not recognised"
+       END SELECT
+     CASE('tetrahedron')
+       SELECT CASE(nod)
+         CASE(4)
+           WRITE(13,'(A/I10)') "tetra4", nels
+           DO i = 1,nels
+             WRITE(13,'(4I10)') g_num(1,i),g_num(3,i),g_num(2,i),g_num(4,i)
+           END DO
+         CASE DEFAULT
+           WRITE(13,'(A)')   "# Element type not recognised"
+       END SELECT
+     CASE DEFAULT
+       WRITE(13,'(A)')       "# Element type not recognised"
+   END SELECT
+ 
+   CLOSE(13)
+
+!------------------------------------------------------------------------------
+! 4. Write file containing material IDs
+!------------------------------------------------------------------------------
+
+   OPEN(14,FILE=argv(1:nlen)//'.ensi.MATID')
+   WRITE(14,'(A)') "Alya Ensight Gold --- Scalar per-element variable file"
+   WRITE(14,'(A/A)') "part", "      1"
+ 
+   SELECT CASE(element)
+     CASE('triangle')
+       SELECT CASE(nod) 
+         CASE(3)
+           WRITE(14,'(A)') "tria3"
+         CASE DEFAULT
+           WRITE(14,'(A)') "# Element type not recognised"
+       END SELECT
+     CASE('quadrilateral')
+       SELECT CASE(nod) 
+         CASE(4)
+           WRITE(14,'(A)') "quad4"
+         CASE(8)
+           WRITE(14,'(A)') "quad8"
+         CASE DEFAULT
+           WRITE(14,'(A)') "# Element type not recognised"
+       END SELECT
+     CASE('hexahedron')
+       SELECT CASE(nod) 
+         CASE(8)
+           WRITE(14,'(A)') "hexa8"
+         CASE(20)
+           WRITE(14,'(A)') "hexa20"
+         CASE DEFAULT
+           WRITE(14,'(A)') "# Element type not recognised"
+       END SELECT
+     CASE('tetrahedron')
+       SELECT CASE(nod)
+         CASE(4)
+           WRITE(14,'(A)') "tetra4"
+         CASE DEFAULT
+         WRITE(14,'(A)') "# Element type not recognised"
+       END SELECT
+     CASE DEFAULT
+       WRITE(14,'(A)')   "# Element type not recognised"
+   END SELECT
+  
+   DO i=1,nels; WRITE(14,'(I10)') etype(i); END DO
+ 
+   WRITE(14,'(A)')
+ 
+   CLOSE(14)
+ 
+!------------------------------------------------------------------------------
+! 5. Write boundary conditions. Encoded using formula: 4z + 2y + 1x
+!
+!    110 = 1   010 = 2   100 = 3   011 = 4   101 = 5   001 = 6   000 = 7
+!------------------------------------------------------------------------------
+
+   IF(solid) THEN
+     OPEN(15,FILE=argv(1:nlen)//'.ensi.NDBND')
+     WRITE(15,'(A)')     "Alya Ensight Gold --- Scalar per-node variable file"
+     WRITE(15,'(A/A/A)') "part", "      1","coordinates"
+     IF(ndim==3) THEN
+       DO i=1,UBOUND(g_coord,2) 
+         nfe=0
+         IF(nf(1,i)==0) nfe=nfe+1
+         IF(nf(2,i)==0) nfe=nfe+2
+         IF(nf(3,i)==0) nfe=nfe+4
+         WRITE(15,'(I2)') nfe
+       END DO
+     ELSE IF(ndim==2) THEN
+       DO i=1,nn
+         nfe=0
+         IF(nf(1,i)==0) nfe=nfe+1
+         IF(nf(2,i)==0) nfe=nfe+2
+         WRITE(15,'(I2)') nfe
+       END DO
+     ELSE
+       PRINT *, "Wrong number of dimensions in mesh_ensi"
+     END IF   
+   END IF
+ 
+   CLOSE(15)
+ 
+!------------------------------------------------------------------------------
+! 6. Write loaded nodes
+!------------------------------------------------------------------------------
+
+   OPEN(16,FILE=argv(1:nlen)//'.ensi.NDLDS')
+   WRITE(16,'(A)')     "Alya Ensight Gold --- Vector per-node variable file"
+   WRITE(16,'(A/A/A)') "part", "      1","coordinates"
+   DO j=1,UBOUND(nf,1)
+     DO i=1, UBOUND(nf,2)
+       WRITE(16,'(E12.5)') loads(nf(j,i))
+     END DO
+   END DO
+   CLOSE(16)
+ 
+   RETURN
+ 
+ END SUBROUTINE mesh_ensi
+
+!------------------------------------------------------------------------------
+!------------------------------------------------------------------------------
+!------------------------------------------------------------------------------
 
 SUBROUTINE formm(stress,m1,m2,m3)
 !
