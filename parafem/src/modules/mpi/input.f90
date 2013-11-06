@@ -108,9 +108,10 @@ MODULE INPUT
    !nlen=lnblnk(argv)
     nlen=len_trim(argv)
     INQUIRE(file=argv(1:nlen)//'.dat',exist=found)
+    INQUIRE(file=argv(1:nlen)//'.mg',exist=found)   !hack
 
     IF(.not.found)THEN
-      WRITE(*,*)'Data file not found: ',argv(1:nlen)//'.dat'
+      WRITE(*,*)'Data file not found'
       WRITE(*,*)'Please create or check spelling.'
       STOP
     ENDIF
@@ -5243,18 +5244,18 @@ END SUBROUTINE bcast_inputdata_p127
     WRITE(12,'(2A/A)')   "# Problem name: ",argv(1:nlen),"#"
     WRITE(12,'(A/A/A)')  "FORMAT","type:  ensight gold","GEOMETRY"
     WRITE(12,'(2A/A)')   "model: 1  ",argv(1:nlen)//'.ensi.geo',"VARIABLE"
-    WRITE(12,'(2A)')     "scalar per element:  material      ",                 &
+    WRITE(12,'(2A)')     "scalar per element:  material      ",                &
                           argv(1:nlen)//'.ensi.MATID'
     IF(solid) THEN
-      WRITE(12,'(2A)')   "scalar per node:     restraint     ",                 &
+      WRITE(12,'(2A)')   "scalar per node:     restraint     ",                &
                           argv(1:nlen)//'.ensi.NDBND'
-      WRITE(12,'(2A)')   "vector per node:     displacement  ",                 &
-                          argv(1:nlen)//'.ensi.DISPL-*****'
+      WRITE(12,'(2A)')   "vector per node:     displacement  ",                &
+                          argv(1:nlen)//'.ensi.DISPL-******'
     ELSE
-      WRITE(12,'(2A)')   "scalar per node:     pressure      ",                 &
-                          argv(1:nlen)//'.ensi.PRESSURE-*****'
+      WRITE(12,'(2A)')   "scalar per node:     pressure      ",                &
+                          argv(1:nlen)//'.ensi.PRESSURE-******'
     END IF
-    WRITE(12,'(2A)')     "vector per node:     load          ",                 &
+    WRITE(12,'(2A)')     "vector per node:     load          ",                &
                           argv(1:nlen)//'.ensi.NDLDS'
     WRITE(12,'(A/A)')     "TIME","time set:     1"
     WRITE(12,'(A,I5)')    "number of steps:",nstep/npri
