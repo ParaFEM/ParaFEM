@@ -352,7 +352,7 @@ PROGRAM p12meshgen
     problem_type='ed4' ! hardwired
     READ(10,*) iotype, nels, nxe, nze, nod, nip
     READ(10,*) aa, bb, cc, incs
-    READ(10,*) phi,c,psi,e,v,cons
+    READ(10,*) phi,c,psi,e,v
     READ(10,*) plasits,cjits,plastol,cjtol
 
     ALLOCATE(qinc(incs)); qinc=0.0_iwp
@@ -495,7 +495,7 @@ PROGRAM p12meshgen
     END IF
     WRITE(14,'(A)') "1"              ! Internal mesh partitioning
     WRITE(14,'(5I9,A,I9)') nels, nn, nr, nip, nod, "  0  ",loaded_freedoms
-    WRITE(14,'(6E12.4,I8,A)') phi, c, psi, e, v, cons
+    WRITE(14,'(6E12.4,I8,A)') phi, c, psi, e, v
     WRITE(14,'(3I6,2E12.4)') incs, plasits, cjits, plastol, cjtol
     DO i=1,incs
       WRITE(14,'(E12.4)') qinc(i)
@@ -627,7 +627,7 @@ PROGRAM p12meshgen
      END IF
      WRITE(14,'(A)') "1"              ! Internal mesh partitioning
      WRITE(14,'(5I9,A,I9)') nels, nn, nr, nip, nod, "  0  ",loaded_freedoms
-     WRITE(14,'(6E12.4,I8,A)') phi, c, psi, e, v, cons
+     WRITE(14,'(6E12.4,I8,A)') phi, c, psi, e, v
      WRITE(14,'(3I6,2E12.4)') incs, plasits, cjits, plastol, cjtol
      DO i=1,incs
        WRITE(14,'(E12.4)') qinc(i)
@@ -656,7 +656,7 @@ PROGRAM p12meshgen
       ALLOCATE(etype(nels),nf(nodof,nn),oldlds(nn*ndim)) 
       etype=0; nf=0
 
-      nstep=1; npri=1; dtim=1.0; solid=.true. 
+      nstep=incs; npri=1; dtim=1.0; solid=.true. 
 
       CALL mesh_ensi(argv,nlen,g_coord,g_num,element,etype,nf,                &
                      oldlds(1:),nstep,npri,dtim,solid)
