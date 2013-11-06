@@ -15,6 +15,7 @@ PROGRAM p12meshgen
   USE precision
   USE geometry
   USE loading
+  USE input
   
   IMPLICIT NONE
 
@@ -22,7 +23,7 @@ PROGRAM p12meshgen
 ! 1. Declare variables used in the main program
 !------------------------------------------------------------------------------
 
-  INTEGER                :: nr,nn,nels,nres,nle,nxe,nye,nze
+  INTEGER                :: nr,nn,nels,nres,nle,nxe,nye,nze,nlen
   INTEGER                :: nod,ndim,nodof,nip 
   INTEGER                :: nmodes,lalfa,leig,lx,lz
   INTEGER                :: i,j,iel,l,m,n,iargc,argc
@@ -47,45 +48,47 @@ PROGRAM p12meshgen
   REAL(iwp)              :: sbary
   REAL(iwp)              :: phi,c,psi,cons,plastol
   CHARACTER(LEN=15)      :: element
-  CHARACTER(LEN=50)      :: program_name,job_name,fname,problem_type
+  CHARACTER(LEN=50)      :: program_name,argv,problem_type
   CHARACTER(LEN=50)      :: iotype
   CHARACTER(LEN=1)       :: bmat
   CHARACTER(LEN=2)       :: which
-
+  LOGICAL                :: solid=.true.
 !-------------------------------------------------------------------------
 ! 2. Declare dynamic arrays
 !------------------------------------------------------------------------- 
 
   INTEGER, ALLOCATABLE   :: g_num(:,:),rest(:,:),nf(:,:),no(:),no_f(:)
-  INTEGER, ALLOCATABLE   :: num(:),matID(:)
+  INTEGER, ALLOCATABLE   :: num(:),etype(:)
   REAL(iwp), ALLOCATABLE :: g_coord(:,:),coord(:,:),val(:),val_f(:),qinc(:)
+  REAL(iwp), ALLOCATABLE :: oldlds(:)
 
 !-------------------------------------------------------------------------
-! 3. Read job_name from the command line
+! 3. Read data file base name "argv" from the command line
 !-------------------------------------------------------------------------
 
   argc = iargc()
   IF (argc /= 1) THEN
     PRINT*
-    PRINT*,"Usage: p12meshgen <job_name>"
+    PRINT*,"Usage: p12meshgen <base_name>"
     PRINT*
-    PRINT*,"       program expects <job_name>.mg and outputs any or all of"
-    PRINT*,"       <job_name>.dat <job_name>.d" 
-    PRINT*,"       <job_name>.bnd <job_name>.lds"
+    PRINT*,"       program expects <base_name>.mg and outputs any or all of"
+    PRINT*,"       <base_name>.dat <base_name>.d" 
+    PRINT*,"       <base_name>.bnd <base_name>.lds"
     PRINT*
     STOP
   END IF
-  CALL GETARG(1, job_name)
+  CALL getname(argv,nlen)
 
-!-------------------------------------------------------------------------
+!------------------------------------------------------------------------------
 ! 4. Read control data
-!-------------------------------------------------------------------------
+!------------------------------------------------------------------------------
 
-  IF (INDEX(job_name,".mg") /= 0) THEN
-    job_name = job_name(1:INDEX(job_name,".mg")-1)
-  END IF
-  fname = job_name(1:INDEX(job_name," ")-1) // ".mg"
-  OPEN (10, file=fname, status='old', action='read')
+! IF (INDEX(argv,".mg") /= 0) THEN
+!   argv = argv(1:INDEX(argv,".mg")-1)
+! END IF
+! fname = argv(1:INDEX(argv," ")-1) // ".mg"
+
+  OPEN (10, FILE=argv(1:nlen)//'.mg', status='old', action='read')
 
   READ(10,*) program_name
 
@@ -105,7 +108,7 @@ PROGRAM p12meshgen
 
 !-------------------------------------------------------------------------
 !-------------------------------------------------------------------------
-! 6.1 Program p121
+! Program p121
 !-------------------------------------------------------------------------
 !-------------------------------------------------------------------------
 
@@ -116,13 +119,13 @@ PROGRAM p12meshgen
     nye = nels/nxe/nze
 
 !-------------------------------------------------------------------------
-! 6.2 Select 8 node or 20 node hexahedra
+! p121.1 Select 8 node or 20 node hexahedra
 !-------------------------------------------------------------------------
 
     SELECT CASE(nod)
   
     CASE(20)
-    
+   
       nr    = ((2*nxe+1)*(nze+1)+(nxe+1)*nze)*2 +                        &
               ((2*nye-1)*nze+(nye-1)*nze)*2     +                        &
                (2*nye-1)*(nxe+1)+(nye-1)*nxe
@@ -136,6 +139,7 @@ PROGRAM p12meshgen
       
       fixed_freedoms  = 0
       loaded_freedoms = 3*nle*nle + 4*nle + 1
+      element         = 'hexahedron'
 
       ALLOCATE(coord(nod,ndim),g_coord(ndim,nn),g_num(nod,nels),num(nod),&
                rest(nr,nodof+1),val(loaded_freedoms),no(loaded_freedoms))
@@ -144,8 +148,8 @@ PROGRAM p12meshgen
       g_num = 0       ; rest    = 0       ; no  = 0       ; num = 0
           
 !------------------------------------------------------------------------------
-! 6.3  Find nodal coordinates and element steering array
-!      Write to file using Abaqus node numbering convention 
+! p121.2  Find nodal coordinates and element steering array
+!         Write to file using Abaqus node numbering convention 
 !------------------------------------------------------------------------------
 
       DO iel = 1, nels
@@ -154,20 +158,20 @@ PROGRAM p12meshgen
       END DO
           
 !------------------------------------------------------------------------------
-! 6.4  Boundary conditions
+! p121.3  Boundary conditions
 !------------------------------------------------------------------------------
             
       CALL cube_bc20(rest,nxe,nye,nze)
           
 !------------------------------------------------------------------------------
-! 6.5  Loading conditions
+! p121.4  Loading conditions
 !------------------------------------------------------------------------------
             
       CALL load_p121(nle,nod,nxe,nze, no,val)
       val = -val * aa * bb * (25._iwp / 12._iwp)
               
 !------------------------------------------------------------------------------
-! 6.6 Create input deck for 8 node hexahedra
+! p121.5  Create input deck for 8 node hexahedra
 !------------------------------------------------------------------------------
             
       CASE(8)
@@ -180,6 +184,7 @@ PROGRAM p12meshgen
         nle             = nxe/5
         loaded_freedoms = (nle+1)*(nle+1)
         fixed_freedoms  = 0
+        element         = 'hexahedron'
 
         ALLOCATE(coord(nod,ndim),g_coord(ndim,nn),g_num(nod,nels),           &
                  rest(nr,nodof+1),val(loaded_freedoms),no(loaded_freedoms),  &
@@ -189,8 +194,8 @@ PROGRAM p12meshgen
         g_num    = 0       ; rest    = 0       ;   no  = 0       ; num = 0
 
 !------------------------------------------------------------------------------
-! 6.7  Find nodal coordinates and element steering array
-!      Write to file using Abaqus node numbering convention 
+! p121.6  Find nodal coordinates and element steering array
+!         write to file using Abaqus node numbering convention 
 !------------------------------------------------------------------------------
 
         DO iel = 1, nels
@@ -199,20 +204,20 @@ PROGRAM p12meshgen
         END DO
 
 !------------------------------------------------------------------------------
-! 6.8  Boundary conditions
+! p121.7  Boundary conditions
 !------------------------------------------------------------------------------
          
         CALL cube_bc8(rest,nxe,nye,nze)
           
 !------------------------------------------------------------------------------
-! 6.9  Loading conditions
+! p121.8  Loading conditions
 !------------------------------------------------------------------------------
          
         CALL load_p121(nle,nod,nxe,nze, no,val)
         val = val * aa * bb 
 
 !------------------------------------------------------------------------------
-! 6.10 Default case and error message
+! p121.9  Default case and error message
 !------------------------------------------------------------------------------
               
         CASE DEFAULT
@@ -227,20 +232,19 @@ PROGRAM p12meshgen
              
         END SELECT
 
-!-------------------------------------------------------------------------
-! 6.11 Output model
-!-------------------------------------------------------------------------
+!------------------------------------------------------------------------------
+! p121.10  Output model
+!------------------------------------------------------------------------------
          
         SELECT CASE(iotype)
 
         CASE('parafem')
 
-!-------------------------------------------------------------------------
-! 6.12 Output ".d" file
-!-------------------------------------------------------------------------
+!------------------------------------------------------------------------------
+! p121.11  Output geometry file ".d" 
+!------------------------------------------------------------------------------
          
-          fname = job_name(1:INDEX(job_name, " ")-1) // ".d" 
-          OPEN(11,FILE=fname,STATUS='REPLACE',ACTION='WRITE')
+          OPEN(11,FILE=argv(1:nlen)//'.d',STATUS='REPLACE',ACTION='WRITE')
             
           WRITE(11,'(A)') "*THREE_DIMENSIONAL"
           WRITE(11,'(A)') "*NODES"
@@ -272,12 +276,11 @@ PROGRAM p12meshgen
           
           CLOSE(11)
 
-!-------------------------------------------------------------------------
-! 6.13 Output ".bnd" file
-!-------------------------------------------------------------------------
+!------------------------------------------------------------------------------
+! p121.11  Output ".bnd" file
+!------------------------------------------------------------------------------
 
-          fname = job_name(1:INDEX(job_name, " ")-1) // ".bnd" 
-          OPEN(12,FILE=fname,STATUS='REPLACE',ACTION='WRITE')
+          OPEN(12,FILE=argv(1:nlen)//'.bnd',STATUS='REPLACE',ACTION='WRITE')
           
           DO i = 1, nr
             WRITE(12,'(I8,3I6)') rest(i,:) 
@@ -285,12 +288,11 @@ PROGRAM p12meshgen
           
           CLOSE(12)
 
-!-------------------------------------------------------------------------
-! 6.14 Output ".lds" file
-!-------------------------------------------------------------------------
+!------------------------------------------------------------------------------
+! p121.12  Output ".lds" file
+!------------------------------------------------------------------------------
 
-          fname = job_name(1:INDEX(job_name, " ")-1) // ".lds" 
-          OPEN(13,FILE=fname,STATUS='REPLACE',ACTION='WRITE')
+          OPEN(13,FILE=argv(1:nlen)//'.lds',STATUS='REPLACE',ACTION='WRITE')
           
           DO i = 1, loaded_freedoms
             WRITE(13,'(I12,2A,3E16.8)') no(i),"  0.00000000E+00  ",           &
@@ -299,12 +301,11 @@ PROGRAM p12meshgen
             
           CLOSE(13)
 
-!-------------------------------------------------------------------------
-! 6.15 Output new ".dat" file
-!-------------------------------------------------------------------------
+!------------------------------------------------------------------------------
+! p121.13  Output new ".dat" file
+!------------------------------------------------------------------------------
 
-          fname = job_name(1:INDEX(job_name, " ")-1) // ".dat" 
-          OPEN(14,FILE=fname,STATUS='REPLACE',ACTION='WRITE')
+          OPEN(14,FILE=argv(1:nlen)//'.dat',STATUS='REPLACE',ACTION='WRITE')
           
           WRITE(14,'(A)') "'hexahedron'"
           IF(nod==8) THEN
@@ -318,13 +319,21 @@ PROGRAM p12meshgen
           
           CLOSE(14)
              
-!-------------------------------------------------------------------------
-! 6.16 ParaView format (Ensight Gold)
-!-------------------------------------------------------------------------
+!------------------------------------------------------------------------------
+! p121.14  Output for visualization in ParaView (Ensight Gold)
+!------------------------------------------------------------------------------
 
           CASE('paraview')
 
-            PRINT *, "  Output for ParaView not yet implemented"; PRINT *, ""
+            ! modify mesh_ensi for optional arguments
+
+            ALLOCATE(etype(nels),nf(nodof,nn),oldlds(nn*ndim)) 
+            etype=0; nf=0
+
+            nstep=1; npri=1; dtim=1.0; solid=.true. 
+
+            CALL mesh_ensi(argv,nlen,g_coord,g_num,element,etype,nf,          &
+                           oldlds(1:),nstep,npri,dtim,solid)
 
           CASE DEFAULT
 
@@ -332,9 +341,9 @@ PROGRAM p12meshgen
 
           END SELECT 
 
-!-------------------------------------------------------------------------
-!-------------------------------------------------------------------------
-!-------------------------------------------------------------------------
+!------------------------------------------------------------------------------
+!------------------------------------------------------------------------------
+!------------------------------------------------------------------------------
 
           CASE DEFAULT
 
