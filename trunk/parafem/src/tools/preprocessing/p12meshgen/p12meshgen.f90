@@ -8,7 +8,7 @@ PROGRAM p12meshgen
 !*  AUTHOR
 !*    Lee Margetts
 !*  COPYRIGHT
-!*    (c) University of Manchester 2007-2013
+!*    (c) University of Manchester 2007-2014
 !****
 !*/
 
@@ -341,18 +341,345 @@ PROGRAM p12meshgen
 
           END SELECT 
 
+!------------------------------------------------------------------------------ 
+!------------------------------------------------------------------------------
+! Program p122
+!------------------------------------------------------------------------------
+!------------------------------------------------------------------------------
+
+  CASE('p122')
+  
+    problem_type='ed4' ! hardwired
+    READ(10,*) iotype, nels, nxe, nze, nod, nip
+    READ(10,*) aa, bb, cc, incs
+    READ(10,*) phi,c,psi,e,v,cons
+    READ(10,*) plasits,cjits,plastol,cjtol
+
+    ALLOCATE(qinc(incs)); qinc=0.0_iwp
+
+    READ(10,*) qinc(:)
+    
+    nye   = nels/nxe/nze
+
+!------------------------------------------------------------------------------
+! p122.1  Select 8 node or 20 node hexahedra
+!------------------------------------------------------------------------------
+
+    SELECT CASE(iotype)
+
+    CASE('parafem')
+
+    SELECT CASE(nod)
+   
+!------------------------------------------------------------------------------
+! p122.2  Create input deck for 20 node hexahedra
+!------------------------------------------------------------------------------
+  
+    CASE(20)
+    
+      nr    = ((2*nxe+1)*(nze+1)+(nxe+1)*nze)*2 +                           &
+              ((2*nye-1)*nze+(nye-1)*nze)*2+(2*nye-1)*(nxe+1)+(nye-1)*nxe
+      ndim  = 3
+      nodof = 3
+      nn    = (((2*nxe+1)*(nze+1))+((nxe+1)*nze))*(nye+1)+(nxe+1)*(nze+1)*nye
+      
+      IF(problem_type == 'ed4') THEN
+        nle             = nxe/5
+        loaded_freedoms = 3*nle*nle + 4*nle + 1
+        fixed_freedoms  = 0
+      ELSE IF(problem_type == 'boussinesq') THEN
+        loaded_freedoms = 1
+        fixed_freedoms  = 0
+      ELSE
+        PRINT *, "Problem type: ",problem_type," not recognised."
+      END IF
+  
+!------------------------------------------------------------------------------
+! p122.3  Allocate dynamic arrays
+!------------------------------------------------------------------------------
+  
+      ALLOCATE(coord(nod,ndim),g_coord(ndim,nn),g_num(nod,nels),              &
+               rest(nr,nodof+1),val(loaded_freedoms),no(loaded_freedoms),     &
+               num(nod))
+    
+      coord    = 0.0_iwp ; g_coord = 0.0_iwp ;   val = 0.0_iwp
+      g_num    = 0       ; rest    = 0       ;   no  = 0       ; num = 0
+  
+!------------------------------------------------------------------------------
+! p122.4  Find nodal coordinates and element steering array
+!         Write to file using Abaqus node numbering convention 
+!------------------------------------------------------------------------------
+
+     DO iel = 1, nels
+       CALL geometry_20bxz(iel,nxe,nze,aa,bb,cc,coord,g_num(:,iel))
+       g_coord(:,g_num(:,iel)) = TRANSPOSE(coord)
+     END DO
+  
+     OPEN(11,FILE=argv(1:nlen)//'.d',STATUS='REPLACE',ACTION='WRITE')
+          
+     WRITE(11,'(A)') "*THREE_DIMENSIONAL"
+     WRITE(11,'(A)') "*NODES"
+  
+     DO i = 1, nn
+       WRITE(11,'(I12,3E14.6)') i, g_coord(:,i)
+     END DO
+  
+     WRITE(11,'(A)') "*ELEMENTS"
+    
+     DO iel = 1, nels
+       WRITE(11,'(I12,A,20I12,A)')iel," 3 20 1 ",g_num(3,iel),g_num(5,iel),   &
+                                  g_num(7,iel),g_num(1,iel),g_num(15,iel),    &
+                                  g_num(17,iel),g_num(19,iel),g_num(13,iel),  &
+                                  g_num(4,iel),g_num(6,iel),g_num(8,iel),     &
+                                  g_num(2,iel),g_num(16,iel),g_num(18,iel),   &
+                                  g_num(20,iel),g_num(14,iel),g_num(10,iel),  &
+                                  g_num(11,iel),g_num(12,iel),g_num(9,iel),   &
+                                  " 1"
+     END DO
+  
+     CLOSE(11)
+  
+!------------------------------------------------------------------------------
+! p122.5  Boundary conditions
+!------------------------------------------------------------------------------
+    
+     OPEN(12,FILE=argv(1:nlen)//'.bnd',STATUS='REPLACE',ACTION='WRITE')
+ 
+     CALL cube_bc20(rest,nxe,nye,nze)
+  
+     DO i = 1, nr
+       WRITE(12,'(I12,3I2)') rest(i,:) 
+     END DO
+  
+     CLOSE(12)
+  
+!------------------------------------------------------------------------------
+! p122.6  Loading conditions
+!------------------------------------------------------------------------------
+
+    OPEN(13,FILE=argv(1:nlen)//'.lds',STATUS='REPLACE',ACTION='WRITE')
+  
+    IF(problem_type == 'ed4') THEN
+      CALL load_p121(nle,nod,nxe,nze, no,val)
+!     val = -val * aa * bb * (25._iwp / 12._iwp)
+      val = -val * aa * bb / 12._iwp
+      DO i = 1, loaded_freedoms
+        WRITE(13,'(I12,2A,3E16.8)') no(i),"  0.00000000E+00  ",              &
+                                   "0.00000000E+00",val(i) 
+      END DO
+    ELSE IF (problem_type == 'boussinesq') THEN
+      no  = 1
+      val = -1.0_iwp
+      DO i = 1, loaded_freedoms
+        WRITE(13,'(I12,2A,3E16.8)') no(i),"  0.00000000E+00  ",              &
+                                   "0.00000000E+00",val(i) 
+      END DO
+    ELSE
+      PRINT *, "Problem type: ", problem_type, " not recognised.            &&
+               & No values written to .lds"
+    END IF
+    
+    CLOSE(13)
+  
+!------------------------------------------------------------------------------
+! p122.7  New control data
+!------------------------------------------------------------------------------
+  
+    OPEN(14,FILE=argv(1:nlen)//'.dat',STATUS='REPLACE',ACTION='WRITE')
+  
+    WRITE(14,'(A)') "'hexahedron'"
+    IF(nod==8) THEN
+      WRITE(14,'(A)') "1"            ! Abaqus node numbering scheme
+    ELSE
+      WRITE(14,'(A)') "2"            ! Abaqus node numbering scheme
+    END IF
+    WRITE(14,'(A)') "1"              ! Internal mesh partitioning
+    WRITE(14,'(5I9,A,I9)') nels, nn, nr, nip, nod, "  0  ",loaded_freedoms
+    WRITE(14,'(6E12.4,I8,A)') phi, c, psi, e, v, cons
+    WRITE(14,'(3I6,2E12.4)') incs, plasits, cjits, plastol, cjtol
+    DO i=1,incs
+      WRITE(14,'(E12.4)') qinc(i)
+    END DO
+     
+    CLOSE(14)
+
+!------------------------------------------------------------------------------
+! p122.8  Create input deck for 8 node hexahedra
+!------------------------------------------------------------------------------
+    
+   CASE(8)
+  
+     nr    = ((nxe+1)*(nze+1))*2 + ((nye-1)*(nze+1))*2 + ((nxe-1)*(nze-1)) 
+     ndim  = 3
+     nodof = 3
+     nn    = (nxe+1)*(nye+1)*(nze+1)
+    
+     IF(problem_type == 'ed4') THEN
+       nle             = nxe/5
+       loaded_freedoms = (nle+1)*(nle+1)
+       fixed_freedoms  = 0
+     ELSE IF(problem_type == 'boussinesq') THEN
+       loaded_freedoms = 1
+       fixed_freedoms  = 0
+     ELSE
+       PRINT *, "Problem type: ",problem_type," not recognised."
+     END IF
+
+!------------------------------------------------------------------------------
+! p122.9  Allocate dynamic arrays
+!------------------------------------------------------------------------------
+
+     ALLOCATE(coord(nod,ndim),g_coord(ndim,nn),g_num(nod,nels),               &
+              rest(nr,nodof+1),val(loaded_freedoms),no(loaded_freedoms),      &
+              num(nod))
+    
+     coord    = 0.0_iwp ; g_coord = 0.0_iwp ;   val = 0.0_iwp
+     g_num    = 0       ; rest    = 0       ;   no  = 0       ; num = 0
+
+!------------------------------------------------------------------------------
+! p122.10  Find nodal coordinates and element steering array
+!          Write to file using Abaqus node numbering convention 
+!------------------------------------------------------------------------------
+
+     DO iel = 1, nels
+       CALL geometry_8bxz(iel,nxe,nze,aa,bb,cc,coord,g_num(:,iel))
+       g_coord(:,g_num(:,iel)) = TRANSPOSE(coord)
+     END DO
+
+     OPEN(11,FILE=argv(1:nlen)//'.d',STATUS='REPLACE',ACTION='WRITE')
+        
+     WRITE(11,'(A)') "*THREE_DIMENSIONAL"
+     WRITE(11,'(A)') "*NODES"
+  
+     DO i = 1, nn
+       WRITE(11,'(I12,3E14.6)') i, g_coord(:,i)
+     END DO
+  
+     WRITE(11,'(A)') "*ELEMENTS"
+    
+     DO iel = 1, nels
+!      WRITE(11,'(I12,A,8I12,A)') iel, " 3 8 1 ", g_num(1,iel),g_num(4,iel),  &
+!                                   g_num(8,iel),g_num(5,iel),g_num(2,iel),   &
+!                                   g_num(3,iel),g_num(7,iel),g_num(6,iel),   &
+!                                   " 1"
+       WRITE(11,'(I12,A,8I12,A)') iel, " 3 8 1 ", g_num(1,iel),g_num(2,iel),  &
+                                    g_num(3,iel),g_num(4,iel),g_num(5,iel),   &
+                                    g_num(6,iel),g_num(7,iel),g_num(8,iel),   &
+                                    " 1"
+     END DO
+    
+     CLOSE(11)
+
+!------------------------------------------------------------------------------
+! p122.11  Boundary conditions
+!------------------------------------------------------------------------------
+
+     OPEN(12,FILE=argv(1:nlen)//'.bnd',STATUS='REPLACE',ACTION='WRITE')
+  
+     CALL cube_bc8(rest,nxe,nye,nze)
+  
+     DO i = 1, nr
+       WRITE(12,'(I8,3I6)') rest(i,:) 
+     END DO
+  
+     CLOSE(12)
+
+!------------------------------------------------------------------------------
+! p122.12  Loading conditions
+!------------------------------------------------------------------------------
+
+     OPEN(13,FILE=argv(1:nlen)//'.lds',STATUS='REPLACE',ACTION='WRITE')
+  
+     IF(problem_type == 'ed4') THEN
+       CALL load_p121(nle,nod,nxe,nze, no,val)
+       val = val * aa * bb 
+       DO i = 1, loaded_freedoms
+         WRITE(13,'(I10,2A,3E16.8)') no(i),                                   &
+                                    "  0.00000000E+00  ","0.00000000E+00",    &
+                                     val(i) 
+       END DO
+     ELSE IF (problem_type == 'boussinesq') THEN
+       no  = 1
+       val = -1.0_iwp
+       DO i = 1, loaded_freedoms
+         WRITE(13,'(I10,2A,3E16.8)') no(i),                                   &
+                                    "  0.00000000E+00  ","0.00000000E+00",    &
+                                     val(i) 
+       END DO
+     ELSE
+       PRINT *, "Problem type: ", problem_type, " not recognised.            &&
+                & No values written to .lds"
+     END IF
+    
+     CLOSE(13)
+
+!------------------------------------------------------------------------------
+! p122.13  New control data
+!------------------------------------------------------------------------------
+
+     OPEN(14,FILE=argv(1:nlen)//'.dat',STATUS='REPLACE',ACTION='WRITE')
+  
+     WRITE(14,'(A)') "'hexahedron'"
+     IF(nod==8) THEN
+       WRITE(14,'(A)') "1"            ! Abaqus node numbering scheme
+     ELSE
+       WRITE(14,'(A)') "2"            ! Abaqus node numbering scheme
+     END IF
+     WRITE(14,'(A)') "1"              ! Internal mesh partitioning
+     WRITE(14,'(5I9,A,I9)') nels, nn, nr, nip, nod, "  0  ",loaded_freedoms
+     WRITE(14,'(6E12.4,I8,A)') phi, c, psi, e, v, cons
+     WRITE(14,'(3I6,2E12.4)') incs, plasits, cjits, plastol, cjtol
+     DO i=1,incs
+       WRITE(14,'(E12.4)') qinc(i)
+     END DO
+     
+     CLOSE(14)
+
+!------------------------------------------------------------------------------
+! p122.14  Default case and error message
+!------------------------------------------------------------------------------
+  
+     CASE DEFAULT
+  
+     PRINT *
+     PRINT *, "Wrong value given in variable NOD"
+     PRINT *, "  Accepted values are 8 and 20"
+     PRINT *, "  Here NOD = ", nod
+     PRINT *
+      
+   END SELECT
+  
+   CASE('paraview')
+
+    ! modify mesh_ensi for optional arguments
+
+      ALLOCATE(etype(nels),nf(nodof,nn),oldlds(nn*ndim)) 
+      etype=0; nf=0
+
+      nstep=1; npri=1; dtim=1.0; solid=.true. 
+
+      CALL mesh_ensi(argv,nlen,g_coord,g_num,element,etype,nf,                &
+                     oldlds(1:),nstep,npri,dtim,solid)
+
+
+   CASE DEFAULT
+
+     PRINT *, "  Option ", iotype, " not recognised."; PRINT *, ""
+
+   END SELECT 
+
 !------------------------------------------------------------------------------
 !------------------------------------------------------------------------------
 !------------------------------------------------------------------------------
 
-          CASE DEFAULT
+  CASE DEFAULT
 
-            PRINT*
-            PRINT*, "Mesh only generated for programs: "
-            PRINT*, "  p121, p122, p123, p124, p125, p126"
-            PRINT*, "  p127, p128, p129 and p1210"
-            PRINT*
+    PRINT*
+    PRINT*, "Mesh only generated for programs: "
+    PRINT*, "  p121, p122, p123, p124, p125, p126"
+    PRINT*, "  p127, p128, p129 and p1210"
+    PRINT*
 
-          END SELECT
+  END SELECT
           
 END PROGRAM p12meshgen
