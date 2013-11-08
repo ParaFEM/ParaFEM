@@ -1,0 +1,6 @@
+The file p122_5_medium.res here is slightly different from the book.
+
+In the book, E=10000 in the file p122_5_medium.mg, however the published
+results of the analysis are for a problem where E=100. The displacements in
+the book are too high. Here, they are reasonable. The stress values for
+both values of E are the same in both cases.
