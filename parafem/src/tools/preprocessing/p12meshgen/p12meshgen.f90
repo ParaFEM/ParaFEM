@@ -634,6 +634,8 @@ PROGRAM p12meshgen
     nodof = 1
     nres  = nxe*(nze-1)+1
 
+    element='hexahedron'
+
 !------------------------------------------------------------------------------
 ! p123.2 Allocate dynamic arrays
 !------------------------------------------------------------------------------
@@ -660,8 +662,7 @@ PROGRAM p12meshgen
 
     CASE('parafem')
 
-    fname = job_name(1:INDEX(job_name, " ")-1) // ".d" 
-    OPEN(11,FILE=fname,STATUS='REPLACE',ACTION='WRITE')
+    OPEN(11,FILE=argv(1:nlen)//".d",STATUS='REPLACE',ACTION='WRITE')
     
     WRITE(11,'(A)') "*THREE_DIMENSIONAL"
     WRITE(11,'(A)') "*NODES"
@@ -689,8 +690,7 @@ PROGRAM p12meshgen
 ! p123.4 Boundary conditions
 !------------------------------------------------------------------------------
   
-    fname = job_name(1:INDEX(job_name, " ")-1) // ".bnd" 
-    OPEN(12,FILE=fname,STATUS='REPLACE',ACTION='WRITE')
+    OPEN(12,FILE=argv(1:nlen)//".bnd",STATUS='REPLACE',ACTION='WRITE')
   
     CALL box_bc8(rest,nxe,nye,nze)
   
@@ -708,8 +708,7 @@ PROGRAM p12meshgen
 
     IF(loaded_freedoms > 0) THEN
      
-      fname = job_name(1:INDEX(job_name, " ")-1) // ".lds" 
-      OPEN(13,FILE=fname,STATUS='REPLACE',ACTION='WRITE')
+      OPEN(13,FILE=argv(1:nlen)//".lds",STATUS='REPLACE',ACTION='WRITE')
      
       no   = nres
       val  = 10.0_iwp
@@ -726,8 +725,7 @@ PROGRAM p12meshgen
 
     IF(fixed_freedoms>0) THEN
 
-      fname = job_name(1:INDEX(job_name, " ")-1) // ".fix" 
-      OPEN(14,FILE=fname,STATUS='REPLACE',ACTION='WRITE')
+      OPEN(14,FILE=argv(1:nlen)//".fix",STATUS='REPLACE',ACTION='WRITE')
 
       no_f  = nres
       val_f = 100.0_iwp
@@ -746,8 +744,7 @@ PROGRAM p12meshgen
 ! p123.6 New control data
 !------------------------------------------------------------------------------
 
-      fname = job_name(1:INDEX(job_name, " ")-1) // ".dat" 
-      OPEN(15,FILE=fname,STATUS='REPLACE',ACTION='WRITE')
+      OPEN(15,FILE=argv(1:nlen)//".dat",STATUS='REPLACE',ACTION='WRITE')
   
       WRITE(15,'(A)') "'hexahedron'"
       WRITE(15,'(A)') "2"              ! Abaqus node numbering scheme
@@ -766,7 +763,7 @@ PROGRAM p12meshgen
       ALLOCATE(etype(nels),nf(nodof,nn),oldlds(nn*ndim)) 
       etype=0; nf=0
 
-      nstep=incs; npri=1; dtim=1.0; solid=.true. 
+      nstep=1; npri=1; dtim=1.0; solid=.true. 
 
       CALL mesh_ensi(argv,nlen,g_coord,g_num,element,etype,nf,                &
                      oldlds(1:),nstep,npri,dtim,solid)
