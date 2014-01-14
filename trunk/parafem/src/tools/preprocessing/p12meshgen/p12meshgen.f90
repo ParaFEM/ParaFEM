@@ -836,7 +836,7 @@ PROGRAM p12meshgen
 
     CASE('parafem')
     
-      OPEN(11,argv(1:nlen)//".d",STATUS='REPLACE',ACTION='WRITE')
+      OPEN(11,FILE=argv(1:nlen)//".d",STATUS='REPLACE',ACTION='WRITE')
     
       WRITE(11,'(A)') "*THREE_DIMENSIONAL"
       WRITE(11,'(A)') "*NODES"
@@ -862,7 +862,7 @@ PROGRAM p12meshgen
 ! p124.4 Boundary conditions
 !------------------------------------------------------------------------------
   
-      OPEN(12,argv(1:nlen)//".bnd",STATUS='REPLACE',ACTION='WRITE')
+      OPEN(12,FILE=argv(1:nlen)//".bnd",STATUS='REPLACE',ACTION='WRITE')
   
       CALL box_bc8(rest,nxe,nye,nze)
   
@@ -880,7 +880,7 @@ PROGRAM p12meshgen
 
       IF(loaded_freedoms > 0) THEN
      
-        OPEN(13,argv(1:nlen)//".lds",STATUS='REPLACE',ACTION='WRITE')
+        OPEN(13,FILE=argv(1:nlen)//".lds",STATUS='REPLACE',ACTION='WRITE')
      
         no   = nres
         val  = 10.0_iwp
@@ -928,7 +928,7 @@ PROGRAM p12meshgen
 ! p124.7 New control data
 !------------------------------------------------------------------------------
 
-      OPEN(16,argv(1:nlen)//".dat",STATUS='REPLACE',ACTION='WRITE')
+      OPEN(16,FILE=argv(1:nlen)//".dat",STATUS='REPLACE',ACTION='WRITE')
   
       WRITE(16,'(A)') "'hexahedron'"
       WRITE(16,'(A)') "2"              ! Abaqus node numbering scheme
@@ -951,7 +951,7 @@ PROGRAM p12meshgen
       ALLOCATE(etype(nels),nf(nodof,nn),oldlds(nn*ndim)) 
       etype=0; nf=0
 
-      nstep; npri; dtim; solid=.true. 
+      solid=.true. 
 
       CALL mesh_ensi(argv,nlen,g_coord,g_num,element,etype,nf,                &
                      oldlds(1:),nstep,npri,dtim,solid)
@@ -981,10 +981,6 @@ PROGRAM p12meshgen
 
     PRINT *, "Read .mg file"
 
-    SELECT CASE(iotype)
-
-    CASE('parafem')
-
 !------------------------------------------------------------------------------
 ! p125.1 Initialize variables
 !------------------------------------------------------------------------------
@@ -1001,20 +997,27 @@ PROGRAM p12meshgen
 ! p125.2 Allocate dynamic arrays
 !------------------------------------------------------------------------------
   
-    ALLOCATE(coord(nod,ndim),g_coord(ndim,nn),num(nod))
+    ALLOCATE(coord(nod,ndim),g_coord(ndim,nn),g_num(nod,nels))
     
-    coord    = 0.0_iwp ; g_coord = 0.0_iwp ; num = 0 
+    coord    = 0.0_iwp ; g_coord = 0.0_iwp ; g_num = 0 
   
 !------------------------------------------------------------------------------
 ! p125.3 Find nodal coordinates and element steering array
-!        Write to file using Abaqus node numbering convention 
 !------------------------------------------------------------------------------
 
     DO iel = 1, nels
-      CALL geometry_8bxz(iel,nxe,nze,aa,bb,cc,coord,num)
-      g_coord(:,num) = TRANSPOSE(coord)
+      CALL geometry_8bxz(iel,nxe,nze,aa,bb,cc,coord,g_num(:,iel))
+      g_coord(:,g_num(:,iel)) = TRANSPOSE(coord)
     END DO
-    
+
+!------------------------------------------------------------------------------
+! p125.4 Write to file using Abaqus node numbering convention 
+!------------------------------------------------------------------------------
+
+    SELECT CASE(iotype)
+
+    CASE('parafem')
+
     OPEN(11,FILE=argv(1:nlen)//".d",STATUS='REPLACE',ACTION='WRITE')
     
     WRITE(11,'(A)') "*THREE_DIMENSIONAL"
@@ -1029,18 +1032,18 @@ PROGRAM p12meshgen
     WRITE(11,'(A)') "*ELEMENTS"
     
     DO iel = 1, nels
-      CALL geometry_8bxz(iel,nxe,nze,aa,bb,cc,coord,num)
-      WRITE(11,'(I12,A,8I12,A)') iel, " 3 8 1 ", num(1), num(4),              &
-                                 num(8), num(5), num(2),                      &
-                                 num(3), num(7), num(6)," 1"
+      WRITE(11,'(I12,A,8I12,A)') iel, " 3 8 1 ", g_num(1,iel),g_num(4,iel),   &
+                                   g_num(8,iel),g_num(5,iel),g_num(2,iel),    &
+                                   g_num(3,iel),g_num(7,iel),g_num(6,iel),    &
+                                    " 1"
     END DO
-    
+
     CLOSE(11)
 
     PRINT *, "Output nodal coordinates and element steering array"
 
 !------------------------------------------------------------------------------
-! p125.4 Boundary conditions
+! p125.5 Boundary conditions
 !------------------------------------------------------------------------------
   
     ALLOCATE(rest(nr,nodof+1))
@@ -1059,7 +1062,7 @@ PROGRAM p12meshgen
     PRINT *, "Output boundary conditions"
 
 !------------------------------------------------------------------------------
-! p125.5 Loading conditions
+! p125.6 Loading conditions
 !------------------------------------------------------------------------------
 
     IF(loaded_freedoms > 0) THEN
@@ -1081,7 +1084,7 @@ PROGRAM p12meshgen
 
     IF(fixed_freedoms>0) THEN
 
-      OPEN(14,argv(1:nlen)//".fix",STATUS='REPLACE',ACTION='WRITE')
+      OPEN(14,FILE=argv(1:nlen)//".fix",STATUS='REPLACE',ACTION='WRITE')
 
       no_f  = nres
       val_f = 100.0_iwp
@@ -1097,7 +1100,7 @@ PROGRAM p12meshgen
     END IF
 
 !------------------------------------------------------------------------------
-! p125.6 New control data
+! p125.7 New control data
 !------------------------------------------------------------------------------
 
     OPEN(15,FILE=argv(1:nlen)//".dat",STATUS='REPLACE',ACTION='WRITE')
@@ -1122,7 +1125,7 @@ PROGRAM p12meshgen
       ALLOCATE(etype(nels),nf(nodof,nn),oldlds(nn*ndim)) 
       etype=0; nf=0
 
-      nstep; npri; dtim; solid=.true. 
+      solid=.true. 
 
       CALL mesh_ensi(argv,nlen,g_coord,g_num,element,etype,nf,                &
                      oldlds(1:),nstep,npri,dtim,solid)
