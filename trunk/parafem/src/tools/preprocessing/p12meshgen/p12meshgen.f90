@@ -1138,6 +1138,251 @@ PROGRAM p12meshgen
 
 !------------------------------------------------------------------------------
 !------------------------------------------------------------------------------
+! Program p126
+!------------------------------------------------------------------------------
+!------------------------------------------------------------------------------
+
+  CASE('p126')
+
+    READ(10,*) iotype, nels, nxe, nze, nip
+    READ(10,*) aa, bb, cc
+    READ(10,*) visc, rho, tol, limit
+    READ(10,*) cjtol, cjits, penalty
+    READ(10,*) x0, ell, kappa
+  
+    nye            = nels/nxe/nze
+    fixed_freedoms = 3*nxe*nye+2*nxe+2*nye+1
+    nr             = 3*nxe*nye*nze+4*(nxe*nye+nye*nze+nze*nxe)+nxe+nye+nze+2
+    ndim           = 3
+    nodof          = 4
+    nod            = 20
+    nn             = (((2*nxe+1)*(nze+1))+((nxe+1)*nze))*(nye+1) +              &
+                     (nxe+1)*(nze+1)*nye
+
+!------------------------------------------------------------------------------
+! p126.1 Allocate dynamic arrays
+!------------------------------------------------------------------------------
+
+    ALLOCATE(coord(nod,ndim))
+    ALLOCATE(g_coord(ndim,nn))
+    ALLOCATE(g_num(nod,nels))
+    ALLOCATE(rest(nr,nodof+1))
+    ALLOCATE(val(fixed_freedoms))
+    ALLOCATE(no(fixed_freedoms))
+  
+    coord    = 0.0_iwp
+    g_coord  = 0.0_iwp
+    g_num    = 0
+    rest     = 0
+    val      = 0.0_iwp
+    no       = 0
+
+!------------------------------------------------------------------------------
+! p126.2 Find nodal coordinates and element steering array
+!------------------------------------------------------------------------------
+
+    DO iel = 1, nels
+      CALL geometry_20bxz(iel,nxe,nze,aa,bb,cc,coord,g_num(:,iel))
+      g_coord(:,g_num(:,iel)) = TRANSPOSE(coord)
+    END DO
+
+!------------------------------------------------------------------------------
+! p126.3 Find boundary conditions and apply velocities to lid
+!------------------------------------------------------------------------------
+
+    CALL ns_cube_bc20(rest,nxe,nye,nze)
+    CALL loading_p126(no,nxe,nye,nze)
+    val = 1.0
+ 
+!------------------------------------------------------------------------------
+! p126.4 Select data format
+!------------------------------------------------------------------------------
+
+    SELECT CASE(iotype)
+
+!------------------------------------------------------------------------------
+! p126.5 Output in proprietary ParaFEM format (based on Kidger's DanFE)
+!------------------------------------------------------------------------------
+
+    CASE('parafem')
+ 
+      PRINT *, "  Writing nodal coordinates and element steering array"
+      OPEN(11,FILE=argv(1:nlen)//".d",STATUS='REPLACE',ACTION='WRITE')
+  
+      WRITE(11,'(A)') "*THREE_DIMENSIONAL"
+      WRITE(11,'(A)') "*NODES"
+
+      DO i = 1, nn
+        WRITE(11,'(I12,3F12.4)') i, g_coord(:,i)
+      END DO
+ 
+      WRITE(11,'(A)') "*ELEMENTS"
+      DO iel = 1, nels
+        WRITE(11,'(I12,A,20I12,A)') iel, " 3 20 1 ", g_num(3,iel),g_num(5,iel),   &
+                                     g_num(7,iel),g_num(1,iel),g_num(15,iel),     &
+                                     g_num(17,iel),g_num(19,iel),g_num(13,iel),   &
+                                     g_num(4,iel),g_num(6,iel),g_num(8,iel),      &
+                                     g_num(2,iel),g_num(16,iel),g_num(18,iel),    &
+                                     g_num(20,iel),g_num(14,iel),g_num(10,iel),   &
+                                     g_num(11,iel),g_num(12,iel),g_num(9,iel)," 1 "
+      END DO
+
+      CLOSE(11)
+
+!------------------------------------------------------------------------------
+! p126.6 Write boundary conditions in ParaFEM format
+!------------------------------------------------------------------------------
+
+      PRINT *, "  Writing boundary conditions"
+
+      OPEN(12,FILE=argv(1:nlen)//".bnd",STATUS='REPLACE',ACTION='WRITE')
+
+      DO i = 1, nr
+        WRITE(12,'(I8,4I6)') rest(i,:) 
+      END DO
+
+      CLOSE(12)
+
+!------------------------------------------------------------------------------
+! p126.7 Write loading conditions for the lid in ParaFEM format
+!------------------------------------------------------------------------------
+
+      PRINT *, "  Writing loading conditions for the lid"
+
+      OPEN(13,FILE=argv(1:nlen)//".lid",STATUS='REPLACE',ACTION='WRITE')
+
+       DO i = 1, fixed_freedoms
+        WRITE(13,'(I10,E12.4)') no(i), val(i) 
+      END DO
+
+      CLOSE(13)
+
+!------------------------------------------------------------------------------
+! p126.8 Write new control data file in ParaFEM format
+!------------------------------------------------------------------------------
+
+      PRINT *, "  Writing new control data file"
+ 
+      OPEN(14,FILE=argv(1:nlen)//".dat",STATUS='REPLACE',ACTION='WRITE')
+
+      meshgen     = 2 ! current default
+      partitioner = 1 ! current default
+      nres        = nze*(nxe+1)+3*nxe+1
+
+      WRITE(14,'(A)') "'p126'"
+      WRITE(14,'(2I4)') meshgen, partitioner
+      WRITE(14,'(7I9)') nels, nn, nres, nr, fixed_freedoms, nip
+      WRITE(14,'(3E12.4,I8)') visc, rho, tol, limit
+      WRITE(14,'(E12.4,I8,E12.4)') cjtol, cjits, penalty
+      WRITE(14,'(E12.4,I8,E12.4)') x0, ell, kappa
+  
+      CLOSE(14)
+
+!------------------------------------------------------------------------------
+! 12.9 Write a .dis file so that boundary conditions can be checked
+!------------------------------------------------------------------------------
+
+      PRINT *, "  Writing dummy .dis file with flags for boundary conditions"
+
+      OPEN(15,FILE=argv(1:nlen)//".dis",STATUS='REPLACE',ACTION='WRITE')
+
+      WRITE(15,'(A)') "*DISPLACEMENT"
+      WRITE(15,'(A)') " 1"
+ 
+      j = 1
+ 
+      DO i = 1,nn
+        IF(rest(j,1) == i) THEN
+          j = j+1
+          IF(rest(j,2) == 0) THEN
+            WRITE(15,'(I8,3A)') i, " 1.0000E+00", "  0.0000E+00", "  0.0000E+00"
+          ELSE
+            WRITE(15,'(I8,3A)') i, " 0.0000E+00", "  0.0000E+00", "  0.0000E+00"
+          END IF
+        ELSE
+          WRITE(15,'(I8,3A)') i, " 0.0000E+00", "  0.0000E+00", "  0.0000E+00"
+        END IF
+      END DO
+
+      WRITE(15,'(A)') "*DISPLACEMENT"
+      WRITE(15,'(A)') " 2"
+  
+      j = 1
+
+      DO i = 1,nn
+        IF(rest(j,1) == i) THEN
+          j = j + 1
+          IF(rest(j,3) == 0) THEN
+            WRITE(15,'(I8,3A)') i, " 1.0000E+00", "  0.0000E+00", "  0.0000E+00"
+          ELSE
+            WRITE(15,'(I8,3A)') i, " 0.0000E+00", "  0.0000E+00", "  0.0000E+00"
+          END IF
+        ELSE
+          WRITE(15,'(I8,3A)') i, " 0.0000E+00", "  0.0000E+00", "  0.0000E+00"
+        END IF
+      END DO
+
+      WRITE(15,'(A)') "*DISPLACEMENT"
+      WRITE(15,'(A)') " 3"
+  
+      j = 1
+
+      DO i = 1,nn
+        IF(rest(j,1) == i) THEN
+          j = j + 1
+          IF(rest(j,4) == 0) THEN
+            WRITE(15,'(I8,3A)') i, " 1.0000E+00", "  0.0000E+00", "  0.0000E+00"
+          ELSE
+            WRITE(15,'(I8,3A)') i, " 0.0000E+00", "  0.0000E+00", "  0.0000E+00"
+          END IF
+        ELSE
+          WRITE(15,'(I8,3A)') i, " 0.0000E+00", "  0.0000E+00", "  0.0000E+00"
+        END IF
+      END DO
+
+      WRITE(15,'(A)') "*DISPLACEMENT"
+      WRITE(15,'(A)') " 4"
+ 
+      j = 1
+ 
+      DO i = 1,nn
+        IF(rest(j,1) == i) THEN
+          j = j + 1
+          IF(rest(j,5) == 0) THEN
+            WRITE(15,'(I8,3A)') i, " 1.0000E+00", "  0.0000E+00", "  0.0000E+00"
+          ELSE
+            WRITE(15,'(I8,3A)') i, " 0.0000E+00", "  0.0000E+00", "  0.0000E+00"
+          END IF
+        ELSE
+          WRITE(15,'(I8,3A)') i, " 0.0000E+00", "  0.0000E+00", "  0.0000E+00"
+        END IF
+      END DO
+
+      CLOSE(15)
+
+!------------------------------------------------------------------------------
+! p126.10 Output in ASCII Ensight Gold format
+!------------------------------------------------------------------------------
+
+    CASE('paraview')
+    
+      ALLOCATE(etype(nels),nf(nodof,nn),oldlds(nn*ndim)) 
+      etype=0; nf=0
+
+      nstep=1; npri= 1; nstep=1
+      solid=.true. ! need to review this 
+
+      CALL mesh_ensi(argv,nlen,g_coord,g_num,element,etype,nf,                &
+                     oldlds(1:),nstep,npri,dtim,solid)
+
+    CASE DEFAULT
+
+      PRINT *, "  Option ", iotype, " not recognised."; PRINT *, ""
+
+    END SELECT 
+
+!------------------------------------------------------------------------------
+!------------------------------------------------------------------------------
 !------------------------------------------------------------------------------
     
   CASE DEFAULT
