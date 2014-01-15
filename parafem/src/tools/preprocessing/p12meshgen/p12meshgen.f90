@@ -1392,9 +1392,10 @@ PROGRAM p12meshgen
   CASE('p127')
 
     PRINT*
-    PRINT*, "Program p127 not supported"
-    PRINT*, "Consult "Programming the Finite Element Method, 5th Edition" for&&
-            " details"
+    PRINT*, "Program p127 is not supported"
+    PRINT*, "Consult 'Programming the Finite Element Method', 5th Edition, &
+             for details"
+
     PRINT*
 
 !   STOP
