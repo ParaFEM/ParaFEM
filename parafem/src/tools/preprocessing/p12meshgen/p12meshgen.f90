@@ -1371,7 +1371,7 @@ PROGRAM p12meshgen
       ALLOCATE(etype(nels),nf(nodof,nn),oldlds(nn*ndim)) 
       etype=0; nf=0
 
-      nstep=1; npri= 1; nstep=1
+      nstep=1; npri= 1; dtim=1.0_iwp
       solid=.true. ! need to review this 
 
       CALL mesh_ensi(argv,nlen,g_coord,g_num,element,etype,nf,                &
@@ -1407,7 +1407,7 @@ PROGRAM p12meshgen
 !------------------------------------------------------------------------------
 
   CASE('p128')
-  
+ 
     READ(10,*) iotype,nels,nxe,nze,nip
     READ(10,*) aa,bb,cc
     READ(10,*) rho,e,v
@@ -1421,39 +1421,39 @@ PROGRAM p12meshgen
     ndim  = 3
     nodof = 3
     nod   = 8
-    
+
     element="hexahedron"
     
 !------------------------------------------------------------------------------
 ! p128.1 Allocate dynamic arrays
 !------------------------------------------------------------------------------
 
-      ALLOCATE(g_coord(ndim,nn))
-      ALLOCATE(coord(nod,ndim))
-      ALLOCATE(g_num(nod,nels))
-      ALLOCATE(rest(nr,nodof+1))
+    ALLOCATE(g_coord(ndim,nn))
+    ALLOCATE(coord(nod,ndim))
+    ALLOCATE(g_num(nod,nels))
+    ALLOCATE(rest(nr,nodof+1))
   
-      g_coord = 0.0_iwp
-      coord   = 0.0_iwp
-      g_num   = 0
-      rest    = 0
+    g_coord = 0.0_iwp
+    coord   = 0.0_iwp
+    g_num   = 0
+    rest    = 0
 
 !------------------------------------------------------------------------------
 ! p128.2 Find nodal coordinates and element steering array
 !------------------------------------------------------------------------------
       
-      DO iel=1,nels
-        CALL geometry_8bxz(iel,nxe,nze,aa,bb,cc,coord,g_num(:,iel))
-        g_coord(:,g_num(:,iel)) = TRANSPOSE(coord)    
-      END DO
+    DO iel=1,nels
+      CALL geometry_8bxz(iel,nxe,nze,aa,bb,cc,coord,g_num(:,iel))
+      g_coord(:,g_num(:,iel)) = TRANSPOSE(coord)    
+    END DO
 
 !------------------------------------------------------------------------------
 ! p128.3 Find boundary conditions
 !------------------------------------------------------------------------------
 
-      DO i=1,nr
-        rest(i,1) = i
-      END DO
+    DO i=1,nr
+      rest(i,1) = i
+    END DO
 
 !------------------------------------------------------------------------------
 ! p128.4 Select data format
@@ -1527,7 +1527,14 @@ PROGRAM p12meshgen
 
       CASE('paraview')
 
-        PRINT *, "  Output for ParaView not yet implemented"; PRINT *, ""
+        ALLOCATE(etype(nels),nf(nodof,nn),oldlds(nn*ndim)) 
+        etype=0; nf=0
+
+        nstep=nmodes; npri= 1; dtim=1.0_iwp
+        solid=.true. ! need to review this 
+
+        CALL mesh_ensi(argv,nlen,g_coord,g_num,element,etype,nf,              &
+                       oldlds(1:),nstep,npri,dtim,solid)
 
       CASE DEFAULT
 
