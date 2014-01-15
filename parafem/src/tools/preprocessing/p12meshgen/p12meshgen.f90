@@ -1402,14 +1402,149 @@ PROGRAM p12meshgen
     
 !------------------------------------------------------------------------------
 !------------------------------------------------------------------------------
+! Program p128
 !------------------------------------------------------------------------------
+!------------------------------------------------------------------------------
+
+  CASE('p128')
+  
+    READ(10,*) iotype,nels,nxe,nze,nip
+    READ(10,*) aa,bb,cc
+    READ(10,*) rho,e,v
+    READ(10,*) nmodes
+    READ(10,*) el,er
+    READ(10,*) lalfa,leig,lx,lz,acc
+
+    nye   = nels/nxe/nze
+    nr    = (nxe+1) * (nze+1)
+    nn    = (nxe+1) * (nze+1) * (nye+1)
+    ndim  = 3
+    nodof = 3
+    nod   = 8
     
+    element="hexahedron"
+    
+!------------------------------------------------------------------------------
+! p128.1 Allocate dynamic arrays
+!------------------------------------------------------------------------------
+
+      ALLOCATE(g_coord(ndim,nn))
+      ALLOCATE(coord(nod,ndim))
+      ALLOCATE(g_num(nod,nels))
+      ALLOCATE(rest(nr,nodof+1))
+  
+      g_coord = 0.0_iwp
+      coord   = 0.0_iwp
+      g_num   = 0
+      rest    = 0
+
+!------------------------------------------------------------------------------
+! p128.2 Find nodal coordinates and element steering array
+!------------------------------------------------------------------------------
+      
+      DO iel=1,nels
+        CALL geometry_8bxz(iel,nxe,nze,aa,bb,cc,coord,g_num(:,iel))
+        g_coord(:,g_num(:,iel)) = TRANSPOSE(coord)    
+      END DO
+
+!------------------------------------------------------------------------------
+! p128.3 Find boundary conditions
+!------------------------------------------------------------------------------
+
+      DO i=1,nr
+        rest(i,1) = i
+      END DO
+
+!------------------------------------------------------------------------------
+! p128.4 Select data format
+!------------------------------------------------------------------------------
+
+    SELECT CASE(iotype)
+
+!------------------------------------------------------------------------------
+! p128.5 Output in proprietary ParaFEM format (based on Kidger's DanFE)
+!------------------------------------------------------------------------------
+
+      CASE('parafem')
+ 
+        OPEN(11,FILE=argv(1:nlen)//".d",STATUS='REPLACE',ACTION='WRITE')
+  
+        WRITE(11,'(A)') "*THREE_DIMENSIONAL"
+        WRITE(11,'(A)') "*NODES"
+
+        DO i = 1, nn
+          WRITE(11,'(I10,3F12.4)') i, g_coord(:,i)
+        END DO
+
+        WRITE(11,'(A)') "*ELEMENTS"
+        DO iel = 1, nels
+          WRITE(11,'(I10,A,8I10,A)') iel," 3 8 1 ",g_num(1,iel),g_num(4,iel), & 
+                                  g_num(8,iel),g_num(5,iel),g_num(2,iel),     &
+                                  g_num(3,iel),g_num(7,iel),g_num(6,iel), " 1 "
+        END DO
+
+        CLOSE(11)  
+
+        OPEN(12,FILE=argv(1:nlen)//".bnd",STATUS='REPLACE',ACTION='WRITE')
+ 
+        DO i = 1, nr
+          WRITE(12,'(I10,3I3)') rest(i,:) 
+        END DO
+
+        CLOSE(12)
+ 
+!------------------------------------------------------------------------------
+! p128.6 Write new control data file in ParaFEM format
+!------------------------------------------------------------------------------
+
+        OPEN(14,FILE=argv(1:nlen)//".dat",STATUS='REPLACE',ACTION='WRITE')
+
+        meshgen     = 2 ! default
+        partitioner = 1 ! default
+
+        WRITE(14,'(I2)')        meshgen
+        WRITE(14,'(I2)')        partitioner
+        WRITE(14,'(4I10)')      nels, nn, nr, nip
+        WRITE(14,'(3E12.4)')    rho, e, v
+        WRITE(14,'(I8)')        nmodes
+        WRITE(14,'(2E12.4)')    el,er
+        WRITE(14,'(4I6,E12.4)') lalfa,leig,lx,lz,acc
+
+        CLOSE(14)
+
+!------------------------------------------------------------------------------
+! p128.7 Deallocate arrays
+!------------------------------------------------------------------------------
+
+        DEALLOCATE(coord)
+        DEALLOCATE(g_coord)
+        DEALLOCATE(g_num)
+        DEALLOCATE(rest)
+
+!------------------------------------------------------------------------------
+! p128.8 Output in ASCII Ensight Gold format
+!------------------------------------------------------------------------------
+
+      CASE('paraview')
+
+        PRINT *, "  Output for ParaView not yet implemented"; PRINT *, ""
+
+      CASE DEFAULT
+
+        PRINT *, "  Option ", iotype, " not recognised."; PRINT *, ""
+
+      END SELECT     
+
+!------------------------------------------------------------------------------
+!------------------------------------------------------------------------------
+!------------------------------------------------------------------------------
+  
   CASE DEFAULT
 
     PRINT*
     PRINT*, "Mesh only generated for programs: "
     PRINT*, "  p121, p122, p123, p124, p125, p126"
-    PRINT*, "  p127, p128, p129 and p1210"
+    PRINT*, "  p128, p129 and p1210"
     PRINT*
 
   END SELECT
