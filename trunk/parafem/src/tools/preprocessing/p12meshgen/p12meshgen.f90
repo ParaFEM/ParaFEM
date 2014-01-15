@@ -1156,8 +1156,10 @@ PROGRAM p12meshgen
     ndim           = 3
     nodof          = 4
     nod            = 20
-    nn             = (((2*nxe+1)*(nze+1))+((nxe+1)*nze))*(nye+1) +              &
+    nn             = (((2*nxe+1)*(nze+1))+((nxe+1)*nze))*(nye+1) +            &
                      (nxe+1)*(nze+1)*nye
+
+    element="hexahedron"
 
 !------------------------------------------------------------------------------
 ! p126.1 Allocate dynamic arrays
