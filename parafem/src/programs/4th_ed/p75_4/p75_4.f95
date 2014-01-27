@@ -1,5 +1,5 @@
 !     Last change:  DV   19 Oct 2004    7:26 pm
-PROGRAM p75
+PROGRAM p75_4
 !-------------------------------------------------------------------------
 ! Program 7.5 General two- (plane) or three-dimensional analysis of steady
 !             seepage. No global conductivity matrix assembly.
@@ -178,4 +178,4 @@ PROGRAM p75
  SUM(flux(:,1),MASK=flux(:,1)<zero),SUM(flux(:,2),MASK=flux(:,2)<zero),SUM(flux(:,3),MASK=flux(:,3)<zero)
 
 STOP
-END PROGRAM p75
+END PROGRAM p75_4

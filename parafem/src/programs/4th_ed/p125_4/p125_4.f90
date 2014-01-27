@@ -1,9 +1,11 @@
-PROGRAM p125      
+PROGRAM p125_4     
 !-------------------------------------------------------------------------
 !   Program 8.4 conduction equation on a 3-d box volume using 8-node
 !   hexahedral elements and a simple explicit algorithm : parallel version
 !   box_bc : write on processor it at freedom nres
 !-------------------------------------------------------------------------
+!      *** DEPRECATED VERSION - LATEST IS 5TH EDITION ***
+
  USE precision  ; USE global_variables ; USE mp_interface
  USE input      ; USE output           ; USE loading
  USE timing     ; USE maths            ; USE gather_scatter
@@ -258,4 +260,4 @@ PROGRAM p125
                   
  CALL shutdown() 
 
-END PROGRAM p125
+END PROGRAM p125_4

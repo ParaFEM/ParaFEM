@@ -1,10 +1,12 @@
-PROGRAM p123         
+PROGRAM p123_4         
 !------------------------------------------------------------------------------
 !      program 12.3 three dimensional analysis of Laplace's equation
 !      using 8-node brick elements, preconditioned conjugate gradient solver
 !      only integrate one element , diagonal preconditioner diag_precon
-!      parallel version  ;   central loaded or fixed freedom   ;  box_bc  
+!      parallel version  ;   central loaded or fixed freedom   ;  box_bc
 !------------------------------------------------------------------------------
+!      *** DEPRECATED VERSION - LATEST IS 5TH EDITION ***
+
 
   USE precision  ; USE global_variables ; USE mp_interface
   USE input      ; USE output           ; USE loading
@@ -32,7 +34,7 @@ PROGRAM p123
   REAL(iwp),PARAMETER   :: zero = 0.0_iwp,penalty=1.e20_iwp
   CHARACTER(LEN=15)     :: element
   CHARACTER(LEN=50)     :: fname,job_name,label
-  CHARACTER(LEN=50)     :: program_name='p123'
+  CHARACTER(LEN=50)     :: program_name='p123_4'
   LOGICAL               :: converged 
 
 !------------------------------------------------------------------------------
@@ -384,4 +386,4 @@ PROGRAM p123
 
   CALL shutdown()
 
-END PROGRAM p123
+END PROGRAM p123_4
