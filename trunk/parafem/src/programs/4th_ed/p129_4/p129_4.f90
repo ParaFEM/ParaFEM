@@ -1,9 +1,10 @@
-PROGRAM p129       
+PROGRAM p129_4       
 !------------------------------------------------------------------------------
-!      Program 11.6 forced vibration of a 3d elastic solid
+!      Program 11.9 forced vibration of a 3d elastic solid
 !      Lumped or consistent mass
 !      Implicit integration by theta method : parallel version
 !------------------------------------------------------------------------------
+!      *** DEPRECATED VERSION - LATEST IS 5TH EDITION ***
 
   USE precision     ; USE global_variables ; USE mp_interface
   USE input         ; USE output           ; USE loading
@@ -416,4 +417,4 @@ PROGRAM p129
 
  CALL shutdown() 
 
-END PROGRAM p129
+END PROGRAM p129_4

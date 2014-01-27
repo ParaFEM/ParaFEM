@@ -1,13 +1,9 @@
-PROGRAM p1210      
+PROGRAM p1210_4    
 !------------------------------------------------------------------------------
 !  Program 12.10 forced vibration of an elastic-plastic(Von Mises) solid
 !  Viscoplastic strain method, lumped mass, explicit integration
-!
-!  Original program from Smith I.M. and Griffiths D.V. "Programming the Finite 
-!  Element Method", Edition 4, Wiley, 2004.
-!
-!  Modified by Lee Margetts 29-03-2010
 !------------------------------------------------------------------------------
+!      *** DEPRECATED VERSION - LATEST IS 5TH EDITION ***
 
   USE precision     ; USE global_variables ; USE mp_interface
   USE input         ; USE output           ; USE loading
@@ -337,4 +333,4 @@ PROGRAM p1210
 
   CALL shutdown() 
 
-END PROGRAM p1210
+END PROGRAM p1210_4

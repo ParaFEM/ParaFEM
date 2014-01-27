@@ -1,9 +1,10 @@
-  PROGRAM p124      
+  PROGRAM p124_4      
 !------------------------------------------------------------------------------
 !      Program 12.4 conduction equation using 8-node hexahedral elements;
 !      pcg version implicit; integration in time using 'theta' method
 !      parallel version
 !------------------------------------------------------------------------------
+!      *** DEPRECATED VERSION - LATEST IS 5TH EDITION ***
 
  USE precision  ; USE global_variables ; USE mp_interface
  USE input      ; USE output           ; USE loading
@@ -344,4 +345,4 @@
 
  CALL shutdown() 
 
-END PROGRAM p124
+END PROGRAM p124_4
