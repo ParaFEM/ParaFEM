@@ -1,0 +1,15 @@
+#!/bin/bash -x
+#SBATCH --job-name='parafem-test'
+#SBATCH --nodes=2
+#SBATCH --tasks-per-node=16
+#SBATCH --ntasks=32
+#SBATCH --exclusive
+#SBATCH --export=ALL
+#SBATCH --time=00:04:00
+
+EXE=/u/au/sa/margetts/parafem/parafem/bin/p121_5
+
+cd /u/au/sa/margetts/scratch
+
+srun $EXE p121_5_medium >output.$JOBID
+
