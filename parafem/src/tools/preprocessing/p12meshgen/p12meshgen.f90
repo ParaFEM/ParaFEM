@@ -1394,7 +1394,7 @@ PROGRAM p12meshgen
     PRINT*
     PRINT*, "Program p127 is not supported"
     PRINT*, "Consult 'Programming the Finite Element Method', 5th Edition, &
-             for details"
+             &for details"
 
     PRINT*
 
