@@ -185,12 +185,12 @@ PROGRAM rfemsolve_te
   ALLOCATE(cte(3))
 
   !PRINT*,'The material properties are:'
-  DO i= 1, 3
-      READ(55,*)cte(i)
+  !DO i= 1, 3
+      !READ(55,*)cte(i)
       !PRINT*,cte(i)
-  END DO
+  !END DO
 
-  READ(55,*)
+  !READ(55,*)
   !PRINT*,"nn = "
   !PRINT*,nn
 
@@ -283,18 +283,33 @@ PRINT *, "READ_MATERIALVALUE COMPLETED"
 ! 8. Element stiffness integration and storage
 !------------------------------------------------------------------------------
 
+ ! OPEN(unit = 8, file = "results.txt")
+    
+
+
   points = zero
 
   CALL sample(element,points,weights)
 
   teps=zero
   storkm_pp       = zero
- 
+  
+  cte = 0
+  
+  e = 10000
+  
+    
+  
   elements_3: DO iel=1,nels_pp
-        
-    e   = prop(1,etype_pp(iel))
+     
+    
+  
+    cte (1)   = prop(1,etype_pp(iel))
+    cte (2)   = prop(1,etype_pp(iel))
+    cte (3)   = prop(1,etype_pp(iel))
     v   = prop(2,etype_pp(iel))
     dee = zero
+    
     
     CALL deemat(dee,e,v)
         
@@ -319,10 +334,20 @@ PRINT *, "READ_MATERIALVALUE COMPLETED"
       CALL beemat(bee,deriv)
       storkm_pp(:,:,iel)   = storkm_pp(:,:,iel) +                             &
                              MATMUL(MATMUL(TRANSPOSE(bee),dee),bee) *         &
+<<<<<<< .mine
                              det*weights(i)
                  
       etl=etl+MATMUL(MATMUL(TRANSPOSE(bee),dee),teps)*det*weights(i)
  
+ 	WRITE(8,*)"etl "
+        WRITE(8,*)"  "
+        WRITE(8,*),etl
+=======
+                             det*weights(i)
+                 
+      etl=etl+MATMUL(MATMUL(TRANSPOSE(bee),dee),teps)*det*weights(i)
+ 
+>>>>>>> .r1551
       
     END DO gauss_pts_1
     
@@ -333,10 +358,59 @@ PRINT *, "READ_MATERIALVALUE COMPLETED"
   
   timest(10) = elap_time()
   
+<<<<<<< .mine
+  IF(numpe==1) PRINT*, "COMPLETED ELEMENT STIFFNESS INTEGRATION AND STORAGE"
+    
+  CALL scatter(tload_pp,etl_pp)
+    
+  WRITE(8,*)"  "
+  WRITE(8,*)"cte = "
+  WRITE(8,*)"  "
+  WRITE(8,*),cte
+  WRITE(8,*)"  "
+  WRITE(8,*)"nels_pp = "
+  WRITE(8,*)"  "
+  WRITE(8,*),nels_pp
+  WRITE(8,*)"  "
+  WRITE(8,*)"iel "
+  WRITE(8,*)"  "
+  WRITE(8,*),iel
+  WRITE(8,*)"  "
+  WRITE(8,*)"E "
+  WRITE(8,*)"  "
+  WRITE(8,*),e
+  WRITE(8,*)"  "
+  WRITE(8,*)"v "
+  WRITE(8,*)"  "
+  WRITE(8,*),v
+  WRITE(8,*)"  "
+  WRITE(8,*)"Dee "
+  WRITE(8,*)"  "
+  WRITE(8,*),dee
+  WRITE(8,*)"Bee "
+  WRITE(8,*)"  "
+  WRITE(8,*),bee
+  WRITE(8,*)"etl "
+  WRITE(8,*)"  "
+  WRITE(8,*),etl
+  WRITE(8,*)"storkm_pp "
+  WRITE(8,*)"  "
+  WRITE(8,*),storkm_pp
+  WRITE(8,*)"  "
+  WRITE(8,*)"etl_pp "
+  WRITE(8,*)"  "
+  WRITE(8,*),etl_pp
+  
+  
+  CLOSE(8)
+ 
+  
+=======
   IF(numpe==1) PRINT*, "COMPLETED ELEMENT STIFFNESS INTEGRATION AND STORAGE"
     
   CALL scatter(tload_pp,etl_pp)
 
+>>>>>>> .r1551
 !------------------------------------------------------------------------------
 ! 9. Build the diagonal preconditioner
 !------------------------------------------------------------------------------
@@ -558,11 +632,22 @@ PRINT *, "READ_MATERIALVALUE COMPLETED"
   reacnodes_pp          = zero
   utemp_pp              = zero
 
+<<<<<<< .mine
+  DO iel = 1,nels_pp
+    e = 10000
+    cte (1)   = prop(1,etype_pp(iel))
+    cte (2)   = prop(1,etype_pp(iel))
+    cte (3)   = prop(1,etype_pp(iel))
+    v   = prop(2,etype_pp(iel))
+    dee = zero
+    CALL deemat(dee,e,v)
+=======
   DO iel = 1,nels_pp
     e   = prop(1,etype_pp(iel))
     v   = prop(2,etype_pp(iel))
     dee = zero
     CALL deemat(dee,e,v)
+>>>>>>> .r1551
     DO i = 1,nip
       CALL shape_der(der,points,i)
       jac   = MATMUL(der,g_coord_pp(:,:,iel))
