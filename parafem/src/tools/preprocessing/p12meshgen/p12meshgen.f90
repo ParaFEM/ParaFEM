@@ -78,7 +78,7 @@ PROGRAM p12meshgen
     PRINT*
     STOP
   END IF
-  CALL getname(argv,nlen)
+  CALL getname_mg(argv,nlen)
 
 !------------------------------------------------------------------------------
 ! 4. Read control data
