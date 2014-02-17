@@ -11,7 +11,8 @@ MODULE INPUT
   !*    
   !*    Subroutine             Purpose
   !*
-  !*    GETNAME                Gets the base name of a data file
+  !*    GETNAME                Gets the base name of a ".dat" data file
+  !*    GETNAME_MG             Gets the base name of an ".mg" data file
   !*    READ_G_COORD_PP        Reads the global coordinates
   !*    READ_G_NUM_PP          Reads the element nodal steering array
   !*    READ_ELEMENTS          Reads the element nodal steering array
@@ -108,7 +109,7 @@ MODULE INPUT
    !nlen=lnblnk(argv)
     nlen=len_trim(argv)
     INQUIRE(file=argv(1:nlen)//'.dat',exist=found)
-    INQUIRE(file=argv(1:nlen)//'.mg',exist=found)   !hack
+!   INQUIRE(file=argv(1:nlen)//'.mg',exist=found)   !hack
 
     IF(.not.found)THEN
       WRITE(*,*)'Data file not found'
@@ -118,6 +119,65 @@ MODULE INPUT
 
   RETURN
   END SUBROUTINE getname
+
+!------------------------------------------------------------------------------
+!------------------------------------------------------------------------------
+!------------------------------------------------------------------------------
+
+  SUBROUTINE getname_mg(argv,nlen)
+ 
+   !/****f* input/getname_mg
+   !*  NAME
+   !*    SUBROUTINE: getname_mg
+   !*  SYNOPSIS
+   !*    Usage:      CALL getname_mg(argv,nlen)
+   !*  FUNCTION
+   !*    Returns the base name of the data file.
+   !*  OUTPUTS
+   !*    Scalar integer
+   !*    nlen               : number of characters in data file base name 
+   !*
+   !*    Scalar character
+   !*    argv               : holds data file base name
+   !*  AUTHOR
+   !*    I.M. Smith
+   !*    D.V. Griffiths
+   !*    L. Margetts
+   !*  COPYRIGHT
+   !*    (c) University of Manchester 2004-2014
+   !******
+   !*  Place remarks that should not be included in the documentation here.
+   !*  
+   !*  Duplicate of subroutine required by the 5th Edition of "Programming the Finite
+   !*  Element Method". Needs to be merged with SUBROUTINE getname
+   !*/
+  
+    IMPLICIT NONE
+    INTEGER                  :: narg
+    INTEGER,INTENT(OUT)      :: nlen
+    INTEGER                  :: lnblnk,iargc
+    CHARACTER(*),INTENT(OUT) :: argv
+    LOGICAL                  :: found=.false.
+ 
+    narg=iargc()
+    IF(narg.lt.1)THEN
+      WRITE(*,*)'Please enter the base name of data file: '
+      READ(*,*) argv
+    ELSE
+      CALL getarg(1,argv)
+    ENDIF
+
+    nlen=len_trim(argv)
+    INQUIRE(file=argv(1:nlen)//'.mg',exist=found) 
+
+    IF(.not.found)THEN
+      WRITE(*,*)'Data file not found'
+      WRITE(*,*)'Please create or check spelling.'
+      STOP
+    ENDIF
+
+  RETURN
+  END SUBROUTINE getname_mg
 
 !------------------------------------------------------------------------------
 !------------------------------------------------------------------------------
