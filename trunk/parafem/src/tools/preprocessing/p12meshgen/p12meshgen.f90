@@ -1634,8 +1634,7 @@ PROGRAM p12meshgen
 
       CASE('parafem')
 
-        fname = job_name(1:INDEX(job_name, " ")-1) // ".d" 
-        OPEN(11,FILE=fname,STATUS='REPLACE',ACTION='WRITE')
+        OPEN(11,FILE=argv(1:nlen)//'.d',STATUS='REPLACE',ACTION='WRITE')
   
         WRITE(11,'(A)') "*THREE_DIMENSIONAL"
         WRITE(11,'(A)') "*NODES"
@@ -1656,8 +1655,7 @@ PROGRAM p12meshgen
 
         CLOSE(11)  
 
-        fname = job_name(1:INDEX(job_name, " ")-1) // ".bnd" 
-        OPEN(12,FILE=fname,STATUS='REPLACE',ACTION='WRITE')
+        OPEN(12,FILE=argv(1:nlen)//'.bnd',STATUS='REPLACE',ACTION='WRITE')
 
         DO i = 1, nr
           WRITE(12,'(4I6)') rest(i,:) 
@@ -1665,8 +1663,7 @@ PROGRAM p12meshgen
 
         CLOSE(12)
 
-        fname = job_name(1:INDEX(job_name, " ")-1) // ".lds" 
-        OPEN(13,FILE=fname,STATUS='REPLACE',ACTION='WRITE')
+        OPEN(13,FILE=argv(1:nlen)//'.lds',STATUS='REPLACE',ACTION='WRITE')
 
         DO i = 1, loaded_freedoms
           WRITE(13,'(I12,2A,E16.8)')  no(i),"  0.00000000E+00  ",             &
@@ -1679,8 +1676,7 @@ PROGRAM p12meshgen
 ! p129.7 New control data
 !------------------------------------------------------------------------------
  
-        fname = job_name(1:INDEX(job_name, " ")-1) // ".dat"
-        OPEN(14,FILE=fname,STATUS='REPLACE',ACTION='WRITE')
+        OPEN(14,FILE=argv(1:nlen)//'.dat',STATUS='REPLACE',ACTION='WRITE')
 
         meshgen     = 2 ! current default
         partitioner = 1 ! current default
