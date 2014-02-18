@@ -78,7 +78,7 @@ PROGRAM p12meshgen
     PRINT*
     STOP
   END IF
-  CALL getname_mg(argv,nlen)
+  CALL getname(argv,nlen)
 
 !------------------------------------------------------------------------------
 ! 4. Read control data
@@ -1541,6 +1541,178 @@ PROGRAM p12meshgen
         PRINT *, "  Option ", iotype, " not recognised."; PRINT *, ""
 
       END SELECT     
+
+!------------------------------------------------------------------------------
+!------------------------------------------------------------------------------
+! Program p129
+!------------------------------------------------------------------------------
+!------------------------------------------------------------------------------
+
+  CASE('p129')
+ 
+    READ(10,*) iotype,nels,nxe,nze,nip
+    READ(10,*) aa,bb,cc,rho
+    READ(10,*) e,v
+    READ(10,*) alpha1,beta1
+    READ(10,*) nstep,npri,theta
+    READ(10,*) omega,tol,limit
+
+    nye   = nels/nxe/nze
+    nr    = 3*nxe*nze+2*nxe+2*nze+1
+    ndim  = 3
+    nodof = 3
+    nod   = 20
+    nn    = (((2*nxe+1)*(nze+1))+((nxe+1)*nze))*(nye+1)+(nxe+1)*(nze+1)*nye
+   
+    loaded_freedoms = (2*nxe)+1 ! Differs from the problem in the book
+
+    nres = 3*(nye*(nxe+1)*(nze+1)+nr*(nye-1)+(nxe+1))
+
+!------------------------------------------------------------------------------
+! p129.1 Allocate dynamic arrays
+!------------------------------------------------------------------------------
+
+    ALLOCATE(coord(nod,ndim))
+    ALLOCATE(g_coord(ndim,nn))
+    ALLOCATE(g_num(nod,nels))
+    ALLOCATE(rest(nr,nodof+1))
+    ALLOCATE(no(loaded_freedoms))
+    ALLOCATE(val(loaded_freedoms))
+ 
+    coord   = 0.0_iwp
+    g_coord = 0.0_iwp
+    g_num   = 0
+    rest    = 0
+    val     = 0.0_iwp
+    no      = 0
+ 
+!------------------------------------------------------------------------------
+! p129.2 Find nodal coordinates and element steering array
+!      Write to file using Abaqus node numbering convention
+!------------------------------------------------------------------------------
+ 
+    DO iel=1,nels
+      CALL geometry_20bxz(iel,nxe,nze,aa,bb,cc,coord,g_num(:,iel))
+      g_coord(:,g_num(:,iel)) = TRANSPOSE(coord)    
+    END DO
+  
+!------------------------------------------------------------------------------
+! p129.3 Boundary conditions
+!------------------------------------------------------------------------------
+
+    DO i=1,nr
+      rest(i,1) = i
+    END DO
+
+!------------------------------------------------------------------------------
+! p129.4 Loading conditions
+!------------------------------------------------------------------------------
+
+    count = 1
+
+    DO i = 1,loaded_freedoms
+      no(i) = nn - ((2*nxe)+1) + i
+      IF(i==1.OR.i==((2*nxe)+1)) THEN
+        val(count) = 25._iwp/12._iwp 
+      ELSE IF(mod(i,2)==0) THEN
+        val(count) = 25._iwp/3._iwp
+      ELSE
+        val(count) = 25._iwp/6._iwp
+      END IF
+      count = count + 1
+    END DO
+
+!------------------------------------------------------------------------------
+! p129.5 Select data format
+!------------------------------------------------------------------------------
+
+    SELECT CASE(iotype)
+
+!------------------------------------------------------------------------------
+! p129.6 Output in proprietary ParaFEM format (based on Kidger's DanFE)
+!------------------------------------------------------------------------------
+
+      CASE('parafem')
+
+        fname = job_name(1:INDEX(job_name, " ")-1) // ".d" 
+        OPEN(11,FILE=fname,STATUS='REPLACE',ACTION='WRITE')
+  
+        WRITE(11,'(A)') "*THREE_DIMENSIONAL"
+        WRITE(11,'(A)') "*NODES"
+
+        DO i = 1, nn
+          WRITE(11,'(I12,3F12.4)') i, g_coord(:,i)
+        END DO
+
+        WRITE(11,'(A)') "*ELEMENTS"
+        DO iel = 1, nels
+          WRITE(11,'(I10,A,20I12,A)') iel, " 3 20 1 ", g_num(3,iel),         &
+                   g_num(5,iel),g_num(7,iel),g_num(1,iel),g_num(15,iel),     &
+                   g_num(17,iel),g_num(19,iel),g_num(13,iel),g_num(4,iel),   &
+                   g_num(6,iel),g_num(8,iel),g_num(2,iel),g_num(16,iel),     &
+                   g_num(18,iel),g_num(20,iel),g_num(14,iel),g_num(10,iel),   &
+                   g_num(11,iel),g_num(12,iel),g_num(9,iel)," 1 "
+        END DO
+
+        CLOSE(11)  
+
+        fname = job_name(1:INDEX(job_name, " ")-1) // ".bnd" 
+        OPEN(12,FILE=fname,STATUS='REPLACE',ACTION='WRITE')
+
+        DO i = 1, nr
+          WRITE(12,'(4I6)') rest(i,:) 
+        END DO
+
+        CLOSE(12)
+
+        fname = job_name(1:INDEX(job_name, " ")-1) // ".lds" 
+        OPEN(13,FILE=fname,STATUS='REPLACE',ACTION='WRITE')
+
+        DO i = 1, loaded_freedoms
+          WRITE(13,'(I12,2A,E16.8)')  no(i),"  0.00000000E+00  ",             &
+                                      "  0.00000000E+00  ", val(i)
+        END DO
+
+        CLOSE(13)
+
+!------------------------------------------------------------------------------
+! p129.7 New control data
+!------------------------------------------------------------------------------
+ 
+        fname = job_name(1:INDEX(job_name, " ")-1) // ".dat"
+        OPEN(14,FILE=fname,STATUS='REPLACE',ACTION='WRITE')
+
+        meshgen     = 2 ! current default
+        partitioner = 1 ! current default
+  
+        WRITE(14,'(A)')             "'hexahedron'"
+        WRITE(14,'(2I4)')           meshgen,partitioner
+        WRITE(14,'(3I12,2I5,3I12)') nels,nn,nr,nip,nod,loaded_freedoms,nres
+        WRITE(14,'(5E14.6)')        rho,e,v,alpha1,beta1
+        WRITE(14,'(2I6,3E14.6,I6)') nstep,npri,theta,omega,tol,limit
+
+        CLOSE(14)
+
+!------------------------------------------------------------------------------
+! p129.8 Output in ASCII Ensight Gold format
+!------------------------------------------------------------------------------
+
+      CASE('paraview')
+
+        ALLOCATE(etype(nels),nf(nodof,nn),oldlds(nn*ndim)) 
+        etype=0; nf=0; oldlds=0.0_iwp
+
+        dtim=1.0_iwp
+        solid=.true. ! need to review this 
+
+        CALL mesh_ensi(argv,nlen,g_coord,g_num,element,etype,nf,              &
+                       oldlds(1:),nstep,npri,dtim,solid)
+
+      CASE DEFAULT
+
+        PRINT *, "  Option ", iotype, " not recognised."; PRINT *, ""
+
+    END SELECT 
 
 !------------------------------------------------------------------------------
 !------------------------------------------------------------------------------
