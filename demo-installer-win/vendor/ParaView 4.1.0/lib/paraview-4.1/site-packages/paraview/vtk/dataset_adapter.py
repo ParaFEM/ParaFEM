@@ -1,0 +1,318 @@
+try:
+    import numpy
+except ImportError:
+    raise RuntimeError("This module depends on the numpy module. Please make\
+sure that it is installed properly.")
+
+from paraview import numpy_support
+
+class ArrayAssociation :
+    POINT = 1
+    CELL  = 2
+    FIELD = 3
+    ROW = 4
+
+class VTKObjectWrapper(object):
+    "Superclass for classes that wrap VTK objects with Python objects."
+    def __init__(self, vtkobject):
+        self.VTKObject = vtkobject
+
+    def __getattr__(self, name):
+        "Forwards unknown attribute requests to VTK object."
+        if not self.VTKObject:
+            raise AttributeError("class has no attribute %s" % name)
+            return None
+        return getattr(self.VTKObject, name)
+
+def MakeObserver(numpy_array):
+    "Internal function used to attach a numpy array to a vtk array"
+    def Closure(caller, event):
+        foo = numpy_array
+    return Closure
+
+def vtkDataArrayToVTKArray(array, dataset=None):
+    "Given a vtkDataArray and a dataset owning it, returns a VTKArray."
+    narray = numpy_support.vtk_to_numpy(array)
+
+    # Make arrays of 9 components into matrices. Also transpose
+    # as VTK store matrices in Fortran order
+    shape = narray.shape
+    if len(shape) == 2 and shape[1] == 9:
+        narray = narray.reshape((shape[0], 3, 3)).transpose(0, 2, 1)
+
+    return VTKArray(narray, array=array, dataset=dataset)
+    
+def numpyTovtkDataArray(array, name="numpy_array"):
+    """Given a numpy array or a VTKArray and a name, returns a vtkDataArray.
+    The resulting vtkDataArray will store a reference to the numpy array
+    through a DeleteEvent observer: the numpy array is released only when
+    the vtkDataArray is destroyed."""
+    if not array.flags.contiguous:
+        array = array.copy()
+    vtkarray = numpy_support.numpy_to_vtk(array)
+    vtkarray.SetName(name)
+    # This makes the VTK array carry a reference to the numpy array.
+    vtkarray.AddObserver('DeleteEvent', MakeObserver(array))
+    return vtkarray
+
+def make_tensor_array_contiguous(array):
+    if array == None:
+        return None
+    if array.flags.contiguous:
+        return array
+    array = numpy.asarray(array)
+    size = array.dtype.itemsize
+    strides = array.strides
+    if len(strides) == 3 and strides[1]/size == 1 and strides[2]/size == 3:
+        return array.transpose(0, 2, 1)
+    return array
+
+class VTKArray(numpy.matrix):
+    """This is a sub-class of numpy ndarray that stores a
+    reference to a vtk array as well as the owning dataset.
+    The numpy array and vtk array should point to the same
+    memory location."""
+    
+    def __new__(cls, input_array, array=None, dataset=None):
+        # Input array is an already formed ndarray instance
+        # We first cast to be our class type
+        obj = numpy.asarray(input_array).view(cls)
+        obj.Association = ArrayAssociation.FIELD
+        if len(obj.shape) == 1:
+            obj = obj.reshape(obj.shape[0], 1)
+        # add the new attributes to the created instance
+        obj.VTKObject = array
+        if dataset:
+            import weakref
+            obj.DataSet = weakref.ref(dataset)
+            # obj.DataSet = dataset
+        # Finally, we must return the newly created object:
+        return obj
+
+    def __array_finalize__(self,obj):
+        # Copy the VTK array only if the two share data
+        slf = make_tensor_array_contiguous(self)
+        obj2 = make_tensor_array_contiguous(obj)
+
+        self.VTKObject = None
+        try:
+            # This line tells us that they are referring to the same buffer.
+            # Much like two pointers referring to same memory location in C/C++.
+            if buffer(slf) == buffer(obj2):
+                self.VTKObject = getattr(obj, 'VTKObject', None)
+        except TypeError:
+            pass
+
+        self.Association = getattr(obj, 'Association', None)
+        self.DataSet = getattr(obj, 'DataSet', None)
+
+    def __getattr__(self, name):
+        "Forwards unknown attribute requests to VTK array."
+        if not hasattr(self, "VTKObject") or not self.VTKObject:
+            raise AttributeError("class has no attribute %s" % name)
+        return getattr(self.VTKObject, name)
+        
+    def __mul__(self, other):
+        return numpy.multiply(self, other)
+
+    def __rmul__(self, other):
+        return numpy.multiply(self, other)
+
+    def __pow__(self, other):
+        return numpy.power(self, other)
+
+class DataSetAttributes(VTKObjectWrapper):
+    """This is a python friendly wrapper of vtkDataSetAttributes. It
+    returns VTKArrays. It also provides the dictionary interface."""
+    
+    def __init__(self, vtkobject, dataset, association):
+        self.VTKObject = vtkobject
+        import weakref
+        self.DataSet = weakref.ref(dataset)
+        self.Association = association
+
+    def __getitem__(self, idx):
+        """Implements the [] operator. Accepts an array name."""
+        return self.GetArray(idx)
+
+    def GetArray(self, idx):
+        "Given an index or name, returns a VTKArray."
+        vtkarray = self.VTKObject.GetArray(idx)
+        if not vtkarray:
+            vtkarray = self.VTKObject.GetAbstractArray(idx)
+            if vtkarray:
+                return vtkarray
+            return None
+        array = vtkDataArrayToVTKArray(vtkarray, self.DataSet())
+        array.Association = self.Association
+        return array
+
+    def keys(self):
+        """Returns the names of the arrays as a list."""
+        kys = []
+        narrays = self.VTKObject.GetNumberOfArrays()
+        for i in range(narrays):
+            name = self.VTKObject.GetArray(i).GetName()
+            if name:
+                kys.append(name)
+        return kys
+
+    def values(self):
+        """Returns the arrays as a list."""
+        vals = []
+        narrays = self.VTKObject.GetNumberOfArrays()
+        for i in range(narrays):
+            a = self.VTKObject.GetArray(i)
+            if a.GetName():
+                vals.append(a)
+        return vals
+
+    def append(self, narray, name):
+        """Appends a new array to the dataset attributes."""
+
+        shape = narray.shape
+
+        if len(shape) == 3:
+            # Array of matrices. We need to make sure the order  in memory is right.
+            # If column order (c order), transpose. VTK wants row order (fortran
+            # order). The deep copy later will make sure that the array is contiguous.
+            # If row order but not contiguous, transpose so that the deep copy below
+            # does not happen.
+            size = narray.dtype.itemsize
+            if (narray.strides[1]/size == 3 and narray.strides[2]/size == 1) or \
+                (narray.strides[1]/size == 1 and narray.strides[2]/size == 3 and \
+                 not narray.flags.contiguous):
+                narray  = narray.transpose(0, 2, 1)
+
+        # If array is not contiguous, make a deep copy that is contiguous
+        if not narray.flags.contiguous:
+            narray = narray.copy()
+
+        # Flatten array of matrices to array of vectors
+        if len(shape) == 3:
+            narray = narray.reshape(shape[0], shape[1]*shape[2])
+
+        arr = numpyTovtkDataArray(narray, name)
+        self.VTKObject.AddArray(arr)
+
+class CompositeDataIterator(object):
+    """Wrapper for a vtkCompositeDataIterator class to satisfy
+       the python iterator protocol.
+       """
+    
+    def __init__(self, cds):
+        self.Iterator = cds.NewIterator()
+        if self.Iterator:
+            self.Iterator.UnRegister(None)
+            self.Iterator.GoToFirstItem()
+
+    def __iter__(self):
+        return self
+
+    def next(self):
+        if not self.Iterator:
+            raise StopIteration
+
+        if self.Iterator.IsDoneWithTraversal():
+            raise StopIteration
+        retVal = self.Iterator.GetCurrentDataObject()
+        self.Iterator.GoToNextItem()
+        return WrapDataObject(retVal)
+
+    def __getattr__(self, name):
+        """Returns attributes from the vtkCompositeDataIterator."""
+        return getattr(self.Iterator, name)
+
+class MultiCompositeDataIterator(CompositeDataIterator):
+    def __init__(self, cds):
+        CompositeDataIterator.__init__(self, cds[0])
+        self.Datasets = cds
+
+    def next(self):
+        if not self.Iterator:
+            raise StopIteration
+
+        if self.Iterator.IsDoneWithTraversal():
+            raise StopIteration
+        retVal = []
+        retVal.append(WrapDataObject(self.Iterator.GetCurrentDataObject()))
+        if len(self.Datasets) > 1:
+            for cd in self.Datasets[1:]:
+                retVal.append(WrapDataObject(cd.GetDataSet(self.Iterator)))
+        self.Iterator.GoToNextItem()
+        return retVal
+
+class DataObject(VTKObjectWrapper):
+    def GetFieldData(self):
+        "Returns the field data as a DataSetAttributes instance."
+        return DataSetAttributes(self.VTKObject.GetFieldData(), self, ArrayAssociation.FIELD)
+
+    FieldData = property(GetFieldData, None, None, "This property returns \
+        the field data of a data object.")
+
+class Table(DataObject):
+    def GetRowData(self):
+        "Returns the row data as a DataSetAttributes instance."
+        return DataSetAttributes(self.VTKObject.GetRowData(), self, ArrayAssociation.ROW)
+
+    RowData = property(GetRowData, None, None, "This property returns \
+        the row data of the table.")
+
+class CompositeDataSet(DataObject):
+    def __iter__(self):
+        "Creates an iterator for the contained datasets."
+        return CompositeDataIterator(self)
+
+class DataSet(DataObject):
+    """This is a python friendly wrapper of a vtkDataSet that defines
+    a few useful properties."""
+
+    def GetPointData(self):
+        "Returns the point data as a DataSetAttributes instance."
+        return DataSetAttributes(self.VTKObject.GetPointData(), self, ArrayAssociation.POINT)
+
+    def GetCellData(self):
+        "Returns the cell data as a DataSetAttributes instance."
+        return DataSetAttributes(self.VTKObject.GetCellData(), self, ArrayAssociation.CELL)
+
+    PointData = property(GetPointData, None, None, "This property returns \
+        the point data of the dataset.")
+    CellData = property(GetCellData, None, None, "This property returns \
+        the cell data of a dataset.")
+
+class PointSet(DataSet):
+    def GetPoints(self):
+        """Returns the points as a VTKArray instance. Returns None if the
+        dataset has implicit points."""
+        if not self.VTKObject.GetPoints():
+            return None
+        return vtkDataArrayToVTKArray(
+            self.VTKObject.GetPoints().GetData(), self)
+
+    Points = property(GetPoints, None, None, "This property returns the \
+        point coordinates of dataset.")
+        
+class PolyData(PointSet):
+    def GetPolygons(self):
+        """Returns the points as a VTKArray instance. Returns None if the
+        dataset has implicit points."""
+        if not self.VTKObject.GetPolys():
+            return None
+        return vtkDataArrayToVTKArray(
+            self.VTKObject.GetPolys().GetData(), self)
+
+    Polygons = property(GetPolygons, None, None, "This property returns the \
+        connectivity of polygons.")
+        
+def WrapDataObject(ds):
+    if ds.IsA("vtkPolyData"):
+        return PolyData(ds)
+    elif ds.IsA("vtkPointSet"):
+        return PointSet(ds)
+    elif ds.IsA("vtkDataSet"):
+        return DataSet(ds)
+    elif ds.IsA("vtkCompositeDataSet"):
+        return CompositeDataSet(ds)
+    elif ds.IsA("vtkTable"):
+        return Table(ds)
+
