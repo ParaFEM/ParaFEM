@@ -1,0 +1,1 @@
+from vtkIOMPIImagePython import *

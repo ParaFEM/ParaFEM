@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <link rel='stylesheet' href='main.css' type='text/css'>
+    </head>
+
+    <body onbeforeunload="stop()" onunload="stop()" class="page">
+        <div class="header toolbar">
+            <div class="logo" alt="Toggle pipeline browser visibility"></div>
+            <div class="viewport-toolbar"></div>
+            <div class="vcr-toolbar"></div>
+            <div class="rescale-data" style="display: none;"><img src="../../lib/css/paraview/pipeline/resetRange.png" style="position: relative; top: 5px;" title="Rescale data range to the current time step" alt="Rescale data range to the current time step"/></div>
+            <div class="connection-toolbar"></div>
+            <div class="loading"></div>
+        </div>
+        <div class="splitter">
+            <div class="viewport-container">
+            </div>
+            <div class="control-panel" style="display: none;">
+            </div>
+        </div>
+
+
+        <script src="../../lib/core/vtkweb-loader.js" load="core, filebrowser, color, pv-pipeline, pv-toolbar"></script>
+        <script type="text/javascript">
+            var config = {
+                sessionManagerURL: vtkWeb.properties.sessionManagerURL,
+                application: "pipeline"
+            },
+            s = null,
+            stop = vtkWeb.NoOp,
+            start = function(connection) {
+                var pipeline = null,
+                filters = null,
+                session = connection.session;
+
+                s = session;
+
+                // Build application
+                function init() {
+                    // - viewport
+                    $(".viewport-container").empty();
+                    viewport = vtkWeb.createViewport({session: session});
+                    viewport.bind(".viewport-container");
+
+                    // Update view callback
+                    function updateView() {
+                        viewport.invalidateScene();
+                    }
+
+                    // - pipeline browser
+                    $('.control-panel').pipelineBrowser({
+                        session: session,
+                        pipeline: pipeline,
+                        sources: filters,
+                        cacheFiles: false
+                    }).bind('dataChanged', updateView);
+
+                    // - vcr toolbar
+                    $('.vcr-toolbar').vcrToolbar(session).bind('dataChanged', updateView);
+
+                    // - viewport toolbar
+                    $('.viewport-toolbar').viewportToolbar(viewport);
+
+                    // - rescal data array
+                    $('.rescale-data').show().click(function(){
+                        if(session) {
+                            proxyId = $('.pipelineBrowser').getProxy().proxy_id;
+                            session.call('vtk:updateScalarRange', proxyId).then(function(){
+                                updateView();
+                            });
+                        }
+                    });
+
+                    // - Toggle pipeline visibility
+                    $('.logo').unbind().bind('click', function(){
+                        var panel = $(".control-panel");
+                        var viewportContainer = $(".viewport-container");
+                        if(panel.is(":visible")) {
+                            panel.hide("slide",250, function(){
+                                viewportContainer.css("left", 0);
+                                if(viewport) {
+                                   viewport.render();
+                                }
+                            });
+                        } else {
+                            panel.show("slide",250, function(){
+                                viewportContainer.css("left", 320);
+                                if(viewport) {
+                                    viewport.render();
+                                }
+                            });
+                        }
+                    }).trigger('click');
+
+                    // - loading done...
+                    $(".loading").hide();
+
+                    // Add resize listener
+                    $(window).resize(function() {
+                        $(".splitter").height(window.innerHeight - 35);
+                        $(".control-panel").height(window.innerHeight - 35);
+                        viewport.render();
+                    }).trigger('resize');
+
+                    // Update stop method to use the connection
+                    stop = function() {
+                        connection.session.call('vtk:exit');
+                    }
+
+                    // Auto load file if any available
+                    if(connection.hasOwnProperty('file')) {
+                        console.log("call vtk:openRelativeFile " + connection['file']);
+                        session.call('vtk:openRelativeFile', connection['file']).then(function(){
+                            console.log("result of " + connection['file']);
+                            viewport.invalidateScene();
+                        }).always(function(e){
+                            console.log(e);
+                        });
+                    }
+                };
+
+                // Let's get some data
+                session.call('vtk:getPipeline').then(function(a) {
+                    pipeline = a;
+                    session.call('vtk:listFilters').then(function(b) {
+                        filters = b;
+                        init();
+                    });
+                });
+            };
+
+            // Try to launch the Viz process
+            vtkWeb.smartConnect(config, start, function(code,reason){
+                $(".loading").hide();
+                console.log(reason);
+            });
+        </script>
+    </body>
+</html>
