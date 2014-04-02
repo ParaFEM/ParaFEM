@@ -79,6 +79,7 @@ rem %G95% %FFLAGS%  large_strain.f90
 move libparafem.lib %PARAFEM%\lib
 move *.mod %PARAFEM%\include
 del *.obj
+cd /D %PARAFEM%
 
 rem
 rem
