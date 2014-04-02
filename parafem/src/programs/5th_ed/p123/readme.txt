@@ -13,6 +13,12 @@
   This was originally program p123 in the 4th Edition of the book and is 
   similar to program xx11 which is still under development by Llion Evans in 
   folder /dev
+
+  ERRATUM
+
+  In the book, the argument NUMVAR in the subroutine SCATTER_NODES (line 176)
+  is given the value NDIM(=3). This is incorrect and has been replaced with 
+  NODOF(=1).
   
   AUTHOR
 

@@ -173,7 +173,7 @@ PROGRAM p123
  CALL calc_nodes_pp(nn,npes,numpe,node_end,node_start,nodes_pp)
  ALLOCATE(ptl_pp(nodes_pp*ndim))
  ptl_pp=zero; utemp_pp=zero; CALL gather(xnew_pp(1:),utemp_pp)
- CALL scatter_nodes(npes,nn,nels_pp,g_num_pp,nod,ndim,nodes_pp,          &
+ CALL scatter_nodes(npes,nn,nels_pp,g_num_pp,nod,nodof,nodes_pp,         &
    node_start,node_end,utemp_pp,ptl_pp,1)
  CALL dismsh_ensi_p(12,1,nodes_pp,npes,numpe,1,ptl_pp)
  IF(numpe==it)                                                           &
