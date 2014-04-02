@@ -2,7 +2,7 @@
 
 set DRIVER_NAME=p122
 set PARAFEM=c:\parafem\parafem
-set G95=mpif77 /integer-size:32 /real-size:64 /Od
+set G95=mpif77 /integer-size:32 /real-size:64 /fast
 set FFLAGS=-c -I%PARAFEM%\include
 set LIB=%LIB%;%PARAFEM%\lib
 
