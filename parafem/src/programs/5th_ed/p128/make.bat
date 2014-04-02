@@ -11,7 +11,7 @@ IF "%1"=="clean" (
 	del *.exe
 ) else (
 	echo "Building %DRIVER_NAME% RELEASE"
-	%G95% %FFLAGS% *.f90
+	%G95% %FFLAGS% p128.f90
 	%G95% *.obj libparafem.lib -o %DRIVER_NAME%.exe  
 	copy *.exe %PARAFEM%\bin
 )
