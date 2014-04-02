@@ -13,7 +13,7 @@ rem  *** EDIT THE FOLLOWING LINES IF NECESSARY ***
 rem
 rem
 set PARAFEM=%CD%
-set G95=mpif77 /integer-size:32 /real-size:64 /Od
+set G95=mpif77 /integer-size:32 /real-size:64 /O3
 set FFLAGS=-c -I%PARAFEM%\include
 set AR=lib /out:
 set BUILD_GROUP_5ED=p121 p122 p123 p124 p125 p126 p128 p129 p1210
