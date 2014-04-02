@@ -10,6 +10,13 @@
 
     Usage: p125 <job_name>
   
+
+  ERRATUM
+
+  In the book, the argument NUMVAR in the subroutine SCATTER_NODES (line 110)
+  is given the value NDIM(=3). This is incorrect and has been replaced with
+  NODOF(=1).
+
   AUTHOR
 
   lee.margetts@manchester.ac.uk
