@@ -1,12 +1,12 @@
 # ParaFEM Demonstrator for Windows installer script
-# Requires Nullsoft Scriptable Install System (http://nsis.sourceforge.net/)
+# Requires Nullsoft Scriptable Install System 3.x (http://nsis.sourceforge.net/)
 # J.S.Robinson@soton.ac.uk
 
 OutFile "parafem-demo-installer.exe"
 
 !include "MUI2.nsh"
 !include "LogicLib.nsh"
-!include "AdvReplaceInFile.nsh"
+!include "include\AdvReplaceInFile.nsh"
 
 Name "ParaFEM Demonstrator"
 !define MUI_PRODUCT "ParaFEM_Demo"
