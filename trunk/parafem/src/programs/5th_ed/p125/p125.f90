@@ -107,7 +107,7 @@ PROGRAM p125
        WRITE(12,'(A/A/A)') "part", "    1","coordinates"
      END IF
      ptl_pp=zero; utemp_pp=zero; CALL gather(loads_pp(1:),utemp_pp)
-     CALL scatter_nodes(npes,nn,nels_pp,g_num_pp,nod,ndim,nodes_pp,      &
+     CALL scatter_nodes(npes,nn,nels_pp,g_num_pp,nod,nodof,nodes_pp,     &
        node_start,node_end,utemp_pp,ptl_pp,1)
      CALL dismsh_ensi_p(12,1,nodes_pp,npes,numpe,1,ptl_pp); CLOSE(12)
    END IF
