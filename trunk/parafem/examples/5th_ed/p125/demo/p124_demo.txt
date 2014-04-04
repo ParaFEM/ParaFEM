@@ -1,1 +1,0 @@
-Program p124 solves the 3D conduction equation using a simple explicit algorithm.
