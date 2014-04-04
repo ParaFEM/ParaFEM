@@ -16,6 +16,7 @@ PROGRAM p12meshgen
   USE geometry
   USE loading
   USE input
+  USE new_library
   
   IMPLICIT NONE
 
@@ -78,7 +79,7 @@ PROGRAM p12meshgen
     PRINT*
     STOP
   END IF
-  CALL getname(argv,nlen)
+  CALL getname_mg(argv,nlen)
 
 !------------------------------------------------------------------------------
 ! 4. Read control data
@@ -765,6 +766,14 @@ PROGRAM p12meshgen
 
       nstep=1; npri=1; dtim=1.0; solid=.true. 
 
+      CALL rest_to_nf(rest,nf)
+
+!     nf = 1
+!     DO i=1,nr
+!       j = rest(i,1)
+!       nf(:,j) = rest(i,2:4)
+!     END DO
+
       CALL mesh_ensi(argv,nlen,g_coord,g_num,element,etype,nf,                &
                      oldlds(1:),nstep,npri,dtim,solid)
 
@@ -1122,8 +1131,8 @@ PROGRAM p12meshgen
 
     CASE('paraview')
 
-      ALLOCATE(etype(nels),nf(nodof,nn),oldlds(nn*ndim)) 
-      etype=0; nf=0
+      ALLOCATE(etype(nels),nf(nodof,nn),oldlds(nn*ndim),num(nod)) 
+      etype=0; nf=0; num=0
 
       solid=.true. 
 
@@ -1563,7 +1572,9 @@ PROGRAM p12meshgen
     nodof = 3
     nod   = 20
     nn    = (((2*nxe+1)*(nze+1))+((nxe+1)*nze))*(nye+1)+(nxe+1)*(nze+1)*nye
-   
+
+    element = 'hexahedron' 
+
     loaded_freedoms = (2*nxe)+1 ! Differs from the problem in the book
 
     nres = 3*(nye*(nxe+1)*(nze+1)+nr*(nye-1)+(nxe+1))
