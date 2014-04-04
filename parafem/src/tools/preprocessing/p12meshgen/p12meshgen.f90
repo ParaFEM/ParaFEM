@@ -334,6 +334,8 @@ PROGRAM p12meshgen
 
             nstep=1; npri=1; dtim=1.0; solid=.true. 
 
+            CALL rest_to_nf(rest,nf)
+
             CALL mesh_ensi(argv,nlen,g_coord,g_num,element,etype,nf,          &
                            oldlds(1:),nstep,npri,dtim,solid)
 
@@ -598,6 +600,8 @@ PROGRAM p12meshgen
 
       nstep=incs; npri=1; dtim=1.0; solid=.true. 
 
+      CALL rest_to_nf(rest,nf)
+
       CALL mesh_ensi(argv,nlen,g_coord,g_num,element,etype,nf,                &
                      oldlds(1:),nstep,npri,dtim,solid)
 
@@ -767,12 +771,6 @@ PROGRAM p12meshgen
       nstep=1; npri=1; dtim=1.0; solid=.true. 
 
       CALL rest_to_nf(rest,nf)
-
-!     nf = 1
-!     DO i=1,nr
-!       j = rest(i,1)
-!       nf(:,j) = rest(i,2:4)
-!     END DO
 
       CALL mesh_ensi(argv,nlen,g_coord,g_num,element,etype,nf,                &
                      oldlds(1:),nstep,npri,dtim,solid)
@@ -962,6 +960,8 @@ PROGRAM p12meshgen
 
       solid=.true. 
 
+      CALL rest_to_nf(rest,nf)
+
       CALL mesh_ensi(argv,nlen,g_coord,g_num,element,etype,nf,                &
                      oldlds(1:),nstep,npri,dtim,solid)
 
@@ -1135,6 +1135,8 @@ PROGRAM p12meshgen
       etype=0; nf=0; num=0
 
       solid=.true. 
+
+      CALL rest_to_nf(rest,nf)
 
       CALL mesh_ensi(argv,nlen,g_coord,g_num,element,etype,nf,                &
                      oldlds(1:),nstep,npri,dtim,solid)
@@ -1383,6 +1385,8 @@ PROGRAM p12meshgen
       nstep=1; npri= 1; dtim=1.0_iwp
       solid=.true. ! need to review this 
 
+      CALL rest_to_nf(rest,nf)
+
       CALL mesh_ensi(argv,nlen,g_coord,g_num,element,etype,nf,                &
                      oldlds(1:),nstep,npri,dtim,solid)
 
@@ -1541,6 +1545,8 @@ PROGRAM p12meshgen
 
         nstep=nmodes; npri= 1; dtim=1.0_iwp
         solid=.true. ! need to review this 
+
+        CALL rest_to_nf(rest,nf)
 
         CALL mesh_ensi(argv,nlen,g_coord,g_num,element,etype,nf,              &
                        oldlds(1:),nstep,npri,dtim,solid)
@@ -1711,6 +1717,8 @@ PROGRAM p12meshgen
 
         dtim=1.0_iwp
         solid=.true. ! need to review this 
+
+        CALL rest_to_nf(rest,nf)
 
         CALL mesh_ensi(argv,nlen,g_coord,g_num,element,etype,nf,              &
                        oldlds(1:),nstep,npri,dtim,solid)
