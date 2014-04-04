@@ -9,12 +9,14 @@ MODULE NEW_LIBRARY
   !*    Contains subroutines provided in the Smith and Griffiths text book
   !*    
   !*    Subroutine             Purpose
+  !*    REST_TO_NF             Creates NF array from restraints in REST
+  !*
   !*  AUTHORS
   !*    I.M. Smith
   !*    D.V. Griffiths
   !*    L. Margetts
   !*  COPYRIGHT
-  !*    2004-2013 University of Manchester
+  !*    2004-2014 University of Manchester
   !******
   !*  Place remarks that should not be included in the documentation here.
   !*
@@ -30,6 +32,55 @@ MODULE NEW_LIBRARY
 !------------------------------------------------------------------------------
 !------------------------------------------------------------------------------
 !------------------------------------------------------------------------------
+
+  SUBROUTINE REST_TO_NF(rest,nf)
+
+    !/****f* new_library/rest_to_nf
+    !*  NAME
+    !*    SUBROUTINE: rest_to_nf
+    !*  SYNOPSIS
+    !*    Usage:      CALL rest_to_nf(rest,nf)
+    !*  FUNCTION
+    !*    Returns the NF array using the REST array
+    !*  INPUTS
+    !*    The following INTEGER ARRAY argument has the INTENT(IN) attribute:
+    !*
+    !*    rest(:,:)           : Restraints for restrained nodes only
+    !*
+    !*	OUTPUTS
+    !*    The following INTEGER ARRAY has the INTENT(OUT) attribute:
+    !*
+    !*    nf(:,:)             : full node freedom array
+    !*
+    !*  AUTHOR
+    !*    L. Margetts
+    !*  COPYRIGHT
+    !*    (c) University of Manchester 2004-2014
+    !******
+    !*  Place remarks that should not be included in the documentation here.
+    !*
+    !*/
+
+    IMPLICIT NONE
+    
+    REAL(iwp),INTENT(IN)    :: rest(:,:)
+    REAL(iwp),INTENT(INOUT) :: nf(:,:)
+    INTEGER                 :: i,j
+    
+    nf = 1
+    
+    DO i = 1,UBOUND(rest,1)
+      j = rest(i,1)
+      nf(:,j) = rest(i,2:4)
+    END DO
+    
+    RETURN
+    
+  END SUBROUTINE REST_TO_NF
+  
+!---------------------------------------------------------------------------
+!---------------------------------------------------------------------------
+!---------------------------------------------------------------------------
 
 SUBROUTINE formm(stress,m1,m2,m3)
 !
