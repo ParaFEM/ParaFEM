@@ -1065,7 +1065,7 @@
     </Proxy>
     <Proxy group="sources" type="ensight" id="2115" servers="1">
       <Property name="CaseFileName" id="2115.CaseFileName" number_of_elements="1">
-        <Element index="0" value="D:\parafem-data\p125\p125_tiny.ensi.case"/>
+        <Element index="0" value="%CASE_FILE_PATH%"/>
         <Domain name="files" id="2115.CaseFileName.files"/>
       </Property>
       <Property name="CellArrayInfo" id="2115.CellArrayInfo" number_of_elements="2">
@@ -1488,7 +1488,7 @@
       <Item id="2510" name="ScalarBarWidgetRepresentation1"/>
     </ProxyCollection>
     <ProxyCollection name="sources">
-      <Item id="2115" name="p125_tiny.ensi.case"/>
+      <Item id="2115" name="p125_demo.ensi.case"/>
     </ProxyCollection>
     <ProxyCollection name="timekeeper">
       <Item id="257" name="TimeKeeper"/>
