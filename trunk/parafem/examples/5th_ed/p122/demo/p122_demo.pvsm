@@ -2427,7 +2427,7 @@
     </Proxy>
     <Proxy group="sources" type="ensight" id="5998" servers="1">
       <Property name="CaseFileName" id="5998.CaseFileName" number_of_elements="1">
-        <Element index="0" value="D:\parafem-data\p122\dino_small\p122_dino_small.ensi.case"/>
+        <Element index="0" value="%CASE_FILE_PATH%"/>
         <Domain name="files" id="5998.CaseFileName.files"/>
       </Property>
       <Property name="CellArrayInfo" id="5998.CellArrayInfo" number_of_elements="2">
@@ -2873,7 +2873,7 @@
     <ProxyCollection name="sources">
       <Item id="6098" name="Glyph2"/>
       <Item id="6009" name="WarpByVector1"/>
-      <Item id="5998" name="p122_dino_small.ensi.case"/>
+      <Item id="5998" name="p.._demo.ensi.case"/>
     </ProxyCollection>
     <ProxyCollection name="timekeeper">
       <Item id="257" name="TimeKeeper"/>
