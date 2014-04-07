@@ -2,17 +2,17 @@
 # ParaFEM pf2ensi generated post-process file
 # Ensight Gold Format
 #
-# Problem name:	p122_dino_small
+# Problem name:	p122_demo
 #
 FORMAT
 type:	ensight gold
 GEOMETRY
-model:	1	p122_dino_small.ensi.geo
+model:	1	p122_demo.ensi.geo
 VARIABLE
-scalar per element:  material      p122_dino_small.ensi.MATID
-scalar per node:     restraint     p122_dino_small.ensi.NDBND
-vector per node:     fixed_displacement   p122_dino_small.ensi.NDFIX
-vector per node:     displacement  p122_dino_small.ensi.DISPL-******
+scalar per element:  material      p122_demo.ensi.MATID
+scalar per node:     restraint     p122_demo.ensi.NDBND
+vector per node:     fixed_displacement   p122_demo.ensi.NDFIX
+vector per node:     displacement  p122_demo.ensi.DISPL-******
 TIME
 time set:     1
 number of steps:   10
