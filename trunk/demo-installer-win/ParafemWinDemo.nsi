@@ -42,8 +42,12 @@ Section "install"
 	SetOutPath "$INSTDIR"
 	File /r ".\vendor\ParaView 4.1.0"
 	
-	#Icon
+	#Icons & images
 	File /r "parafem.ico"
+	File /r "parafem_logo_full.bmp"
+	
+	#Launcher
+	File /r "demo-driver.hta"
 	
 	#Binaries
 	CreateDirectory "$INSTDIR\bin"
@@ -56,63 +60,24 @@ Section "install"
 	SetOutPath  "$INSTDIR\examples"
 	File /r "..\parafem\examples\5th_ed\*"
 	
-	#Replace CASE file path in Paraview saved state files	
-	#P121
-	Push D:\parafem-data\p121\                 #text to be replaced
-	Push $INSTDIR\examples\p121\demo\          #replace with
-	Push all                                   #replace all occurrences
-	Push all                                   #replace all occurrences
-	Push $INSTDIR\examples\p121\demo\p121_small.pvsm     #file to replace in
-	Call AdvReplaceInFile                      #call find and replace function
-	
-	#P122
-	Push D:\parafem-data\p122\dino_small\      #text to be replaced
-	Push $INSTDIR\examples\p122\demo\          #replace with
-	Push all                                   #replace all occurrences
-	Push all                                   #replace all occurrences
-	Push $INSTDIR\examples\p122\demo\p122_dino_small.pvsm     #file to replace in
-	Call AdvReplaceInFile                      #call find and replace function
-	
-	#P126
-	Push D:\parafem-data\p126\tiny\			   #text to be replaced
-	Push $INSTDIR\examples\p126\demo\          #replace with
-	Push all                                   #replace all occurrences
-	Push all                                   #replace all occurrences
-	Push $INSTDIR\examples\p126\demo\p126_tiny.pvsm     #file to replace in
-	Call AdvReplaceInFile                      #call find and replace function
-	
 	#Replace @INSTDIR@ in driver batch files
 	#demo-driver.bat
 	Push @INSTDIR@                 #text to be replaced
 	Push $INSTDIR          #replace with
 	Push all                                   #replace all occurrences
 	Push all                                   #replace all occurrences
-	Push $INSTDIR\bin\demo-driver.bat     #file to replace in
+	Push $INSTDIR\bin\demo-driver.bat    #file to replace in
 	Call AdvReplaceInFile                      #call find and replace function
 	
-	#p121.bat
+	#demo-driver.hta
 	Push @INSTDIR@                 #text to be replaced
 	Push $INSTDIR          #replace with
 	Push all                                   #replace all occurrences
 	Push all                                   #replace all occurrences
-	Push $INSTDIR\bin\p121.bat     #file to replace in
+	Push $INSTDIR\demo-driver.hta     #file to replace in
 	Call AdvReplaceInFile                      #call find and replace function
 	
-	#p122.bat
-	Push @INSTDIR@                 #text to be replaced
-	Push $INSTDIR          #replace with
-	Push all                                   #replace all occurrences
-	Push all                                   #replace all occurrences
-	Push $INSTDIR\bin\p122.bat     #file to replace in
-	Call AdvReplaceInFile                      #call find and replace function
 	
-	#p126.bat
-	Push @INSTDIR@                 #text to be replaced
-	Push $INSTDIR          #replace with
-	Push all                                   #replace all occurrences
-	Push all                                   #replace all occurrences
-	Push $INSTDIR\bin\p126.bat     #file to replace in
-	Call AdvReplaceInFile                      #call find and replace function
 SectionEnd
 	
 # Start Menu Entries
@@ -120,7 +85,7 @@ RequestExecutionLevel user
 Section	
 	# ParaFEM demo-driver
 	createDirectory "$SMPROGRAMS\${MUI_PRODUCT}"
-	createShortCut "$SMPROGRAMS\${MUI_PRODUCT}\ParaFEM-Demos.lnk" "$INSTDIR\bin\demo-driver.bat" "" "$INSTDIR\parafem.ico"
+	createShortCut "$SMPROGRAMS\${MUI_PRODUCT}\ParaFEM-Demos.lnk" "$SYSDIR\mshta.exe" "$INSTDIR\demo-driver.hta" "$INSTDIR\parafem.ico"
 	
 	# ParaView
 	createShortCut "$SMPROGRAMS\${MUI_PRODUCT}\ParaView.lnk" "$INSTDIR\ParaView 4.1.0\bin\paraview.exe"

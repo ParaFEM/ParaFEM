@@ -1,45 +1,16 @@
-@ECHO OFF
-
+ECHO -------------------------------------------------------------------------------
+ECHO IF PROMPTED TO ALLOW FIREWALL ACCESS, PLEASE DO SO
+ECHO -------------------------------------------------------------------------------
 SET PARAFEM_HOME=@INSTDIR@
 cd "%PARAFEM_HOME%\bin"
+PATH=%PARAFEM_HOME%\OpenMPI_v1.6.2-win32\bin;%PATH%
+mpirun --mca btl self,sm -np 1 %1.exe ..\examples\%1\demo\%1_demo
+rem mpirun --mca btl self,sm -np %NUMBER_OF_PROCESSORS% p121.exe ..\examples\p121\demo\p121_small
 
-:start
-cls
-ECHO -------------------------------------------------------------------------------
-ECHO Welcome to the ParaFEM Demonstrator
-ECHO -------------------------------------------------------------------------------
-ECHO This package provides some sample implementations of software utilising ParaFEM
-ECHO NB. To build your own software ParaFEM must be installed separately
-ECHO -------------------------------------------------------------------------------
-
-:demos
 ECHO.
-ECHO The following demos are available:
-ECHO P121 - Three-dimensional analysis of an elastic solid
-ECHO P122 - Three-dimensional analysis of an elasoplastic (Mohr-Colomb) solid
-ECHO P126 - Three-dimensional steady-state Navier-Stokes analysis
-ECHO.
-SET /P DEMO="Which demo would you like to run?: (Enter name, e.g. P121): "
-IF /I '%DEMO%'=='p121' goto :p121
-IF /I '%DEMO%'=='p122' goto :p122
-IF /I '%DEMO%'=='p126' goto :p126
-goto demos
-
-:p121
-  cls
-  call p121.bat
-  pause
-  goto start
-
-:p122
-  cls
-  call p122.bat
-  pause
-  goto start
-
-:p126
-  cls
-  call p126.bat
-  pause
-  goto start
+ECHO -------------------------------------------------------------------------------
+ECHO Execution complete.  You can now view the output in ParaView
+ECHO -------------------------------------------------------------------------------
+pause
+"%PARAFEM_HOME%\ParaView 4.1.0\bin\paraview" --state=%PARAFEM_HOME%\examples\%1\demo\%1_demo.pvsm
 
