@@ -1698,7 +1698,7 @@
     </Proxy>
     <Proxy group="sources" type="ensight" id="2148" servers="1">
       <Property name="CaseFileName" id="2148.CaseFileName" number_of_elements="1">
-        <Element index="0" value="D:\parafem-data\p121\p121_small.ensi.case"/>
+        <Element index="0" value="%CASE_FILE_PATH%"/>
         <Domain name="files" id="2148.CaseFileName.files"/>
       </Property>
       <Property name="CellArrayInfo" id="2148.CellArrayInfo" number_of_elements="2">
@@ -2146,3 +2146,4 @@
     </GlobalPropertiesManagers>
   </ServerManagerState>
 </ParaView>
+
