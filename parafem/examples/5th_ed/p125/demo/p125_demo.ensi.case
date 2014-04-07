@@ -5,16 +5,16 @@
 #
 # Ensight Gold Format
 #
-# Problem name: p125_tiny
+# Problem name: p125_demo
 #
 FORMAT
 type:  ensight gold
 GEOMETRY
-model: 1  p125_tiny.ensi.geo
+model: 1  p125_demo.ensi.geo
 VARIABLE
-scalar per element:  material      p125_tiny.ensi.MATID
-scalar per node:     restraint     p125_tiny.ensi.NDBND
-scalar per node:     pressure      p125_tiny.ensi.NDPRE-******
+scalar per element:  material      p125_demo.ensi.MATID
+scalar per node:     restraint     p125_demo.ensi.NDBND
+scalar per node:     pressure      p125_demo.ensi.NDPRE-******
 TIME
 time set:     1
 number of steps:   10
