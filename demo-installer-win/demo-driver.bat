@@ -1,9 +1,12 @@
+@ECHO OFF
+PATH=%PARAFEM_HOME%\OpenMPI_v1.6.2-win32\bin;%PATH%
+ECHO
 ECHO -------------------------------------------------------------------------------
 ECHO IF PROMPTED TO ALLOW FIREWALL ACCESS, PLEASE DO SO
 ECHO -------------------------------------------------------------------------------
-SET PARAFEM_HOME=@INSTDIR@
+SET PARAFEM_HOME=C:\ParaFEM_Demo
 cd "%PARAFEM_HOME%\bin"
-PATH=%PARAFEM_HOME%\OpenMPI_v1.6.2-win32\bin;%PATH%
+
 mpirun --mca btl self,sm -np 1 %1.exe ..\examples\%1\demo\%1_demo
 rem mpirun --mca btl self,sm -np %NUMBER_OF_PROCESSORS% p121.exe ..\examples\p121\demo\p121_small
 
