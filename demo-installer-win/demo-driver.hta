@@ -7,11 +7,17 @@
 		 SCROLL="no"
 		 SINGLEINSTANCE="yes"
 		 ICON="parafem.ico"
-	>	
+	>
+    <style>
+    body
+    {
+        font-family: Calibri, Arial;
+    }
+    </style>	
 </head>
 
 <SCRIPT Language="VBScript">
-    Const PARAFEM_HOME = "C:\ParaFEM_Demo"
+    Const PARAFEM_HOME = "C:\ParaFEM Demonstrator"
 
 	Sub Window_Onload
 		'Resize window
@@ -70,13 +76,11 @@
 
 </SCRIPT>
 
-<body>
+<body background="parafem_bg_fade.png">
     <table>
         <tr>
-            <td>
-            
-                <img src="parafem_logo_full.bmp"/
-            
+            <td>            
+                <img src="parafem_logo_full.png" />
             </td>
 	        <td>
 	            <h2>Welcome to the ParaFEM Demonstrator</h2>
