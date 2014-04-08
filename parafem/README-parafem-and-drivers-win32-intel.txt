@@ -37,6 +37,8 @@ This assumes you have checked out the ParaFEM Subversion trunk to C:\parafem
 2. Type:
 	cd C:\parafem\parafem
 	make-parafem-and-drivers-win32-intel.bat
+
+Set the variable BUILD_GROUP_5ED to include the drivers you want built
 	
 If the build proceeds correctly, the driver (example) file executables will be 
 placed into C:\parafem\parafem\bin
