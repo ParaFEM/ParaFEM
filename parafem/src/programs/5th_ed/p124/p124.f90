@@ -129,6 +129,7 @@ PROGRAM p124
    no_pp=0; no_pp=no_pp_temp(1:loaded_freedoms_pp)
    DEALLOCATE(no_pp_temp,node)
  END IF
+ IF(loaded_freedoms==0) loaded_freedoms_pp=0
 !------------------------- start time stepping loop ----------------------
  CALL calc_nodes_pp(nn,npes,numpe,node_end,node_start,nodes_pp)
  ALLOCATE(ttr_pp(nodes_pp),eld_pp(ntot,nels_pp))
