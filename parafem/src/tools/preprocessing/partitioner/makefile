@@ -1,17 +1,17 @@
 # MAKEFILE src/tools/preprocessing/partitioner/makefile
 # Author: Louise M. Lever
 # -----------------------------------------------------------------------
-# Compiles d2metin and metout2d program executables.
+# Compiles pf2metin and metout2pf program executables.
 # -----------------------------------------------------------------------
 # Available Rules:
 #   (default) : execute the release rule
 #
-#   release: Build d2metin/metout2d executables as RELEASE edition
-#   debug: Build d2metin/metout2d executables as DEBUG edition
-#   install: Copy d2metin/metout2d executables into global bin directory
+#   release: Build d2metin/metoutpf executables as RELEASE edition
+#   debug: Build pf2metin/metoutpf executables as DEBUG edition
+#   install: Copy pf2metin/metoutpf executables into global bin directory
 #   clean: Remove .o object files
-#   execlean: Remove the local d2metin/metout2d executables
-#   relink: Rebuild d2metin/metout2d from object files and libraries
+#   execlean: Remove the local pf2metin/metoutpf executables
+#   relink: Rebuild pf2metin/metoutpf from object files and libraries
 # -----------------------------------------------------------------------
 # Notes:
 # -----------------------------------------------------------------------
@@ -28,42 +28,42 @@ all:	release
 
 release:
 	@echo
-	@echo "Building d2metin and metout2d RELEASE"
-	$(MAKE) d2metin \
+	@echo "Building pf2metin and metoutpf RELEASE"
+	$(MAKE) pf2metin \
 	FFLAGS="-c -I$(MODULE) $(PARTITIONER_REL_FFLAGS)"
-	$(MAKE) metout2d \
+	$(MAKE) metoutpf \
 	FFLAGS="-c -I$(MODULE) $(PARTITIONER_REL_FFLAGS)"
-	@echo "Done d2metin and metout2d RELEASE"
+	@echo "Done pf2metin and metoutpf RELEASE"
 
 debug:
 	@echo
-	@echo "Building d2metin and metout2d DEBUG"
-	$(MAKE) d2metin \
+	@echo "Building pf2metin and metoutpf DEBUG"
+	$(MAKE) pf2metin \
 	FFLAGS="-c -I$(MODULE) $(PARTITIONER_DBG_FFLAGS)"
-	$(MAKE) metout2d \
+	$(MAKE) metoutpf \
 	FFLAGS="-c -I$(MODULE) $(PARTITIONER_DBG_FFLAGS)"
-	@echo "Done d2metin and metout2d DEBUG"
+	@echo "Done pf2metin and metoutpf DEBUG"
 
-d2metin: d2metin.o
-	$(CC) d2metin.o -o d2metin
+pf2metin: pf2metin.o
+	$(CC) pf2metin.o -o pf2metin
 
-metout2d: metout2d.o
-	$(CC) metout2d.o -o metout2d
+metoutpf: metoutpf.o
+	$(CC) metoutpf.o -o metoutpf
 
-d2metin.o: d2metin.c
-	$(CC) d2metin.c $(FFLAGS)
+pf2metin.o: pf2metin.c
+	$(CC) pf2metin.c $(FFLAGS)
 
-metout2d.o: metout2d.c
-	$(CC) metout2d.c $(FFLAGS)
+metoutpf.o: metoutpf.c
+	$(CC) metoutpf.c $(FFLAGS)
 
 clean:
 	rm -f *.o
 
 execlean:
-	rm -f d2metin metout2d ../../../../bin/d2metin ../../../../bin/metout2d
+	rm -f pf2metin metoutpf ../../../../bin/pf2metin ../../../../bin/metoutpf
 
-relink: d2metin metout2d
+relink: pf2metin metoutpf
 
 install:
-	cp d2metin ../../../../bin
-	cp metout2d ../../../../bin
+	cp pf2metin ../../../../bin
+	cp metoutpf ../../../../bin
