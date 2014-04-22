@@ -1,5 +1,5 @@
-This folder contains the source code and makefile for the d2metin
-and metout2d pre-processing tools to support PARTITIONING of input
+This folder contains the source code and makefile for the pf2metin
+and metout2pf pre-processing tools to support PARTITIONING of input
 decks using the METIS partitioning library and tools.
 
 The METIS library and tools must also be downloaded, compiled and
@@ -10,16 +10,16 @@ METIS can be obtained from:
 
 These tools were compiled and tested against VERSION 4.0.3.
 
-d2metin
+pf2metin
   This program takes a ParaFEM input deck (.d file) and
   pre-processes it by transforming it into the file format
   required for use by the METIS Partitioning library and tools.
 
   USAGE:
-  d2metin <input_model_filename> <output_model_filename>
-  e.g., d2metin helix.d helix.met
+  pf2metin <input_model_filename> <output_model_filename>
+  e.g., pf2metin helix.d helix.met
 
-metout2d
+metout2pf
   This program takes an unpartitioned ParaFEM input deck
   (.d, .bnd, .lds) and a METIS output partition file and outputs
   a new ParaFEM input deck (.d, .bnd, .lds AND .psize) that
@@ -38,8 +38,8 @@ metout2d
   NOTE: ParaFEM .fix files are not supported.
   
   USAGE:
-    metout2d <partition_file> <input_basename> <output_basename>
-    e.g., metout2d helix.met.epart.3 helix helix_part
+    metout2pf <partition_file> <input_basename> <output_basename>
+    e.g., metout2pf helix.met.epart.3 helix helix_part
  
   NOTE: use the basename i.e., without the .d suffix.
   
@@ -48,9 +48,9 @@ WORKFLOW
   The overall workflow for partitioning ParaFEM input decks is as
   follows:
 
-    e.g., d2metin helix.d helix.met
+    e.g., pf2metin helix.d helix.met
           partnmesh helix.met 3
-          metout2d helix.met.epart.3 helix helix_part
+          metout2pf helix.met.epart.3 helix helix_part
 
   This will generate helix_part.d and helix_part.psize files. It
   will also generate helix_part.bnd and helix_part.lds if those
