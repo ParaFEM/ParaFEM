@@ -1,5 +1,5 @@
 /* --------------------------------------------------------------------------------
- * d2metin
+ * pf2metin
  * VERSION: 1.0.1
  * --------------------------------------------------------------------------------
  * This program takes a ParaFEM input deck (.d file) and pre-processes it by
@@ -7,9 +7,9 @@
  * library and tools.
  *
  * USAGE:
- *   d2metin <input_model_filename> <output_model_filename>
+ *   pf2metin <input_model_filename> <output_model_filename>
  *
- *   e.g., d2metin helix.d helix.met
+ *   e.g., pf2metin helix.d helix.met
  *
  * Additional tools are then required to further process the output files e.g.,
  * partnmesh or partdmesh (from METIS).
@@ -63,11 +63,11 @@ main( int argc, char **argv ) {
   elemBuf *pRootElemBuf;
   elemBuf *pElemBuf;
   int base;
-  
+
   int iel;
   int ndim;
   int nod;
-  
+
   /* Display USAGE if number of expected arguments incorrect 	 */
   if (argc != 3) {
     printf("Usage: dan2metin inputfile outputfile\n");
@@ -76,14 +76,14 @@ main( int argc, char **argv ) {
   }
 
   /* open the existing ParaFEM .d model file and create the output METIS file	 */
-  
+
   /* open input file - error and exit on fail */
   pIFH = fopen(argv[1], "r");
   if (pIFH == NULL) {
     printf("Could not open %s\n.", argv[1]);
     return(0);
   }
-  
+
   /* open output file - error and exit on fail*/
   pOFH = fopen(argv[2], "w");
   if (pOFH == NULL) {
@@ -109,7 +109,7 @@ main( int argc, char **argv ) {
   pElemBuf->numOcc = 0;
 
   /* search for start of *ELEMENTS data - error and exit on unexpected EOF */
-  
+
   while (1) {
     if( fgets(buf, 256, pIFH) == NULL ) {
       printf("Error in input file, elements not found.\n");
@@ -125,7 +125,7 @@ main( int argc, char **argv ) {
 
   /* loop over *ELEMENTS data - break on EOF or next label	 */
   /* LML: *DISPLACEMENTS label WILL NOT BE FOUND IN MODEL FILE	 */
-  
+
   while (1) {
     if (fgets(buf, 256, pIFH) == NULL) {
       break;
@@ -169,7 +169,7 @@ main( int argc, char **argv ) {
   }
 
 
-  
+
 //VSZ
   printf("%d elements read / %d dim / %d nod\n", iel, ndim, nod);
 
@@ -219,9 +219,9 @@ main( int argc, char **argv ) {
   }
 
   /* Successful conversion - tody and exit	 */
-  
+
   fclose(pIFH);
   fclose(pOFH);
-  
+
   return(0);
 }

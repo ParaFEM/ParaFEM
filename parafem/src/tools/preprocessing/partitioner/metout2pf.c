@@ -1,5 +1,5 @@
 /* ---------------------------------------------------------------
- * metout2d
+ * metout2pf
  * ---------------------------------------------------------------
  * This program takes an unpartitioned ParaFEM input deck
  * (.d, .bnd, .lds) and a METIS output partition file and outputs
@@ -17,18 +17,18 @@
  * should be used for this program.
  *
  * NOTE: ParaFEM .fix files are not supported.
- * 
- * USAGE:
- *   metout2d <partition_file> <input_basename> <output_basename>
  *
- *   e.g., metout2d helix.met.epart.3 helix helix_part
+ * USAGE:
+ *   metout2pf <partition_file> <input_basename> <output_basename>
+ *
+ *   e.g., metout2pf helix.met.epart.3 helix helix_part
  *
  * NOTE: use the basename i.e., without the .d suffix.
- * 
+ *
  * WORKFLOW:
  *   e.g., d2metin helix.d helix.met
  *         partnmesh helix.met 3
- *         metout2d helix.met.epart.3 helix helix_part
+ *         metout2pf helix.met.epart.3 helix helix_part
 
  * This will generate helix_part.d and helix_part.psize files. It
  * will also generate helix_part.bnd and helix_part.lds if those
@@ -80,34 +80,34 @@ main( int argc, char **argv ) {
   int j;
   int base;
   int idx;
-  
+
   int iel;
   int ndim;
   int nod;
   int nn;
   int nnnew;
   int pnum;
-  
+
   char fnamebuf[256];
-  
+
   int *pPart;
   int maxPartNumber;
   int *pPartSize;
   node *pNodes;
   int *pSortNodes;
   int *pElem;
-  
+
   int numlds;
   int numbnd;
   lds *pLds;
   int *pBnd;
-  
+
   if (argc != 4) {
-    printf("Usage: metout2d partitionfile basenamein basenameout\n");
+    printf("Usage: metout2pf partitionfile basenamein basenameout\n");
     printf(" Meshes with mixed element types not supported.\n");
     return(0);
   }
-  
+
   printf("\r                                                                           ");
   printf("\n %04d process partition file", __LINE__);
   fflush(stdout);
@@ -149,20 +149,20 @@ main( int argc, char **argv ) {
     i++;
   }
   fclose(pPFH);
-  
+
   printf("\r                                                                           ");
   printf("\r %04d sort elements by partition", __LINE__);
   fflush(stdout);
 
   /* sort elements by the partition they belong to */
   qsort(pPart, iel, 2*sizeof(int), icmp);
-  
+
 
 
   for (i=0; i<20; i++) {
     printf("DBG pPart i=%d %d %d\n", i, pPart[i*2], pPart[i*2+1]);
   }
-  
+
   printf("\r                                                                           ");
   printf("\r %04d find largest partition number", __LINE__);
   fflush(stdout);
@@ -178,7 +178,7 @@ main( int argc, char **argv ) {
       maxPartNumber = pPart[i*2];
     }
   }
-  
+
   /* find sizes of partitions */
   pPartSize = malloc((maxPartNumber+1) * sizeof(int));
   if (pPartSize == NULL) {
@@ -191,8 +191,8 @@ main( int argc, char **argv ) {
   for (i=0; i<iel; i++) {
     pPartSize[ pPart[i*2] ]++;
   }
-  
-  
+
+
   printf("\r                                                                           ");
   printf("\r %04d read nodes", __LINE__);
   fflush(stdout);
@@ -279,7 +279,7 @@ main( int argc, char **argv ) {
     pNodes[i].nn = j;
     i++;
   }
-  
+
 
 
   printf("\r                                                                           ");
@@ -325,8 +325,8 @@ main( int argc, char **argv ) {
     }
   }
   fclose(pIFH);
-  
-  
+
+
   printf("\r                                                                           ");
   printf("\r %04d renumber nodes", __LINE__);
   fflush(stdout);
@@ -344,7 +344,7 @@ main( int argc, char **argv ) {
   }
 
 
-  
+
   printf("\nDBG nnnew %d\n", nnnew);
 
   j = 0;
@@ -361,7 +361,7 @@ main( int argc, char **argv ) {
   }
 
   printf("DBG .rnn max %d\n", j);
-  
+
   printf("\r                                                                           ");
   printf("\r %04d write renumbered nodes", __LINE__);
   fflush(stdout);
@@ -398,7 +398,7 @@ main( int argc, char **argv ) {
 	    pNodes[pSortNodes[i*2]-1].x1, pNodes[pSortNodes[i*2]-1].x2,
 	    pNodes[pSortNodes[i*2]-1].x3);
   }
-  
+
 
 
   printf("\r                                                                           ");
@@ -425,7 +425,7 @@ main( int argc, char **argv ) {
     }
   }
   fclose(pOFH);
-  
+
 
 
   printf("\r                                                                           ");
@@ -458,8 +458,8 @@ main( int argc, char **argv ) {
     }
   }
   fclose(pOFH);
-  
-  
+
+
 
 
   printf("\r                                                                           ");
@@ -484,7 +484,7 @@ main( int argc, char **argv ) {
     numlds++;
   }
   fclose(pIFH);
-  
+
   pIFH = fopen(fnamebuf, "r");
   if (pIFH == NULL) {
     printf("Could not open %s.\n", fnamebuf);
@@ -497,7 +497,7 @@ main( int argc, char **argv ) {
     printf("Could not open %s.\n", fnamebuf);
     return(0);
   }
-  
+
   pLds = malloc(numlds*sizeof(lds));
   i = 0;
   while (fgets(buf, 256, pIFH)) {
@@ -515,7 +515,7 @@ main( int argc, char **argv ) {
   }
   fclose(pIFH);
   fclose(pOFH);
-  
+
 
   printf("\r                                                                           ");
   printf("\r %04d renumber restraints", __LINE__);
@@ -534,7 +534,7 @@ main( int argc, char **argv ) {
     numbnd++;
   }
   fclose(pIFH);
-  
+
   pIFH = fopen(fnamebuf, "r");
   if (pIFH == NULL) {
     printf("Could not open %s.\n", fnamebuf);
@@ -562,15 +562,15 @@ main( int argc, char **argv ) {
     pBnd[i*4] = pNodes[pBnd[i*4]-1].rnn;
   }
   qsort(pBnd, numbnd, 4*sizeof(int), icmp);
-  
+
   for (i=0; i<numbnd; i++) {
     fprintf(pOFH, "%4d   %d   %d   %d\n",
 	    pBnd[i*4], pBnd[i*4+1], pBnd[i*4+2], pBnd[i*4+3]);
   }
-  
+
   fclose(pIFH);
   fclose(pOFH);
-  
+
   printf("\rdone                                      \n");
 }
 
@@ -605,7 +605,7 @@ int ionecmp(const void *pI1, const void *pI2) {
 int ldscmp(const void *pL1, const void *pL2) {
   lds *p1 = (lds*)pL1;
   lds *p2 = (lds*)pL2;
-  
+
   if (p1->nn < p2->nn) {
     return(-1);
   }
