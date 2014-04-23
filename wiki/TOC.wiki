@@ -2,7 +2,7 @@
 
  * [http://parafem.org.uk/about/history About]
  * [Documentation Documentation]
-  * [GettingStarted Getting Started]
+  * [http://parafem.org.uk/resources/tutorials/installation Installation]
   * [Structure Driver Programs]
   * [Input Input Data Formats]
   * [Output Output Data Formats]
