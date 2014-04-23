@@ -1,4 +1,4 @@
 #summary About the ParaFEM project
 #sidebar TOC
 
-[http://parafem.org.uk/about/history Follow this link to find out more about the ParaFEM project]
+[http://parafem.org.uk/about/history Click here to find out more about the ParaFEM project]
