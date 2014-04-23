@@ -6,7 +6,7 @@
   * [Structure Driver Programs]
   * [Input Input Data Formats]
   * [Output Output Data Formats]
-  * [TestProblems Simple Test Problems]
+  * [http://parafem.org.uk/resources/tutorials/running-the-parafem-examples Running the ParaFEM Examples]
   * [http://parafem.org.uk/resources/tutorials/paraview Visualisation using ParaView]
   * [UMATs UMATs]
  * [Contribute Contribute to ParaFEM]
