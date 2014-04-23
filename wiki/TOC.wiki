@@ -1,6 +1,6 @@
 #summary Table of Contents
 
- * [About About]
+ * [http://parafem.org.uk/about/history About]
  * [Documentation Documentation]
   * [GettingStarted Getting Started]
   * [HectorUsers Advice for HECToR Users]
