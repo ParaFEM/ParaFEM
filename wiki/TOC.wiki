@@ -7,7 +7,7 @@
   * [Input Input Data Formats]
   * [Output Output Data Formats]
   * [TestProblems Simple Test Problems]
-  * [ParaFEMViewerManual Visualization Tool]
+  * [http://parafem.org.uk/resources/tutorials/paraview Visualisation using ParaView]
   * [UMATs UMATs]
  * [Contribute Contribute to ParaFEM]
  * [Performance Performance]
