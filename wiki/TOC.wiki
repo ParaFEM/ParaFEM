@@ -3,7 +3,6 @@
  * [http://parafem.org.uk/about/history About]
  * [Documentation Documentation]
   * [GettingStarted Getting Started]
-  * [HectorUsers Advice for HECToR Users]
   * [Structure Driver Programs]
   * [Input Input Data Formats]
   * [Output Output Data Formats]
