@@ -12,4 +12,4 @@
   * [UMATs UMATs]
  * [Contribute Contribute to ParaFEM]
  * [Performance Performance]
- * [Publications Publications]
+ * [http://parafem.org.uk/resources/publications Publications]
