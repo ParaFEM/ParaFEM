@@ -63,9 +63,9 @@ MODULE NEW_LIBRARY
 
     IMPLICIT NONE
     
-    REAL(iwp),INTENT(IN)    :: rest(:,:)
-    REAL(iwp),INTENT(INOUT) :: nf(:,:)
-    INTEGER                 :: i,j
+    INTEGER,INTENT(IN)    :: rest(:,:)
+    INTEGER,INTENT(INOUT) :: nf(:,:)
+    INTEGER               :: i,j
     
     nf = 1
     
