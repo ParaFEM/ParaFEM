@@ -45,7 +45,7 @@ MODULE LARGE_STRAIN
   USE LOADING
   USE ELEMENTS
   USE MATHS
-  
+  USE NEW_LIBRARY 
   
   CONTAINS
 
@@ -1689,10 +1689,10 @@ MODULE LARGE_STRAIN
       !---------------------------------------------------------------------
 
       rn = DOT_PRODUCT_P(r_pp,r_pp)
-	  
+  
       IF (numpe==1) THEN
         WRITE(90,'(i7,3(1p,e17.7))')iters,SQRT(rn0),SQRT(rn),SQRT(rn/rn0)
-        CALL FLUSH(90)
+!       CALL FLUSH(90)
       END IF
 
       IF (rn<tolr0) THEN
