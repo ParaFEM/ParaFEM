@@ -417,7 +417,7 @@ program XX7
                     diag_precon_pp(1:),rn0,deltax_pp(1:),iters)
 
       WRITE(91,*)iload,inewton,iters
-      CALL FLUSH(91)
+!     CALL FLUSH(91)
 
       xnew_pp(1:) = xnew_pp(1:) + deltax_pp(1:)
       xnew_pp(0) = .0_iwp
@@ -602,7 +602,7 @@ program XX7
     WRITE(11,*) "Time to write results (each time) :", timest(5) - timest(4)
     WRITE(11,*) "Time inside the load loop  :", elap_time( ) - timest(3) - &
                                         writetimes*(timest(5)-timest(4))
-    CALL FLUSH(11)
+!   CALL FLUSH(11)
     CLOSE(11)
   END IF
 
