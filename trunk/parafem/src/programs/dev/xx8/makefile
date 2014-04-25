@@ -1,19 +1,19 @@
-# MAKEFILE src/programs/5th_ed/p121/makefile
+# MAKEFILE src/programs/5th_ed/xx8/makefile
 # Author: Louise M. Lever
 # -----------------------------------------------------------------------
-# Compiles p121 program executable as RELEASE or DEBUG
+# Compiles xx8 program executable as RELEASE or DEBUG
 # Links with RELEASE STATIC library libParaFEM_mpi.$(VERSION).a
 #    or with RELEASE STATIC library libParaFEM_mpi_D.$(VERSION).a
 # -----------------------------------------------------------------------
 # Available Rules:
 #   (default) : execute the release rule
 #
-#   release: Build p121 executable as RELEASE edition
-#   debug: Build p121 executable as DEBUG edition
-#   install: Copy p121 executable into global bin directory
+#   release: Build xx8 executable as RELEASE edition
+#   debug: Build xx8 executable as DEBUG edition
+#   install: Copy xx8 executable into global bin directory
 #   clean: Remove .o object files
-#   execlean: Remove the local p121 executable
-#   relink: Rebuild p121 from object files and libraries
+#   execlean: Remove the local xx8 executable
+#   relink: Rebuild xx8 from object files and libraries
 # -----------------------------------------------------------------------
 # Notes:
 # -----------------------------------------------------------------------
@@ -29,33 +29,33 @@ all:	release
 
 release:
 	@echo
-	@echo "Building P121 RELEASE"
-	$(MAKE) p121 \
-	FFLAGS="-c -I$(MODULE) $(P121_MPI_REL_FFLAGS)" \
-	LDFLAGS="-L$(LIB) -lParaFEM_mpi.$(VERSION) $(P121_MPI_REL_LDFLAGS)"
-	@echo "Done p121 RELEASE"
+	@echo "Building XX8 RELEASE"
+	$(MAKE) xx8 \
+	FFLAGS="-c -I$(MODULE) $(XX8_MPI_REL_FFLAGS)" \
+	LDFLAGS="-L$(LIB) -lParaFEM_mpi.$(VERSION) $(XX8_MPI_REL_LDFLAGS)"
+	@echo "Done xx8 RELEASE"
 
 debug:
 	@echo
-	@echo "Building p121 DEBUG"
-	$(MAKE) p121 \
-	FFLAGS="-c -I$(MODULE) $(P121_MPI_DBG_FFLAGS)" \
-	LDFLAGS="-L$(LIB) -lParaFEM_mpi_D.$(VERSION) $(P121_MPI_DBG_LDFLAGS)"
-	@echo "Done p121 DEBUG"
+	@echo "Building xx8 DEBUG"
+	$(MAKE) xx8 \
+	FFLAGS="-c -I$(MODULE) $(XX8_MPI_DBG_FFLAGS)" \
+	LDFLAGS="-L$(LIB) -lParaFEM_mpi_D.$(VERSION) $(XX8_MPI_DBG_LDFLAGS)"
+	@echo "Done xx8 DEBUG"
 
-p121: p121.o
-	$(FC) p121.o -o p121 $(LDFLAGS)
+xx8: xx8.o
+	$(FC) xx8.o -o xx8 $(LDFLAGS)
 
-p121.o: p121.f90
-	$(FC) p121.f90 $(FFLAGS)
+xx8.o: xx8.f90
+	$(FC) xx8.f90 $(FFLAGS)
 
 clean:
 	rm -f *.o
 
 execlean:
-	rm -f p121 ../../../../bin/p121
+	rm -f xx8 ../../../../bin/xx8
 
-relink: p121
+relink: xx8
 
 install:
-	cp p121 ../../../../bin
+	cp xx8 ../../../../bin
