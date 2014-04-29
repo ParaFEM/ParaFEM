@@ -147,7 +147,8 @@ MODULE LARGE_STRAIN
     CALL INVERT_MATRIX_3x3(jacF,jacFinv)
     derivFtran = MATMUL(TRANSPOSE(deriv),jacFinv)
     derivF = TRANSPOSE(derivFtran)
-    CALL BEEMAT(derivF,beeF)
+!   CALL BEEMAT(derivF,beeF)
+    CALL BEEMAT(beeF,derivF) ! correct argument order
     rightCG = MATMUL(TRANSPOSE(jacF),jacF)
     defE = 0.5*rightCG
     defE(1,1) = defE(1,1) - 0.5
