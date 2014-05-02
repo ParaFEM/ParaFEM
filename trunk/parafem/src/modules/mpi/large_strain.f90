@@ -1339,7 +1339,7 @@ MODULE LARGE_STRAIN
     CALL MPI_REDUCE(nodesnum_pp,nodesnum,bufsize,MPI_INTEGER,MPI_SUM,0, &
                        MPI_COMM_WORLD,ier)
 
-    maxconec = MAXVAL(nodesnum(:))
+    IF(numpe==1) maxconec = MAXVAL(nodesnum(:))
 
     DEALLOCATE(nodesnum_pp)
 
