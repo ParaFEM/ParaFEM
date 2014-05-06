@@ -38,10 +38,14 @@ PROGRAM rfemsolve_te
   CHARACTER(LEN=50)     :: program_name='rfemsolve'
   CHARACTER(LEN=50)     :: fname,inst_in,job_in,label,instance_id
   LOGICAL               :: converged = .false.
-
+  
+  !Temporal variable
+  REAL(iwp)             :: constant
+  
   !Temperature value
   REAL(iwp)             :: gtemp
-
+  REAL(iwp)             :: averagetemp
+  REAL(iwp)             :: z
 !------------------------------------------------------------------------------
 ! 2. Declare dynamic arrays
 !------------------------------------------------------------------------------
@@ -59,15 +63,29 @@ PROGRAM rfemsolve_te
   REAL(iwp),ALLOCATABLE :: principal(:),reacnodes_pp(:)  
   INTEGER,  ALLOCATABLE :: rest(:,:),g_num_pp(:,:),g_g_pp(:,:),node(:)
   INTEGER,  ALLOCATABLE :: no(:),no_pp(:),no_pp_temp(:),sense(:),etype_pp(:)
+  REAL(iwp),ALLOCATABLE :: g(:)
   
   !Temperature variables
 
   REAL(iwp),ALLOCATABLE :: dtel(:),dtemp(:),etl(:),cte(:),teps(:),vector(:)
-  INTEGER(iwp),ALLOCATABLE :: num(:) 
+  INTEGER(iwp),ALLOCATABLE :: num(:),numc(:)
   
   REAL(iwp),ALLOCATABLE :: etl_pp(:,:)
   REAL(iwp),ALLOCATABLE :: tload_pp(:) 
- 
+  REAL(iwp),ALLOCATABLE :: thermalload(:)
+  REAL(iwp),ALLOCATABLE :: btd(:,:)
+  
+  
+  !
+  
+  !/////////////////////////////////////////////
+  
+  REAL(iwp),ALLOCATABLE :: average(:)
+  REAL(iwp) :: division
+  
+  !/////////////////////////////////////////////
+  
+  
 !------------------------------------------------------------------------------
 ! 2a. Definition of variable names not listed in the 5th edition
 !------------------------------------------------------------------------------
@@ -87,7 +105,7 @@ PROGRAM rfemsolve_te
 ! 3. Read job_in and instance_id from the command line. 
 !    Read control data, mesh data, boundary and loading conditions. 
 !------------------------------------------------------------------------------
- 
+   
   ALLOCATE(timest(20))
   timest    = zero 
   timest(1) = elap_time()
@@ -138,13 +156,21 @@ PROGRAM rfemsolve_te
   !Force Vector
   ALLOCATE(vector(6))
   ALLOCATE(num(nod))
+  ALLOCATE(numc(nod))
   ALLOCATE(etl(ndof))
   ALLOCATE(dtel(nod))
   ALLOCATE(dtemp(nn))
   ALLOCATE(teps(nst))
   
+  ALLOCATE(g(ndof))
+  
   ALLOCATE(etl_pp(ndof,nels_pp))
-    
+   
+  ALLOCATE(btd(24,6))
+  
+  ALLOCATE(average(nod))
+  
+  
   g_num_pp   = 0
   rest       = 0
   etype_pp   = 0
@@ -206,9 +232,11 @@ PROGRAM rfemsolve_te
   bufsize = nn
  
   CALL MPI_BCAST(dtemp,bufsize,MPI_REAL8,0,MPI_COMM_WORLD,ier)
- 
+  
 PRINT *, "READ_MATERIALVALUE COMPLETED"
   
+  
+
 !------------------------------------------------------------------------------
 ! 4. Allocate dynamic arrays used in main program
 !------------------------------------------------------------------------------
@@ -275,7 +303,10 @@ PRINT *, "READ_MATERIALVALUE COMPLETED"
   p_pp    = zero  ;  r_pp = zero  ;  x_pp = zero
   xnew_pp = zero  ;  u_pp = zero  ;  d_pp = zero  ; diag_precon_pp = zero
 
+  !CHANGE array size
+  
   ALLOCATE(tload_pp(neq_pp))
+  ALLOCATE(thermalload(neq_pp)) 
   
   timest(9) = elap_time()
 
@@ -284,7 +315,7 @@ PRINT *, "READ_MATERIALVALUE COMPLETED"
 !------------------------------------------------------------------------------
 
  ! OPEN(unit = 8, file = "results.txt")
-    
+ 
   points = zero
 
   CALL sample(element,points,weights)
@@ -292,34 +323,105 @@ PRINT *, "READ_MATERIALVALUE COMPLETED"
   teps=zero
   storkm_pp       = zero
   
+  etl_pp = zero
+  
   cte = 0
   
-  e = 10000
+  constant = 0.0435
+  
+  
+  !AVERAGE
+  !/////////////////////////////////////////////
+  z = nod
+  
+  division = (1/z) 
+  
+  !PRINT*,"division"
+  !PRINT*,division
+  
+  average = division
+  
+  !PRINT*,"nod"
+  !PRINT*,nod
+  
+  !PRINT*,"average"
+  !PRINT*,average
+  
+  
+  !/////////////////////////////////////////////
+  
+  
+  !Modification
+  
   
   elements_3: DO iel=1,nels_pp
-       
+                
     cte (1)   = prop(1,etype_pp(iel))
     cte (2)   = prop(1,etype_pp(iel))
     cte (3)   = prop(1,etype_pp(iel))
+    
+    !CTE - Temperature dependent 
+        
     v   = prop(2,etype_pp(iel))
+           
+    e = constant/prop(1,etype_pp(iel))
+    
     dee = zero
     
-    
+          
     CALL deemat(dee,e,v)
         
     !NEW LINES******************************
+    
+    g=g_g_pp(:,iel)
+    !PRINT*,"g_num_pp"
+    !PRINT*,g_num_pp
+    
     num=g_num_pp(:,iel)
+    PRINT*,"num"
+    PRINT*,num
+    
     dtel=dtemp(num)
+    
+    !averagtemp: DO z=1,nod
+      
+    !Average temperature    
+    !averagetemp = averagetemp + dtemp(i)
+    PRINT*,"dtemp"
+    PRINT*,dtemp
+    !PRINT*,"averagetemp"
+    !PRINT*,averagetemp
+        
+    !END DO averagtemp
+      
+    !PRINT*,"averagetemp"
+    !PRINT*,averagetemp
+    !gtemp=(averagetemp/nod)
+           
+    PRINT*,'dtel'
+    PRINT*,dtel
+    
     !***************************************
-  
+    
     etl=zero
             
     gauss_pts_1: DO i=1,nip
         
       CALL shape_fun(fun,points,i)
-      gtemp=dot_product(fun,dtel)
+      PRINT*,"fun"
+      PRINT*,fun
+      
+      
+      gtemp=dot_product(average,dtel)
+      print*,"gtemp"
+      print*,gtemp
+            
+      !Changes
+            
       teps(1:3)=gtemp*cte(1:3)
-
+      PRINT*,"teps"
+      PRINT*,teps
+      
       CALL shape_der(der,points,i)
       jac   = MATMUL(der,g_coord_pp(:,:,iel))
       det   = determinant(jac)
@@ -329,12 +431,32 @@ PRINT *, "READ_MATERIALVALUE COMPLETED"
       storkm_pp(:,:,iel)   = storkm_pp(:,:,iel) +                             &
                              MATMUL(MATMUL(TRANSPOSE(bee),dee),bee) *         &
                              det*weights(i)
-                 
+    
+      
+      btd=MATMUL(TRANSPOSE(bee),dee)
+      !PRINT*," "
+      !PRINT*,"btd"
+      !PRINT*,btd
+      !PRINT*," "
       etl=etl+MATMUL(MATMUL(TRANSPOSE(bee),dee),teps)*det*weights(i)
-  	     
+      !PRINT*," "
+      PRINT*,"etl"  
+      PRINT*,etl
+      PRINT*," "
+     
     END DO gauss_pts_1
+       
+    thermalload(g)=thermalload(g)+etl
     
     etl_pp(:,iel)=etl_pp(:,iel)+etl
+
+    PRINT*," "
+    PRINT*,"etl_pp"  
+    PRINT*,etl_pp
+    PRINT*," "
+    !PRINT*,"thermalload"  
+    !PRINT*,thermalload
+    
     
   END DO elements_3
   
@@ -343,9 +465,17 @@ PRINT *, "READ_MATERIALVALUE COMPLETED"
   IF(numpe==1) PRINT*, "COMPLETED ELEMENT STIFFNESS INTEGRATION AND STORAGE"
     
   CALL scatter(tload_pp,etl_pp)
-    
-
-
+  
+  !PRINT*," "
+  !PRINT*,"tload_pp"
+  !PRINT*,tload_pp
+  
+  !PRINT*,"thermalload"  
+  !PRINT*,thermalload
+  !PRINT*,"neq_pp"
+  !PRINT*,neq_pp
+  !PRINT*,"ndof"
+  !PRINT*,ndof
 
 !------------------------------------------------------------------------------
 ! 9. Build the diagonal preconditioner
@@ -413,6 +543,7 @@ PRINT *, "READ_MATERIALVALUE COMPLETED"
     CALL read_loads(job_in,numpe,node,val)
     CALL load(g_g_pp,g_num_pp,node,val,r_pp(1:))
 
+    !CHECK
     tload = SUM_P(r_pp(1:))
 
     DEALLOCATE(node,val)
@@ -454,7 +585,10 @@ PRINT *, "READ_MATERIALVALUE COMPLETED"
     END DO
   END IF
   
-  r_pp = tload_pp-r_pp
+  !CHANGE 
+  
+  !AQUI ES
+  r_pp = tload_pp - r_pp
   
   d_pp  = diag_precon_pp*r_pp
   p_pp  = d_pp
@@ -568,12 +702,18 @@ PRINT *, "READ_MATERIALVALUE COMPLETED"
   reacnodes_pp          = zero
   utemp_pp              = zero
 
+  e = 0
+  v = 0
+  
   DO iel = 1,nels_pp
-    e = 10000
+              
     cte (1)   = prop(1,etype_pp(iel))
     cte (2)   = prop(1,etype_pp(iel))
     cte (3)   = prop(1,etype_pp(iel))
     v   = prop(2,etype_pp(iel))
+    
+    e = constant/prop(1,etype_pp(iel))
+    
     dee = zero
     CALL deemat(dee,e,v)
 
