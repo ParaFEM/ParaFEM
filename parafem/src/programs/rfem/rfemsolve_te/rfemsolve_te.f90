@@ -378,8 +378,8 @@ PRINT *, "READ_MATERIALVALUE COMPLETED"
     !PRINT*,g_num_pp
     
     num=g_num_pp(:,iel)
-    PRINT*,"num"
-    PRINT*,num
+    !PRINT*,"num"
+    !PRINT*,num
     
     dtel=dtemp(num)
     
@@ -387,8 +387,8 @@ PRINT *, "READ_MATERIALVALUE COMPLETED"
       
     !Average temperature    
     !averagetemp = averagetemp + dtemp(i)
-    PRINT*,"dtemp"
-    PRINT*,dtemp
+    !PRINT*,"dtemp"
+    !PRINT*,dtemp
     !PRINT*,"averagetemp"
     !PRINT*,averagetemp
         
@@ -398,8 +398,8 @@ PRINT *, "READ_MATERIALVALUE COMPLETED"
     !PRINT*,averagetemp
     !gtemp=(averagetemp/nod)
            
-    PRINT*,'dtel'
-    PRINT*,dtel
+    !PRINT*,'dtel'
+    !PRINT*,dtel
     
     !***************************************
     
@@ -408,19 +408,19 @@ PRINT *, "READ_MATERIALVALUE COMPLETED"
     gauss_pts_1: DO i=1,nip
         
       CALL shape_fun(fun,points,i)
-      PRINT*,"fun"
-      PRINT*,fun
+      !PRINT*,"fun"
+      !PRINT*,fun
       
       
       gtemp=dot_product(average,dtel)
-      print*,"gtemp"
-      print*,gtemp
+      !print*,"gtemp"
+      !print*,gtemp
             
       !Changes
             
       teps(1:3)=gtemp*cte(1:3)
-      PRINT*,"teps"
-      PRINT*,teps
+      !PRINT*,"teps"
+      !PRINT*,teps
       
       CALL shape_der(der,points,i)
       jac   = MATMUL(der,g_coord_pp(:,:,iel))
@@ -433,27 +433,27 @@ PRINT *, "READ_MATERIALVALUE COMPLETED"
                              det*weights(i)
     
       
-      btd=MATMUL(TRANSPOSE(bee),dee)
+      !btd=MATMUL(TRANSPOSE(bee),dee)
       !PRINT*," "
       !PRINT*,"btd"
       !PRINT*,btd
       !PRINT*," "
       etl=etl+MATMUL(MATMUL(TRANSPOSE(bee),dee),teps)*det*weights(i)
       !PRINT*," "
-      PRINT*,"etl"  
-      PRINT*,etl
-      PRINT*," "
+      !PRINT*,"etl"  
+      !PRINT*,etl
+      !PRINT*," "
      
     END DO gauss_pts_1
        
-    thermalload(g)=thermalload(g)+etl
+    !thermalload(g)=thermalload(g)+etl
     
     etl_pp(:,iel)=etl_pp(:,iel)+etl
 
-    PRINT*," "
-    PRINT*,"etl_pp"  
-    PRINT*,etl_pp
-    PRINT*," "
+    !PRINT*," "
+    !PRINT*,"etl_pp"  
+    !PRINT*,etl_pp
+    !PRINT*," "
     !PRINT*,"thermalload"  
     !PRINT*,thermalload
     
