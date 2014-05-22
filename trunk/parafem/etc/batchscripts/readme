@@ -16,6 +16,16 @@ PBS COMMANDS EXPLAINED
 #PBS -l walltime=00:19:59   The maximum wall clock time required by the job
 #PBS -j oe                  Send job output & error messages to ParaFEM.o* file
 
+BLUEGENE/Q
+
+An example loadleveller script for the BlueGene/Q at the Hartree Centre is
+job.bgq.sh.
+
+  Usage: llsubmit job.bgq.sh
+
+To view queueing jobs: $llq
+
+To cancel a job: $llcancel <jobid>
 
 NOTES
 
