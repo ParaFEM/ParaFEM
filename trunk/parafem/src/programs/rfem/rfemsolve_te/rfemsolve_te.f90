@@ -1,4 +1,4 @@
-PROGRAM rfemsolve_te
+﻿PROGRAM rfemsolve_te
 !------------------------------------------------------------------------------ 
 !      Program rfemsolve_te three dimensional analysis of an elastic solid
 !                        load control or displacement control; multiple
@@ -40,12 +40,14 @@ PROGRAM rfemsolve_te
   LOGICAL               :: converged = .false.
   
   !Temporal variable
+    
   REAL(iwp)             :: constant
-  
+  REAL(iwp)             :: etemp
+  REAL(iwp)             :: store
+    
   !Temperature value
   REAL(iwp)             :: gtemp
-  REAL(iwp)             :: averagetemp
-  REAL(iwp)             :: z
+
 !------------------------------------------------------------------------------
 ! 2. Declare dynamic arrays
 !------------------------------------------------------------------------------
@@ -64,26 +66,17 @@ PROGRAM rfemsolve_te
   INTEGER,  ALLOCATABLE :: rest(:,:),g_num_pp(:,:),g_g_pp(:,:),node(:)
   INTEGER,  ALLOCATABLE :: no(:),no_pp(:),no_pp_temp(:),sense(:),etype_pp(:)
   REAL(iwp),ALLOCATABLE :: g(:)
-  
+    
   !Temperature variables
-
-  REAL(iwp),ALLOCATABLE :: dtel(:),dtemp(:),etl(:),cte(:),teps(:),vector(:)
+  INTEGER  :: z
+  
+  REAL(iwp),ALLOCATABLE :: dtel(:),dtemp(:),etl(:),cte(:),teps(:)
   INTEGER(iwp),ALLOCATABLE :: num(:),numc(:)
   
   REAL(iwp),ALLOCATABLE :: etl_pp(:,:)
   REAL(iwp),ALLOCATABLE :: tload_pp(:) 
   REAL(iwp),ALLOCATABLE :: thermalload(:)
-  REAL(iwp),ALLOCATABLE :: btd(:,:)
-  
-  
-  !
-  
-  !/////////////////////////////////////////////
-  
-  REAL(iwp),ALLOCATABLE :: average(:)
-  REAL(iwp) :: division
-  
-  !/////////////////////////////////////////////
+  REAL(iwp),ALLOCATABLE :: ele(:)
   
   
 !------------------------------------------------------------------------------
@@ -92,14 +85,17 @@ PROGRAM rfemsolve_te
 
 ! Scalar reals
 
-! ctex      coefficient thermal expansion in x-direction
-! ctey      coefficient thermal expansion in y-direction
-! ctez      coefficient thermal expansion in z-direction
+! cte       coefficient of thermal expansion in x, y, z direction
+
 
 ! Dynamic real arrays
 
 ! etl_pp    distributed element thermal forces array
 ! tload_pp  distributed global thermal forces vector
+! dtemp     storage of all nodal temperature changes
+! dtel      vectore storage for temperature nodal change for each element
+! etl       element thermal force array for an individual element
+! teps      
 
 !------------------------------------------------------------------------------
 ! 3. Read job_in and instance_id from the command line. 
@@ -154,23 +150,20 @@ PROGRAM rfemsolve_te
   ALLOCATE(prop(nprops,np_types))
 
   !Force Vector
-  ALLOCATE(vector(6))
   ALLOCATE(num(nod))
   ALLOCATE(numc(nod))
   ALLOCATE(etl(ndof))
   ALLOCATE(dtel(nod))
   ALLOCATE(dtemp(nn))
   ALLOCATE(teps(nst))
-  
+   
   ALLOCATE(g(ndof))
   
   ALLOCATE(etl_pp(ndof,nels_pp))
-   
-  ALLOCATE(btd(24,6))
+
   
-  ALLOCATE(average(nod))
-  
-  
+  ALLOCATE(ele(nels_pp))
+ 
   g_num_pp   = 0
   rest       = 0
   etype_pp   = 0
@@ -200,31 +193,17 @@ PROGRAM rfemsolve_te
   CALL read_materialValue(prop,fname,numpe,npes)       ! CALL read_prop? 
   
   !OPEN TEMPERATURE FILES
-
+  !Read the temperature change at each node and assign to the dtemp vector
+  
   OPEN(55,File='Temperature.txt',STATUS='OLD',ACTION='read')
-  READ(55,*)keyword,nn
+  READ(55,*)keyword
 
   READ(55,*)
- 
-  !PRINT*,keyword,nn
-  
+     
   ALLOCATE(cte(3))
-
-  !PRINT*,'The material properties are:'
-  !DO i= 1, 3
-      !READ(55,*)cte(i)
-      !PRINT*,cte(i)
-  !END DO
-
-  !READ(55,*)
-  !PRINT*,"nn = "
-  !PRINT*,nn
-
-  !PRINT*,'The temperature are:'
 
   DO i=1, nn
       READ(55,*)k,dtemp(i)
-      !PRINT*,dtemp(i)
   END DO
 
   CLOSE(55) 
@@ -314,8 +293,8 @@ PRINT *, "READ_MATERIALVALUE COMPLETED"
 ! 8. Element stiffness integration and storage
 !------------------------------------------------------------------------------
 
- ! OPEN(unit = 8, file = "results.txt")
- 
+  OPEN(unit = 8, file = "results.txt")
+  
   points = zero
 
   CALL sample(element,points,weights)
@@ -329,134 +308,94 @@ PRINT *, "READ_MATERIALVALUE COMPLETED"
   
   constant = 0.0435
   
-  
-  !AVERAGE
-  !/////////////////////////////////////////////
-  z = nod
-  
-  division = (1/z) 
-  
-  !PRINT*,"division"
-  !PRINT*,division
-  
-  average = division
-  
-  !PRINT*,"nod"
-  !PRINT*,nod
-  
-  !PRINT*,"average"
-  !PRINT*,average
-  
-  
-  !/////////////////////////////////////////////
-  
-  
-  !Modification
-  
+  etemp=0
   
   elements_3: DO iel=1,nels_pp
                 
     cte (1)   = prop(1,etype_pp(iel))
     cte (2)   = prop(1,etype_pp(iel))
     cte (3)   = prop(1,etype_pp(iel))
-    
-    !CTE - Temperature dependent 
-        
-    v   = prop(2,etype_pp(iel))
-           
-    e = constant/prop(1,etype_pp(iel))
-    
     dee = zero
     
-          
+    !Relationship between CTE and Young's modulus
+    
+    v = prop(2,etype_pp(iel))
+    e = constant/prop(1,etype_pp(iel))
+         
     CALL deemat(dee,e,v)
-        
-    !NEW LINES******************************
-    
-    g=g_g_pp(:,iel)
-    !PRINT*,"g_num_pp"
-    !PRINT*,g_num_pp
-    
+         
+    !Extraction of nodal numbers for each element
     num=g_num_pp(:,iel)
-    !PRINT*,"num"
-    !PRINT*,num
     
+    !Extraction of nodal temperature changes for each element
     dtel=dtemp(num)
     
-    !averagtemp: DO z=1,nod
-      
-    !Average temperature    
-    !averagetemp = averagetemp + dtemp(i)
-    !PRINT*,"dtemp"
-    !PRINT*,dtemp
-    !PRINT*,"averagetemp"
-    !PRINT*,averagetemp
+    !Temperature change average for each element
+    DO i=1,nip
+        CALL shape_fun(fun,points,i)
+    
+    !Calculuation of temperature changes at each integration point
+        gtemp=dot_product(fun,dtel)
+    
+    !Storage of temperatures from the integration points
+        etemp = gtemp + etemp
         
-    !END DO averagtemp
-      
-    !PRINT*,"averagetemp"
-    !PRINT*,averagetemp
-    !gtemp=(averagetemp/nod)
-           
-    !PRINT*,'dtel'
-    !PRINT*,dtel
+    END DO
     
-    !***************************************
+    !Change temperature average
+    etemp = etemp/nip
     
+    !Storage of average change of temperatures    
+    store = etemp
+               
     etl=zero
             
     gauss_pts_1: DO i=1,nip
+      
+      etemp=0
+        
+      gtemp = store
         
       CALL shape_fun(fun,points,i)
-      !PRINT*,"fun"
-      !PRINT*,fun
+      
+    !Reassignation of the element average temperature changes to each node of an element
+      
+      DO z = 1, nn
+      
+          dtel(z) = gtemp
+          
+      END DO
+      
+      !Temperature calculation at each integration point
+      gtemp=dot_product(fun,dtel)
       
       
-      gtemp=dot_product(average,dtel)
-      !print*,"gtemp"
-      !print*,gtemp
-            
-      !Changes
-            
+      !Calculation of the force vector
+      ! ε = αΔT{1 1 1 0 0 0}
       teps(1:3)=gtemp*cte(1:3)
-      !PRINT*,"teps"
-      !PRINT*,teps
-      
+                        
       CALL shape_der(der,points,i)
       jac   = MATMUL(der,g_coord_pp(:,:,iel))
       det   = determinant(jac)
+          
       CALL invert(jac)
       deriv = MATMUL(jac,der)
+         
       CALL beemat(bee,deriv)
+      
       storkm_pp(:,:,iel)   = storkm_pp(:,:,iel) +                             &
                              MATMUL(MATMUL(TRANSPOSE(bee),dee),bee) *         &
                              det*weights(i)
     
-      
-      !btd=MATMUL(TRANSPOSE(bee),dee)
-      !PRINT*," "
-      !PRINT*,"btd"
-      !PRINT*,btd
-      !PRINT*," "
+      !Calculation of thermal gradient force vector - [B]T[D]{ε} 
       etl=etl+MATMUL(MATMUL(TRANSPOSE(bee),dee),teps)*det*weights(i)
-      !PRINT*," "
-      !PRINT*,"etl"  
-      !PRINT*,etl
-      !PRINT*," "
-     
+          
     END DO gauss_pts_1
-       
-    !thermalload(g)=thermalload(g)+etl
+     
+    !Storage and distribution of thermal gradient force vector
     
     etl_pp(:,iel)=etl_pp(:,iel)+etl
 
-    !PRINT*," "
-    !PRINT*,"etl_pp"  
-    !PRINT*,etl_pp
-    !PRINT*," "
-    !PRINT*,"thermalload"  
-    !PRINT*,thermalload
-    
     
   END DO elements_3
   
@@ -466,16 +405,6 @@ PRINT *, "READ_MATERIALVALUE COMPLETED"
     
   CALL scatter(tload_pp,etl_pp)
   
-  !PRINT*," "
-  !PRINT*,"tload_pp"
-  !PRINT*,tload_pp
-  
-  !PRINT*,"thermalload"  
-  !PRINT*,thermalload
-  !PRINT*,"neq_pp"
-  !PRINT*,neq_pp
-  !PRINT*,"ndof"
-  !PRINT*,ndof
 
 !------------------------------------------------------------------------------
 ! 9. Build the diagonal preconditioner
