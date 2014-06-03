@@ -331,20 +331,20 @@ PRINT *, "READ_MATERIALVALUE COMPLETED"
     dtel=dtemp(num)
     
     !Temperature change average for each element
-    !DO i=1,nip
-    !    CALL shape_fun(fun,points,i)
+    DO i=1,nip
+        CALL shape_fun(fun,points,i)
     
     !Calculuation of temperature changes at each integration point
-    !    gtemp=dot_product(fun,dtel)
+        gtemp=dot_product(fun,dtel)
     
     !Storage of temperatures from the integration points
-    !    etemp = gtemp + etemp
-    !    PRINT *, "ELEMENT = ", iel, "TEMPERATURE =", etemp
+        etemp = gtemp + etemp
+        PRINT *, "ELEMENT = ", iel, "TEMPERATURE =", etemp
     !END DO
     
     !Reassignation of the element average temperature changes to each node of an element
-    !dtel(:) = etemp/REAL(nip)
-    !PRINT *, "ELEMENT Temperature (dtel)= ", "TEMPERATURE =", dtel             
+    dtel(:) = etemp/REAL(nip)
+    PRINT *, "ELEMENT Temperature (dtel)= ", "TEMPERATURE =", dtel             
     etl=zero
         
     gauss_pts_1: DO i=1,nip
@@ -366,9 +366,16 @@ PRINT *, "READ_MATERIALVALUE COMPLETED"
           
     END DO gauss_pts_1
       
-      
+       
+    
       CALL shape_fun(fun,points,1)
-      
+      CALL shape_der(der,points,1)
+      jac   = MATMUL(der,g_coord_pp(:,:,iel))
+      det   = determinant(jac)
+          
+      CALL invert(jac)
+      deriv = MATMUL(jac,der)
+            
       !Temperature calculation at each integration point
       gtemp=dot_product(fun,dtel)
             
