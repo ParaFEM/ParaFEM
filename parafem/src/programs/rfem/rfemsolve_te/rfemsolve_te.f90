@@ -340,7 +340,7 @@ PRINT *, "READ_MATERIALVALUE COMPLETED"
     !Storage of temperatures from the integration points
         etemp = gtemp + etemp
         PRINT *, "ELEMENT = ", iel, "TEMPERATURE =", etemp
-    !END DO
+    END DO
     
     !Reassignation of the element average temperature changes to each node of an element
     dtel(:) = etemp/REAL(nip)
@@ -365,9 +365,7 @@ PRINT *, "READ_MATERIALVALUE COMPLETED"
                              det*weights(i)
           
     END DO gauss_pts_1
-      
-       
-    
+             
       CALL shape_fun(fun,points,1)
       CALL shape_der(der,points,1)
       jac   = MATMUL(der,g_coord_pp(:,:,iel))
@@ -375,7 +373,8 @@ PRINT *, "READ_MATERIALVALUE COMPLETED"
           
       CALL invert(jac)
       deriv = MATMUL(jac,der)
-            
+      CALL beemat(bee,deriv)
+         
       !Temperature calculation at each integration point
       gtemp=dot_product(fun,dtel)
             
@@ -384,10 +383,9 @@ PRINT *, "READ_MATERIALVALUE COMPLETED"
       teps(1:3)=gtemp*cte(1:3)
     
       !Calculation of thermal gradient force vector - [B]T[D]{ε} 
-      etl=etl+MATMUL(MATMUL(TRANSPOSE(bee),dee),teps)*det*weights(i)
+      etl=etl+MATMUL(MATMUL(TRANSPOSE(bee),dee),teps)*det*weights(1)
       PRINT*,"etl =",etl  
-      
-      
+            
     !Storage and distribution of thermal gradient force vector
     
     etl_pp(:,iel)=etl_pp(:,iel)+etl
