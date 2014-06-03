@@ -308,7 +308,7 @@ PRINT *, "READ_MATERIALVALUE COMPLETED"
   
   constant = 0.0435
   
-  etemp=0
+  
   
   elements_3: DO iel=1,nels_pp
                 
@@ -316,7 +316,7 @@ PRINT *, "READ_MATERIALVALUE COMPLETED"
     cte (2)   = prop(1,etype_pp(iel))
     cte (3)   = prop(1,etype_pp(iel))
     dee = zero
-    
+    etemp=0
     !Relationship between CTE and Young's modulus
     
     v = prop(2,etype_pp(iel))
@@ -351,9 +351,7 @@ PRINT *, "READ_MATERIALVALUE COMPLETED"
     etl=zero
             
     gauss_pts_1: DO i=1,nip
-      
-      etemp=0
-        
+            
       gtemp = store
         
       CALL shape_fun(fun,points,i)
