@@ -342,22 +342,18 @@ PRINT *, "READ_MATERIALVALUE COMPLETED"
         
     END DO
     
-    !Change temperature average
-    gtemp = etemp/nip
+    !Reassignation of the element average temperature changes to each node of an element
+    dtel(:)  = etemp/nip
                  
     etl=zero
         
     gauss_pts_1: DO i=1,nip
                
       CALL shape_fun(fun,points,i)
-      
-      !Reassignation of the element average temperature changes to each node of an element
-      dtel(:) = gtemp
-        
+              
       !Temperature calculation at each integration point
       gtemp=dot_product(fun,dtel)
-      
-      
+            
       !Calculation of the force vector
       ! ε = αΔT{1 1 1 0 0 0}
       teps(1:3)=gtemp*cte(1:3)
