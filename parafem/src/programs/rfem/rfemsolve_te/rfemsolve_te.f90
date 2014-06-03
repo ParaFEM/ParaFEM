@@ -343,17 +343,12 @@ PRINT *, "READ_MATERIALVALUE COMPLETED"
     END DO
     
     !Change temperature average
-    etemp = etemp/nip
-    
-    !Storage of average change of temperatures    
-    store = etemp
-               
+    gtemp = etemp/nip
+                 
     etl=zero
-            
-    gauss_pts_1: DO i=1,nip
-            
-      gtemp = store
         
+    gauss_pts_1: DO i=1,nip
+               
       CALL shape_fun(fun,points,i)
       
       !Reassignation of the element average temperature changes to each node of an element
