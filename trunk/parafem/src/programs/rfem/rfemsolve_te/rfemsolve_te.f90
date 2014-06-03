@@ -287,6 +287,8 @@ PRINT *, "READ_MATERIALVALUE COMPLETED"
   ALLOCATE(tload_pp(neq_pp))
   ALLOCATE(thermalload(neq_pp)) 
   
+  tload_pp = zero
+  
   timest(9) = elap_time()
 
 !------------------------------------------------------------------------------
@@ -306,9 +308,7 @@ PRINT *, "READ_MATERIALVALUE COMPLETED"
   
   cte = 0
   
-  constant = 0.0435
-  
-  
+  constant = 43.5
   
   elements_3: DO iel=1,nels_pp
                 
@@ -321,7 +321,7 @@ PRINT *, "READ_MATERIALVALUE COMPLETED"
     
     v = prop(2,etype_pp(iel))
     e = constant/prop(1,etype_pp(iel))
-         
+    PRINT *, "E =", e     
     CALL deemat(dee,e,v)
          
     !Extraction of nodal numbers for each element
@@ -331,33 +331,26 @@ PRINT *, "READ_MATERIALVALUE COMPLETED"
     dtel=dtemp(num)
     
     !Temperature change average for each element
-    DO i=1,nip
-        CALL shape_fun(fun,points,i)
+    !DO i=1,nip
+    !    CALL shape_fun(fun,points,i)
     
     !Calculuation of temperature changes at each integration point
-        gtemp=dot_product(fun,dtel)
+    !    gtemp=dot_product(fun,dtel)
     
     !Storage of temperatures from the integration points
-        etemp = gtemp + etemp
-        
-    END DO
+    !    etemp = gtemp + etemp
+    !    PRINT *, "ELEMENT = ", iel, "TEMPERATURE =", etemp
+    !END DO
     
     !Reassignation of the element average temperature changes to each node of an element
-    dtel(:) = etemp/REAL(nip)
-                 
+    !dtel(:) = etemp/REAL(nip)
+    !PRINT *, "ELEMENT Temperature (dtel)= ", "TEMPERATURE =", dtel             
     etl=zero
         
     gauss_pts_1: DO i=1,nip
                
       CALL shape_fun(fun,points,i)
-              
-      !Temperature calculation at each integration point
-      gtemp=dot_product(fun,dtel)
-            
-      !Calculation of the force vector
-      ! ε = αΔT{1 1 1 0 0 0}
-      teps(1:3)=gtemp*cte(1:3)
-                        
+                                      
       CALL shape_der(der,points,i)
       jac   = MATMUL(der,g_coord_pp(:,:,iel))
       det   = determinant(jac)
@@ -370,16 +363,28 @@ PRINT *, "READ_MATERIALVALUE COMPLETED"
       storkm_pp(:,:,iel)   = storkm_pp(:,:,iel) +                             &
                              MATMUL(MATMUL(TRANSPOSE(bee),dee),bee) *         &
                              det*weights(i)
+          
+    END DO gauss_pts_1
+      
+      
+      CALL shape_fun(fun,points,1)
+      
+      !Temperature calculation at each integration point
+      gtemp=dot_product(fun,dtel)
+            
+      !Calculation of the force vector
+      ! ε = αΔT{1 1 1 0 0 0}
+      teps(1:3)=gtemp*cte(1:3)
     
       !Calculation of thermal gradient force vector - [B]T[D]{ε} 
       etl=etl+MATMUL(MATMUL(TRANSPOSE(bee),dee),teps)*det*weights(i)
-          
-    END DO gauss_pts_1
-     
+      PRINT*,"etl =",etl  
+      
+      
     !Storage and distribution of thermal gradient force vector
     
     etl_pp(:,iel)=etl_pp(:,iel)+etl
-
+    PRINT*,"etl_pp =",etl_pp  
     
   END DO elements_3
   
