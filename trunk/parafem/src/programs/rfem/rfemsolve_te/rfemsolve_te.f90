@@ -343,7 +343,7 @@ PRINT *, "READ_MATERIALVALUE COMPLETED"
     END DO
     
     !Reassignation of the element average temperature changes to each node of an element
-    dtel(:)  = etemp/nip
+    dtel(:) = etemp/REAL(nip)
                  
     etl=zero
         
