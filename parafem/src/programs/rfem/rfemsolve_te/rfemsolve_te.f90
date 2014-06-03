@@ -356,14 +356,9 @@ PRINT *, "READ_MATERIALVALUE COMPLETED"
         
       CALL shape_fun(fun,points,i)
       
-    !Reassignation of the element average temperature changes to each node of an element
-      
-      DO z = 1, nn
-      
-          dtel(z) = gtemp
-          
-      END DO
-      
+      !Reassignation of the element average temperature changes to each node of an element
+      dtel(:) = gtemp
+        
       !Temperature calculation at each integration point
       gtemp=dot_product(fun,dtel)
       
