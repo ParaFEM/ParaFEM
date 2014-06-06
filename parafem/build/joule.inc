@@ -64,7 +64,7 @@ DEFAULT_P12_MPI_DBG_LDFLAGS=
 # generic XX group FFLAGS and LDFLAGS
 DEFAULT_XX_MPI_REL_FFLAGS=-O2 -qrealsize=8
 DEFAULT_XX_MPI_DBG_FFLAGS=-V -g
-DEFAULT_XX_MPI_REL_LDFLAGS=
+DEFAULT_XX_MPI_REL_LDFLAGS=-L/bgsys/ibm_essl/prod/opt/ibmmath/lib64 -lesslbg
 DEFAULT_XX_MPI_DBG_LDFLAGS=-L/bgsys/ibm_essl/prod/opt/ibmmath/lib64 -lesslbg
 
 # generic PROG8 group FFLAGS and LDFLAGS
