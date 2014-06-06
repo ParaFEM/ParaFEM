@@ -1,6 +1,6 @@
 #@bg_size=1
 ##@executable=/bgsys/drivers/ppcfloor/hlcs/bin/runjob
-#@executable=job.sh
+#@executable=job.bgq.sh
 #@job_type=bluegene
 ##@arguments= --exe /gpfs/home/HCP010/lxm03/lxm77-lxm03/parafem/parafem/bin/xx7 --np 4 --args "xx7-tiny-f"
 ##@class=prod
