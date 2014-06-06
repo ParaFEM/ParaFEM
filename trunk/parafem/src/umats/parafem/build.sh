@@ -1,1 +1,1 @@
-ftn -r8 -c pf-elastic.f
+bgf77 -r8 -c pf-elastic.f

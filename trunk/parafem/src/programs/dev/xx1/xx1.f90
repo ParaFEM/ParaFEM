@@ -32,6 +32,8 @@ PROGRAM xx1
   CHARACTER(LEN=50)     :: program_name='xx1'
   CHARACTER(LEN=50)     :: fname,job_name,label
   LOGICAL               :: converged=.false.
+  LOGICAL               :: sym_storkm=.true.
+! LOGICAL               :: sym_storkm=.false.
 
 !------------------------------------------------------------------------------ 
 ! 1a. Declare variables used in the UMAT
@@ -53,6 +55,7 @@ PROGRAM xx1
   REAL(iwp),ALLOCATABLE :: points(:,:),dee(:,:),weights(:),val(:,:),disp_pp(:)
   REAL(iwp),ALLOCATABLE :: g_coord_pp(:,:,:),jac(:,:),der(:,:),deriv(:,:)
   REAL(iwp),ALLOCATABLE :: bee(:,:),storkm_pp(:,:,:),eld(:),eps(:),sigma(:)
+  REAL(iwp),ALLOCATABLE :: vstorkm_pp(:,:),km(:,:) ! dsymmv form
   REAL(iwp),ALLOCATABLE :: diag_precon_pp(:),p_pp(:),r_pp(:),x_pp(:),xnew_pp(:)
   REAL(iwp),ALLOCATABLE :: u_pp(:),pmul_pp(:,:),utemp_pp(:,:),d_pp(:),timest(:)
   REAL(iwp),ALLOCATABLE :: diag_precon_tmp(:,:),eld_pp(:,:),tensor_pp(:,:,:)
@@ -130,9 +133,20 @@ PROGRAM xx1
 
   ALLOCATE(points(nip,ndim),dee(nst,nst),jac(ndim,ndim),principal(ndim),      &
            der(ndim,nod),deriv(ndim,nod),bee(nst,ntot),                       &
-           storkm_pp(ntot,ntot,nels_pp),eld(ntot),eps(nst),sigma(nst),        &
+           eld(ntot),eps(nst),sigma(nst),                                     &
            pmul_pp(ntot,nels_pp),utemp_pp(ntot,nels_pp),                      &
            weights(nip),g_g_pp(ntot,nels_pp),fun(nod))
+
+  IF(sym_storkm) THEN
+    j=ntot
+    DO i=1,ntot-1
+      j=j+ntot-i
+    END DO
+    ALLOCATE(vstorkm_pp(j,nels_pp),km(ntot,ntot))
+    vstorkm_pp=zero ; km=zero
+  ELSE
+    ALLOCATE(storkm_pp(ntot,ntot,nels_pp)); storkm_pp=zero
+  END IF
 
 !------------------------------------------------------------------------------
 ! 4a. Allocate dynamic arrays used in the UMAT
@@ -195,32 +209,52 @@ PROGRAM xx1
 
   CALL sample(element,points,weights)
 
-!  dee = zero
-!  CALL deemat(e,v,dee)
-  
-
   dee = zero
-  CALL umat(sigma,statev,dee,sse,spd,scd,rpl,ddsddt,drplde,drpldt,stran,      &
-            eps,time,dtime,temp,dtemp,predef,dpred,cmname,ndi,nshr,           &
-            nst,nstatv,props,nprops,points,drot,pnewdt,celent,dfgrd0,dfgrd1,  &
-            iel,npt,layer,kspt,kstep,kinc)
+  CALL deemat(dee,e,v)
 
-  storkm_pp       = zero
- 
-  elements_3: DO iel=1,nels_pp
-    gauss_pts_1: DO i=1,nip
-      CALL shape_der(der,points,i)
-      jac   = MATMUL(der,g_coord_pp(:,:,iel))
-      det   = determinant(jac)
-      CALL invert(jac)
-      deriv = MATMUL(jac,der)
-      CALL beemat(bee,deriv)
-      storkm_pp(:,:,iel)   = storkm_pp(:,:,iel) +                             &
+! dee = zero
+! CALL umat(sigma,statev,dee,sse,spd,scd,rpl,ddsddt,drplde,drpldt,stran,      &
+!           eps,time,dtime,temp,dtemp,predef,dpred,cmname,ndi,nshr,           &
+!           nst,nstatv,props,nprops,points,drot,pnewdt,celent,dfgrd0,dfgrd1,  &
+!           iel,npt,layer,kspt,kstep,kinc)
+
+  IF(sym_storkm) THEN
+    vstorkm_pp       = zero
+    elements_3: DO iel=1,nels_pp
+      km = zero
+      gauss_pts_1: DO i=1,nip
+        CALL shape_der(der,points,i)
+        jac   = MATMUL(der,g_coord_pp(:,:,iel))
+        det   = determinant(jac)
+        CALL invert(jac)
+        deriv = MATMUL(jac,der)
+        CALL beemat(bee,deriv)
+        km    = km + MATMUL(MATMUL(TRANSPOSE(bee),dee),bee)*det*weights(i)
+      END DO gauss_pts_1
+      j = 1
+      DO i = 1,ntot
+        k = j+ntot-i
+        vstorkm_pp(j:k,iel)=km(i:,i)  
+        j = k+1
+      END DO
+    END DO elements_3
+  ELSE
+    storkm_pp        = zero
+    elements_3a: DO iel=1,nels_pp
+      gauss_pts_1a: DO i=1,nip
+        CALL shape_der(der,points,i)
+        jac   = MATMUL(der,g_coord_pp(:,:,iel))
+        det   = determinant(jac)
+        CALL invert(jac)
+        deriv = MATMUL(jac,der)
+        CALL beemat(bee,deriv)
+        storkm_pp(:,:,iel)   = storkm_pp(:,:,iel) +                           &
                              MATMUL(MATMUL(TRANSPOSE(bee),dee),bee) *         &
                              det*weights(i)   
-    END DO gauss_pts_1
-  END DO elements_3
-  
+      END DO gauss_pts_1a
+    END DO elements_3a
+  END IF
+ 
   timest(10) = elap_time()
 
 !------------------------------------------------------------------------------
@@ -229,12 +263,22 @@ PROGRAM xx1
   
   ALLOCATE(diag_precon_tmp(ntot,nels_pp))
   diag_precon_tmp = zero
- 
-  elements_4: DO iel = 1,nels_pp 
-    DO i = 1,ndof
-      diag_precon_tmp(i,iel) = diag_precon_tmp(i,iel) + storkm_pp(i,i,iel)
-    END DO
-  END DO elements_4
+
+  IF(sym_storkm) THEN
+    elements_4: DO iel = 1,nels_pp 
+      j = 1
+      DO i = 1,ndof
+        diag_precon_tmp(i,iel) = diag_precon_tmp(i,iel) + vstorkm_pp(j,iel)
+        j = j + ndof - i + 1
+      END DO
+    END DO elements_4
+  ELSE 
+    elements_4a: DO iel = 1,nels_pp 
+      DO i = 1,ndof
+        diag_precon_tmp(i,iel) = diag_precon_tmp(i,iel) + storkm_pp(i,i,iel)
+      END DO
+    END DO elements_4a
+  END IF
 
   CALL scatter(diag_precon_pp,diag_precon_tmp)
 
@@ -348,9 +392,18 @@ PROGRAM xx1
     utemp_pp = zero
 
     CALL gather(p_pp,pmul_pp)
-    elements_5: DO iel=1,nels_pp
-      utemp_pp(:,iel) = MATMUL(storkm_pp(:,:,iel),pmul_pp(:,iel))
-    END DO elements_5
+
+    IF(sym_storkm) THEN
+      elements_5: DO iel=1,nels_pp
+        CALL dspmv('L',ntot,1.0,vstorkm_pp(:,iel),pmul_pp(:,iel),1,0.0, &
+                   utemp_pp(:,iel),1)    
+      END DO elements_5
+    ELSE
+      elements_5a: DO iel=1,nels_pp
+        utemp_pp(:,iel) = MATMUL(storkm_pp(:,:,iel),pmul_pp(:,iel))
+      END DO elements_5a
+    END IF
+
     CALL scatter(u_pp,utemp_pp)
 
     IF(fixed_freedoms_pp > 0) THEN
@@ -375,8 +428,14 @@ PROGRAM xx1
 
   PRINT *, "Iters= ", iters
 
-  DEALLOCATE(p_pp,r_pp,x_pp,u_pp,d_pp,diag_precon_pp,storkm_pp,pmul_pp) 
-  
+  DEALLOCATE(p_pp,r_pp,x_pp,u_pp,d_pp,diag_precon_pp,pmul_pp) 
+ 
+  IF(sym_storkm) THEN
+    DEALLOCATE(vstorkm_pp)
+  ELSE
+    DEALLOCATE(storkm_pp)
+  END IF
+ 
   timest(13) = elap_time()
 
 !------------------------------------------------------------------------------
@@ -452,13 +511,13 @@ PROGRAM xx1
       deriv = MATMUL(jac,der)
       CALL beemat(bee,deriv)
       eps   = MATMUL(bee,eld_pp(:,iel))
-!     sigma = MATMUL(dee,eps) ! umat replaces this line
+      sigma = MATMUL(dee,eps) ! umat replaces this line
       dee   = zero
       sigma = zero
-      CALL umat(sigma,statev,dee,sse,spd,scd,rpl,ddsddt,drplde,drpldt,stran,  &
-                eps,time,dtime,temp,dtemp,predef,dpred,cmname,ndi,nshr,       &
-                nst,nstatv,props,nprops,points,drot,pnewdt,celent,dfgrd0,     &
-                dfgrd1,iel,npt,layer,kspt,kstep,kinc)
+!     CALL umat(sigma,statev,dee,sse,spd,scd,rpl,ddsddt,drplde,drpldt,stran,  &
+!               eps,time,dtime,temp,dtemp,predef,dpred,cmname,ndi,nshr,       &
+!               nst,nstatv,props,nprops,points,drot,pnewdt,celent,dfgrd0,     &
+!               dfgrd1,iel,npt,layer,kspt,kstep,kinc)
       CALL PRINCIPALSTRESS3D(sigma,principal)
       utemp_pp(:,iel) = utemp_pp(:,iel) +                                     &
                         MATMUL(TRANSPOSE(bee),sigma)*det*weights(i)
