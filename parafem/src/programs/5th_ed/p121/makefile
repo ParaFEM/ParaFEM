@@ -59,3 +59,7 @@ relink: p121
 
 install:
 	cp p121 ../../../../bin
+
+test:
+	./test.sh p121
+	
