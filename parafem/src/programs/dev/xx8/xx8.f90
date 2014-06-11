@@ -1,6 +1,6 @@
 PROGRAM xx8       
 !------------------------------------------------------------------------- 
-!      Program xx8 three dimensional analysis of an elastic solid
+!      Program 12.1 three dimensional analysis of an elastic solid
 !      using 20-node brick elements, preconditioned conjugate gradient
 !      solver; diagonal preconditioner diag_precon; parallel version
 !      loaded_nodes only
@@ -23,6 +23,8 @@ PROGRAM xx8
    x_pp(:),xnew_pp(:),u_pp(:),pmul_pp(:,:),utemp_pp(:,:),d_pp(:),        &
    timest(:),diag_precon_tmp(:,:),eld_pp(:,:),temp(:)
  INTEGER,ALLOCATABLE::rest(:,:),g_num_pp(:,:),g_g_pp(:,:),node(:)
+ CHARACTER(LEN=5)::npesstr
+ CHARACTER(80)::binary_buffer
 !------------------------ input and initialisation -----------------------
  ALLOCATE(timest(20)); timest=zero; timest(1)=elap_time()
  CALL find_pe_procs(numpe,npes); CALL getname(argv,nlen) 
@@ -68,7 +70,8 @@ PROGRAM xx8
  END DO;  END DO elements_2
  CALL scatter(diag_precon_pp,diag_precon_tmp); DEALLOCATE(diag_precon_tmp)
  IF(numpe==1)THEN
-   OPEN(11,FILE=argv(1:nlen)//".res",STATUS='REPLACE',ACTION='WRITE')
+   WRITE(npesstr, '(I5)') npes
+   OPEN(11,FILE=argv(1:nlen)//"_"//TRIM(npesstr)//".res",STATUS='REPLACE',ACTION='WRITE')
    WRITE(11,'(A,I7,A)') "This job ran on ",npes," processes"
    WRITE(11,'(A,3(I12,A))') "There are ",nn," nodes", nr, &
                            " restrained and ",neq," equations"
@@ -123,19 +126,26 @@ PROGRAM xx8
  END DO gauss_pts_2; DEALLOCATE(g_coord_pp)
 !------------------------ write out displacements ------------------------
  CALL calc_nodes_pp(nn,npes,numpe,node_end,node_start,nodes_pp)
- IF(numpe==1) THEN;  WRITE(ch,'(I6.6)') numpe
-   OPEN(12,file=argv(1:nlen)//".ensi.DISPL-"//ch,status='replace',       &
-     action='write')
-   WRITE(12,'(A)') "Alya Ensight Gold --- Vector per-node variable file"
-   WRITE(12,'(A/A/A)') "part", "     1","coordinates"
+ IF(numpe==1) THEN;
+    WRITE(ch,'(I6.6)') numpe
+    OPEN(12,file=argv(1:nlen)//".ensi.test.DISPL-"//ch,access='stream')
+    binary_buffer = "Ensight Model Variable File Created by xx8"
+    WRITE(12) binary_buffer
+    binary_buffer = "part"
+    WRITE(12) binary_buffer
+    ! 1 in little-endian (for testing purposes).
+    WRITE(12) 16777216
+    binary_buffer = "coordinates"
+    WRITE(12) binary_buffer
  END IF
  ALLOCATE(disp_pp(nodes_pp*ndim),temp(nodes_pp)); disp_pp=zero; temp=zero
  CALL scatter_nodes(npes,nn,nels_pp,g_num_pp,nod,ndim,nodes_pp,          &
                     node_start,node_end,eld_pp,disp_pp,1)
  DO i=1,ndim ; temp=zero
    DO j=1,nodes_pp; k=i+(ndim*(j-1)); temp(j)=disp_pp(k); END DO
-   CALL dismsh_ensi_p(12,1,nodes_pp,npes,numpe,1,temp)
- END DO ; IF(numpe==1) CLOSE(12)
+   CALL dismsh_ensi_pb(12,1,nodes_pp,npes,numpe,1,temp)
+ END DO ;
+!IF(numpe==1) CLOSE(12)
  IF(numpe==1) WRITE(11,'(A,F10.4)')"This analysis took  :",              &
    elap_time()-timest(1)  
  CALL SHUTDOWN() 
