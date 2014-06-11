@@ -394,7 +394,7 @@ PROGRAM xx12
 !------------------------------------------------------------------------------
     
     loaded_freedoms = loaded_nodes ! hack
-    
+    IF(loaded_freedoms==0) loaded_freedoms_pp=0
     IF(loaded_freedoms > 0) THEN
       
       ALLOCATE(node(loaded_freedoms),val(nodof,loaded_freedoms))
@@ -519,9 +519,9 @@ PROGRAM xx12
       END IF
 
       !---Write temperature outputs in ParaFEM format
-!     CALL write_nodal_variable(label,24,tz,nodes_pp,npes,numpe,nodof,disp_pp)
-      CALL write_nodal_variable_binary(label,25,tz,nodes_pp,npes,numpe,nodof, &
-                                       disp_pp)
+      CALL write_nodal_variable(label,24,tz,nodes_pp,npes,numpe,nodof,disp_pp)
+!      CALL write_nodal_variable_binary(label,25,tz,nodes_pp,npes,numpe,nodof, &
+!                                       disp_pp)
 
     END IF ! From section 16
 
@@ -618,9 +618,9 @@ PROGRAM xx12
       END IF      
 
       !---Write temperature outputs in ParaFEM format
-!     CALL write_nodal_variable(label,24,j,nodes_pp,npes,numpe,nodof,disp_pp)
-      CALL write_nodal_variable_binary(label,25,j,nodes_pp,npes,numpe,nodof,  &
-                                       disp_pp)
+     CALL write_nodal_variable(label,24,j,nodes_pp,npes,numpe,nodof,disp_pp)
+!      CALL write_nodal_variable_binary(label,25,j,nodes_pp,npes,numpe,nodof,  &
+!                                       disp_pp)
       
       IF(numpe==1) PRINT *, "Time ", real_time, "Iters ", iters
     END IF
