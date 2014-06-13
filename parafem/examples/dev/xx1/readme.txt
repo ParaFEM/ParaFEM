@@ -25,4 +25,6 @@ xx1-tiny.dat
 125  756  396  8  20  8  0
 0.1000E+03  0.3000E+00  0.1000E-04  200
 
+To use p121 files with xx1, please set FIXED_FREEDOMS to "0" and add the
+variable LOADED_NODES to the control file.
 
