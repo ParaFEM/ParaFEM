@@ -1662,5 +1662,173 @@ MODULE OUTPUT
   DEALLOCATE(get,stress_r)
 
   END SUBROUTINE DISMSH_ENSI_P
+
+
+
+
+
+
+
+      SUBROUTINE SWAP_F8 (FLOAT8)
+
+      IMPLICIT NONE
+
+      REAL(KIND=8), INTENT(IN OUT) :: FLOAT8
+
+      INTEGER(KIND=1), DIMENSION(8) :: BYTE_ARR, BYTE_ARR_TMP
+      INTEGER :: I
+
+
+      BYTE_ARR = TRANSFER (FLOAT8, BYTE_ARR)
+
+      BYTE_ARR_TMP = BYTE_ARR
+
+      DO I = 1, 8
+         BYTE_ARR(I) = BYTE_ARR_TMP(9-I)
+      END DO
+
+      FLOAT8 = TRANSFER (BYTE_ARR, FLOAT8)
+
+      RETURN
+
+      END SUBROUTINE SWAP_F8
+
+
+
+  SUBROUTINE DISMSH_ENSI_PB(filnum,iload,nodes_pp,npes,numpe, &
+                                  numvar,stress)
+
+  !/****f* output/dismsh_ensi_pb
+  !*  NAME
+  !*    SUBROUTINE: dismsh_ensi_pb
+  !*  SYNOPSIS
+  !*    Usage:      CALL dismsh_ensi_pb(filnum,iload,nodes_pp, &
+  !*                                          numpe,numvar,stress) 
+  !*  FUNCTION
+  !*    ! DO NOT USE - UNDER DEVELOPMENT !
+  !*    Write the values of a nodal variable to a binary file. This subroutine is 
+  !*    parallel and requires MPI. The master processor collects all the data
+  !*    from the slave processors.
+  !*  INPUTS
+  !*    The following arguments have the INTENT(IN) attribute:
+  !*
+  !*    filnum                  : Integer
+  !*                            : File number to write
+  !*
+  !*    iload                   : Integer
+  !*                            : Load step number
+  !*
+  !*    nodes_pp                : Integer
+  !*                            : Number of nodes assigned to a process
+  !*
+  !*    npes                    : Integer
+  !*                            : Number of processes
+  !*
+  !*    numpe                   : Integer
+  !*                            : Process number
+  !*
+  !*    numvar                  : Integer
+  !*                            : Number of components of the variable
+  !*                              (1-scalar, 3-vector, 6-tensor)
+  !*
+  !*    stress(nodes_pp*numvar) : Real
+  !*                            : Nodal variables to print
+  !*                             
+  !*
+  !*    The following arguments have the INTENT(OUT) attribute:
+  !*
+  !*  AUTHOR
+  !*    L. Margetts
+  !*  CREATION DATE
+  !*    11.01.2013
+  !*  COPYRIGHT
+  !*    (c) University of Manchester 2013
+  !******
+  !*
+  !*/
+
+  IMPLICIT NONE
+
+  INTEGER, INTENT(IN)           :: filnum, iload, nodes_pp, npes, numpe, numvar
+  REAL(iwp), INTENT(IN)         :: stress(:)
+  INTEGER                       :: i, j, idx1, nod_r, bufsize1, bufsize2
+  INTEGER                       :: ier, iproc, n, bufsize
+  INTEGER                       :: statu(MPI_STATUS_SIZE)
+  INTEGER, ALLOCATABLE          :: get(:)
+  REAL*4                        :: stress_single
+  REAL*4                        :: stress_single_little
+  REAL(iwp), ALLOCATABLE        :: stress_r(:)
+
+!------------------------------------------------------------------------------
+! 1. Master processor writes out the results for its own assigned nodes
+!------------------------------------------------------------------------------
+
+  IF(numpe==1) THEN
+    DO i = 1,nodes_pp
+      stress_single = stress(i)
+      WRITE(filnum) stress_single
+    END DO
+  END IF    
   
+!------------------------------------------------------------------------------
+! 2. Allocate arrays involved in communications
+!------------------------------------------------------------------------------
+
+  ALLOCATE(get(npes))
+  ALLOCATE(stress_r(nodes_pp*numvar)) 
+
+!------------------------------------------------------------------------------
+! 3. Master processor populates the array "get" containing "nodes_pp" of 
+!    every processor. Slave processors send this number to the master processor
+!------------------------------------------------------------------------------
+
+  get = 0
+  get(1) = nodes_pp
+
+  bufsize = 1
+
+  DO i = 2,npes
+    IF(numpe==i) THEN
+      CALL MPI_SEND(nodes_pp,bufsize,MPI_INTEGER,0,i,MPI_COMM_WORLD,ier)
+    END IF
+    IF(numpe==1) THEN
+      CALL MPI_RECV(nod_r,bufsize,MPI_INTEGER,i-1,i,MPI_COMM_WORLD,statu,ier)
+      get(i) = nod_r
+    END IF
+  END DO
+
+!------------------------------------------------------------------------------
+! 4. Master processor receives the nodal variables from the other processors 
+!    and writes them
+!------------------------------------------------------------------------------
+
+  DO iproc = 2,npes
+    IF (numpe==iproc) THEN
+      bufsize1 = nodes_pp*numvar
+      CALL MPI_SEND(stress,bufsize1,MPI_REAL4,0,iproc,MPI_COMM_WORLD,ier)
+    END IF
+    IF (numpe==1) THEN
+      bufsize2 = get(iproc)*numvar
+      CALL MPI_RECV(stress_r,bufsize2,MPI_REAL4,iproc-1,iproc, &
+                    MPI_COMM_WORLD,statu,ier)
+      n = 1
+      DO j = 2,iproc
+        n = n + get(j-1)
+      END DO
+      DO i = 1,get(iproc)
+        stress_single = stress_r(i)
+        WRITE(filnum) stress_single
+      END DO
+    END IF
+  END DO
+
+!------------------------------------------------------------------------------
+! 5. Deallocate communication arrays
+!------------------------------------------------------------------------------
+
+  DEALLOCATE(get,stress_r)
+
+
+  END SUBROUTINE DISMSH_ENSI_PB
+
 END MODULE OUTPUT
