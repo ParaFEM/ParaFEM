@@ -31,7 +31,7 @@ PROGRAM xx12
   INTEGER             :: loaded_freedoms_pp,loaded_freedoms_start
   INTEGER             :: nels,ndof,ielpe,npes_pp
   INTEGER             :: argc,iargc,meshgen,partitioner
-  INTEGER             :: np_types,el_print
+  INTEGER             :: np_types,el_print,i_o
   INTEGER             :: prog,tz
   REAL(iwp)           :: aa,bb,cc,kx,ky,kz,det,theta,dtim,real_time
   !REAL(iwp)           :: val0 = 100.0_iwp
@@ -88,7 +88,7 @@ PROGRAM xx12
   
   CALL read_xx12(job_name,numpe,dtim,element,fixed_freedoms,limit,            &
                  loaded_nodes,meshgen,nels,nip,nn,nod,npri,nr,nstep,          &
-                 partitioner,theta,tol,np_types,val0,el_print)
+                 partitioner,theta,tol,np_types,val0,el_print,i_o)
 
   CALL calc_nels_pp(job_name,nels,npes,numpe,partitioner,nels_pp)
   
@@ -459,19 +459,27 @@ PROGRAM xx12
 
     IF(j/=1) THEN
 
+      IF(fixed_freedoms_pp > 0) THEN
+        DO i = 1, fixed_freedoms_pp
+          l       = no_f_pp(i) - ieq_start + 1
+          k       = fixed_freedoms_start + i - 1
+          x_pp(l) = val_f(k)
+        END DO
+      END IF
+
       CALL gather(xnew_pp,pmul_pp)
       elements_2a: DO iel=1,nels_pp
         utemp_pp(:,iel)=MATMUL(storkb_pp(:,:,iel),pmul_pp(:,iel))
       END DO elements_2a
       CALL scatter(u_pp,utemp_pp)
 
-      IF(fixed_freedoms_pp > 0) THEN
-        DO i = 1, fixed_freedoms_pp
-          l       = no_f_pp(i) - ieq_start + 1
-          k       = fixed_freedoms_start + i - 1
-          u_pp(l) = store_pp(i)*val_f(k)
-        END DO
-      END IF
+!      IF(fixed_freedoms_pp > 0) THEN
+!        DO i = 1, fixed_freedoms_pp
+!          l       = no_f_pp(i) - ieq_start + 1
+!          k       = fixed_freedoms_start + i - 1
+!          u_pp(l) = store_pp(i)*val_f(k)
+!        END DO
+!      END IF
 
       loads_pp = loads_pp+u_pp
 
@@ -519,9 +527,14 @@ PROGRAM xx12
       END IF
 
       !---Write temperature outputs in ParaFEM format
-      CALL write_nodal_variable(label,24,tz,nodes_pp,npes,numpe,nodof,disp_pp)
-!      CALL write_nodal_variable_binary(label,25,tz,nodes_pp,npes,numpe,nodof, &
-!                                       disp_pp)
+      IF(i_o==1)THEN
+        CALL write_nodal_variable_binary(label,25,tz,nodes_pp,npes,numpe,nodof, &
+                                         disp_pp)
+      END IF
+      IF(i_o==2)THEN
+        CALL write_nodal_variable(label,24,tz,nodes_pp,npes,numpe,nodof,disp_pp)
+      END IF
+
 
     END IF ! From section 16
 
@@ -618,9 +631,13 @@ PROGRAM xx12
       END IF      
 
       !---Write temperature outputs in ParaFEM format
-     CALL write_nodal_variable(label,24,j,nodes_pp,npes,numpe,nodof,disp_pp)
-!      CALL write_nodal_variable_binary(label,25,j,nodes_pp,npes,numpe,nodof,  &
-!                                       disp_pp)
+      IF(i_o==1)THEN
+        CALL write_nodal_variable_binary(label,25,j,nodes_pp,npes,numpe,nodof,  &
+                                         disp_pp)
+      END IF
+      IF(i_o==2)THEN
+        CALL write_nodal_variable(label,24,j,nodes_pp,npes,numpe,nodof,disp_pp)
+      END IF
       
       IF(numpe==1) PRINT *, "Time ", real_time, "Iters ", iters
     END IF
