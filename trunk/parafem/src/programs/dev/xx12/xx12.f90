@@ -434,13 +434,15 @@ PROGRAM xx12
 
     loads_pp  = zero
 
-    DO i = 1, loaded_freedoms_pp
-      IF(amp(j)==0.0)THEN
-        loads_pp(no_pp(i)-ieq_start+1) = val(loaded_freedoms_start+i-1,1)*dtim*(1.0E-34)
-      ELSE
-        loads_pp(no_pp(i)-ieq_start+1) = val(loaded_freedoms_start+i-1,1)*dtim*amp(j)
-      END IF
-    END DO
+    IF(loaded_freedoms_pp > 0) THEN
+      DO i = 1, loaded_freedoms_pp
+        IF(amp(j)==0.0)THEN
+          loads_pp(no_pp(i)-ieq_start+1) = val(loaded_freedoms_start+i-1,1)*dtim*(1.0E-34)
+        ELSE
+          loads_pp(no_pp(i)-ieq_start+1) = val(loaded_freedoms_start+i-1,1)*dtim*amp(j)
+        END IF
+      END DO
+    END IF
     
 !    DO i = 1, loaded_freedoms_pp
 !      loads_pp(no_pp(i)-ieq_start+1) = val(loaded_freedoms_start+i-1,1)*dtim
@@ -459,13 +461,13 @@ PROGRAM xx12
 
     IF(j/=1) THEN
 
-      IF(fixed_freedoms_pp > 0) THEN
-        DO i = 1, fixed_freedoms_pp
-          l       = no_f_pp(i) - ieq_start + 1
-          k       = fixed_freedoms_start + i - 1
-          x_pp(l) = val_f(k)
-        END DO
-      END IF
+!      IF(fixed_freedoms_pp > 0) THEN
+!        DO i = 1, fixed_freedoms_pp
+!          l       = no_f_pp(i) - ieq_start + 1
+!          k       = fixed_freedoms_start + i - 1
+!          x_pp(l) = val_f(k)
+!        END DO
+!      END IF
 
       CALL gather(xnew_pp,pmul_pp)
       elements_2a: DO iel=1,nels_pp
@@ -473,13 +475,13 @@ PROGRAM xx12
       END DO elements_2a
       CALL scatter(u_pp,utemp_pp)
 
-!      IF(fixed_freedoms_pp > 0) THEN
-!        DO i = 1, fixed_freedoms_pp
-!          l       = no_f_pp(i) - ieq_start + 1
-!          k       = fixed_freedoms_start + i - 1
-!          u_pp(l) = store_pp(i)*val_f(k)
-!        END DO
-!      END IF
+      IF(fixed_freedoms_pp > 0) THEN
+        DO i = 1, fixed_freedoms_pp
+          l       = no_f_pp(i) - ieq_start + 1
+          k       = fixed_freedoms_start + i - 1
+          u_pp(l) = store_pp(i)*val_f(k)
+        END DO
+      END IF
 
       loads_pp = loads_pp+u_pp
 
