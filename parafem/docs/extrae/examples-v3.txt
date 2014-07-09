@@ -1,0 +1,76 @@
+Running the Examples
+
+This tutorial explains how to run the 10 example programs provided in Chapter 12 of the 5th edition of "Programming the Finite Element Method". 
+
+Linux Prerequisites
+
+This tutorial assumes a basic familiarity with Linux. Click here for a short online Introduction to Linux course.
+
+The programs and tools described in the following sections can be found in the $HOME/parafem/bin directory. To run them from anywhere on the system, the directory needs to be added to the $PATH environment variable.This can be done interactively by typing the following each time you login:
+
+PATH=$PATH:/$HOME/parafem/bin
+
+export PATH
+
+or once by adding the commands above to the .bash_profile file in the $HOME directory.
+   
+
+Program 12.1 Linear Elasticity
+
+It is recommended that you run the programs in a directory separate from the ParaFEM source tree. In the home directory, create the new directory $HOME/work/p121_5.
+
+Input Data 
+
+The example input decks for p121_5 are created using the program mg2d. This takes as input a file with the .mg extension. Copy the p121_5_<size>.mg files from $HOME/parafem/examples/mg2d/5th_ed/p121_5 to your new directory. In your new directory type the following (remembering the space and "."):
+
+cp $HOME/parafem/examples/mg2d/5th_ed/p121_5/*.mg .
+
+Build the tiny model by typing:
+
+mg2d p121_5_tiny
+
+If successful this will produce the following files:
+
+p121_5_tiny.d - nodal coordinates and element steering
+
+p121_5_tiny.bnd - restrained nodes
+
+p121_5_tiny.lds - applied forces
+
+p121_5_tiny.dat - program control data
+
+
+Running the Analysis
+
+Instructions for running the analysis are dependent on the cluster you are using. It typically involves creating a job script that is then submitting to a batch scheduling system. Please check the details with your service provider. An example is given below.
+
+MinoTauro Cluster
+
+Create the job script according to the documentation provided by Barcelona Supercomputing Center. To the bottom of the script, add the line:
+
+srun p121_5 p121_5_tiny
+
+where p121_5_tiny is the name of the model
+
+Submit the job by executing the following command:
+
+mnsubmit debug.sh
+
+You can check the job is running using the command mnq.
+
+If the analysis has completed successfully, the directory will contain the results files:
+
+p121_5_tiny.ensi.DISPL-000001 - displacements
+p121_5_tiny.res - basic performance data
+
+
+
+
+
+ 
+
+
+
+
+
+

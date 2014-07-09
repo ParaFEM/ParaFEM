@@ -1,0 +1,44 @@
+Extrae
+
+This tutorial explains how to use Extrae with ParaFEM on MinoTauro
+
+Load the appropriate environment by typing:
+
+module load wxparaver
+
+Create the environment variable EXTRAE_HOME by typing:
+
+export EXTRAE_HOME=/gpfs/apps/NVIDIA/CEPBATOOLS/extrae/2.3.4/default/64
+
+Copy the example extrae.xml file to your working directory by typing:
+
+cp $EXTRAE_HOME/share/example/MPI/extrae.xml .  (note the space and dot)
+
+Create the file trace.sh in your working directory. This file contains the following lines:
+
+#!/bin/sh
+
+export EXTRAE_HOME=/gpfs/apps/NVIDIA/CEPBATOOLS/extrae/2.3.4/default/64
+export EXTRAE_CONFIG_FILE=extrae.xml
+export LD_PRELOAD=${EXTRAE_HOME}/lib/libmpitrace.so
+
+$*
+
+Make the trace.sh executable by typing:
+
+chmod +x trace.sh
+
+Modify your SLURM job submission script adding:
+
+export EXE=$HOME/parafem/bin/p121_5
+export TRACENAME=parafem_p121_trace.prv
+
+time srun ./trace.sh $EXE p121_tiny
+
+Submit the job in the usual way.
+
+Merge the intermediate trace files using the following command:
+
+${EXTRAE_HOME}/bin/mpi2prv -f TRACE.mpits -o p121_5.prv
+
+If successful, the file p121_5.prv will be created
