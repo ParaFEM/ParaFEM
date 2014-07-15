@@ -461,13 +461,13 @@ PROGRAM xx12
 
     IF(j/=1) THEN
 
-!      IF(fixed_freedoms_pp > 0) THEN
-!        DO i = 1, fixed_freedoms_pp
-!          l       = no_f_pp(i) - ieq_start + 1
-!          k       = fixed_freedoms_start + i - 1
-!          x_pp(l) = val_f(k)
-!        END DO
-!      END IF
+      IF(fixed_freedoms_pp > 0) THEN
+        DO i = 1, fixed_freedoms_pp
+          l       = no_f_pp(i) - ieq_start + 1
+          k       = fixed_freedoms_start + i - 1
+          x_pp(l) = val_f(k)
+        END DO
+      END IF
 
       CALL gather(xnew_pp,pmul_pp)
       elements_2a: DO iel=1,nels_pp
@@ -549,7 +549,7 @@ PROGRAM xx12
     r_pp              = zero
     pmul_pp           = zero
     utemp_pp          = zero
-    x_pp              = zero
+!   x_pp              = zero
 
     CALL gather(x_pp,pmul_pp)
     elements_2b: DO iel=1,nels_pp
