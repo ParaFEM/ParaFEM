@@ -42,3 +42,12 @@ Merge the intermediate trace files using the following command:
 ${EXTRAE_HOME}/bin/mpi2prv -f TRACE.mpits -o p121_5.prv
 
 If successful, the file p121_5.prv will be created
+
+
+
+-----------------------------------
+Extrae on BlueJoule
+-----------------------------------
+
+BSC are unable to verify whether the LD_PRELOAD mechanism works on BlueGene systems.
+They advise statically linking the application with libmpitrace as shown in the example in $EXTRAE_HOME/share/example/MPI.
