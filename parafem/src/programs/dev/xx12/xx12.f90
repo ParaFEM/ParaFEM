@@ -330,7 +330,6 @@ PROGRAM xx12
     WRITE(26,*) nstep/npri
     WRITE(26,*) npes
   END IF
-
    
   IF(numpe==1) PRINT *, "End of 10"
   
@@ -469,7 +468,7 @@ PROGRAM xx12
         END DO
       END IF
 
-      CALL gather(xnew_pp,pmul_pp)
+      CALL gather(x_pp,pmul_pp)
       elements_2a: DO iel=1,nels_pp
         utemp_pp(:,iel)=MATMUL(storkb_pp(:,:,iel),pmul_pp(:,iel))
       END DO elements_2a
@@ -534,7 +533,7 @@ PROGRAM xx12
                                          disp_pp)
       END IF
       IF(i_o==2)THEN
-        CALL write_nodal_variable(label,24,tz,nodes_pp,npes,numpe,nodof,disp_pp)
+        CALL write_nodal_variable2(label,24,tz,nodes_pp,npes,numpe,nodof,disp_pp)
       END IF
 
 
@@ -638,7 +637,7 @@ PROGRAM xx12
                                          disp_pp)
       END IF
       IF(i_o==2)THEN
-        CALL write_nodal_variable(label,24,j,nodes_pp,npes,numpe,nodof,disp_pp)
+        CALL write_nodal_variable2(label,24,j,nodes_pp,npes,numpe,nodof,disp_pp)
       END IF
       
       IF(numpe==1) PRINT *, "Time ", real_time, "Iters ", iters
