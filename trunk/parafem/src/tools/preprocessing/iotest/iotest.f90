@@ -273,7 +273,9 @@ PROGRAM iotest
   WRITE(27) nn_c
   DO j=1,ndim
     DO i=1,nn  
-      WRITE(27) real(g_coord_c(j,i),kind=4)
+!     WRITE(27) real(g_coord_c(j,i),kind=4)
+      WRITE(27) real(g_coord(j,i),kind=c_float)
+!     WRITE(27) g_coord(j,i)
     END DO
   END DO
  
