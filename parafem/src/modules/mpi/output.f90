@@ -1774,7 +1774,7 @@ MODULE OUTPUT
 
   IF(numpe==1) THEN
     DO i = 1,nodes_pp
-      WRITE(filnum,'(e12.4)') stress(i)
+      WRITE(filnum,'(e12.5)') stress(i)
     END DO
   END IF    
   
@@ -1824,7 +1824,7 @@ MODULE OUTPUT
         n = n + get(j-1)
       END DO
       DO i = 1,get(iproc)
-        WRITE(filnum,'(e12.4)') stress_r(i)
+        WRITE(filnum,'(e12.5)') stress_r(i)
       END DO
     END IF
   END DO
