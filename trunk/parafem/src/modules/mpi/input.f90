@@ -5726,7 +5726,7 @@ END SUBROUTINE bcast_inputdata_p127
     cbuffer = "node id off"                  ; WRITE(13) cbuffer
     cbuffer = "element id off"               ; WRITE(13) cbuffer
     cbuffer = "part"                         ; WRITE(13) cbuffer
-    WRITE(13 int(1,kind=c_int)
+    WRITE(13) int(1,kind=c_int)
     IF(ndim==2) cbuffer = "2d-mesh"          ; WRITE(13) cbuffer
     IF(ndim==3) cbuffer = "Volume Mesh"      ; WRITE(13) cbuffer
     cbuffer = "coordinates"                  ; WRITE(13) cbuffer
