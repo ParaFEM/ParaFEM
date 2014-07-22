@@ -1,13 +1,13 @@
 
-  PROGRAM: p12meshgen.f90
+  PROGRAM: p12meshgenbin.f90
 
-  p12meshgen is a simple program that generates the built-in meshes for 
+  p12meshgenbin is a simple program that generates the built-in meshes for 
   the 10 programs in Smith IM, Griffiths DV, and Margetts L "Programming
   the Finite Element Method", 5th Edition, Wiley, 2013.
 
-    Usage: p12meshgen <job_name>
+    Usage: p12meshgenbin <job_name>
   
-           p12meshgen p121_5
+           p12meshgenbin p121_5
 
   NOTES 
 

@@ -1,19 +1,19 @@
-# MAKEFILE src/tools/preprocessing/p12meshgen/makefile
+# MAKEFILE src/tools/preprocessing/p12meshgenbin/makefile
 # Author: Louise M. Lever
 # -----------------------------------------------------------------------
-# Compiles p12meshgen program executable as RELEASE or DEBUG
+# Compiles p12meshgenbin program executable as RELEASE or DEBUG
 # Links with RELEASE STATIC library libParaFEM_mpi.$(VERSION).a
 #    or with RELEASE STATIC library libParaFEM_mpi_D.$(VERSION).a
 # -----------------------------------------------------------------------
 # Available Rules:
 #   (default) : execute the release rule
 #
-#   release: Build p12meshgen executable as RELEASE edition
-#   debug: Build p12meshgen executable as DEBUG edition
-#   install: Copy p12meshgen executable into global bin directory
+#   release: Build p12meshgenbin executable as RELEASE edition
+#   debug: Build p12meshgenbin executable as DEBUG edition
+#   install: Copy p12meshgenbin executable into global bin directory
 #   clean: Remove .o object files
-#   execlean: Remove the local p12meshgen executable
-#   relink: Rebuild p12meshgen from object files and libraries
+#   execlean: Remove the local p12meshgenbin executable
+#   relink: Rebuild p12meshgenbin from object files and libraries
 # -----------------------------------------------------------------------
 # Notes:
 # -----------------------------------------------------------------------
@@ -30,33 +30,33 @@ all:	release
 
 release:
 	@echo
-	@echo "Building p12meshgen RELEASE"
-	$(MAKE) p12meshgen \
-	FFLAGS="-c -I$(MODULE) $(P12MESHGEN_MPI_REL_FFLAGS)" \
-	LDFLAGS="-L$(LIB) -lParaFEM_mpi.$(VERSION) $(P12MESHGEN_MPI_REL_LDFLAGS)"
-	@echo "Done p12meshgen RELEASE"
+	@echo "Building p12meshgenbin RELEASE"
+	$(MAKE) p12meshgenbin \
+	FFLAGS="-c -I$(MODULE) $(P12MESHGENBIN_MPI_REL_FFLAGS)" \
+	LDFLAGS="-L$(LIB) -lParaFEM_mpi.$(VERSION) $(P12MESHGENBIN_MPI_REL_LDFLAGS)"
+	@echo "Done p12meshgenbin RELEASE"
 
 debug:
 	@echo
-	@echo "Building p12meshgen DEBUG"
-	$(MAKE) p12meshgen \
-	FFLAGS="-c -I$(MODULE) $(P12MESHGEN_MPI_DBG_FFLAGS)" \
-	LDFLAGS="-L$(LIB) -lParaFEM_mpi_D.$(VERSION) $(P12MESHGEN_MPI_DBG_LDFLAGS)"
-	@echo "Done p12meshgen DEBUG"
+	@echo "Building p12meshgenbin DEBUG"
+	$(MAKE) p12meshgenbin \
+	FFLAGS="-c -I$(MODULE) $(P12MESHGENBIN_MPI_DBG_FFLAGS)" \
+	LDFLAGS="-L$(LIB) -lParaFEM_mpi_D.$(VERSION) $(P12MESHGENBIN_MPI_DBG_LDFLAGS)"
+	@echo "Done p12meshgenbin DEBUG"
 
-p12meshgen: p12meshgen.o
-	$(FC) p12meshgen.o -o p12meshgen $(LDFLAGS)
+p12meshgenbin: p12meshgenbin.o
+	$(FC) p12meshgenbin.o -o p12meshgenbin $(LDFLAGS)
 
-p12meshgen.o: p12meshgen.f90
-	$(FC) p12meshgen.f90 $(FFLAGS)
+p12meshgenbin.o: p12meshgenbin.f90
+	$(FC) p12meshgenbin.f90 $(FFLAGS)
 
 clean:
 	rm -f *.o
 
 execlean:
-	rm -f p12meshgen ../../../../bin/p12meshgen
+	rm -f p12meshgenbin ../../../../bin/p12meshgenbin
 
-relink: p12meshgen
+relink: p12meshgenbin
 
 install:
-	cp p12meshgen ../../../../bin
+	cp p12meshgenbin ../../../../bin
