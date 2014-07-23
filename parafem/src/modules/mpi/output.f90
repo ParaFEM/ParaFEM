@@ -18,6 +18,10 @@ MODULE OUTPUT
   !*    WRITE_NODAL_VARIABLE   Writes out results computed at the nodes
   !*    JOB_NAME_ERROR         Writes error message if job_name is missing
   !*    GETFILENUMBER          Returns the next file number
+  !*    DISMSH_ENSI            ASCII Ensight Gold output for Paraview
+  !*    DISMSH_ENSI_PB         Fortran binary Ensight Gold output for Paraview
+  !*	DISMSH_ENSI_PB2	       C binary Ensight Gold output for Paraview
+  !*
   !*  AUTHOR
   !*    L. Margetts
   !*  COPYRIGHT
@@ -1882,7 +1886,7 @@ MODULE OUTPUT
   !*    ! DO NOT USE - UNDER DEVELOPMENT !
   !*    Write the values of a nodal variable to a binary file. This subroutine is 
   !*    parallel and requires MPI. The master processor collects all the data
-  !*    from the slave processors.
+  !*    from the slave processors. Currently used in development program xx12.f90.
   !*  INPUTS
   !*    The following arguments have the INTENT(IN) attribute:
   !*
@@ -2004,5 +2008,147 @@ MODULE OUTPUT
 
 
   END SUBROUTINE DISMSH_ENSI_PB
+  
+!------------------------------------------------------------------------------
+!------------------------------------------------------------------------------
+!------------------------------------------------------------------------------
+  
+  SUBROUTINE DISMSH_ENSI_PB2(filnum,iload,nodes_pp,npes,numpe, &
+                                  numvar,stress)
+
+  !/****f* output/dismsh_ensi_pb2
+  !*  NAME
+  !*    SUBROUTINE: dismsh_ensi_pb2
+  !*  SYNOPSIS
+  !*    Usage:      CALL dismsh_ensi_pb2(filnum,iload,nodes_pp, &
+  !*                                          numpe,numvar,stress) 
+  !*  FUNCTION
+  !*    ! DO NOT USE - UNDER DEVELOPMENT !
+  !*    Write the values of a nodal variable to a binary file. This subroutine is 
+  !*    parallel and requires MPI. The master processor collects all the data
+  !*    from the slave processors.
+  !*
+  !*    This version writes out C binary for use in Paraview. The test program
+  !*    is xx13.f90
+  !*
+  !*  INPUTS
+  !*    The following arguments have the INTENT(IN) attribute:
+  !*
+  !*    filnum                  : Integer
+  !*                            : File number to write
+  !*
+  !*    iload                   : Integer
+  !*                            : Load step number
+  !*
+  !*    nodes_pp                : Integer
+  !*                            : Number of nodes assigned to a process
+  !*
+  !*    npes                    : Integer
+  !*                            : Number of processes
+  !*
+  !*    numpe                   : Integer
+  !*                            : Process number
+  !*
+  !*    numvar                  : Integer
+  !*                            : Number of components of the variable
+  !*                              (1-scalar, 3-vector, 6-tensor)
+  !*
+  !*    stress(nodes_pp*numvar) : Real
+  !*                            : Nodal variables to print
+  !*                             
+  !*
+  !*    The following arguments have the INTENT(OUT) attribute:
+  !*
+  !*  AUTHOR
+  !*    L. Margetts
+  !*  CREATION DATE
+  !*    23.07.2014
+  !*  COPYRIGHT
+  !*    (c) University of Manchester 2014
+  !******
+  !*
+  !*/
+
+  USE, INTRINSIC :: ISO_C_BINDING
+  
+  IMPLICIT NONE
+
+  INTEGER, INTENT(IN)           :: filnum, iload, nodes_pp, npes, numpe, numvar
+  REAL(iwp), INTENT(IN)         :: stress(:)
+  INTEGER                       :: i, j, idx1, nod_r, bufsize1, bufsize2
+  INTEGER                       :: ier, iproc, n, bufsize
+  INTEGER                       :: statu(MPI_STATUS_SIZE)
+  INTEGER, ALLOCATABLE          :: get(:)
+  REAL(iwp), ALLOCATABLE        :: stress_r(:)
+
+!------------------------------------------------------------------------------
+! 1. Master processor writes out the results for its own assigned nodes
+!------------------------------------------------------------------------------
+
+  IF(numpe==1) THEN
+    DO i = 1,nodes_pp
+      WRITE(filnum) real(stress,kind=c_float)
+    END DO
+  END IF    
+  
+!------------------------------------------------------------------------------
+! 2. Allocate arrays involved in communications
+!------------------------------------------------------------------------------
+
+  ALLOCATE(get(npes))
+  ALLOCATE(stress_r(nodes_pp*numvar)) 
+
+!------------------------------------------------------------------------------
+! 3. Master processor populates the array "get" containing "nodes_pp" of 
+!    every processor. Slave processors send this number to the master processor
+!------------------------------------------------------------------------------
+
+  get = 0
+  get(1) = nodes_pp
+
+  bufsize = 1
+
+  DO i = 2,npes
+    IF(numpe==i) THEN
+      CALL MPI_SEND(nodes_pp,bufsize,MPI_INTEGER,0,i,MPI_COMM_WORLD,ier)
+    END IF
+    IF(numpe==1) THEN
+      CALL MPI_RECV(nod_r,bufsize,MPI_INTEGER,i-1,i,MPI_COMM_WORLD,statu,ier)
+      get(i) = nod_r
+    END IF
+  END DO
+
+!------------------------------------------------------------------------------
+! 4. Master processor receives the nodal variables from the other processors 
+!    and writes them
+!------------------------------------------------------------------------------
+
+  DO iproc = 2,npes
+    IF (numpe==iproc) THEN
+      bufsize1 = nodes_pp*numvar
+      CALL MPI_SEND(stress,bufsize1,MPI_REAL4,0,iproc,MPI_COMM_WORLD,ier)
+    END IF
+    IF (numpe==1) THEN
+      bufsize2 = get(iproc)*numvar
+      CALL MPI_RECV(stress_r,bufsize2,MPI_REAL4,iproc-1,iproc, &
+                    MPI_COMM_WORLD,statu,ier)
+      n = 1
+      DO j = 2,iproc
+        n = n + get(j-1)
+      END DO
+      DO i = 1,get(iproc)
+        WRITE(filnum) real(stress,kind=c_float)
+      END DO
+    END IF
+  END DO
+
+!------------------------------------------------------------------------------
+! 5. Deallocate communication arrays
+!------------------------------------------------------------------------------
+
+  DEALLOCATE(get,stress_r)
+
+
+END SUBROUTINE DISMSH_ENSI_PB
 
 END MODULE OUTPUT
