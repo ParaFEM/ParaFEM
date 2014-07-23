@@ -10,7 +10,7 @@ PROGRAM xx13
 !USE mpi_wrapper  !remove comment for serial compilation
  USE precision; USE global_variables; USE mp_interface; USE input
  USE output; USE loading; USE timing; USE maths; USE gather_scatter
- USE steering; USE new_library; USE intrinsic, ISO_C_BINDING
+ USE steering; USE new_library; USE, intrinsic :: ISO_C_BINDING
  IMPLICIT NONE
 ! neq,ntot are now global variables - must not be declared
  INTEGER,PARAMETER::nodof=3,ndim=3,nst=6
@@ -22,6 +22,7 @@ PROGRAM xx13
 !LOGICAL::io_binary=.false.
  LOGICAL::io_binary=.true.
  CHARACTER(LEN=50)::argv; CHARACTER(LEN=15)::element; CHARACTER(LEN=6)::ch 
+ CHARACTER(LEN=80)::cbuffer
 !---------------------------- dynamic arrays -----------------------------
  REAL(iwp),ALLOCATABLE::points(:,:),dee(:,:),weights(:),val(:,:),        &
    disp_pp(:),g_coord_pp(:,:,:),jac(:,:),der(:,:),deriv(:,:),bee(:,:),   &
@@ -133,7 +134,7 @@ PROGRAM xx13
    IF(numpe==1) THEN;  WRITE(ch,'(I6.6)') numpe
      OPEN(12,file=argv(1:nlen)//".ensi.DISPL-"//ch,status='replace',       &
        action='write',form='unformatted',access='stream')
-     cbuffer='Alya Ensight Gold --- Vector per-node variable file"
+     cbuffer="Alya Ensight Gold --- Vector per-node variable file"
      WRITE(12) cbuffer
      cbuffer="part"           ; WRITE(12) cbuffer
      WRITE(12) int(1,kind=c_int)
@@ -144,7 +145,7 @@ PROGRAM xx13
                       node_start,node_end,eld_pp,disp_pp,1)
    DO i=1,ndim ; temp=zero
      DO j=1,nodes_pp; k=i+(ndim*(j-1)); temp(j)=disp_pp(k); END DO
-     CALL dismsh_ensi_pb(12,1,nodes_pp,npes,numpe,1,temp)
+     CALL dismsh_ensi_pb2(12,1,nodes_pp,npes,numpe,1,temp)
    END DO ; IF(numpe==1) CLOSE(12)
  ELSE 
    IF(numpe==1) THEN;  WRITE(ch,'(I6.6)') numpe
