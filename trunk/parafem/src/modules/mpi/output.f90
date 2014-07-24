@@ -2241,7 +2241,7 @@ MODULE OUTPUT
 
   IF(numpe==1) THEN
     DO i = 1,nodes_pp
-      WRITE(filnum) real(stress,kind=c_float)
+      WRITE(filnum) real(stress(i),kind=c_float)
     END DO
   END IF    
   
@@ -2291,7 +2291,7 @@ MODULE OUTPUT
         n = n + get(j-1)
       END DO
       DO i = 1,get(iproc)
-        WRITE(filnum) real(stress,kind=c_float)
+        WRITE(filnum) real(stress(i),kind=c_float)
       END DO
     END IF
   END DO
@@ -2303,6 +2303,6 @@ MODULE OUTPUT
   DEALLOCATE(get,stress_r)
 
 
-END SUBROUTINE DISMSH_ENSI_PB
+END SUBROUTINE DISMSH_ENSI_PB2
 
 END MODULE OUTPUT
