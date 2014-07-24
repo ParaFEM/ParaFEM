@@ -1016,13 +1016,13 @@ MODULE OUTPUT
     WRITE(11,'(A,F12.6,F8.2)') "Calculate nodes_pp                          ", &
                            timest(14)-timest(13),                              &
                           ((timest(14)-timest(13))/(timest(16)-timest(1)))*100  
-    WRITE(11,'(A,F12.6,F8.2)') "Scatter the nodes                          ",  &
+    WRITE(11,'(A,F12.6,F8.2)') "Scatter the nodes                           ", &
                            timest(15)-timest(14),                              &
                           ((timest(15)-timest(14))/(timest(16)-timest(1)))*100  
-    WRITE(11,'(A,F12.6,F8.2)') "Output displacements                       ",  &
+    WRITE(11,'(A,F12.6,F8.2)') "Output displacements                        ", &
                            timest(16)-timest(15),                              &
-                          ((timest(16)-timest(15))/(timest(16)-timest(1)))*100                            
-    WRITE(11,'(A,F12.6,A/)')  "Total execution time                        ",  &
+                          ((timest(16)-timest(15))/(timest(16)-timest(1)))*100  
+    WRITE(11,'(A,F12.6,A/)')   "Total execution time                        ", &
                           timest(16)-timest(1),"  100.00"
     CLOSE(11)
     
@@ -2240,9 +2240,9 @@ MODULE OUTPUT
 !------------------------------------------------------------------------------
 
   IF(numpe==1) THEN
-    DO i = 1,nodes_pp
-      WRITE(filnum) real(stress(i),kind=c_float)
-    END DO
+!   DO i = 1,nodes_pp
+      WRITE(filnum) real(stress,kind=c_float)
+!   END DO
   END IF    
   
 !------------------------------------------------------------------------------
@@ -2280,19 +2280,21 @@ MODULE OUTPUT
   DO iproc = 2,npes
     IF (numpe==iproc) THEN
       bufsize1 = nodes_pp*numvar
-      CALL MPI_SEND(stress,bufsize1,MPI_REAL4,0,iproc,MPI_COMM_WORLD,ier)
+      CALL MPI_SEND(stress,bufsize1,MPI_REAL8,0,iproc,MPI_COMM_WORLD,ier)
     END IF
     IF (numpe==1) THEN
       bufsize2 = get(iproc)*numvar
-      CALL MPI_RECV(stress_r,bufsize2,MPI_REAL4,iproc-1,iproc, &
+      CALL MPI_RECV(stress_r,bufsize2,MPI_REAL8,iproc-1,iproc, &
                     MPI_COMM_WORLD,statu,ier)
-      n = 1
-      DO j = 2,iproc
-        n = n + get(j-1)
-      END DO
-      DO i = 1,get(iproc)
-        WRITE(filnum) real(stress(i),kind=c_float)
-      END DO
+!     n = 1
+!     DO j = 2,iproc
+!       n = n + get(j-1)
+!     END DO
+
+!     DO i = 1,get(iproc)
+        n = get(iproc)
+        WRITE(filnum) real(stress_r(1:n),kind=c_float)
+!     END DO
     END IF
   END DO
 
