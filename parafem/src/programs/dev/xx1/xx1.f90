@@ -10,6 +10,8 @@ PROGRAM xx1
   USE timing        ; USE maths            ; USE gather_scatter
   USE partition     ; USE elements         ; USE steering        ; USE pcg
   USE new_library
+
+  USE, INTRINSIC :: ISO_C_BINDING ! to output C binary file
   
   IMPLICIT NONE
 
@@ -32,8 +34,10 @@ PROGRAM xx1
   CHARACTER(LEN=50)     :: program_name='xx1'
   CHARACTER(LEN=50)     :: fname,job_name,label
   LOGICAL               :: converged=.false.
-  LOGICAL               :: sym_storkm=.true.
-! LOGICAL               :: sym_storkm=.false.
+! LOGICAL               :: sym_storkm=.true.
+  LOGICAL               :: sym_storkm=.false.
+! LOGICAL               :: io_binary=.false.
+  LOGICAL               :: io_binary=.true.
 
 !------------------------------------------------------------------------------ 
 ! 1a. Declare variables used in the UMAT
@@ -47,6 +51,7 @@ PROGRAM xx1
   INTEGER               :: nshr,nstatv,npt,layer,kspt,kstep,kinc
   REAL(iwp)             :: sse,spd,scd,rpl,dtime,temp,dtemp,pnewdt,celent
   CHARACTER(LEN=80)     :: cmname
+  CHARACTER(LEN=80)     :: cbuffer
 
 !------------------------------------------------------------------------------
 ! 2. Declare dynamic arrays
@@ -63,7 +68,8 @@ PROGRAM xx1
   REAL(iwp),ALLOCATABLE :: fun(:),shape_integral_pp(:,:)
   REAL(iwp),ALLOCATABLE :: stress_integral_pp(:,:),stressnodes_pp(:)
   REAL(iwp),ALLOCATABLE :: principal_integral_pp(:,:),princinodes_pp(:)
-  REAL(iwp),ALLOCATABLE :: principal(:),reacnodes_pp(:)  
+  REAL(iwp),ALLOCATABLE :: principal(:),reacnodes_pp(:)
+  REAL(iwp),ALLOCATABLE :: tempres(:)  
   INTEGER,  ALLOCATABLE :: rest(:,:),g_num_pp(:,:),g_g_pp(:,:),node(:)
   INTEGER,  ALLOCATABLE :: no(:),no_pp(:),no_pp_temp(:),sense(:)
 
@@ -168,8 +174,8 @@ PROGRAM xx1
   g_g_pp = 0 ; neq = 0
 
   elements_1: DO iel = 1, nels_pp
-!   CALL find_g3(g_num_pp(:,iel),g_g_pp(:,iel),rest)
-    CALL find_g(g_num_pp(:,iel),g_g_pp(:,iel),rest)
+    CALL find_g3(g_num_pp(:,iel),g_g_pp(:,iel),rest)
+!   CALL find_g(g_num_pp(:,iel),g_g_pp(:,iel),rest)
   END DO elements_1
 
   neq = MAXVAL(g_g_pp); neq= MAX_P(neq)
@@ -187,6 +193,7 @@ PROGRAM xx1
   timest(8) = elap_time()
 
   CALL MPI_BARRIER(MPI_COMM_WORLD,ier)
+
 !------------------------------------------------------------------------------
 ! 7. Allocate arrays dimensioned by neq_pp 
 !------------------------------------------------------------------------------
@@ -444,6 +451,8 @@ PROGRAM xx1
 
   CALL calc_nodes_pp(nn,npes,numpe,node_end,node_start,nodes_pp)
   
+  timest(14) = elap_time()
+
   IF(numpe==1) THEN
     fname = job_name(1:INDEX(job_name, " ")-1)//".dis"
     OPEN(24, file=fname, status='replace', action='write')
@@ -473,154 +482,193 @@ PROGRAM xx1
 
   CALL scatter_nodes(npes,nn,nels_pp,g_num_pp,nod,ndim,nodes_pp,              &
                      node_start,node_end,eld_pp,disp_pp,1)
-  CALL write_nodal_variable(label,24,1,nodes_pp,npes,numpe,ndim,disp_pp)
+
+  timest(15) = elap_time()
+
+  IF(io_binary) THEN
+
+    IF(numpe==1) THEN
+     
+      fname = job_name(1:INDEX(job_name, " ")-1)//".bin.ensi.DISPL-000001"
+      OPEN(40,file=fname,status='replace',action='write',                     & 
+           form='unformatted',access='stream')
+
+      cbuffer="Alya Ensight Gold --- Vector per-node variable file"
+      WRITE(40) cbuffer
+      cbuffer="part"        ; WRITE(40) cbuffer
+      WRITE(40) int(1,kind=c_int)
+      cbuffer="coordinates" ; WRITE(40) cbuffer 
+   
+    END IF
+      
+    ALLOCATE(tempres(nodes_pp))
+    tempres = zero
+
+    DO i=1,ndim; tempres=zero        
+      DO j=1,nodes_pp
+        k=i+(ndim*(j-1))
+        tempres(j)=disp_pp(k)
+      END DO
+      CALL dismsh_ensi_pb2(40,1,nodes_pp,npes,numpe,1,tempres)
+    END DO
+
+    DEALLOCATE(tempres)
+
+    CLOSE(40)
+
+  ELSE 
+
+    CALL write_nodal_variable(label,24,1,nodes_pp,npes,numpe,ndim,disp_pp)
+
+  END IF
 
   DEALLOCATE(disp_pp)
 
-  IF(numpe==1) CLOSE(24)
+  timest(16) = elap_time()
 
+  IF(numpe==1) CLOSE(24)
+  
   PRINT *, "Write Displacement"
+
 
 !------------------------------------------------------------------------------
 ! 16b. Stresses
 !------------------------------------------------------------------------------
 
-  ALLOCATE(shape_integral_pp(nod,nels_pp))
-  ALLOCATE(stress_integral_pp(nod*nst,nels_pp))
-  ALLOCATE(stressnodes_pp(nodes_pp*nst))
-  ALLOCATE(principal_integral_pp(nod*nodof,nels_pp))
-  ALLOCATE(princinodes_pp(nodes_pp*nodof))
-  ALLOCATE(reacnodes_pp(nodes_pp*nodof))
+!  ALLOCATE(shape_integral_pp(nod,nels_pp))
+!  ALLOCATE(stress_integral_pp(nod*nst,nels_pp))
+!  ALLOCATE(stressnodes_pp(nodes_pp*nst))
+!  ALLOCATE(principal_integral_pp(nod*nodof,nels_pp))
+!  ALLOCATE(princinodes_pp(nodes_pp*nodof))
+!  ALLOCATE(reacnodes_pp(nodes_pp*nodof))
   
-  shape_integral_pp     = zero
-  stress_integral_pp    = zero
-  stressnodes_pp        = zero
-  principal_integral_pp = zero  
-  princinodes_pp        = zero
-  reacnodes_pp          = zero
-  utemp_pp              = zero
-  dee                   = zero
-  sigma                 = zero
+!  shape_integral_pp     = zero
+!  stress_integral_pp    = zero
+!  stressnodes_pp        = zero
+!  principal_integral_pp = zero  
+!  princinodes_pp        = zero
+!  reacnodes_pp          = zero
+!  utemp_pp              = zero
+!  dee                   = zero
+!  sigma                 = zero
 
-  DO iel = 1,nels_pp
-    DO i = 1,nip
-      CALL shape_der(der,points,i)
-      jac   = MATMUL(der,g_coord_pp(:,:,iel))
-      det   = DETERMINANT(jac) 
-      CALL invert(jac)
-      deriv = MATMUL(jac,der)
-      CALL beemat(bee,deriv)
-      eps   = MATMUL(bee,eld_pp(:,iel))
-      sigma = MATMUL(dee,eps) ! umat replaces this line
-      dee   = zero
-      sigma = zero
-!     CALL umat(sigma,statev,dee,sse,spd,scd,rpl,ddsddt,drplde,drpldt,stran,  &
+!  DO iel = 1,nels_pp
+!    DO i = 1,nip
+!      CALL shape_der(der,points,i)
+!      jac   = MATMUL(der,g_coord_pp(:,:,iel))
+!      det   = DETERMINANT(jac) 
+!      CALL invert(jac)
+!      deriv = MATMUL(jac,der)
+!      CALL beemat(bee,deriv)
+!      eps   = MATMUL(bee,eld_pp(:,iel))
+!      sigma = MATMUL(dee,eps) ! umat replaces this line
+!      dee   = zero
+!      sigma = zero
+!      CALL umat(sigma,statev,dee,sse,spd,scd,rpl,ddsddt,drplde,drpldt,stran,  &
 !               eps,time,dtime,temp,dtemp,predef,dpred,cmname,ndi,nshr,       &
 !               nst,nstatv,props,nprops,points,drot,pnewdt,celent,dfgrd0,     &
 !               dfgrd1,iel,npt,layer,kspt,kstep,kinc)
-      CALL PRINCIPALSTRESS3D(sigma,principal)
-      utemp_pp(:,iel) = utemp_pp(:,iel) +                                     &
-                        MATMUL(TRANSPOSE(bee),sigma)*det*weights(i)
+!      CALL PRINCIPALSTRESS3D(sigma,principal)
+!      utemp_pp(:,iel) = utemp_pp(:,iel) +                                     &
+!                        MATMUL(TRANSPOSE(bee),sigma)*det*weights(i)
 
-      CALL shape_fun(fun,points,i)
+!      CALL shape_fun(fun,points,i)
 
-      DO j = 1,nod
-        idx1 = (j-1)*nst
-        idx2 = (j-1)*nodof
-        shape_integral_pp(j,iel) = shape_integral_pp(j,iel) +                 &
-                                   fun(j)*det*weights(i)
-        DO k = 1,nst
-          stress_integral_pp(idx1+k,iel) = stress_integral_pp(idx1+k,iel) +   &
-                                           fun(j)*sigma(k)*det*weights(i)
-        END DO
-        DO k = 1,nodof
-          principal_integral_pp(idx2+k,iel) = principal_integral_pp(idx2+k,iel) + &
-                                              fun(j)*principal(k)*det*weights(i)
-        END DO
-      END DO
-    END DO !gauss
-  END DO !elements
+!      DO j = 1,nod
+!        idx1 = (j-1)*nst
+!        idx2 = (j-1)*nodof
+!        shape_integral_pp(j,iel) = shape_integral_pp(j,iel) +                 &
+!                                   fun(j)*det*weights(i)
+!        DO k = 1,nst
+!          stress_integral_pp(idx1+k,iel) = stress_integral_pp(idx1+k,iel) +   &
+!                                           fun(j)*sigma(k)*det*weights(i)
+!        END DO
+!        DO k = 1,nodof
+!          principal_integral_pp(idx2+k,iel) = principal_integral_pp(idx2+k,iel) + &
+!                                              fun(j)*principal(k)*det*weights(i)
+!        END DO
+!      END DO
+!    END DO !gauss
+!  END DO !elements
     
 !------------------------------------------------------------------------------
 ! 16c. Stress
 !------------------------------------------------------------------------------
 
-  label = "*STRESS"
+!  label = "*STRESS"
 
-  CALL nodal_projection(npes,nn,nels_pp,g_num_pp,nod,nst,nodes_pp,            &
-                        node_start,node_end,shape_integral_pp,                &
-                        stress_integral_pp,stressnodes_pp)
-  CALL write_nodal_variable(label,25,1,nodes_pp,npes,numpe,nst,               &
-                            stressnodes_pp)
+!  CALL nodal_projection(npes,nn,nels_pp,g_num_pp,nod,nst,nodes_pp,            &
+!                        node_start,node_end,shape_integral_pp,                &
+!                        stress_integral_pp,stressnodes_pp)
+!  CALL write_nodal_variable(label,25,1,nodes_pp,npes,numpe,nst,               &
+!                            stressnodes_pp)
                             
-  DEALLOCATE(stress_integral_pp,stressnodes_pp)
+!  DEALLOCATE(stress_integral_pp,stressnodes_pp)
 
-  IF(numpe==1) CLOSE(25)
+!  IF(numpe==1) CLOSE(25)
 
-  PRINT *, "Write Stress"
+!  PRINT *, "Write Stress"
 
 !------------------------------------------------------------------------------
 ! 16d. Principal stress
 !------------------------------------------------------------------------------
   
-  label = "*PRINCIPAL STRESS"
+!  label = "*PRINCIPAL STRESS"
   
-  CALL nodal_projection(npes,nn,nels_pp,g_num_pp,nod,nodof,nodes_pp,          &
-                        node_start,node_end,shape_integral_pp,                &
-                        principal_integral_pp,princinodes_pp)
-  CALL write_nodal_variable(label,26,1,nodes_pp,npes,numpe,nodof,             &
-                            princinodes_pp)
+!  CALL nodal_projection(npes,nn,nels_pp,g_num_pp,nod,nodof,nodes_pp,          &
+!                        node_start,node_end,shape_integral_pp,                &
+!                        principal_integral_pp,princinodes_pp)
+!  CALL write_nodal_variable(label,26,1,nodes_pp,npes,numpe,nodof,             &
+!                            princinodes_pp)
                             
-  DEALLOCATE(principal_integral_pp)
+!  DEALLOCATE(principal_integral_pp)
 
-  IF(numpe==1) CLOSE(26)
+!  IF(numpe==1) CLOSE(26)
 
 !------------------------------------------------------------------------------
 ! 16e. Von Mises stress (rho_v)
 !      rho_v = sqrt( ( (rho1-rho2)^2 + (rho2-rho3)^2 + (rho1-rho3)^2 ) / 2 )
 !------------------------------------------------------------------------------
   
-  label = "*MISES STRESS"
+!  label = "*MISES STRESS"
   
-  DO i = 1,nodes_pp
-    j = ((i-1)*nodof)+1
-    k = j + 1
-    l = j + 2
-    princinodes_pp(j) = SQRT(((princinodes_pp(j)-princinodes_pp(k)) **2 +     &
-                              (princinodes_pp(k)-princinodes_pp(l)) **2 +     &
-                              (princinodes_pp(j)-princinodes_pp(l)) **2)      &
-                              * 0.5_iwp)
-    princinodes_pp(k:l) = zero
-  END DO
+!  DO i = 1,nodes_pp
+!    j = ((i-1)*nodof)+1
+!    k = j + 1
+!    l = j + 2
+!    princinodes_pp(j) = SQRT(((princinodes_pp(j)-princinodes_pp(k)) **2 +     &
+!                              (princinodes_pp(k)-princinodes_pp(l)) **2 +     &
+!                              (princinodes_pp(j)-princinodes_pp(l)) **2)      &
+!                              * 0.5_iwp)
+!    princinodes_pp(k:l) = zero
+!  END DO
 
-  CALL write_nodal_variable(label,27,1,nodes_pp,npes,numpe,nodof,             &
-                            princinodes_pp)
+!  CALL write_nodal_variable(label,27,1,nodes_pp,npes,numpe,nodof,             &
+!                            princinodes_pp)
                             
-  DEALLOCATE(princinodes_pp)
+!  DEALLOCATE(princinodes_pp)
 
-  IF(numpe==1) CLOSE(27)
+!  IF(numpe==1) CLOSE(27)
 
 !------------------------------------------------------------------------------
 ! 16f. Reactions
 !------------------------------------------------------------------------------
 
-  label = "*NODAL REACTIONS"
-  CALL scatter_nodes(npes,nn,nels_pp,g_num_pp,nod,nodof,nodes_pp,             &
-                     node_start,node_end,utemp_pp,reacnodes_pp,0)
-  CALL write_nodal_variable(label,28,1,nodes_pp,npes,numpe,nodof,             &
-                            reacnodes_pp)
-  DEALLOCATE(reacnodes_pp,shape_integral_pp)
+!  label = "*NODAL REACTIONS"
+!  CALL scatter_nodes(npes,nn,nels_pp,g_num_pp,nod,nodof,nodes_pp,             &
+!                     node_start,node_end,utemp_pp,reacnodes_pp,0)
+!  CALL write_nodal_variable(label,28,1,nodes_pp,npes,numpe,nodof,             &
+!                            reacnodes_pp)
+!  DEALLOCATE(reacnodes_pp,shape_integral_pp)
 
-  IF(numpe==1) CLOSE(28)
+!  IF(numpe==1) CLOSE(28)
 
-  timest(14) = elap_time()
-   
 !------------------------------------------------------------------------------
 ! 17. Output performance data
 !------------------------------------------------------------------------------
 
-  CALL WRITE_P121(fixed_freedoms,iters,job_name,loaded_nodes,neq,nn,npes,nr,  &
-                  numpe,timest,tload)
+  CALL WRITE_XX1(fixed_freedoms,iters,job_name,loaded_nodes,neq,nn,npes,nr,  &
+                 numpe,timest,tload)
  
   CALL shutdown() 
  
