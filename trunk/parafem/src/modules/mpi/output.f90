@@ -15,6 +15,7 @@ MODULE OUTPUT
   !*    WRITE_P125             Writes out basic program data and timing info 
   !*    WRITE_P126             Writes out basic program data and timing info  
   !*    WRITE_P129             Writes out basic program data and timing info
+  !*    WRITE_XX1              Writes out basic program data and timing info
   !*    WRITE_NODAL_VARIABLE   Writes out results computed at the nodes
   !*    JOB_NAME_ERROR         Writes error message if job_name is missing
   !*    GETFILENUMBER          Returns the next file number
@@ -879,6 +880,159 @@ MODULE OUTPUT
 !------------------------------------------------------------------------------
 !------------------------------------------------------------------------------
 !------------------------------------------------------------------------------
+
+  SUBROUTINE WRITE_XX1(fixed_freedoms,iters,job_name,loaded_nodes,neq,nn,    &
+                        npes,nr,numpe,timest,tload)
+
+  !/****f* output/write_xx1
+  !*  NAME
+  !*    SUBROUTINE: write_xx1
+  !*  SYNOPSIS
+  !*    Usage:      CALL write_xx1(fixed_freedoms,iters,job_name,loaded_nodes,&
+  !*                               neq,nn,npes,nr,numpe,timest,tload)
+  !*  FUNCTION
+  !*    Master processor writes out brief details about the problem and 
+  !*    some performance data
+  !*  INPUTS
+  !*    The following scalar integers have the INTENT(IN) attribute:
+  !*
+  !*    fixed_freedoms         : Number of fixed displacements
+  !*    iters                  : Number of PCG iterations taken to solve problem
+  !*    loaded_nodes           : Number of loaded_nodes
+  !*    neq                    : Total number of equations in the mesh
+  !*    nn                     : Number of nodes in the mesh
+  !*    npes                   : Number of processors used in the simulations
+  !*    nr                     : Number of restrained nodes in the mesh
+  !*    numpe                  : Processor number
+  !*
+  !*    The following scalar real has the INTENT(IN) attribute:
+  !*
+  !*    tload                  : Total applied load
+  !*
+  !*    The following scalar character has the INTENT(IN) attribute:
+  !*
+  !*    job_name               : Job name used to name output file
+  !*
+  !*    The following dynamic real array has the INTENT(IN) attribute:
+  !*
+  !*    timest(:)              : Holds timing information
+  !*
+  !*  AUTHOR
+  !*    Lee Margetts
+  !*    Based on Smith I.M. and Griffiths D.V. "Programming the Finite Element
+  !*    Method", Edition 4, Wiley, 2004.
+  !*  CREATION DATE
+  !*    24.07.2014
+  !*  COPYRIGHT
+  !*    (c) University of Manchester 2014
+  !******
+  !*  Place remarks that should not be included in the documentation here.
+  !*
+  !*/  
+  
+  IMPLICIT NONE
+
+  CHARACTER(LEN=50), INTENT(IN)  :: job_name
+  INTEGER, INTENT(IN)            :: numpe,npes,nn,nr,neq,iters
+  INTEGER, INTENT(IN)            :: fixed_freedoms,loaded_nodes
+  REAL(iwp), INTENT(IN)          :: timest(:),tload
+
+!------------------------------------------------------------------------------
+! 1. Local variables
+!------------------------------------------------------------------------------
+  
+  CHARACTER(LEN=50)              :: fname
+  INTEGER                        :: i          ! loop counter
+ 
+  IF(numpe==1) THEN
+
+    fname       = job_name(1:INDEX(job_name, " ")-1) // ".res"
+    OPEN(11,FILE=fname,STATUS='REPLACE',ACTION='WRITE')     
+
+!------------------------------------------------------------------------------
+! 2. Write basic details about the problem
+!------------------------------------------------------------------------------
+
+    WRITE(11,'(/A)')   "BASIC JOB DATA                                  "     
+ 
+    WRITE(11,'(A,I12)')    "Number of processors used                   ",npes 
+    WRITE(11,'(A,I12)')    "Number of nodes in the mesh                 ",nn
+    WRITE(11,'(A,I12)')    "Number of nodes that were restrained        ",nr
+    WRITE(11,'(A,I12)')    "Number of equations solved                  ",neq
+    WRITE(11,'(A,I12)')    "Number of PCG iterations                    ",iters
+    IF(loaded_nodes > 0) THEN
+      WRITE(11,'(A,I12)')    "Number of loaded nodes                      ",   &
+                              loaded_nodes 
+      WRITE(11,'(A,E12.4)')  "Total load applied                          ",   &
+                              tload
+    END IF
+    IF(fixed_freedoms > 0) THEN
+      WRITE(11,'(A,I12)')    "Number of fixed displacements               ",   &
+                              fixed_freedoms 
+    END IF
+
+!------------------------------------------------------------------------------
+! 3. Output timing data
+!------------------------------------------------------------------------------
+
+    WRITE(11,'(/3A)')   "PROGRAM SECTION EXECUTION TIMES                  ",  &
+                        "SECONDS  ", "%TOTAL    "
+    WRITE(11,'(A,F12.6,F8.2)') "Setup                                       ",&
+                           timest(2)-timest(1),                               &
+                           ((timest(2)-timest(1))/(timest(16)-timest(1)))*100  
+    WRITE(11,'(A,F12.6,F8.2)') "Read element steering array                 ",&
+                           timest(3)-timest(2),                               &
+                           ((timest(3)-timest(2))/(timest(16)-timest(1)))*100  
+    WRITE(11,'(A,F12.6,F8.2)') "Convert Abaqus to S&G node ordering         ",&
+                           timest(4)-timest(3),                               &
+                           ((timest(4)-timest(3))/(timest(16)-timest(1)))*100  
+    WRITE(11,'(A,F12.6,F8.2)') "Read nodal coordinates                      ",&
+                           timest(5)-timest(4),                               &
+                           ((timest(5)-timest(4))/(timest(16)-timest(1)))*100  
+    WRITE(11,'(A,F12.6,F8.2)') "Read restrained nodes                       ",&
+                           timest(6)-timest(5),                               &
+                           ((timest(6)-timest(5))/(timest(16)-timest(1)))*100                             
+    WRITE(11,'(A,F12.6,F8.2)') "Compute steering array and neq              ",&
+                           timest(7)-timest(6),                               &
+                          ((timest(7)-timest(6))/(timest(16)-timest(1)))*100  
+    WRITE(11,'(A,F12.6,F8.2)') "Compute interprocessor communication tables ",&
+                           timest(8)-timest(7),                               &
+                          ((timest(8)-timest(7))/(timest(16)-timest(1)))*100  
+    WRITE(11,'(A,F12.6,F8.2)') "Allocate neq_pp arrays                      ",&
+                           timest(9)-timest(8),                               &
+                          ((timest(9)-timest(8))/(timest(16)-timest(1)))*100  
+    WRITE(11,'(A,F12.6,F8.2)') "Compute element stiffness matrices          ", &
+                            timest(10)-timest(9),                              &
+                          ((timest(10)-timest(9))/(timest(16)-timest(1)))*100  
+    WRITE(11,'(A,F12.6,F8.2)') "Build the preconditioner                    ", &
+                           timest(11)-timest(10),                              &
+                          ((timest(11)-timest(10))/(timest(16)-timest(1)))*100  
+    WRITE(11,'(A,F12.6,F8.2)') "Get starting r                              ", &
+                           timest(12)-timest(11),                              &
+                          ((timest(12)-timest(11))/(timest(16)-timest(1)))*100  
+    WRITE(11,'(A,F12.6,F8.2)') "Solve equations                             ", &
+                           timest(13)-timest(12),                              &
+                           ((timest(13)-timest(12))/(timest(16)-timest(1)))*100  
+    WRITE(11,'(A,F12.6,F8.2)') "Calculate nodes_pp                          ", &
+                           timest(14)-timest(13),                              &
+                          ((timest(14)-timest(13))/(timest(16)-timest(1)))*100  
+    WRITE(11,'(A,F12.6,F8.2)') "Scatter the nodes                          ",  &
+                           timest(15)-timest(14),                              &
+                          ((timest(15)-timest(14))/(timest(16)-timest(1)))*100  
+    WRITE(11,'(A,F12.6,F8.2)') "Output displacements                       ",  &
+                           timest(16)-timest(15),                              &
+                          ((timest(16)-timest(15))/(timest(16)-timest(1)))*100                            
+    WRITE(11,'(A,F12.6,A/)')  "Total execution time                        ",  &
+                          timest(16)-timest(1),"  100.00"
+    CLOSE(11)
+    
+  END IF
+  
+  RETURN
+
+  END SUBROUTINE WRITE_XX1
+
+
 
   SUBROUTINE WRITE_RFEMSOLVE(fixed_freedoms,iters,job_name,loaded_nodes,      &
                              mises,neq,nn,nodecount,npes,nr,numpe,timest,tload)
