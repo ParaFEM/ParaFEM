@@ -604,9 +604,8 @@ PROGRAM p12meshgenbin
 
       CALL rest_to_nf(rest,nf)
 
-      CALL mesh_ensi(argv,nlen,g_coord,g_num,element,etype,nf,                &
-                     oldlds(1:),nstep,npri,dtim,solid)
-
+      CALL mesh_ensi_bin(argv,nlen,g_coord,g_num,element,etype,nf,            &
+                         oldlds(1:),nstep,npri,dtim,solid)
 
     CASE DEFAULT
 
@@ -774,8 +773,8 @@ PROGRAM p12meshgenbin
 
       CALL rest_to_nf(rest,nf)
 
-      CALL mesh_ensi(argv,nlen,g_coord,g_num,element,etype,nf,                &
-                     oldlds(1:),nstep,npri,dtim,solid)
+      CALL mesh_ensi_bin(argv,nlen,g_coord,g_num,element,etype,nf,            &
+                         oldlds(1:),nstep,npri,dtim,solid)
 
     CASE DEFAULT
 
@@ -849,7 +848,7 @@ PROGRAM p12meshgenbin
     
       WRITE(11,'(A)') "*THREE_DIMENSIONAL"
       WRITE(11,'(A)') "*NODES"
-  
+
       DO i = 1, nn
         WRITE(11,'(I12,3E14.6)') i, g_coord(:,i)
       END DO
@@ -964,8 +963,8 @@ PROGRAM p12meshgenbin
 
       CALL rest_to_nf(rest,nf)
 
-      CALL mesh_ensi(argv,nlen,g_coord,g_num,element,etype,nf,                &
-                     oldlds(1:),nstep,npri,dtim,solid)
+      CALL mesh_ensi_bin(argv,nlen,g_coord,g_num,element,etype,nf,            &
+                         oldlds(1:),nstep,npri,dtim,solid)
 
     CASE DEFAULT
 
@@ -1140,8 +1139,8 @@ PROGRAM p12meshgenbin
 
       CALL rest_to_nf(rest,nf)
 
-      CALL mesh_ensi(argv,nlen,g_coord,g_num,element,etype,nf,                &
-                     oldlds(1:),nstep,npri,dtim,solid)
+      CALL mesh_ensi_bin(argv,nlen,g_coord,g_num,element,etype,nf,            &
+                         oldlds(1:),nstep,npri,dtim,solid)
 
     CASE DEFAULT
 
@@ -1389,8 +1388,8 @@ PROGRAM p12meshgenbin
 
       CALL rest_to_nf(rest,nf)
 
-      CALL mesh_ensi(argv,nlen,g_coord,g_num,element,etype,nf,                &
-                     oldlds(1:),nstep,npri,dtim,solid)
+      CALL mesh_ensi_bin(argv,nlen,g_coord,g_num,element,etype,nf,            &
+                         oldlds(1:),nstep,npri,dtim,solid)
 
     CASE DEFAULT
 
@@ -1550,8 +1549,8 @@ PROGRAM p12meshgenbin
 
         CALL rest_to_nf(rest,nf)
 
-        CALL mesh_ensi(argv,nlen,g_coord,g_num,element,etype,nf,              &
-                       oldlds(1:),nstep,npri,dtim,solid)
+        CALL mesh_ensi_bin(argv,nlen,g_coord,g_num,element,etype,nf,          &
+                           oldlds(1:),nstep,npri,dtim,solid)
 
       CASE DEFAULT
 
@@ -1722,8 +1721,8 @@ PROGRAM p12meshgenbin
 
         CALL rest_to_nf(rest,nf)
 
-        CALL mesh_ensi(argv,nlen,g_coord,g_num,element,etype,nf,              &
-                       oldlds(1:),nstep,npri,dtim,solid)
+        CALL mesh_ensi_bin(argv,nlen,g_coord,g_num,element,etype,nf,          &
+                           oldlds(1:),nstep,npri,dtim,solid)
 
       CASE DEFAULT
 
