@@ -8,6 +8,11 @@
 
     Usage: xx1 <job_name>
 
+  NOTES
+
+  The build scripts do not currently cope well with mixed FORTRAN77 and
+  modern Fortran. The makefile may need customising for different platforms.
+  This will be addressed.
    
   AUTHOR(S)
 
