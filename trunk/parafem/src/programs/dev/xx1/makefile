@@ -47,7 +47,8 @@ xx1: pf-elastic.o xx1.o
 	$(FC) xx1.o pf-elastic.o -o xx1 $(LDFLAGS)
 
 pf-elastic.o:
-	$(FC) ../../../umats/parafem/pf-elastic.f $(FFLAGS)
+#	$(FC) ../../../umats/parafem/pf-elastic.f $(FFLAGS)
+	$ bgf77 ../../../umats/parafem/pf-elastic.f $(FFLAGS)
 
 xx1.o: xx1.f90
 	$(FC) xx1.f90 $(FFLAGS)
