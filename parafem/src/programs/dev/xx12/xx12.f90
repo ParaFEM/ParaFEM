@@ -12,6 +12,8 @@ PROGRAM xx12
   USE partition  ; USE elements         ; USE steering
   USE geometry   ; USE pcg              ; USE new_library
   
+  USE, INTRINSIC :: ISO_C_BINDING ! to output C binary file
+  
   IMPLICIT NONE
   
 !------------------------------------------------------------------------------
@@ -22,7 +24,7 @@ PROGRAM xx12
   
   INTEGER, PARAMETER  :: ndim=3,nodof=1,nprops=5
   INTEGER             :: nod,nn,nr,nip
-  INTEGER             :: i,j,k,l,iters,limit,iel
+  INTEGER             :: i,j,k,l,iters,iters_tot,limit,iel
   INTEGER             :: nxe,nye,nze,neq_temp,nn_temp
   INTEGER             :: nstep,npri,nres,it,is,nlen
   INTEGER             :: node_end,node_start,nodes_pp
@@ -43,6 +45,8 @@ PROGRAM xx12
   CHARACTER(LEN=50)   :: fname,job_name,label
   CHARACTER(LEN=50)   :: program_name='xx12'
   LOGICAL             :: converged = .false.
+  LOGICAL             :: solid=.true.
+  CHARACTER(LEN=80)   :: cbuffer
   
 !------------------------------------------------------------------------------
 ! 2. Declare dynamic arrays
@@ -59,11 +63,11 @@ PROGRAM xx12
   REAL(iwp),ALLOCATABLE :: val(:,:),val_f(:),store_pp(:),r_pp(:)
   REAL(iwp),ALLOCATABLE :: kcx(:,:),kcy(:,:),kcz(:,:)
   REAL(iwp),ALLOCATABLE :: eld(:),col(:,:),row(:,:),storkc_pp(:,:,:)
-  REAL(iwp),ALLOCATABLE :: prop(:,:),amp(:)
+  REAL(iwp),ALLOCATABLE :: prop(:,:),amp(:),tempres(:)
   INTEGER,ALLOCATABLE   :: rest(:,:),g(:),num(:),g_num_pp(:,:),g_g_pp(:,:),no(:)
   INTEGER,ALLOCATABLE   :: no_pp(:),no_f_pp(:),no_pp_temp(:)
   INTEGER,ALLOCATABLE   :: sense(:),node(:)
-  INTEGER,ALLOCATABLE   :: etype_pp(:)
+  INTEGER,ALLOCATABLE   :: etype_pp(:),nf(:,:),oldlds(:),g_coord(:,:)
   
 !------------------------------------------------------------------------------
 ! 3. Read job_name from the command line. 
@@ -89,7 +93,7 @@ PROGRAM xx12
   CALL read_xx12(job_name,numpe,dtim,element,fixed_freedoms,limit,            &
                  loaded_nodes,meshgen,nels,nip,nn,nod,npri,nr,nstep,          &
                  partitioner,theta,tol,np_types,val0,el_print,i_o)
-
+  
   CALL calc_nels_pp(job_name,nels,npes,numpe,partitioner,nels_pp)
   
   ndof = nod*nodof
@@ -100,7 +104,7 @@ PROGRAM xx12
   IF (nr>0) ALLOCATE(rest(nr,nodof+1))
   ALLOCATE(etype_pp(nels_pp))
   ALLOCATE(prop(nprops,np_types))
- 
+  
   g_num_pp       = 0
   g_coord_pp     = zero
   IF (nr>0) rest = 0
@@ -125,12 +129,12 @@ PROGRAM xx12
   
   IF (nr>0) CALL read_rest(job_name,numpe,rest)
   timest(6) = elap_time()
-
+  
   PRINT *, "np_types = ", np_types
-
+  
   fname = job_name(1:INDEX(job_name, " ")-1) // ".mat"  
   CALL read_materialValue(prop,fname,numpe,npes)
-
+  
   IF(numpe==1) PRINT *, " *** Read input data in: ", timest(6)-timest(1)," s"
   
 ! nn_temp=0
@@ -153,7 +157,7 @@ PROGRAM xx12
   ALLOCATE (kcx(ntot,ntot),kcy(ntot,ntot),kcz(ntot,ntot),                     &
             eld(ntot),col(ntot,1),row(1,ntot),storkc_pp(ntot,ntot,nels_pp))
   ALLOCATE (amp(nstep))
-
+  
   IF(numpe==1) PRINT *, " *** Allocated dynamic arrays in: ",                 &
                           elap_time()-timest(6)," s"
   
@@ -239,7 +243,7 @@ PROGRAM xx12
     kay(3,3)  = prop(3,etype_pp(iel))  ! kz
     rho       = prop(4,etype_pp(iel))  ! rho
     cp        = prop(5,etype_pp(iel))  ! cp
-
+    
     kc = zero ; pm = zero
     
     gauss_pts: DO i=1,nip
@@ -318,19 +322,38 @@ PROGRAM xx12
   
   !---Open file for temperature outputs in ParaFEM format
   IF(numpe==1) THEN
-    fname   = job_name(1:INDEX(job_name, " ")-1)//".ttr"
-    OPEN(24, file=fname, status='replace', action='write')
-    fname   = job_name(1:INDEX(job_name, " ")-1)//".ttrb"
-    OPEN(25, file=fname, status='replace', action='write',                    &
-         access='sequential', form='unformatted')
+    IF(i_o==2)THEN
+      fname   = job_name(1:INDEX(job_name, " ")-1)//".ttr"
+      OPEN(24, file=fname, status='replace', action='write')
+    END IF
+    IF(i_o==1)THEN
+      fname   = job_name(1:INDEX(job_name, " ")-1)//".ttrb"
+      OPEN(25, file=fname, status='replace', action='write',                    &
+           access='sequential', form='unformatted')
+    END IF
     fname   = job_name(1:INDEX(job_name, " ")-1)//".npp"
     OPEN(26, file=fname, status='replace', action='write')
     label   = "*TEMPERATURE"  
     WRITE(26,*) nn
     WRITE(26,*) nstep/npri
     WRITE(26,*) npes
+    
+    !----------------New ENSI binary format----------------------------------!
+    IF(i_o==3)THEN
+      fname = job_name(1:INDEX(job_name, " ")-1)//".bin.ensi.NDTTR-000001"
+      OPEN(27,file=fname,status='replace',action='write',                    &
+      form='unformatted',access='stream')
+      
+      cbuffer="Alya Ensight Gold --- Scalar per-node variable file"
+      WRITE(27) cbuffer
+      cbuffer="part"        ; WRITE(27) cbuffer
+      WRITE(27) int(1,kind=c_int)
+      cbuffer="coordinates" ; WRITE(27) cbuffer 
+    END IF
+    !----------------New ENSI binary format----------------------------------!
+    
   END IF
-   
+  
   IF(numpe==1) PRINT *, "End of 10"
   
 !------------------------------------------------------------------------------
@@ -348,12 +371,12 @@ PROGRAM xx12
     
     CALL read_fixed(job_name,numpe,node,sense,val_f)
     CALL find_no2(g_g_pp,g_num_pp,node,sense,no)
-
+    
     PRINT *, "After find_no2 no = ", no, " on PE ", numpe
-
+    
     CALL reindex(ieq_start,no,no_pp_temp,                              &
                  fixed_freedoms_pp,fixed_freedoms_start,neq_pp)
-
+    
     PRINT *, "After reindex no = ", no, " on PE ", numpe
     
     ALLOCATE(no_f_pp(fixed_freedoms_pp),store_pp(fixed_freedoms_pp))
@@ -405,9 +428,9 @@ PROGRAM xx12
       CALL read_loads(job_name,numpe,node,val)
       CALL reindex(ieq_start,node,no_pp_temp,loaded_freedoms_pp,             &
                    loaded_freedoms_start,neq_pp)
- 
+      
       ALLOCATE(no_pp(loaded_freedoms_pp))
-
+      
       no_pp    = no_pp_temp(1:loaded_freedoms_pp)
       
       DEALLOCATE(no_pp_temp)
@@ -420,19 +443,20 @@ PROGRAM xx12
 !------------------------------------------------------------------------------
 ! 14. Start time stepping loop
 !------------------------------------------------------------------------------
-
+  
+  iters_tot = 0
   timesteps: DO j=1,nstep
   
-  timest(15) = elap_time()
-
+    timest(15) = elap_time()
+    
     real_time = j*dtim
-
+    
 !------------------------------------------------------------------------------
 ! 15. Apply loads (sources and/or sinks) supplied as a boundary value
 !------------------------------------------------------------------------------
-
+    
     loads_pp  = zero
-
+    
     IF(loaded_freedoms_pp > 0) THEN
       DO i = 1, loaded_freedoms_pp
         IF(amp(j)==0.0)THEN
@@ -448,18 +472,18 @@ PROGRAM xx12
 !    END DO
     
     q = q + SUM_P(loads_pp)
-
+    
 !------------------------------------------------------------------------------
 ! 16. Compute RHS of time stepping equation, using storkb_pp, then add 
 !     result to loads
 !------------------------------------------------------------------------------
-
+    
     u_pp              = zero
     pmul_pp           = zero
     utemp_pp          = zero
-
+    
     IF(j/=1) THEN
-
+      
       IF(fixed_freedoms_pp > 0) THEN
         DO i = 1, fixed_freedoms_pp
           l       = no_f_pp(i) - ieq_start + 1
@@ -467,13 +491,13 @@ PROGRAM xx12
           x_pp(l) = val_f(k)
         END DO
       END IF
-
+      
       CALL gather(x_pp,pmul_pp)
       elements_2a: DO iel=1,nels_pp
         utemp_pp(:,iel)=MATMUL(storkb_pp(:,:,iel),pmul_pp(:,iel))
       END DO elements_2a
       CALL scatter(u_pp,utemp_pp)
-
+      
       IF(fixed_freedoms_pp > 0) THEN
         DO i = 1, fixed_freedoms_pp
           l       = no_f_pp(i) - ieq_start + 1
@@ -481,17 +505,17 @@ PROGRAM xx12
           u_pp(l) = store_pp(i)*val_f(k)
         END DO
       END IF
-
+      
       loads_pp = loads_pp+u_pp
-
+      
     ELSE
-
+      
 !------------------------------------------------------------------------------
 ! 17. Set initial temperature
 !------------------------------------------------------------------------------
-
+      
       x_pp = val0
-
+      
       IF(fixed_freedoms_pp > 0) THEN
         DO i = 1, fixed_freedoms_pp
           l       = no_f_pp(i) - ieq_start + 1
@@ -499,24 +523,24 @@ PROGRAM xx12
           x_pp(l) = val_f(k)
         END DO
       END IF
-
+      
       CALL gather(x_pp,pmul_pp)
       elements_2c: DO iel=1,nels_pp
         utemp_pp(:,iel)=MATMUL(storka_pp(:,:,iel),pmul_pp(:,iel))
       END DO elements_2c
       CALL scatter(u_pp,utemp_pp)
-
+      
       loads_pp = loads_pp + u_pp
-
+      
 !------------------------------------------------------------------------------
 ! 18. Output "results" at t=0
 !------------------------------------------------------------------------------
-
+      
       eld_pp   = zero
       disp_pp  = zero
       tz       = 0
       CALL gather(x_pp(1:),eld_pp)
-    
+      
       CALL scatter_nodes(npes,nn,nels_pp,g_num_pp,nod,nodof,nodes_pp,         &
                          node_start,node_end,eld_pp,disp_pp,1)
       
@@ -526,7 +550,7 @@ PROGRAM xx12
         WRITE(11,'(E12.4,8E19.8)')t0,disp_pp(is)
         !---For 5% node 118564, 10% node 11488731
       END IF
-
+      
       !---Write temperature outputs in ParaFEM format
       IF(i_o==1)THEN
         CALL write_nodal_variable_binary(label,25,tz,nodes_pp,npes,numpe,nodof, &
@@ -535,27 +559,44 @@ PROGRAM xx12
       IF(i_o==2)THEN
         CALL write_nodal_variable2(label,24,tz,nodes_pp,npes,numpe,nodof,disp_pp)
       END IF
-
-
+      
+      !----------------New ENSI binary format----------------------------------!
+      IF(i_o==3)THEN
+        ALLOCATE(tempres(nodes_pp))
+        tempres = zero
+        
+        DO i=1,ndim; tempres=zero        
+          DO l=1,nodes_pp
+            k=i+(ndim*(l-1))
+            tempres(l)=disp_pp(k)
+          END DO
+          CALL dismsh_ensi_pb2(27,j,nodes_pp,npes,numpe,nodof,tempres)
+        END DO
+        
+        DEALLOCATE(tempres)
+        
+      END IF
+      !----------------New ENSI binary format----------------------------------!
+      
     END IF ! From section 16
-
+    
 !------------------------------------------------------------------------------
 ! 19. Initialize PCG process
 ! 
 !     When x = 0._iwp p and r are just loads but in general p=r=loads-A*x,
 !     so form r = A*x. Here, use LHS part of the transient equation storka_pp
-!------------------------------------------------------------------------------  
+!------------------------------------------------------------------------------
     r_pp              = zero
     pmul_pp           = zero
     utemp_pp          = zero
 !   x_pp              = zero
-
+    
     CALL gather(x_pp,pmul_pp)
     elements_2b: DO iel=1,nels_pp
       utemp_pp(:,iel)=MATMUL(storka_pp(:,:,iel),pmul_pp(:,iel))
     END DO elements_2b
     CALL scatter(r_pp,utemp_pp)
-
+    
     IF(fixed_freedoms_pp > 0) THEN
       DO i = 1, fixed_freedoms_pp
         l       = no_f_pp(i) - ieq_start + 1
@@ -563,21 +604,21 @@ PROGRAM xx12
         r_pp(l) = store_pp(i)*val_f(k)
       END DO
     END IF
-
+    
     r_pp = loads_pp - r_pp
     d_pp = diag_precon_pp*r_pp
     p_pp = d_pp
-
+    
 !------------------------------------------------------------------------------
 ! 20. Solve simultaneous equations by pcg
 !------------------------------------------------------------------------------
-   
-    iters = 0
- 
-    iterations: DO
     
+    iters = 0
+    
+    iterations: DO
+      
       iters    = iters+1
-
+      
       u_pp     = zero
       pmul_pp  = zero
       utemp_pp = zero
@@ -616,21 +657,21 @@ PROGRAM xx12
     timest(16) = elap_time()
     
     IF(j/npri*npri==j)THEN
-
+      
       eld_pp   = zero
       disp_pp  = zero
       CALL gather(xnew_pp(1:),eld_pp)
-    
+      
       CALL scatter_nodes(npes,nn,nels_pp,g_num_pp,nod,nodof,nodes_pp,         &
                         node_start,node_end,eld_pp,disp_pp,1)
-
+      
       IF(numpe==it)THEN
         !---Write temperature outputs in Excel format
         !---Doesn't work in parallel
         WRITE(11,'(E12.4,8E19.8)')real_time,disp_pp(is)
         ! For 5% node 118564, 10% node 11488731
       END IF      
-
+      
       !---Write temperature outputs in ParaFEM format
       IF(i_o==1)THEN
         CALL write_nodal_variable_binary(label,25,j,nodes_pp,npes,numpe,nodof,  &
@@ -645,6 +686,8 @@ PROGRAM xx12
     
     timest(14) = timest(14) + (elap_time() - timest(16))
     
+    iters_tot = iters_tot + iters
+    
   END DO timesteps
   
   timest(13) = timest(12) + timest(13)
@@ -655,12 +698,30 @@ PROGRAM xx12
   IF(numpe==1)THEN
     CLOSE(11)
     CLOSE(24)
+    CLOSE(27)
   END IF
   
   IF(numpe==1) PRINT *, "Timest ", timest
   
-  CALL WRITE_P123(fixed_freedoms,iters,job_name,loaded_freedoms,neq,nn,npes,  &
-                  nr,numpe,timest,q)
+  CALL WRITE_XX12(fixed_freedoms,iters,job_name,loaded_freedoms,neq,nn,npes,  &
+                  nr,numpe,timest,q,dtim,nstep,iters_tot,tol,val0,npri)
+  
+!  !----------------New ENSI binary format-------------------------------------!
+!  
+!  ALLOCATE(nf(nodof,nn),oldlds(nn*ndim))
+!  nf=0
+!  nlen=len_trim(job_name)
+!  
+!  solid=.true.
+!  
+!  CALL rest_to_nf(rest,nf)
+!  ALLOCATE(g_coord(ndim,nn))
+!  g_coord(:,g_num_pp(:,iel)) = TRANSPOSE(coord)
+!  
+!  CALL mesh_ensi_bin(job_name,nlen,g_coord,g_num_pp,element,etype_pp,nf,      &
+!                      oldlds(1:),nstep,npri,dtim,solid)
+!  
+!  !----------------New ENSI binary format-------------------------------------!
   
   CALL shutdown()
   
