@@ -1,6 +1,11 @@
-PROGRAM p121       
+PROGRAM xx14       
 !------------------------------------------------------------------------- 
-!      Program 12.1 three dimensional analysis of an elastic solid
+! Anton Shterenlikht, 9-SEP-2014:
+
+!      Program xx14 - linking ParaFEM with CGPACK, specifically modifying
+!      p121 from 5th edition to link with the cgca module.
+!
+!      12.1 is a three dimensional analysis of an elastic solid
 !      using 20-node brick elements, preconditioned conjugate gradient
 !      solver; diagonal preconditioner diag_precon; parallel version
 !      loaded_nodes only
@@ -139,4 +144,4 @@ PROGRAM p121
  IF(numpe==1) WRITE(11,'(A,F10.4)')"This analysis took  :",              &
    elap_time()-timest(1)  
  CALL SHUTDOWN() 
-END PROGRAM p121
+END PROGRAM xx14
