@@ -11,6 +11,9 @@ PROGRAM xx14
 !      loaded_nodes only
 !------------------------------------------------------------------------- 
 !USE mpi_wrapper  !remove comment for serial compilation
+
+ use cgca
+
  USE precision; USE global_variables; USE mp_interface; USE input
  USE output; USE loading; USE timing; USE maths; USE gather_scatter
  USE steering; USE new_library; IMPLICIT NONE
@@ -28,6 +31,14 @@ PROGRAM xx14
    x_pp(:),xnew_pp(:),u_pp(:),pmul_pp(:,:),utemp_pp(:,:),d_pp(:),        &
    timest(:),diag_precon_tmp(:,:),eld_pp(:,:),temp(:)
  INTEGER,ALLOCATABLE::rest(:,:),g_num_pp(:,:),g_g_pp(:,:),node(:)
+
+! cgpack variables and parameters
+logical( kind=ldef) :: nodebug = .false.
+
+! cgpack
+! initialise random number seed
+call cgca_irs( nodebug )
+
 !------------------------ input and initialisation -----------------------
  ALLOCATE(timest(20)); timest=zero; timest(1)=elap_time()
  CALL find_pe_procs(numpe,npes); CALL getname(argv,nlen) 
