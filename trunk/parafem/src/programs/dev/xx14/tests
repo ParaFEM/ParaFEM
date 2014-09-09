@@ -1,0 +1,24 @@
+# Describes parameters for regression rest for this executable
+# This file is read by test.sh which is invoked by the 'make test' target
+
+# The base directory in which the demo input/output files are kept
+demo_file_path="../../../../examples/5th_ed/${driver_name}/demo"
+
+## ##TEST [0] - Example test
+
+## The file to examine. 
+# test_file[0]="${driver_name}_demo.res"
+## NB ${driver_name} is inherited from the call to test.sh, Typically the current directory name. e.g. p121
+
+## The pattern to match the line to test. To pass, lines matching this pattern must be the same after execution as in the demo_file_path
+# test_pattern[0]="The number of iterations to convergence was"
+
+## Real tests 
+
+## Test 0
+test_file[0]="${driver_name}_demo.res"
+test_pattern[0]="The number of iterations to convergence was"
+
+## Test 1
+test_file[1]="${driver_name}_demo.res"
+test_pattern[1]="The total load is"
