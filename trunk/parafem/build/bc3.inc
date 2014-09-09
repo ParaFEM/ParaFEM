@@ -30,7 +30,7 @@ EXT_LIB_METIS_RANLIB=	ranlib
 # Form is LIB_(MPI|SERIAL|OPENMP|GPU)_(REL|DBG)_(FFLAGS|LDFLAGS)
 # These flags are directly used by the module makefiles
 # --------------------------------------------------------------------------------
-BC3_FFLAGS=		-O2 -r8
+BC3_FFLAGS=		-O2 -r8 -mt_mpi
 LIB_MPI_REL_FFLAGS=			$(BC3_FFLAGS)
 LIB_MPI_DBG_FFLAGS=			$(BC3_FFLAGS)
   
@@ -59,9 +59,12 @@ DEFAULT_P12_MPI_REL_LDFLAGS=
 DEFAULT_P12_MPI_DBG_LDFLAGS=
 
 # generic XX group FFLAGS and LDFLAGS
-DEFAULT_XX_MPI_REL_FFLAGS=		$(BC3_FFLAGS)
+DEFAULT_XX_MPI_REL_FFLAGS=		$(BC3_FFLAGS) -I$(HOME)/mod -coarray=distributed \
+					 -coarray-config-file=../src/programs/dev/xx14/ca.conf
+
 DEFAULT_XX_MPI_DBG_FFLAGS=		$(BC3_FFLAGS)
-DEFAULT_XX_MPI_REL_LDFLAGS=
+DEFAULT_XX_MPI_REL_LDFLAGS=		-mt_mpi -I$(HOME)/mod -L$(HOME)/lib -lcgcapack -coarray=distributed \
+					 -coarray-config-file=../src/programs/dev/xx14/ca.conf
 DEFAULT_XX_MPI_DBG_LDFLAGS=
 
 # generic PROG8 group FFLAGS and LDFLAGS

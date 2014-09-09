@@ -1,5 +1,6 @@
 # MAKEFILE src/programs/5th_ed/xx14/makefile
-# Author: Louise M. Lever
+# Author: Anton Shterenlikht, 9-SEP-2014.
+# Based on p121 by Louise M. Lever
 # -----------------------------------------------------------------------
 # Compiles xx14 program executable as RELEASE or DEBUG
 # Links with RELEASE STATIC library libParaFEM_mpi.$(VERSION).a
