@@ -33,11 +33,26 @@ PROGRAM xx14
  INTEGER,ALLOCATABLE::rest(:,:),g_num_pp(:,:),g_g_pp(:,:),node(:)
 
 ! cgpack variables and parameters
-logical( kind=ldef) :: nodebug = .false.
+logical( kind=ldef) :: cgca_nodebug = .false.
+real, allocatable :: cgca_el_centroid(:,:)
+real :: cgca_coord_corner(2,3)
+integer( kind=iarr ), allocatable :: cgca_space(:,:,:,:)[:,:,:]
 
 ! cgpack
 ! initialise random number seed
 call cgca_irs( nodebug )
+
+! allocate space with two layers
+call cgca_as( l1,u1,l2,u2,l3,u3,col1,cou1,col2,cou2,col3,2, cgca_space )
+
+! assign CA corner coordinates
+cgca_coord_corner_low(:) = (/ 0.0, 0.0, 0.0 / )
+cgca_coord_corner_high(:) = (/ 10.0, 10.0, 10.0 / )
+
+! calculate physical length strides
+cgca_calen(1) = ( cgca_coord_corner(2,3) - cgca_coord_corner(1,3) ) / (cou3-col3+1)
+cgca_calen(2) = ( cgca_coord_corner(2,3) - cgca_coord_corner(1,3) ) / (cou3-col3+1)
+cgca_calen(3) = ( cgca_coord_corner(2,3) - cgca_coord_corner(1,3) ) / (cou3-col3+1)
 
 !------------------------ input and initialisation -----------------------
  ALLOCATE(timest(20)); timest=zero; timest(1)=elap_time()
@@ -56,6 +71,29 @@ call cgca_irs( nodebug )
    deriv(ndim,nod),bee(nst,ntot),weights(nip),eps(nst),sigma(nst),       &
    storkm_pp(ntot,ntot,nels_pp),pmul_pp(ntot,nels_pp),                   &
    utemp_pp(ntot,nels_pp),g_g_pp(ntot,nels_pp))
+
+! creating mapping FE <-> CA
+
+! calculate centroid coordinates
+  cgca_el_centroid = sum( g_coord_pp(:,:,:), dim=1 ) / nod
+! in centroid array:
+! first dim - node number
+! second dim - coord
+
+! calculate coordinates of regions
+do i = 1, num_images()
+  cgca_grid_position(:) = this_image(cgca_space)
+  cgca_coord_region_low( i,:) = ( cgca_grid_position(:) - col(:) ) * cgca_calen(:)
+  cgca_coord_region_high(i,:) = ( cgca_grid_position(:) - col(:) + 1 ) * cgca_calen(:)
+
+end do
+
+  ! calculate coordinate 
+  ! see if the centroid is within a CA region
+  if (
+  end if
+
+
 !----------  find the steering array and equations per process -----------
  CALL rearrange(rest); g_g_pp=0; neq=0
  elements_0: DO iel=1,nels_pp
@@ -67,6 +105,10 @@ call cgca_irs( nodebug )
    u_pp(neq_pp),d_pp(neq_pp),diag_precon_pp(neq_pp)); diag_precon_pp=zero
  p_pp=zero;  r_pp=zero;  x_pp=zero; xnew_pp=zero; u_pp=zero; d_pp=zero
 !------ element stiffness integration and build the preconditioner -------
+
+! deemat needs to go into a loop elements_1
+! need an element array of E
+
  dee=zero; CALL deemat(dee,e,v); CALL sample(element,points,weights)
  storkm_pp=zero
  elements_1: DO iel=1,nels_pp
@@ -126,6 +168,9 @@ call cgca_irs( nodebug )
  END IF
  DEALLOCATE(p_pp,r_pp,x_pp,u_pp,d_pp,diag_precon_pp,storkm_pp,pmul_pp) 
 !--------------- recover stresses at centroidal gauss point --------------
+
+! change to stresses in all elements 
+
  ALLOCATE(eld_pp(ntot,nels_pp)); eld_pp=zero; points=zero; nip=1; iel=1
  CALL gather(xnew_pp(1:),eld_pp); DEALLOCATE(xnew_pp)
  IF(numpe==1)WRITE(11,'(A)')"The Centroid point stresses for element 1 are"
