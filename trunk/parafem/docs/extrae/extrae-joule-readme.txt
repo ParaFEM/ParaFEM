@@ -1,13 +1,58 @@
 # Installing Extrae
 
-1. Install dependencies: libxml2, binutils (bfd and libiberty), papi, zlib)
+
+1. Install dependencies: libxml2, binutils (bfd and libiberty), zlib)
 	See Section 3.5.2 BlueGene/Q in the User Guide: http://www.bsc.es/computer-sciences/performance-tools/trace-generation/extrae/extrae-user-guide
 		Note: A static version of libxml2 is required.
 		Note: The cross-compiler must be used for binutils.
+	
+    binutils:
+	Unload any MPI modules - shared libraries cause issues.
+	
+	export CC=/bgsys/drivers/ppcfloor/gnu-linux/bin/powerpc64-bgq-linux-gcc
+	
+	./configure --target=i386-pc-linux s390-ibm-linux --prefix=~/binutils
+	
+	make && make install
+
+
+
+    zlib:
+	./configure --static --prefix=~/zlib
+
+	make && make install
+
+
+
+
+    libxml2:
+	./configure
+
+	make && make install
+
+
+
+
+
 2. Point the Linux-BGQ prebuilt version of Extrae to the dependencies.
 
 
+
+
 LD_PRELOAD mechanism is not available on IBM machines so we must build with Extrae...
+
+
+
+
+When linking to Extrae and it's dependencies, the order of libraries is wrong in the example (extrae/share/examples/MPI/Makefile):
+
+FLIBS = -L$(EXTRAE_HOME)/lib -lmpitracef $(PAPI_LIBS) -L$(XML2_HOME)/lib $(XML2_LIBS) -L$(ZLIB_HOME)/lib $(ZLIB_LIBS) $(BFD_LIBS)
+
+should be:
+
+FLIBS = -L$(EXTRAE_HOME)/lib -lmpitracef $(PAPI_LIBS) -L$(XML2_HOME)/lib $(XML2_LIBS) $(BFD_LIBS) -L$(ZLIB_HOME)/lib $(ZLIB_LIBS)
+
+
 
 
 
