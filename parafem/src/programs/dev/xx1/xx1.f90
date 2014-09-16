@@ -528,8 +528,10 @@ PROGRAM xx1
 
   IF(numpe==1) CLOSE(24)
   
-  PRINT *, "Write Displacement"
+! PRINT *, "Write Displacement"
 
+! Extrae output shows all cores performing I/O and the time spent is 
+! significant. This is due to the PRINT * statement now commented out.
 
 !------------------------------------------------------------------------------
 ! 16b. Stresses
