@@ -5,6 +5,25 @@ echo "pf2ensi"
 echo "Converting $1 to Ensight Gold CASE Format"
 
 # --------------------------------------------------------------------------------
+# Set default flags
+# --------------------------------------------------------------------------------
+
+# Enable/disable flags - set to zero to prevent processing of that filetype
+DO_DIS=1
+DO_PRI=1
+DO_REA=1
+DO_VMS=1
+DO_STR=1
+DO_TTR=1
+DO_FLX=1
+DO_MAT=1
+DO_BND=1
+DO_LDS=1
+DO_FIX=1
+DO_MAT_ID=1
+DO_NSET=0
+
+# --------------------------------------------------------------------------------
 # Process command line arguments
 # --------------------------------------------------------------------------------
 
@@ -54,25 +73,6 @@ ENSI_MATID_FILENAME="$BASE_FILENAME.ensi.MATID"
 
 # temporary output files
 ELEM_TMPL_FILE="tmp.$BASE_FILENAME.elem_tmpl"
-
-# --------------------------------------------------------------------------------
-# Set default flags
-# --------------------------------------------------------------------------------
-
-# Enable/disable flags - set to zero to prevent processing of that filetype
-DO_DIS=1
-DO_PRI=1
-DO_REA=1
-DO_VMS=1
-DO_STR=1
-DO_TTR=1
-DO_FLX=1
-DO_MAT=1
-DO_BND=1
-DO_LDS=1
-DO_FIX=1
-DO_MATI=0
-DO_NSET=0
 
 # --------------------------------------------------------------------------------
 # Generate output headers (initial)
@@ -257,7 +257,9 @@ fi
 
 # Append Material variable
 # NOTE: ParaView Ensight Gold Reader does not support the MATERIAL case parameter
-if [ $DO_MATI == 1 ]; then
+#       so we simply use an additional scalar per element variable.
+#       Use --enable-matid on the command line to include this variable
+if [ $DO_MAT_ID == 1 ]; then
     echo -e "scalar per element:\t\tMaterial\t""$ENSI_MATID_FILENAME" >> $ENSI_CASE_FILENAME
 fi
 
