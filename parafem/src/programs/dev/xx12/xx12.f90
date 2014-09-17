@@ -119,7 +119,7 @@ PROGRAM xx12
   timest(3) = elap_time()
   
   IF(meshgen == 2)THEN
-    PRINT *,"Calling abaqus2sg, meshgen = ",meshgen
+    IF(numpe==1) PRINT *,"Calling abaqus2sg, meshgen = ",meshgen
     CALL abaqus2sg(element,g_num_pp)
   END IF
   timest(4) = elap_time()
@@ -130,7 +130,7 @@ PROGRAM xx12
   IF (nr>0) CALL read_rest(job_name,numpe,rest)
   timest(6) = elap_time()
   
-  PRINT *, "np_types = ", np_types
+  IF(numpe==1) PRINT *, "np_types = ", np_types
   
   fname = job_name(1:INDEX(job_name, " ")-1) // ".mat"  
   CALL read_materialValue(prop,fname,numpe,npes)
@@ -372,12 +372,12 @@ PROGRAM xx12
     CALL read_fixed(job_name,numpe,node,sense,val_f)
     CALL find_no2(g_g_pp,g_num_pp,node,sense,no)
     
-    PRINT *, "After find_no2 no = ", no, " on PE ", numpe
+!    PRINT *, "After find_no2 no = ", no, " on PE ", numpe
     
     CALL reindex(ieq_start,no,no_pp_temp,                              &
                  fixed_freedoms_pp,fixed_freedoms_start,neq_pp)
     
-    PRINT *, "After reindex no = ", no, " on PE ", numpe
+!    PRINT *, "After reindex no = ", no, " on PE ", numpe
     
     ALLOCATE(no_f_pp(fixed_freedoms_pp),store_pp(fixed_freedoms_pp))
     
