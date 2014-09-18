@@ -24,13 +24,14 @@ MODULE GATHER_SCATTER
   !*    CALC_ELEMPROC              Subdivide any quantity across processors
   !*    SCATTER_NODES                         
   !*
-  !*  AUTHOR
+  !*  AUTHORS
   !*    M.A. Pettipher
   !*    L. Margetts
   !*    V. Szeremi
   !*    F. Calvo
+  !*    L.M. Lever
   !*  COPYRIGHT
-  !*    (c) University of Manchester 1996-2010
+  !*    (c) University of Manchester 1996-2014
   !******
   !*  Place remarks that should not be included in the documentation here.
   !*
@@ -1385,11 +1386,11 @@ MODULE GATHER_SCATTER
 
   SUBROUTINE MAKE_GGL(npes_pp,npes,gg_pp)
 
-  !/****f* gather_scatter/make_ggl2
+  !/****f* gather_scatter/make_ggl
   !*  NAME
-  !*    SUBROUTINE: make_ggl2
+  !*    SUBROUTINE: make_ggl
   !*  SYNOPSIS
-  !*    Usage:      CALL make_ggl2(npes_pp,npes,gg_pp)
+  !*    Usage:      CALL make_ggl(npes_pp,npes,gg_pp)
   !*  FUNCTION
   !*    Generates ggl_pp and associated arrays.
   !*  INPUTS
@@ -1401,15 +1402,15 @@ MODULE GATHER_SCATTER
   !*    M.A. Pettipher
   !*    Louise M. Lever
   !*  COPYRIGHT
-  !*    (c) University of Manchester 1996-2011
+  !*    (c) University of Manchester 1996-2014
   !******
   !*
   !*     Version 1a, 16-12-2011, Louise M. Lever
   !*                             Created alternative make_ggl2 based on make_ggl
   !*                             Uses allreduce so that all PEs know how many
-  !*                             messages to receive, removes need for IProbe and
-  !*                             removes count triggered deadlock. Has also added
-  !*                             pesgetcount and pesputcount globals and (de)alloc
+  !*                             messages to receive, removes need for IProbe & 
+  !*                             removes count triggered deadlock. Also added
+  !*                             pesgetcount and pesputcount globals & (de)alloc
   !*/
   
     IMPLICIT NONE
@@ -1424,6 +1425,8 @@ MODULE GATHER_SCATTER
     INTEGER              :: rem_acc, loc_acc, sum_rem_acc, sum_numpesget
     REAL(iwp)            :: sumtemp1, sumtemp2, rem_loc, sum_rem_loc
     LOGICAL              :: lflag, local, flag, newpe
+    LOGICAL              :: verbose=.false.
+!   LOGICAL              :: verbose=.true.
     INTEGER, ALLOCATABLE :: preq_pp(:,:)
 
     ALLOCATE(preq_pp(neq_pp1,npes))
@@ -1512,8 +1515,10 @@ MODULE GATHER_SCATTER
         pesget(ii) = i
         pesgetcount(i) = 1
         getpes(i) = ii
-        WRITE(details,'("No. of elements of PE ",I4," required by PE ",I4,     &
+        IF(verbose) THEN
+          WRITE(details,'("No. of elements of PE ",I4," required by PE ",I4,  &
                        & ": ",I8," getpes(i) ",I8)') i, numpe, lenget(i), ii
+        END IF
       END IF
     END DO DO_find_data_outer
 
@@ -1548,16 +1553,20 @@ MODULE GATHER_SCATTER
       IF (.NOT. newpe) THEN
         pesget(ii) = i
         getpes(i) = ii
-        WRITE(details,'("No. of elements of PE ",I4," required by PE ",I4,    &
+        IF(verbose) THEN
+          WRITE(details,'("No. of elements of PE ",I4," required by PE ",I4,  &
                        & ": ",I8," getpes(i) ",I8)') i, numpe, lenget(i), ii
+        END IF
       END IF
     END IF
 
     len_pl_pp = lengetsum(npes)
-    WRITE(details,*)'Total number of unique elements required'
-    WRITE(details,*)'i.e. length of pl_pp required: ', len_pl_pp
-    WRITE(details,'("PE: ",I4," Number of remote PEs required: ",I8)') &
-                   numpe, numpesget
+    IF(verbose) THEN
+      WRITE(details,*)'Total number of unique elements required'
+      WRITE(details,*)'i.e. length of pl_pp required: ', len_pl_pp
+      WRITE(details,'("PE: ",I4," Number of remote PEs required: ",I8)') &
+                     numpe, numpesget
+    END IF
     rem_acc = lengetsum(npes) - lenget(numpe)
     loc_acc = lenget(numpe)
     IF (loc_acc > 0) THEN
@@ -1565,8 +1574,10 @@ MODULE GATHER_SCATTER
     ELSE
       rem_loc = 0
     ENDIF
-    WRITE(*,'("PE: ",I4," Accesses - remote, local, remote/local: ",2I6,F8.2, &
-              & " From ",I6, " PEs")') numpe, rem_acc, loc_acc, rem_loc,numpesget
+    IF(verbose) THEN
+      WRITE(*,'("PE: ",I4," Accesses - remote, local, remote/local: ",2I6,    &
+      & F8.2," From ",I6, " PEs")') numpe, rem_acc, loc_acc, rem_loc,numpesget
+    END IF
     CALL MPI_REDUCE(rem_loc,sum_rem_loc,1,MPI_REAL8,MPI_SUM,      &
             npes-1,MPI_COMM_WORLD,ier)
     IF(ier .NE. MPI_SUCCESS) THEN
@@ -1642,7 +1653,9 @@ MODULE GATHER_SCATTER
         CALL MPERROR('Error in (A4) isend',ier)
       END IF
       CALL MPI_TEST(vrequest(ii),lflag,vstatus(1,ii),ier)
-      WRITE(details,'("PE: ",I4," request sent to PE: ",I5)') numpe, i
+      IF(verbose) THEN
+        WRITE(details,'("PE: ",I4," request sent to PE: ",I5)') numpe, i
+      END IF
     END DO
 
 !------------------------------------------------------------------------------
@@ -1716,13 +1729,16 @@ MODULE GATHER_SCATTER
 !------------------------------------------------------------------------------
 ! 10. Print more information about required communication.
 !------------------------------------------------------------------------------
-
-    DO i = 1,numpesput
-      WRITE(details,'("Number of elements of PE ",I4," required by PE ",      &
+    
+    IF(verbose) THEN
+      DO i = 1,numpesput
+        WRITE(details,'("Number of elements of PE ",I4," required by PE ",    &
                      & I4,": ",I8)') numpe, pesput(i), lenput(pesput(i))
-    END DO
-    WRITE(details,'("PE: ", I4," Number of PEs to send data to: ", I4)')      &
+      END DO
+      WRITE(details,'("PE: ", I4," Number of PEs to send data to: ", I4)')    &
         numpe, numpesput
+    END IF
+
     CALL MPI_BARRIER(MPI_COMM_WORLD,ier)
     IF (ier .NE. MPI_SUCCESS) THEN
       CALL MPERROR('Error in (A5) barrier',ier)
