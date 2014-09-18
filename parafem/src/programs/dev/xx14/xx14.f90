@@ -12,7 +12,10 @@ PROGRAM xx14
 !------------------------------------------------------------------------- 
 !USE mpi_wrapper  !remove comment for serial compilation
 
+!*********************************************************************72
+! The CGPACK module must be used
  use cgca
+!*********************************************************************72
 
  USE precision; USE global_variables; USE mp_interface; USE input
  USE output; USE loading; USE timing; USE maths; USE gather_scatter
@@ -32,27 +35,75 @@ PROGRAM xx14
    timest(:),diag_precon_tmp(:,:),eld_pp(:,:),temp(:)
  INTEGER,ALLOCATABLE::rest(:,:),g_num_pp(:,:),g_g_pp(:,:),node(:)
 
-! cgpack variables and parameters
-logical( kind=ldef) :: cgca_nodebug = .false.
-real, allocatable :: cgca_el_centroid(:,:)
-real :: cgca_coord_corner(2,3)
-integer( kind=iarr ), allocatable :: cgca_space(:,:,:,:)[:,:,:]
+!*********************************************************************72
+! CGPACK variables and parameters
+integer( kind=idef ) :: cgca_ir(3), cgca_img, cgca_nimgs, cgca_lres, &
+ cgca_ng                          ! number of grains in the whole model
+integer( kind=iarr ) :: cgca_c(3) ! coarray dimensions
+integer( kind=iarr ), allocatable :: cgca_space(:,:,:,:) [:,:,:]
 
-! cgpack
-! initialise random number seed
-call cgca_irs( nodebug )
+real( kind=rdef ) ::    &
+ cgca_qual,             & ! quality
+ cgca_bsz(3),           & ! the given and the updated "box" size
+ cgca_dm,               & ! mean grain size, linear dim, phys units
+ cgca_res,              & ! resolutions, cells per grain
+ cgca_bcol(3),          & ! lower phys. coords of the coarray on image
+ cgca_bcou(3)             ! upper phys. coords of the coarray on image
+! End of CGPACK variables and parameters
+!*********************************************************************72
 
-! allocate space with two layers
-call cgca_as( l1,u1,l2,u2,l3,u3,col1,cou1,col2,cou2,col3,2, cgca_space )
+!*********************************************************************72
+! CGPACK commands
 
-! assign CA corner coordinates
-cgca_coord_corner_low(:) = (/ 0.0, 0.0, 0.0 / )
-cgca_coord_corner_high(:) = (/ 10.0, 10.0, 10.0 / )
+! physical dimensions of the box, assume mm
+cgca_bsz = (/ 1.0, 2.0, 3.0 /)
 
-! calculate physical length strides
-cgca_calen(1) = ( cgca_coord_corner(2,3) - cgca_coord_corner(1,3) ) / (cou3-col3+1)
-cgca_calen(2) = ( cgca_coord_corner(2,3) - cgca_coord_corner(1,3) ) / (cou3-col3+1)
-cgca_calen(3) = ( cgca_coord_corner(2,3) - cgca_coord_corner(1,3) ) / (cou3-col3+1)
+! mean grain size, also mm
+cgca_dm = 1.0e-1
+
+! resolution
+cgca_res = 1.0e5
+
+! In this test set the number of images via the env var
+! the code must be able to cope with any value >= 1.
+  cgca_img = this_image()
+cgca_nimgs = num_images()
+
+! each image calculates the coarray grid dimensions
+call cgca_gdim( cgca_nimgs, cgca_ir, cgca_qual )
+
+! calculate the resolution and the actual phys dimensions
+! of the box
+! subroutine cgca_cadim( bsz, res, dm, ir, c, lres, ng )
+call cgca_cadim( cgca_bsz, cgca_res, cgca_dm, cgca_ir, cgca_c, &
+                 cgca_lres, cgca_ng )
+
+write ( *, "(9(a,i0),tr1,g0,tr1,i0,3(a,g0),a)" )               &
+    "img: ", cgca_img, " nimgs: ", cgca_nimgs,                 &
+     " (", cgca_c(1), ",", cgca_c(2), ",", cgca_c(3),          &
+     ")[", cgca_ir(1), ",", cgca_ir(2), ",", cgca_ir(3),       &
+     "] ", cgca_ng,                                            &
+    cgca_qual, cgca_lres,                                      &
+    " (", cgca_bsz(1), ",", cgca_bsz(2), ",", cgca_bsz(3), ")"
+
+! allocate space coarray with a single layer
+call cgca_as( 1, cgca_c(1),  1, cgca_c(2),  1, cgca_c(3),      &
+              1, cgca_ir(1), 1, cgca_ir(2), 1, 1, cgca_space )
+
+! calculate the phys. dim. of the coarray
+! on each image
+!subroutine cgca_imco( space, lres, bcol, bcou )
+call cgca_imco( cgca_space, cgca_lres, cgca_bcol, cgca_bcou )
+
+write ( *,"(a,i0,2(a,3(g0,tr1)),a)" ) "img: ", cgca_img,       &
+  " bcol: (", cgca_bcol, ") bcou: (", cgca_bcou, ")"
+
+! deallocate space
+call cgca_ds( cgca_space )
+
+! End of CGPACK commands
+!*********************************************************************72
+
 
 !------------------------ input and initialisation -----------------------
  ALLOCATE(timest(20)); timest=zero; timest(1)=elap_time()
@@ -72,26 +123,30 @@ cgca_calen(3) = ( cgca_coord_corner(2,3) - cgca_coord_corner(1,3) ) / (cou3-col3
    storkm_pp(ntot,ntot,nels_pp),pmul_pp(ntot,nels_pp),                   &
    utemp_pp(ntot,nels_pp),g_g_pp(ntot,nels_pp))
 
+!*********************************************************************72
+! CGPACK commands
+
 ! creating mapping FE <-> CA
 
 ! calculate centroid coordinates
-  cgca_el_centroid = sum( g_coord_pp(:,:,:), dim=1 ) / nod
+!  cgca_el_centroid = sum( g_coord_pp(:,:,:), dim=1 ) / nod
 ! in centroid array:
 ! first dim - node number
 ! second dim - coord
 
 ! calculate coordinates of regions
-do i = 1, num_images()
-  cgca_grid_position(:) = this_image(cgca_space)
-  cgca_coord_region_low( i,:) = ( cgca_grid_position(:) - col(:) ) * cgca_calen(:)
-  cgca_coord_region_high(i,:) = ( cgca_grid_position(:) - col(:) + 1 ) * cgca_calen(:)
-
-end do
+!do i = 1, num_images()
+!  cgca_grid_position(:) = this_image(cgca_space)
+!  cgca_coord_region_low( i,:) = ( cgca_grid_position(:) - col(:) ) * cgca_calen(:)
+!  cgca_coord_region_high(i,:) = ( cgca_grid_position(:) - col(:) + 1 ) * cgca_calen(:)
+!
+!end do
 
   ! calculate coordinate 
   ! see if the centroid is within a CA region
-  if (
-  end if
+
+! End of CGPACK commands
+!*********************************************************************72
 
 
 !----------  find the steering array and equations per process -----------
