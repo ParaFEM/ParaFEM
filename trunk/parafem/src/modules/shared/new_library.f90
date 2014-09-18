@@ -3510,8 +3510,8 @@ end subroutine formupvw
   
 !------------------------------------------------------------------------------
 !------------------------------------------------------------------------------
-!------------------------------------------------------------------------------  
-  
+!------------------------------------------------------------------------------
+ 
   SUBROUTINE ABAQUS2SG(element,g_num)
 
     !/****f* steering/abaqus2sg
@@ -3536,6 +3536,12 @@ end subroutine formupvw
     !*    (c) University of Manchester 2009-2010
     !******
     !*  Place remarks that should not be included in the documentation here.
+    !* 
+    !*  Need to update this subroutine to get numpe and npes so that
+    !*  the error messages can be printed out by one processor only
+    !*
+    !*  The code for 4 node tetrahedrons has been tested for thermal
+    !*  problems. It has not yet been tested for structural problems.
     !*
     !*/
   
@@ -3633,15 +3639,14 @@ end subroutine formupvw
 
       ALLOCATE(temp(nod))
       
-      PRINT*
-      PRINT*, "This is untested for stress elements"
+!     PRINT*, "This is untested for stress elements"
       
       DO iel = 1,nels
         temp          = g_num(:,iel)
-!        g_num(1,iel)  = temp(1)
-!        g_num(2,iel)  = temp(3)
-!        g_num(3,iel)  = temp(4)
-!        g_num(4,iel)  = temp(2)
+!       g_num(1,iel)  = temp(1)
+!       g_num(2,iel)  = temp(3)
+!       g_num(3,iel)  = temp(4)
+!       g_num(4,iel)  = temp(2)
         g_num(1,iel)  = temp(1)
         g_num(2,iel)  = temp(3)
         g_num(3,iel)  = temp(2)
