@@ -681,7 +681,7 @@ PROGRAM xx12
         CALL write_nodal_variable2(label,24,j,nodes_pp,npes,numpe,nodof,disp_pp)
       END IF
       
-      IF(numpe==1) PRINT *, "Time ", real_time, "Iters ", iters
+!      IF(numpe==1) PRINT *, "Time ", real_time, "Iters ", iters
     END IF
     
     timest(14) = timest(14) + (elap_time() - timest(16))
