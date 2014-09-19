@@ -58,6 +58,7 @@ FLIBS = -L$(EXTRAE_HOME)/lib -lmpitracef $(PAPI_LIBS) -L$(XML2_HOME)/lib $(XML2_
 
 # Building w/ Extrae
 1. Static linking is required (See joule_extrae.inc - line 67 for example)
+   This file is in the ~parafem/parafem/build directory.
 2. Ensure all environment variables are set before building (See joule_extrae_vars.sh for example)
 
 
