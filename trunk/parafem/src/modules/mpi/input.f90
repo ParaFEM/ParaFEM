@@ -656,17 +656,17 @@ MODULE INPUT
   !*
   !*/
 
-  USE, INTRINSIC : ISO_C_BINDING
+  USE, INTRINSIC :: ISO_C_BINDING
   
   IMPLICIT NONE
 
   CHARACTER(LEN=50), INTENT(IN) :: job_name
   CHARACTER(LEN=50)             :: fname
   CHARACTER(LEN=80)             :: cbuffer
-  REAL(iwp)                     :: rdummy
+  REAL(KIND=C_FLOAT)            :: rdummy
   INTEGER, INTENT(IN)           :: iel_start, nn, npes, numpe
   INTEGER, INTENT(INOUT)        :: g_num_pp(:,:)
-  INTEGER                       :: nod, nels_pp, iel, i, k, nn_in
+  INTEGER                       :: nod, nels_pp, iel, i, j, k, nn_in
   INTEGER                       :: bufsize, ielpe, ier, ndim=3
   INTEGER                       :: readSteps,max_nels_pp
   INTEGER                       :: status(MPI_STATUS_SIZE)
@@ -726,9 +726,12 @@ MODULE INPUT
     
     DO j = 1,ndim
       DO i = 1,nn  
-        READ(10,*) real(rdump,kind=c_float) !skip nodes until reaching the elements
+        READ(10,*) rdummy 
+        !skip nodes until reaching the elements
       END DO
-      PRINT *, "node ",i," dim", j, rdump
+      PRINT *, "node ",i," dim", j, rdummy
+      PRINT *, "node ",i," dim", j, REAL(rdummy,kind=iwp)
+    END DO
     END IF
 
 !------------------------------------------------------------------------------
