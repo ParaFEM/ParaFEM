@@ -15,6 +15,7 @@ MODULE INPUT
   !*    GETNAME_MG             Gets the base name of an ".mg" data file
   !*    READ_G_COORD_PP        Reads the global coordinates
   !*    READ_G_NUM_PP          Reads the element nodal steering array
+  !*    READ_G_NUM_PP_BE       Reads element nodal steering array (binary ensi)
   !*    READ_ELEMENTS          Reads the element nodal steering array
   !*    READ_ELEMENTS_2        Reads the element nodal steering array
   !*    READ_LOADS             Reads nodal forces
@@ -605,7 +606,168 @@ MODULE INPUT
   RETURN
 
   END SUBROUTINE READ_G_NUM_PP
+
+!------------------------------------------------------------------------------
+!------------------------------------------------------------------------------
+!------------------------------------------------------------------------------
+    
+  SUBROUTINE READ_G_NUM_PP_BE(job_name,iel_start,nn,npes,numpe,g_num_pp)
+
+  !/****f* input/read_g_num_pp2_be
+  !*  NAME
+  !*    SUBROUTINE: read_g_num_pp2_be
+  !*  SYNOPSIS
+  !*    Usage:      CALL read_g_num_pp2_be(job_name,iel_start,nn,npes,numpe,  &
+  !*                                    g_num_pp)
+  !*  FUNCTION
+  !*    Master process reads the global array of elements from a binary ensight
+  !*    gold "geo" file and broadcasts to slave processes.
+  !*  INPUTS
+  !*    The following arguments have the INTENT(IN) attribute:
+  !*
+  !*    job_name              : Character
+  !*                          : Used to create file name to read
+  !*
+  !*    iel_start             : Integer
+  !*                          : First element number in a process
+  !*
+  !*    nn                    : Integer
+  !*                          : Total number of nodes 
+  !*
+  !*    npes                  : Integer
+  !*                          : Total number of processors
+  !*
+  !*    numpe                 : Integer
+  !*                          : Process number
+  !*
+  !*    The following arguments have the INTENT(OUT) attribute:
+  !*
+  !*    g_num_pp(nod,nels_pp) : Integer
+  !*                          : Elements connectivity
+  !*
+  !*  AUTHOR
+  !*    L. Margetts
+  !*  COPYRIGHT
+  !*    (c) University of Manchester 2007-2014
+  !******
+  !*  Place remarks that should not be included in the documentation here.
+  !*
+  !*  This subroutine is under development 22.09.2014
+  !*
+  !*/
+
+  USE, INTRINSIC : ISO_C_BINDING
   
+  IMPLICIT NONE
+
+  CHARACTER(LEN=50), INTENT(IN) :: job_name
+  CHARACTER(LEN=50)             :: fname
+  CHARACTER(LEN=80)             :: cbuffer
+  REAL(iwp)                     :: rdummy
+  INTEGER, INTENT(IN)           :: iel_start, nn, npes, numpe
+  INTEGER, INTENT(INOUT)        :: g_num_pp(:,:)
+  INTEGER                       :: nod, nels_pp, iel, i, k, nn_in
+  INTEGER                       :: bufsize, ielpe, ier, ndim=3
+  INTEGER                       :: readSteps,max_nels_pp
+  INTEGER                       :: status(MPI_STATUS_SIZE)
+  INTEGER, ALLOCATABLE          :: g_num(:,:),localCount(:),readCount(:)
+
+!------------------------------------------------------------------------------
+! 1. Initiallize variables
+!------------------------------------------------------------------------------
+
+  nod       = UBOUND(g_num_pp,1)
+  nels_pp   = UBOUND(g_num_pp,2)
+
+!------------------------------------------------------------------------------
+! 2. Find READSTEPS, the number of steps in which the read will be carried
+!    out and READCOUNT, the size of each read.
+!------------------------------------------------------------------------------
+
+  ALLOCATE(readCount(npes))
+  ALLOCATE(localCount(npes))
+  
+  readCount         = 0
+  localCount        = 0
+  readSteps         = npes
+  localCount(numpe) = nels_pp
+
+  CALL MPI_ALLREDUCE(localCount,readCount,npes,MPI_INTEGER,MPI_SUM,           &
+                     MPI_COMM_WORLD,ier) 
+ 
+!------------------------------------------------------------------------------
+! 3. Allocate the array g_num into which the steering array for each processor
+!    is to be read
+!------------------------------------------------------------------------------
+
+  max_nels_pp = MAXVAL(readCount,1)
+  
+  ALLOCATE(g_num(nod,max_nels_pp))
+  
+  g_num = 0             ! different value for each processor
+
+!------------------------------------------------------------------------------
+! 4. Master processor opens the data file and advances to the start of the 
+!    element steering array
+!------------------------------------------------------------------------------
+
+  IF (numpe==1) THEN
+    fname     = job_name(1:INDEX(job_name, " ")-1) // ".bin.ensi.geo"
+    OPEN(10,FILE=fname,STATUS='OLD',FORM='UNFORMATTED',ACTION='READ',         &
+                       ACCESS='STREAM')
+    READ(10,*)   cbuffer !header ; READ(10,*)  cbuffer !header
+    READ(10,*)   cbuffer !header ; READ(10,*)  cbuffer !header
+    READ(10,*)   cbuffer !header ; READ(10,*)  cbuffer !header
+    READ(10,*)   cbuffer !header ; READ(10,*)  cbuffer !header
+    READ(10,*)   cbuffer !header ; READ(10,*)  int(nn_in,kind=c_int)
+    
+    PRINT *, nn
+    PRINT *, nn_in
+    
+    DO j = 1,ndim
+      DO i = 1,nn  
+        READ(10,*) real(rdump,kind=c_float) !skip nodes until reaching the elements
+      END DO
+      PRINT *, "node ",i," dim", j, rdump
+    END IF
+
+!------------------------------------------------------------------------------
+! 5. Go around READSTEPS loop, read data, and send to appropriate processor
+!------------------------------------------------------------------------------
+
+!  DO i=1,npes
+!    IF(i == 1) THEN  ! local data
+!      IF(numpe == 1) THEN
+!        DO iel = 1,readCount(i)
+!          READ(10,*)k,k,k,k,g_num_pp(:,iel),k
+!        END DO
+!      END IF
+!    ELSE
+!      bufsize = readCount(i)*nod
+!      IF(numpe == 1) THEN
+!        DO iel = 1,readCount(i)
+!          READ(10,*)k,k,k,k,g_num(:,iel),k
+!        END DO
+!        CALL MPI_SEND(g_num(:,1:readCount(i)),bufsize,MPI_INTEGER,i-1,i,     &
+!                      MPI_COMM_WORLD,status,ier)
+!      END IF
+!      IF(numpe == i) CALL MPI_RECV(g_num_pp,bufsize,MPI_INTEGER,0,i,         &
+!                                   MPI_COMM_WORLD,status,ier)
+!    END IF
+!  END DO
+  
+!------------------------------------------------------------------------------
+! 6. Close file and deallocate global arrays
+!------------------------------------------------------------------------------
+
+  IF(numpe==1) CLOSE(10)
+
+  DEALLOCATE(g_num,readCount,localCount)
+ 
+  RETURN
+
+  END SUBROUTINE READ_G_NUM_PP_BE
+    
 !------------------------------------------------------------------------------
 !------------------------------------------------------------------------------
 !------------------------------------------------------------------------------
