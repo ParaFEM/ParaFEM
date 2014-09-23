@@ -14,6 +14,7 @@ MODULE INPUT
   !*    GETNAME                Gets the base name of a ".dat" data file
   !*    GETNAME_MG             Gets the base name of an ".mg" data file
   !*    READ_G_COORD_PP        Reads the global coordinates
+  !*    READ_G_COORD_PP_BE     Reads the global coordinates (binary ensi)
   !*    READ_G_NUM_PP          Reads the element nodal steering array
   !*    READ_G_NUM_PP_BE       Reads element nodal steering array (binary ensi)
   !*    READ_ELEMENTS          Reads the element nodal steering array
@@ -348,6 +349,197 @@ MODULE INPUT
 !---------------------------------------------------------------------------
 !---------------------------------------------------------------------------
 
+  SUBROUTINE READ_G_COORD_PP_BE(job_name,g_num_pp,nn,npes,numpe,g_coord_pp)
+
+  !/****f* input/read_g_coord_pp_be
+  !*  NAME
+  !*    SUBROUTINE: read_g_coord_pp_be
+  !*  SYNOPSIS
+  !*    Usage:      CALL read_g_coord_pp_be(job_name,g_num_pp,nn,npes,numpe,  &
+  !*                                        g_coord_pp)
+  !*  FUNCTION
+  !*    
+  !*  INPUTS
+  !*
+  !*  AUTHOR
+  !*    Lee Margetts
+  !*  CREATION DATE
+  !*    22 September 2014
+  !*  COPYRIGHT
+  !*    (c) University of Manchester 2007-2014
+  !******
+  !*  THIS SUBROUTINE IS WORK IN PROGRESS
+  !*/
+
+  USE, INTRINSIC :: ISO_C_BINDING
+
+  IMPLICIT NONE
+
+  CHARACTER(LEN=50),INTENT(IN) :: job_name
+  CHARACTER(LEN=50)            :: fname
+  CHARACTER(LEN=80)            :: cbuffer
+  INTEGER, INTENT(IN)          :: nn, npes, numpe
+  INTEGER, INTENT(IN)          :: g_num_pp(:,:)
+  INTEGER                      :: ndim
+  INTEGER                      :: nels_pp
+  INTEGER                      :: nod
+  INTEGER                      :: nnStart         ! first node ID in g_coord
+  INTEGER                      :: nnEnd           ! last node ID in g_coord
+  INTEGER                      :: bufsize         ! packet size for bcast data
+  INTEGER                      :: ier             ! MPI error code
+  INTEGER                      :: iel,i,j,k,l,m,n,p   ! loop counters
+  INTEGER                      :: bitBucket
+  INTEGER                      :: readSteps
+  INTEGER                      :: readCount
+  INTEGER                      :: readRemainder    
+  INTEGER(KIND=C_INT)          :: nn_in,part
+  REAL(iwp), INTENT(INOUT)     :: g_coord_pp(:,:,:) 
+  REAL(KIND=C_FLOAT), ALLOCATABLE :: ord(:)    ! temporary array
+  REAL(iwp)                    :: zero = 0.0_iwp
+  LOGICAL                      :: verbose=.true.
+! LOGICAL                      :: verbose=.false.
+
+! -- NOT WORKING
+
+  PRINT *, "*********************************"
+  PRINT *, "READ_G_COORD_PP_BE is not working"
+  PRINT *, "*********************************"
+
+! STOP
+
+!------------------------------------------------------------------------------
+! 1. Find READSTEPS, the number of steps in which the read will be carried
+!    out, READCOUNT, the size of each read and READREMAINDER, the number
+!    of entries to be read after the last READSTEP.
+!------------------------------------------------------------------------------
+
+  fname     = job_name(1:INDEX(job_name, " ")-1) // ".bin.ensi.geo"  
+
+  IF(npes > nn) THEN
+    readSteps     = 1
+    readRemainder = 0
+    readCount     = nn
+  ELSE
+    readSteps     = npes
+    readRemainder = MOD(nn,readSteps)
+    readCount     = (nn - readRemainder) / npes
+  END IF
+  
+!------------------------------------------------------------------------------
+! 2. Allocate temporary array
+!------------------------------------------------------------------------------
+
+  nod      = UBOUND(g_coord_pp,1)
+  ndim     = UBOUND(g_coord_pp,2)
+  nels_pp  = UBOUND(g_coord_pp,3)
+
+  ALLOCATE(ord(readCount))
+
+!------------------------------------------------------------------------------
+! 3. Master process opens the data file
+!------------------------------------------------------------------------------
+
+  IF(numpe==1)THEN
+    
+    OPEN(10,FILE=fname,STATUS='OLD',FORM='UNFORMATTED',ACTION='READ',         &
+                       ACCESS='STREAM')
+
+    READ(10)   cbuffer ; IF(verbose) PRINT *, cbuffer
+    READ(10)   cbuffer ; IF(verbose) PRINT *, cbuffer
+    READ(10)   cbuffer ; IF(verbose) PRINT *, cbuffer
+    READ(10)   cbuffer ; IF(verbose) PRINT *, cbuffer
+    READ(10)   cbuffer ; IF(verbose) PRINT *, cbuffer
+    READ(10)   cbuffer ; IF(verbose) PRINT *, cbuffer
+
+    READ(10)   part    ; IF(verbose) PRINT *, part
+
+    READ(10)   cbuffer ; IF(verbose) PRINT *, cbuffer
+    READ(10)   cbuffer ; IF(verbose) PRINT *, cbuffer
+    
+    READ(10)   nn_in   ; IF(verbose) PRINT *, "nn_in = ",nn_in
+    
+  END IF
+
+!------------------------------------------------------------------------------
+! 4. Go round READSTEPS loop, read data, broadcast and populate g_coord_pp
+!------------------------------------------------------------------------------
+
+! For Ensight Gold we need to read this as a loop on x, y and z ordinates
+! separately
+
+  DO m = 1, ndim ! Coordinates
+  
+    IF(ALLOCATED(ord)) DEALLOCATE(ord)
+    ALLOCATE(ord(readCount))
+    ord     = zero
+    bufsize = readCount
+    p       = 0
+
+    DO i = 1, readSteps
+      ord     = zero
+      nnStart = (i-1) * readCount + 1
+      nnEnd   =  i    * readCount 
+      IF(numpe == 1) THEN
+        READ(10) ord(1:readCount)
+      END IF
+      CALL MPI_BCAST(ord,bufsize,MPI_REAL4,0,MPI_COMM_WORLD,ier)
+      DO iel = 1, nels_pp
+        DO k = 1, nod
+          IF(g_num_pp(k,iel) < nnStart) CYCLE
+          IF(g_num_pp(k,iel) > nnEnd)   CYCLE
+          l                  = g_num_pp(k,iel) - nnStart + 1
+          g_coord_pp(k,m,iel)= ord(l)
+        END DO
+      END DO
+    END DO
+  
+!------------------------------------------------------------------------------
+! 5. If READREMAINDER > 0, collect remaining entries
+!------------------------------------------------------------------------------
+  
+    IF(readRemainder > 0) THEN
+      DEALLOCATE(ord)
+      ALLOCATE(ord(readRemainder))
+      ord      = zero
+      bufsize  = readRemainder
+      nnStart  = (readSteps * readCount) + 1
+      nnEnd    = nnStart + readRemainder - 1
+      IF(nnEnd > nn) THEN
+        PRINT *, "Too many nodes"
+        CALL shutdown()
+        STOP
+      END IF
+      IF(numpe == 1) THEN
+        READ(10) ord(1:readRemainder)
+      END IF
+      CALL MPI_BCAST(ord,bufsize,MPI_REAL4,0,MPI_COMM_WORLD,ier)
+      DO iel = 1, nels_pp
+        DO k = 1, nod
+          IF(g_num_pp(k,iel) < nnStart) CYCLE
+          IF(g_num_pp(k,iel) > nnEnd)   CYCLE
+          l                  = g_num_pp(k,iel) - nnStart + 1
+          g_coord_pp(k,m,iel)= ord(l)
+        END DO
+      END DO
+    END IF
+
+  END DO ! Coordinates
+  
+!------------------------------------------------------------------------------
+! 6. Deallocate global arrays and close data file
+!------------------------------------------------------------------------------
+
+  DEALLOCATE(ord)    
+  IF(numpe==1) CLOSE(10)
+
+  RETURN
+  
+  END SUBROUTINE READ_G_COORD_PP_BE
+
+!---------------------------------------------------------------------------
+!---------------------------------------------------------------------------
+!---------------------------------------------------------------------------
+
   SUBROUTINE READ_NODES(fname,nn,nn_start,numpe,g_coord_pp)
 
     !/****f* input_output/read_nodes
@@ -666,11 +858,14 @@ MODULE INPUT
   REAL(KIND=C_FLOAT)            :: rdummy
   INTEGER, INTENT(IN)           :: iel_start, nn, npes, numpe
   INTEGER, INTENT(INOUT)        :: g_num_pp(:,:)
-  INTEGER                       :: nod, nels_pp, iel, i, j, k, nn_in
+  INTEGER(KIND=C_INT)           :: nn_in,nels_in,part
+  INTEGER                       :: nod, nels_pp, iel, i, j, k
   INTEGER                       :: bufsize, ielpe, ier, ndim=3
   INTEGER                       :: readSteps,max_nels_pp
   INTEGER                       :: status(MPI_STATUS_SIZE)
   INTEGER, ALLOCATABLE          :: g_num(:,:),localCount(:),readCount(:)
+  LOGICAL                       :: verbose=.false.
+! LOGICAL                       :: verbose=.true.
 
 !------------------------------------------------------------------------------
 ! 1. Initiallize variables
@@ -715,49 +910,52 @@ MODULE INPUT
     fname     = job_name(1:INDEX(job_name, " ")-1) // ".bin.ensi.geo"
     OPEN(10,FILE=fname,STATUS='OLD',FORM='UNFORMATTED',ACTION='READ',         &
                        ACCESS='STREAM')
-    READ(10,*)   cbuffer !header ; READ(10,*)  cbuffer !header
-    READ(10,*)   cbuffer !header ; READ(10,*)  cbuffer !header
-    READ(10,*)   cbuffer !header ; READ(10,*)  cbuffer !header
-    READ(10,*)   cbuffer !header ; READ(10,*)  cbuffer !header
-    READ(10,*)   cbuffer !header ; READ(10,*)  int(nn_in,kind=c_int)
+
+    READ(10)   cbuffer ; IF(verbose) PRINT *, cbuffer
+    READ(10)   cbuffer ; IF(verbose) PRINT *, cbuffer
+    READ(10)   cbuffer ; IF(verbose) PRINT *, cbuffer
+    READ(10)   cbuffer ; IF(verbose) PRINT *, cbuffer
+    READ(10)   cbuffer ; IF(verbose) PRINT *, cbuffer
+    READ(10)   cbuffer ; IF(verbose) PRINT *, cbuffer
+
+    READ(10)   part    ; IF(verbose) PRINT *, part
+
+    READ(10)   cbuffer ; IF(verbose) PRINT *, cbuffer
+    READ(10)   cbuffer ; IF(verbose) PRINT *, cbuffer
     
-    PRINT *, nn
-    PRINT *, nn_in
+    READ(10)   nn_in   ; IF(verbose) PRINT *, "nn_in = ",nn_in
     
-    DO j = 1,ndim
-      DO i = 1,nn  
-        READ(10,*) rdummy 
-        !skip nodes until reaching the elements
-      END DO
-      PRINT *, "node ",i," dim", j, rdummy
-      PRINT *, "node ",i," dim", j, REAL(rdummy,kind=iwp)
-    END DO
-    END IF
+    ! Skip the nodes. Not very efficient, but necessary to preserve the 
+    ! use of the Ensight gold data format.
+    
+    READ(10) (rdummy,i=1,nn*ndim) 
+
+  END IF
 
 !------------------------------------------------------------------------------
 ! 5. Go around READSTEPS loop, read data, and send to appropriate processor
 !------------------------------------------------------------------------------
 
-!  DO i=1,npes
-!    IF(i == 1) THEN  ! local data
-!      IF(numpe == 1) THEN
-!        DO iel = 1,readCount(i)
-!          READ(10,*)k,k,k,k,g_num_pp(:,iel),k
-!        END DO
-!      END IF
-!    ELSE
-!      bufsize = readCount(i)*nod
-!      IF(numpe == 1) THEN
-!        DO iel = 1,readCount(i)
-!          READ(10,*)k,k,k,k,g_num(:,iel),k
-!        END DO
-!        CALL MPI_SEND(g_num(:,1:readCount(i)),bufsize,MPI_INTEGER,i-1,i,     &
-!                      MPI_COMM_WORLD,status,ier)
-!      END IF
-!      IF(numpe == i) CALL MPI_RECV(g_num_pp,bufsize,MPI_INTEGER,0,i,         &
-!                                   MPI_COMM_WORLD,status,ier)
-!    END IF
-!  END DO
+  DO i=1,npes
+    IF(i == 1) THEN  ! local data
+      IF(numpe == 1) THEN
+        READ(10) cbuffer ; IF(verbose) PRINT *, cbuffer
+        READ(10) nels_in ; IF(verbose) PRINT *, nels_in
+        iel = readCount(i)
+        READ(10) g_num_pp(:,1:iel)
+      END IF
+    ELSE
+      bufsize = readCount(i)*nod
+      IF(numpe == 1) THEN
+        iel = readCount(i)
+        READ(10) g_num(:,1:iel)
+        CALL MPI_SEND(g_num(:,1:readCount(i)),bufsize,MPI_INTEGER,i-1,i,     &
+                      MPI_COMM_WORLD,status,ier)
+      END IF
+      IF(numpe == i) CALL MPI_RECV(g_num_pp,bufsize,MPI_INTEGER,0,i,         &
+                                   MPI_COMM_WORLD,status,ier)
+    END IF
+  END DO
   
 !------------------------------------------------------------------------------
 ! 6. Close file and deallocate global arrays
@@ -766,7 +964,7 @@ MODULE INPUT
   IF(numpe==1) CLOSE(10)
 
   DEALLOCATE(g_num,readCount,localCount)
- 
+  
   RETURN
 
   END SUBROUTINE READ_G_NUM_PP_BE
