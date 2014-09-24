@@ -121,13 +121,15 @@ PROGRAM xx1
 
   timest(2) = elap_time()
 
-  CALL read_g_num_pp(job_name,iel_start,nn,npes,numpe,g_num_pp)
+! CALL read_g_num_pp(job_name,iel_start,nn,npes,numpe,g_num_pp)
+  CALL read_g_num_pp_be(job_name,iel_start,nn,npes,numpe,g_num_pp)
   timest(3) = elap_time()
 
   IF(meshgen == 2) CALL abaqus2sg(element,g_num_pp)
   timest(4) = elap_time()
 
-  CALL read_g_coord_pp(job_name,g_num_pp,nn,npes,numpe,g_coord_pp)
+! CALL read_g_coord_pp(job_name,g_num_pp,nn,npes,numpe,g_coord_pp)
+  CALL read_g_coord_pp_be(job_name,g_num_pp,nn,npes,numpe,g_coord_pp)
   timest(5) = elap_time()
 
   CALL read_rest(job_name,numpe,rest)
