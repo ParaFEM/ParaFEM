@@ -6428,5 +6428,197 @@ END SUBROUTINE bcast_inputdata_p127
 !------------------------------------------------------------------------------
 !------------------------------------------------------------------------------
 !------------------------------------------------------------------------------
+
+  SUBROUTINE MESH_ENSI_GEO(argv,nlen,g_coord,g_num,element,nstep,npri,dtim,   &
+                           solid)
+
+   !/****f* input/mesh_ensi_geo
+   !*  NAME
+   !*    SUBROUTINE: mesh_ensi_geo
+   !*  SYNOPSIS
+   !*    Usage:      CALL mesh_ensi_geo(argv,nlen,g_coord,g_num,element,      &
+   !*                                   nstep,npri,dtim,solid)
+   !*  FUNCTION
+   !*    This subroutine outputs a set of files in the C binary version of the 
+   !*    Ensight gold format. Models in this format can be viewed in ParaView.
+   !* 
+   !*    Element types supported:                Tested with:
+   !*
+   !*    2-node bar
+   !*    3-node triangle                         p51  (4th edition p51_1.dat)
+   !*    6-node triangle
+   !*    4-node quadrilateral                    p115 (4th edition)
+   !*    8-node quadrilateral                    p116 (4th edition)
+   !*    4-node tetrahedron                      p54  (4th edition p54_2.dat)
+   !*    8-node hexahedron                       p86  (4th edition)       
+   !*    20-node hexahedron                      p55  (4th edition)
+   !*  INPUTS
+   !*    Scalar integers
+   !*    nlen             : number of characters in data file base name
+   !*    npri             : print interval
+   !*	 nstep            : number of time steps in analysis
+   !*
+   !*    Scalar reals
+   !*    dtim             : time step
+   !*
+   !*    Scalar characters
+   !*    argv             : holds data file base name
+   !*	 element          : element type
+   !*
+   !*    Scalar logicals
+   !*    solid            : type of analysis solid if .true. fluid if .false.
+   !*
+   !*    Dynamic scalar arrays
+   !*    g_num            : global element node numbers vector
+   !* 
+   !*    Dynamic real arrays
+   !* 	 g_coord          : global nodal coordinates
+   !*
+   !*  OUTPUTS
+   !*  AUTHOR
+   !*    I.M. Smith
+   !*    D.V. Griffiths
+   !*    L. Margetts
+   !*  COPYRIGHT
+   !*    (c) University of Manchester 2004-2014
+   !******
+   !*  Place remarks that should not be included in the documentation here.
+   !*
+   !*/
+
+    USE, INTRINSIC :: ISO_C_BINDING
+    
+    IMPLICIT none
+  
+    INTEGER,PARAMETER             :: iwp=SELECTED_REAL_KIND(15)
+    INTEGER,   INTENT(IN)         :: nlen
+    INTEGER,   INTENT(IN)         :: g_num(:,:)
+    INTEGER                       :: i,j,k,l,m,n,nod,nels,ndim,nn
+    REAL(iwp), INTENT(IN)         :: g_coord(:,:)
+    CHARACTER(LEN=15), INTENT(IN) :: argv,element  
+    CHARACTER(LEN=80)             :: cbuffer
+    
+  !----------------------------------------------------------------------------
+  ! 1. Initialisation
+  !----------------------------------------------------------------------------
+  
+    nn   = UBOUND(g_coord,2) ; ndim = UBOUND(g_coord,1)
+    nels = UBOUND(g_num,2)   ; nod  = UBOUND(g_num,1)
+  
+  !----------------------------------------------------------------------------
+  ! 2. Write geometry file
+  !
+  !    Only 8 node bricks tested
+  !----------------------------------------------------------------------------
+  
+    OPEN(13,FILE=argv(1:nlen)//'.bin.ensi.geo',STATUS="REPLACE",              &
+                 FORM="UNFORMATTED", ACTION="WRITE", ACCESS="STREAM")
+
+    cbuffer = "C Binary"                     ; WRITE(13) cbuffer
+    cbuffer = "Problem name: "//argv(1:nlen) ; WRITE(13) cbuffer
+    cbuffer = "Geometry files"               ; WRITE(13) cbuffer
+    cbuffer = "node id off"                  ; WRITE(13) cbuffer
+    cbuffer = "element id off"               ; WRITE(13) cbuffer
+    cbuffer = "part"                         ; WRITE(13) cbuffer
+    WRITE(13) int(1,kind=c_int)
+    IF(ndim==2) THEN 
+       cbuffer = "2d-mesh"                   ; WRITE(13) cbuffer
+    END IF
+    IF(ndim==3) THEN
+       cbuffer = "Volume"                    ; WRITE(13) cbuffer
+    END IF
+    cbuffer = "coordinates"                  ; WRITE(13) cbuffer
+    
+    WRITE(13) int(nn,kind=c_int)
+    DO j=1,ndim
+      DO i=1,nn  
+        WRITE(13) real(g_coord(j,i),kind=c_float)
+      END DO
+    END DO
+  
+    IF(ndim==2) THEN ! ensight requires zeros for the z-ordinate
+      DO i=1,nn
+        WRITE(13,'(A)') " 0.00000E+00" ! needs fixing for binary
+      END DO
+    END IF
+  
+    SELECT CASE(element)
+      CASE('triangle')
+        SELECT CASE(nod)
+!         CASE(3)
+!           WRITE(13,'(A/I10)') "tria3", nels
+!           DO i = 1,nels
+!             WRITE(13,'(3I10)')g_num(3,i),g_num(2,i),g_num(1,i)
+!           END DO
+          CASE DEFAULT
+            WRITE(13,'(A)')   "# Element type not recognised"
+        END SELECT
+      CASE('quadrilateral')
+        SELECT CASE(nod)
+          CASE(4)
+            WRITE(13,'(A/I10)') "quad4", nels
+            DO i = 1,nels
+              WRITE(13,'(4I10)')g_num(1,i),g_num(4,i),g_num(3,i),g_num(2,i)
+            END DO
+          CASE(8)
+            WRITE(13,'(A/I10)') "quad8", nels
+            DO i = 1,nels
+              WRITE(13,'(8I10)')g_num(1,i),g_num(7,i),g_num(5,i),g_num(3,i),   &
+                                g_num(8,i),g_num(6,i),g_num(4,i),g_num(2,i)
+            END DO
+          CASE DEFAULT
+            WRITE(13,'(A)')   "# Element type not recognised"
+        END SELECT
+      CASE('hexahedron')
+        SELECT CASE(nod)
+          CASE(8)
+            cbuffer = "hexa8"       ; WRITE(13) cbuffer
+            WRITE(13) int(nels,kind=c_int)
+            DO i = 1,nels
+              WRITE(13) int(g_num(1,i),kind=c_int),int(g_num(4,i),kind=c_int),&
+                        int(g_num(8,i),kind=c_int),int(g_num(5,i),kind=c_int),&
+                        int(g_num(2,i),kind=c_int),int(g_num(3,i),kind=c_int),&
+                        int(g_num(7,i),kind=c_int),int(g_num(6,i),kind=c_int)
+            END DO
+          CASE(20)
+            cbuffer = "hexa20"       ; WRITE(13) cbuffer
+            WRITE(13) int(nels,kind=c_int)
+            DO i = 1,nels
+              WRITE(13)                                                       &
+                int(g_num(1,i),kind=c_int), int(g_num(7,i),kind=c_int),       &
+                int(g_num(19,i),kind=c_int),int(g_num(13,i),kind=c_int),      &
+                int(g_num(3,i),kind=c_int),int(g_num(5,i),kind=c_int),        &
+                int(g_num(17,i),kind=c_int),int(g_num(15,i),kind=c_int),      &
+                int(g_num(8,i),kind=c_int),int(g_num(12,i),kind=c_int),       &
+                int(g_num(20,i),kind=c_int),int(g_num(9,i),kind=c_int),       &
+                int(g_num(4,i),kind=c_int),int(g_num(11,i),kind=c_int),       &
+                int(g_num(16,i),kind=c_int),int(g_num(10,i),kind=c_int),      &
+                int(g_num(2,i),kind=c_int),int(g_num(6,i),kind=c_int),        &
+                int(g_num(18,i),kind=c_int),int(g_num(14,i),kind=c_int) 
+            END DO
+          CASE DEFAULT
+            cbuffer = "# Element type not recognised" ; WRITE(13) cbuffer
+        END SELECT
+      CASE('tetrahedron')
+        SELECT CASE(nod)
+          CASE(4)
+            cbuffer = "tetra4" ; WRITE(13)
+            WRITE(13) int(nels,kind=c_int)
+            DO i = 1,nels
+              WRITE(13) int(g_num(1,i),kind=c_int),int(g_num(3,i),kind=c_int), &
+                        int(g_num(2,i),kind=c_int),int(g_num(4,i),kind=c_int)
+            END DO
+          CASE DEFAULT
+            cbuffer = "# Element type not recognised" ; WRITE(13)
+        END SELECT
+      CASE DEFAULT
+        cbuffer = "# Element type not recognised" ; WRITE(13)
+    END SELECT
+  
+    CLOSE(13)
+  
+    RETURN
+  
+  END SUBROUTINE MESH_ENSI_GEO
     
 END MODULE INPUT
