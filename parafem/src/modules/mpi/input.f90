@@ -6429,15 +6429,13 @@ END SUBROUTINE bcast_inputdata_p127
 !------------------------------------------------------------------------------
 !------------------------------------------------------------------------------
 
-  SUBROUTINE MESH_ENSI_GEO(argv,nlen,g_coord,g_num,element,nstep,npri,dtim,   &
-                           solid)
+  SUBROUTINE MESH_ENSI_GEO(argv,nlen,g_coord,g_num,element)
 
    !/****f* input/mesh_ensi_geo
    !*  NAME
    !*    SUBROUTINE: mesh_ensi_geo
    !*  SYNOPSIS
-   !*    Usage:      CALL mesh_ensi_geo(argv,nlen,g_coord,g_num,element,      &
-   !*                                   nstep,npri,dtim,solid)
+   !*    Usage:      CALL mesh_ensi_geo(argv,nlen,g_coord,g_num,element)
    !*  FUNCTION
    !*    This subroutine outputs a set of files in the C binary version of the 
    !*    Ensight gold format. Models in this format can be viewed in ParaView.
