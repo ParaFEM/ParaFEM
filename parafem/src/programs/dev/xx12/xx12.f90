@@ -42,7 +42,7 @@ PROGRAM xx12
   REAL(iwp),PARAMETER :: zero = 0.0_iwp,penalty=1.e20_iwp
   REAL(iwp),PARAMETER :: t0 = 0.0_iwp
   CHARACTER(LEN=15)   :: element
-  CHARACTER(LEN=50)   :: fname,job_name,label
+  CHARACTER(LEN=50)   :: fname,job_name,label,stepnum
   CHARACTER(LEN=50)   :: program_name='xx12'
   LOGICAL             :: converged = .false.
   LOGICAL             :: solid=.true.
@@ -574,6 +574,7 @@ PROGRAM xx12
         END DO
         
         DEALLOCATE(tempres)
+        IF(numpe==1) CLOSE (27)
         
       END IF
       !----------------New ENSI binary format----------------------------------!
@@ -681,6 +682,40 @@ PROGRAM xx12
         CALL write_nodal_variable2(label,24,j,nodes_pp,npes,numpe,nodof,disp_pp)
       END IF
       
+      !----------------New ENSI binary format----------------------------------!
+      IF(i_o==3)THEN
+        IF(numpe==1)THEN
+          fname = job_name(1:INDEX(job_name, " ")-1)//".bin.ensi.NDTTR-00000"
+          WRITE(stepnum,'(I0.6)') j
+          IF(numpe==1) PRINT *,"stepnum = ", stepnum
+          fname = fname//stepnum
+          OPEN(27,file=fname,status='replace',action='write',                    &
+          form='unformatted',access='stream')
+        
+          cbuffer="Alya Ensight Gold --- Scalar per-node variable file"
+          WRITE(27) cbuffer
+          cbuffer="part"        ; WRITE(27) cbuffer
+          WRITE(27) int(1,kind=c_int)
+          cbuffer="coordinates" ; WRITE(27) cbuffer 
+        END IF
+        
+        ALLOCATE(tempres(nodes_pp))
+        tempres = zero
+        
+        DO i=1,ndim; tempres=zero        
+          DO l=1,nodes_pp
+            k=i+(ndim*(l-1))
+            tempres(l)=disp_pp(k)
+          END DO
+          CALL dismsh_ensi_pb2(27,j,nodes_pp,npes,numpe,nodof,tempres)
+        END DO
+        
+        DEALLOCATE(tempres)
+        IF(numpe==1) CLOSE (27)
+        
+      END IF
+      !----------------New ENSI binary format----------------------------------!
+
 !      IF(numpe==1) PRINT *, "Time ", real_time, "Iters ", iters
     END IF
     
@@ -698,7 +733,7 @@ PROGRAM xx12
   IF(numpe==1)THEN
     CLOSE(11)
     CLOSE(24)
-    CLOSE(27)
+!    CLOSE(27)
   END IF
   
   IF(numpe==1) PRINT *, "Timest ", timest
