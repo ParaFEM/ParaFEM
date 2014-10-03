@@ -1,5 +1,13 @@
 # BUILD INCLUDE build/template.inc
 # Author: Louise M. Lever
+#
+# MODIFIED: Anton Shterenlikht
+# DATE: 3-OCT-2014
+# SYSTEM: The University of Bristol Bluecrystal cluster
+# NOTES: I'm only interested in building XX14 project.
+#	There are lots of build errors for other projects,
+#	but the ParaFEM library seems to build ok.
+#
 # --------------------------------------------------------------------------------
 # Blank template for specific architectures. Complete the variables below as
 # necessary. Use xe6.inc as an example.
@@ -59,12 +67,9 @@ DEFAULT_P12_MPI_REL_LDFLAGS=
 DEFAULT_P12_MPI_DBG_LDFLAGS=
 
 # generic XX group FFLAGS and LDFLAGS
-DEFAULT_XX_MPI_REL_FFLAGS=		$(BC3_FFLAGS) -I$(HOME)/mod -coarray=distributed \
-					 -coarray-config-file=../src/programs/dev/xx14/ca.conf
-
-DEFAULT_XX_MPI_DBG_FFLAGS=		$(BC3_FFLAGS)
-DEFAULT_XX_MPI_REL_LDFLAGS=		-mt_mpi -I$(HOME)/mod -L$(HOME)/lib -lcgcapack -coarray=distributed \
-					 -coarray-config-file=../src/programs/dev/xx14/ca.conf
+DEFAULT_XX_MPI_REL_FFLAGS=	$(BC3_FFLAGS)
+DEFAULT_XX_MPI_DBG_FFLAGS=	$(BC3_FFLAGS)
+DEFAULT_XX_MPI_REL_LDFLAGS=
 DEFAULT_XX_MPI_DBG_LDFLAGS=
 
 # generic PROG8 group FFLAGS and LDFLAGS
@@ -209,10 +214,15 @@ XX9_MPI_REL_LDFLAGS=$(DEFAULT_XX_MPI_REL_LDFLAGS)
 XX9_MPI_DBG_FFLAGS=$(DEFAULT_XX_MPI_DBG_FFLAGS)
 XX9_MPI_DBG_LDFLAGS=$(DEFAULT_XX_MPI_DBG_LDFLAGS)
 
-XX14_MPI_REL_FFLAGS=$(DEFAULT_XX_MPI_REL_FFLAGS)
-XX14_MPI_REL_LDFLAGS=$(DEFAULT_XX_MPI_REL_LDFLAGS)
-XX14_MPI_DBG_FFLAGS=$(DEFAULT_XX_MPI_DBG_FFLAGS)
-XX14_MPI_DBG_LDFLAGS=$(DEFAULT_XX_MPI_DBG_LDFLAGS)
+# ca.conf path should be relative to the directory
+# from where you launch the xx14 executable.
+# I assume it is in the same directory.
+XX14_MPI_REL_FFLAGS=	$(DEFAULT_XX_MPI_REL_FFLAGS) -I$(HOME)/mod -coarray=distributed \
+			-coarray-config-file=./ca.conf
+XX14_MPI_REL_LDFLAGS=	$(DEFAULT_XX_MPI_REL_LDFLAGS) -mt_mpi -I$(HOME)/mod -L$(HOME)/lib -lcgcapack \
+			-coarray=distributed -coarray-config-file=./ca.conf
+XX14_MPI_DBG_FFLAGS=	$(DEFAULT_XX_MPI_DBG_FFLAGS)
+XX14_MPI_DBG_LDFLAGS=	$(DEFAULT_XX_MPI_DBG_LDFLAGS)
 
 # --------------------------------------------------------------------------------
 # TOOL FLAGS for selected tools.
