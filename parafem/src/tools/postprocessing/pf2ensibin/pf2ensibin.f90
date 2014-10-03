@@ -36,7 +36,7 @@ PROGRAM pf2ensibin
   REAL(iwp)           :: aa,bb,cc,kx,ky,kz,det,theta,dtim,real_time
   !REAL(iwp)           :: val0 = 100.0_iwp
   REAL(iwp)           :: tol,alpha,beta,up,big,q
-  REAL(iwp)           :: rho,cp,val0
+  REAL(iwp)           :: rho,cp,val0,etype
   REAL(iwp),PARAMETER :: zero = 0.0_iwp,penalty=1.e20_iwp
   REAL(iwp),PARAMETER :: t0 = 0.0_iwp
 !  CHARACTER(LEN=15)   :: element
@@ -293,58 +293,88 @@ PROGRAM pf2ensibin
   WRITE(12,'(2A/A)')   "model: 1  ",job_name(1:INDEX(job_name, " ")-1)//'.bin.ensi.geo',"VARIABLE"
   WRITE(12,'(2A)')     "scalar per element:  material      ",                &
                         job_name(1:INDEX(job_name, " ")-1)//'.bin.ensi.MATID'
-  IF(solid) THEN
-    WRITE(12,'(2A)')   "scalar per node:     restraint     ",                &
-                        job_name(1:INDEX(job_name, " ")-1)//'.bin.ensi.NDBND'
-    WRITE(12,'(2A)')   "vector per node:     displacement  ",                &
-                        job_name(1:INDEX(job_name, " ")-1)//'.bin.ensi.DISPL-******'
-  ELSE
-    WRITE(12,'(2A)')   "scalar per node:     pressure      ",                &
-                        job_name(1:INDEX(job_name, " ")-1)//'.bin.ensi.PRESSURE-******'
-  END IF
-  WRITE(12,'(2A)')     "vector per node:     load          ",                &
+  WRITE(12,'(2A)')     "scalar per element:  material_kx   ",                &
+                        job_name(1:INDEX(job_name, " ")-1)//'.bin.ensi.ELMAT_1_kx'
+  WRITE(12,'(2A)')     "scalar per element:  material_ky   ",                &
+                        job_name(1:INDEX(job_name, " ")-1)//'.bin.ensi.ELMAT_2_ky'
+  WRITE(12,'(2A)')     "scalar per element:  material_kz   ",                &
+                        job_name(1:INDEX(job_name, " ")-1)//'.bin.ensi.ELMAT_3_kz'
+  WRITE(12,'(2A)')     "scalar per element:  material_rho  ",                &
+                        job_name(1:INDEX(job_name, " ")-1)//'.bin.ensi.ELMAT_4_rho'
+  WRITE(12,'(2A)')     "scalar per element:  material_cp   ",                &
+                        job_name(1:INDEX(job_name, " ")-1)//'.bin.ensi.ELMAT_5_cp'
+  WRITE(12,'(2A)')     "scalar per node: 1   temperature   ",                &
+                        job_name(1:INDEX(job_name, " ")-1)//'.bin.ensi.NDTTR-******'
+!  IF(solid) THEN
+!    WRITE(12,'(2A)')   "scalar per node:     restraint     ",                &
+!                        job_name(1:INDEX(job_name, " ")-1)//'.bin.ensi.NDBND'
+!    WRITE(12,'(2A)')   "vector per node:     displacement  ",                &
+!                        job_name(1:INDEX(job_name, " ")-1)//'.bin.ensi.DISPL-******'
+!  ELSE
+!    WRITE(12,'(2A)')   "scalar per node:     pressure      ",                &
+!                        job_name(1:INDEX(job_name, " ")-1)//'.bin.ensi.PRESSURE-******'
+!  END IF
+  WRITE(12,'(2A)')     "scalar per node:     fixed_nodes   ",                &
+                        job_name(1:INDEX(job_name, " ")-1)//'.bin.ensi.NDFIX'
+  WRITE(12,'(2A)')     "scalar per node:     loaded_nodes  ",                &
                         job_name(1:INDEX(job_name, " ")-1)//'.bin.ensi.NDLDS'
   WRITE(12,'(A/A)')     "TIME","time set:     1"
-  WRITE(12,'(A,I5)')    "number of steps:",nstep/npri
-  WRITE(12,'(A,I5)')    "filename start number:",npri
-  WRITE(12,'(A,I5)')    "filename increment:",npri
+  WRITE(12,'(A,I5)')    "number of steps:",nstep/npri+1
+  WRITE(12,'(A,I5)')    "filename start number:",1
+  WRITE(12,'(A,I5)')    "filename increment:",1
   WRITE(12,'(A)')       "time values:"
-  prnwidth  = 5
-  remainder = mod(nstep/npri,prnwidth)
-  n         = ((nstep/npri) - remainder)/prnwidth
-  IF(nstep/npri<=prnwidth) THEN
-    DO i=1,nstep,npri
-      IF(i==nstep) THEN
-        WRITE(12,'(E12.5)') i*dtim
-      ELSE
-        WRITE(12,'(E12.5)',ADVANCE='no') i*dtim
-      END IF
-    END DO
-  ELSE
-    IF(remainder==0) THEN
-      DO j=1,n
-        m = ((j-1)*prnwidth)+1
-        l = ((j-1)*prnwidth)+prnwidth
-        WRITE(12,'(5E12.5)') (k*dtim,k=m,l)
-      END DO
-    ELSE
-!     DO j=1,n-1
-      DO j=1,n
-        m = ((j-1)*prnwidth)+1
-        l = ((j-1)*prnwidth)+prnwidth
-        WRITE(12,'(5E12.5)') (k*dtim,k=m,l)
-      END DO
-      m = (n*prnwidth)+1
-      l = (n*prnwidth)+remainder
-      DO i=m,l
-        IF(i==l) THEN
-          WRITE(12,'(E12.5)') dtim*i
-        ELSE
-          WRITE(12,'(E12.5)',ADVANCE='no') dtim*i
-        END IF
-      END DO
+  
+  prnwidth = 5
+  j=1
+  WRITE(12,'(E12.5)',ADVANCE='no') zero
+  timesteps: DO i=1,nstep
+    real_time = i*dtim
+    IF(i/npri*npri==i)THEN
+      WRITE(12,'(E12.5)',ADVANCE='no') real_time
+      j=j+1
     END IF
-  END IF
+    IF(j==prnwidth)THEN
+        WRITE(12,*)''
+        j=0
+    END IF
+  END DO timesteps
+  WRITE(12,*)''
+
+!  remainder = mod(nstep/npri,prnwidth)
+!  n         = ((nstep/npri) - remainder)/prnwidth
+!  IF(nstep/npri<=prnwidth) THEN
+!    DO i=0,nstep-1,npri
+!      IF(i==nstep-1) THEN
+!        WRITE(12,'(E12.5)') i*dtim
+!      ELSE
+!        WRITE(12,'(E12.5)',ADVANCE='no') i*dtim
+!      END IF
+!    END DO
+!  ELSE
+!    IF(remainder==0) THEN
+!      DO j=0,n-1
+!        m = j*prnwidth
+!        l = j*prnwidth+prnwidth
+!        WRITE(12,'(5E12.5)') (k*dtim,k=m,l)
+!      END DO
+!    ELSE
+!!     DO j=1,n-1
+!      DO j=0,n-1
+!        m = j*prnwidth
+!        l = j*prnwidth+prnwidth
+!        WRITE(12,'(5E12.5)') (k*dtim,k=m,l)
+!      END DO
+!      m = n*prnwidth
+!      l = n*prnwidth+remainder
+!      DO i=m,l-1
+!        IF(i==l-1) THEN
+!          WRITE(12,'(E12.5)') dtim*i
+!        ELSE
+!          WRITE(12,'(E12.5)',ADVANCE='no') dtim*i
+!        END IF
+!      END DO
+!    END IF
+!  END IF
  
   CLOSE(12)
   
@@ -463,6 +493,8 @@ PROGRAM pf2ensibin
           DO i = 1,nels
             WRITE(13) int(g_num_pp(1,i),kind=c_int),int(g_num_pp(3,i),kind=c_int), &
                       int(g_num_pp(2,i),kind=c_int),int(g_num_pp(4,i),kind=c_int)
+!            WRITE(13) int(g_num_pp(1,i),kind=c_int),int(g_num_pp(2,i),kind=c_int), &
+!                      int(g_num_pp(3,i),kind=c_int),int(g_num_pp(4,i),kind=c_int)
 !!-----------Print to stdout to check values
 !            IF(numpe==1) PRINT *, g_num_pp(1,i),g_num_pp(3,i),g_num_pp(2,i),       &
 !                                  g_num_pp(4,i)
@@ -527,8 +559,10 @@ PROGRAM pf2ensibin
 !      WRITE(14,'(A)')   "# Element type not recognised"
 !  END SELECT
   DO i = 1,nels
-    WRITE(14) int(etype_pp(i),kind=c_int) 
-    IF(numpe==1) PRINT *, etype_pp(i)
+    etype=etype_pp(i)*1.0
+    WRITE(14) real(etype,kind=c_float)
+!    WRITE(14) int(etype_pp(i),kind=c_int) 
+!    IF(numpe==1) PRINT *, etype_pp(i)
   END DO
   
   CLOSE(14)
@@ -539,18 +573,163 @@ PROGRAM pf2ensibin
 ! 13. Write files containing material properties
 !-----------------------------------------------------------------------------
   
+  OPEN(15,FILE=job_name(1:INDEX(job_name, " ")-1)//'.bin.ensi.ELMAT_1_kx',    &
+          STATUS="REPLACE",FORM="UNFORMATTED", ACTION="WRITE", ACCESS="STREAM")
+  
+  cbuffer = "Alya Ensight Gold --- Scalar per-element variable file"
+  WRITE(15) cbuffer
+  cbuffer = "part"  ; WRITE(15) cbuffer
+  WRITE(15) int(1,kind=c_int)
+  cbuffer = "tetra4"  ; WRITE(15) cbuffer
+  
+  DO iel = 1,nels
+    WRITE(15) real(prop(1,etype_pp(iel)),kind=c_float)
+  END DO
+  
+  CLOSE(15)
+
+  OPEN(16,FILE=job_name(1:INDEX(job_name, " ")-1)//'.bin.ensi.ELMAT_2_ky',    &
+          STATUS="REPLACE",FORM="UNFORMATTED", ACTION="WRITE", ACCESS="STREAM")
+  
+  cbuffer = "Alya Ensight Gold --- Scalar per-element variable file"
+  WRITE(16) cbuffer
+  cbuffer = "part"  ; WRITE(16) cbuffer
+  WRITE(16) int(1,kind=c_int)
+  cbuffer = "tetra4"  ; WRITE(16) cbuffer
+  
+  DO iel = 1,nels
+    WRITE(16) real(prop(2,etype_pp(iel)),kind=c_float)
+  END DO
+  
+  CLOSE(16)
+
+  OPEN(17,FILE=job_name(1:INDEX(job_name, " ")-1)//'.bin.ensi.ELMAT_3_kz',    &
+          STATUS="REPLACE",FORM="UNFORMATTED", ACTION="WRITE", ACCESS="STREAM")
+  
+  cbuffer = "Alya Ensight Gold --- Scalar per-element variable file"
+  WRITE(17) cbuffer
+  cbuffer = "part"  ; WRITE(17) cbuffer
+  WRITE(17) int(1,kind=c_int)
+  cbuffer = "tetra4"  ; WRITE(17) cbuffer
+  
+  DO iel = 1,nels
+    WRITE(17) real(prop(3,etype_pp(iel)),kind=c_float)
+  END DO
+  
+  CLOSE(17)
+
+  OPEN(18,FILE=job_name(1:INDEX(job_name, " ")-1)//'.bin.ensi.ELMAT_4_rho',    &
+          STATUS="REPLACE",FORM="UNFORMATTED", ACTION="WRITE", ACCESS="STREAM")
+  
+  cbuffer = "Alya Ensight Gold --- Scalar per-element variable file"
+  WRITE(18) cbuffer
+  cbuffer = "part"  ; WRITE(18) cbuffer
+  WRITE(18) int(1,kind=c_int)
+  cbuffer = "tetra4"  ; WRITE(18) cbuffer
+  
+  DO iel = 1,nels
+    WRITE(18) real(prop(4,etype_pp(iel)),kind=c_float)
+  END DO
+  
+  CLOSE(18)
+
+  OPEN(19,FILE=job_name(1:INDEX(job_name, " ")-1)//'.bin.ensi.ELMAT_5_cp',    &
+          STATUS="REPLACE",FORM="UNFORMATTED", ACTION="WRITE", ACCESS="STREAM")
+  
+  cbuffer = "Alya Ensight Gold --- Scalar per-element variable file"
+  WRITE(19) cbuffer
+  cbuffer = "part"  ; WRITE(19) cbuffer
+  WRITE(19) int(1,kind=c_int)
+  cbuffer = "tetra4"  ; WRITE(19) cbuffer
+  
+  DO iel = 1,nels
+    WRITE(19) real(prop(5,etype_pp(iel)),kind=c_float)
+  END DO
+  
+  CLOSE(19)
+  
   IF(numpe==1) PRINT *, "End of 13"
   
 !-----------------------------------------------------------------------------
 ! 14. Write file containing fixed nodes
 !-----------------------------------------------------------------------------  
   
+  IF(fixed_freedoms > 0) THEN
+    ALLOCATE(node(fixed_freedoms),sense(fixed_freedoms),val_f(fixed_freedoms))
+    IF(numpe==1)THEN
+      fname = job_name(1:INDEX(job_name, " ")-1) // ".fix"
+      OPEN(20,FILE=fname,STATUS='OLD',ACTION='READ')
+      DO i = 1,fixed_freedoms
+        READ(20,*)node(i),sense(i),val_f(i)
+      END DO
+      CLOSE(20)
+    END IF
+    
+    OPEN(21,FILE=job_name(1:INDEX(job_name, " ")-1)//'.bin.ensi.NDFIX',         &
+            STATUS="REPLACE",FORM="UNFORMATTED", ACTION="WRITE", ACCESS="STREAM")
+    
+    cbuffer = "Alya Ensight Gold --- Scalar per-partial-node variable file"
+    WRITE(21) cbuffer
+    cbuffer = "part"  ; WRITE(21) cbuffer
+    WRITE(21) int(1,kind=c_int)
+    cbuffer = "coordinates"  ; WRITE(21) cbuffer
+    
+    j=1
+    DO i=1,nn
+      IF(i==node(j)) THEN
+        WRITE(21) real(val_f(j),kind=c_float)
+        j=j+1
+      ELSE
+        WRITE(21) real(zero,kind=c_float)
+      END IF
+    END DO
+    
+    DEALLOCATE(node)
+    CLOSE(21)
+  END IF
   IF(numpe==1) PRINT *, "End of 14"
   
 !-----------------------------------------------------------------------------
 ! 15. Write file containing loaded nodes
 !-----------------------------------------------------------------------------
   
+  loaded_freedoms = loaded_nodes ! hack
+  IF(loaded_freedoms > 0) THEN
+    ALLOCATE(node(loaded_freedoms),val(nodof,loaded_freedoms))
+    IF(numpe==1)THEN
+      fname = job_name(1:INDEX(job_name, " ")-1) // ".lds"
+      OPEN(22, FILE=fname, STATUS='OLD', ACTION='READ')
+      DO i = 1,loaded_nodes 
+        READ(22,*) node(i),val(:,i)
+      END DO
+      CLOSE(22)
+    END IF
+  
+    OPEN(23,FILE=job_name(1:INDEX(job_name, " ")-1)//'.bin.ensi.NDLDS',         &
+            STATUS="REPLACE",FORM="UNFORMATTED", ACTION="WRITE", ACCESS="STREAM")
+    
+    cbuffer = "Alya Ensight Gold --- Scalar per-partial-node variable file"
+    WRITE(23) cbuffer
+    cbuffer = "part"  ; WRITE(23) cbuffer
+    WRITE(23) int(1,kind=c_int)
+    cbuffer = "coordinates"  ; WRITE(23) cbuffer
+    
+    j=1
+    DO i=1,nn
+      IF(i==node(j)) THEN
+        WRITE(23) real(val(1,j),kind=c_float)
+!        IF(numpe==1) PRINT *,val(1,j)
+        j=j+1
+      ELSE
+        WRITE(23) real(zero,kind=c_float)
+!        IF(numpe==1) PRINT *,0.0
+      END IF
+    END DO
+    
+    DEALLOCATE(node)
+    CLOSE(23)
+  END IF
+    
   IF(numpe==1) PRINT *, "End of 15"
   
   CALL shutdown()

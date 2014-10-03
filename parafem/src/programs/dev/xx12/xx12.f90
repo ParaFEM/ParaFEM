@@ -565,13 +565,17 @@ PROGRAM xx12
         ALLOCATE(tempres(nodes_pp))
         tempres = zero
         
-        DO i=1,ndim; tempres=zero        
+!        DO i=1,ndim; tempres=zero        
           DO l=1,nodes_pp
-            k=i+(ndim*(l-1))
-            tempres(l)=disp_pp(k)
+!            k=i+(ndim*(l-1))
+!            k=l+(ndim*(i-1))
+!            tempres(l)=disp_pp(k)
+            tempres(l)=disp_pp(l)
           END DO
           CALL dismsh_ensi_pb2(27,j,nodes_pp,npes,numpe,nodof,tempres)
-        END DO
+!          IF(numpe==1) PRINT *, "Time = ",t0
+!          IF(numpe==1) PRINT *, tempres
+!        END DO
         
         DEALLOCATE(tempres)
         IF(numpe==1) CLOSE (27)
@@ -685,10 +689,12 @@ PROGRAM xx12
       !----------------New ENSI binary format----------------------------------!
       IF(i_o==3)THEN
         IF(numpe==1)THEN
-          fname = job_name(1:INDEX(job_name, " ")-1)//".bin.ensi.NDTTR-00000"
-          WRITE(stepnum,'(I0.6)') j
-          IF(numpe==1) PRINT *,"stepnum = ", stepnum
-          fname = fname//stepnum
+!          fname = job_name(1:INDEX(job_name, " ")-1)//".bin.ensi.NDTTR-"
+          WRITE(stepnum,'(I0.6)') (j/npri)+1
+!          IF(numpe==1) PRINT *,"stepnum = ", stepnum
+!          fname = fname//stepnum
+          fname = job_name(1:INDEX(job_name, " ")-1)//".bin.ensi.NDTTR-"//stepnum
+!          IF(numpe==1) PRINT *,"fname = ", fname
           OPEN(27,file=fname,status='replace',action='write',                    &
           form='unformatted',access='stream')
         
@@ -702,13 +708,17 @@ PROGRAM xx12
         ALLOCATE(tempres(nodes_pp))
         tempres = zero
         
-        DO i=1,ndim; tempres=zero        
+!        DO i=1,ndim; tempres=zero        
           DO l=1,nodes_pp
-            k=i+(ndim*(l-1))
-            tempres(l)=disp_pp(k)
+!            k=i+(ndim*(l-1))
+!            k=l+(ndim*(i-1))
+!            tempres(l)=disp_pp(k)
+            tempres(l)=disp_pp(l)
           END DO
           CALL dismsh_ensi_pb2(27,j,nodes_pp,npes,numpe,nodof,tempres)
-        END DO
+!          IF(numpe==1) PRINT *, "Time = ",real_time
+!          IF(numpe==1) PRINT *, tempres
+!        END DO
         
         DEALLOCATE(tempres)
         IF(numpe==1) CLOSE (27)
