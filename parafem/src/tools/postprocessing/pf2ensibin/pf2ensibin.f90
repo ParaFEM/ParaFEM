@@ -1,15 +1,9 @@
-PROGRAM pf2ensibin_geo
+PROGRAM pf2ensibin
 !------------------------------------------------------------------------------
 !      Program pf2ensibin_geo  Tool to produce binary ensight gold formatted  
 !                              finite element mesh input file. Under 
 !                              development, currently for 4-node tetrahedra
 !------------------------------------------------------------------------------
-  
-!  USE precision  ; USE global_variables ; USE mp_interface
-!  USE input      ; USE output           ; USE loading
-!  USE timing     ; USE maths            ; USE gather_scatter
-!  USE partition  ; USE elements         ; USE steering
-!  USE geometry   ; USE pcg              ; USE new_library
   
   USE, INTRINSIC :: ISO_C_BINDING ! to output C binary file
   
@@ -55,15 +49,6 @@ PROGRAM pf2ensibin_geo
              dtim,nstep,npri,theta,                                           &
              tol,limit,el_print,i_o
   CLOSE(10)
-  
-!  fname   = job_name(1:INDEX(job_name, " ")-1)//".test"
-!  OPEN(11,FILE=fname)
-!  WRITE(11,*) element,meshgen,partitioner,np_types,                            &
-!             nels,nn,nr,nip,nod,loaded_nodes,fixed_freedoms,                  &
-!             val0,                                                            &
-!             dtim,nstep,npri,theta,                                           &
-!             tol,limit,el_print,i_o
-!  CLOSE(11)
   
 !----------------------------------------------------------------------------
 ! 4. Read material properties
@@ -133,21 +118,7 @@ PROGRAM pf2ensibin_geo
     WRITE(i) int(1,kind=c_int)
     cbuffer = "tetra4"  ; WRITE(i) cbuffer
   END DO
-
-!  !-Write .MATID header
-!  cbuffer = "Alya Ensight Gold --- Scalar per-element variable file"
-!  WRITE(14) cbuffer
-!  cbuffer = "part"  ; WRITE(14) cbuffer
-!  WRITE(14) int(1,kind=c_int)
-!  cbuffer = "tetra4"  ; WRITE(14) cbuffer
-!  
-!  !-Write .ELMAT headers
-!  cbuffer = "Alya Ensight Gold --- Scalar per-element variable file"
-!  WRITE(15) cbuffer
-!  cbuffer = "part"  ; WRITE(15) cbuffer
-!  WRITE(15) int(1,kind=c_int)
-!  cbuffer = "tetra4"  ; WRITE(15) cbuffer
-
+  
   PRINT *, "Writing nodal coordinates"
   !-Read/Write nodal coordinates  
   ALLOCATE(temp_real(ndim+1))
@@ -325,4 +296,4 @@ PROGRAM pf2ensibin_geo
   
   CALL shutdown()
   
-END PROGRAM pf2ensibin_geo
+END PROGRAM pf2ensibin
