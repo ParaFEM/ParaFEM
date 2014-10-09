@@ -36,7 +36,6 @@ PROGRAM xx12
   INTEGER             :: np_types,el_print,i_o
   INTEGER             :: prog,tz
   REAL(iwp)           :: aa,bb,cc,kx,ky,kz,det,theta,dtim,real_time
-  !REAL(iwp)           :: val0 = 100.0_iwp
   REAL(iwp)           :: tol,alpha,beta,up,big,q
   REAL(iwp)           :: rho,cp,val0
   REAL(iwp),PARAMETER :: zero = 0.0_iwp,penalty=1.e20_iwp
@@ -85,10 +84,6 @@ PROGRAM xx12
   argc = iargc()
   IF(argc /= 1) CALL job_name_error(numpe,program_name)
   CALL GETARG(1,job_name)
-  
-! CALL read_xx12(job_name,numpe,dtim,element,fixed_freedoms,kx,ky,kz,limit,   &
-!                loaded_nodes,meshgen,nels,nip,nn,nod,npri,nr,nstep,          &
-!                partitioner,theta,tol,np_types,rho,cp,val0)
   
   CALL read_xx12(job_name,numpe,dtim,element,fixed_freedoms,limit,            &
                  loaded_nodes,meshgen,nels,nip,nn,nod,npri,nr,nstep,          &
@@ -200,7 +195,6 @@ PROGRAM xx12
   CALL calc_npes_pp(npes,npes_pp)
   CALL make_ggl(npes_pp,npes,g_g_pp)
   
-  !nres = 11488731 ! 11488731 25% model or 118564 5% model
   nres = el_print
   
   DO i = 1,neq_pp
@@ -310,8 +304,7 @@ PROGRAM xx12
 ! 10. Allocate disp_pp array and open file to write temperature output
 !------------------------------------------------------------------------------
   
-  !---Open file for temperature outputs in Excel format  
-  IF(numpe==it)THEN
+  IF(numpe==it)THEN !---Open file for temperature outputs of specified node  
     fname = job_name(1:INDEX(job_name, " ")-1) // ".ttr2"
     OPEN(11,FILE=fname,STATUS='REPLACE',ACTION='WRITE')
   END IF
@@ -320,13 +313,12 @@ PROGRAM xx12
   ALLOCATE(disp_pp(nodes_pp))
   ALLOCATE(eld_pp(ntot,nels_pp))
   
-  !---Open file for temperature outputs in ParaFEM format
   IF(numpe==1) THEN
-    IF(i_o==2)THEN
+    IF(i_o==2)THEN !---Open file for temperature outputs in ascii ParaFEM format
       fname   = job_name(1:INDEX(job_name, " ")-1)//".ttr"
       OPEN(24, file=fname, status='replace', action='write')
     END IF
-    IF(i_o==1)THEN
+    IF(i_o==1)THEN !---Open file for temperature outputs in binary ParaFEM format
       fname   = job_name(1:INDEX(job_name, " ")-1)//".ttrb"
       OPEN(25, file=fname, status='replace', action='write',                    &
            access='sequential', form='unformatted')
@@ -337,9 +329,7 @@ PROGRAM xx12
     WRITE(26,*) nn
     WRITE(26,*) nstep/npri
     WRITE(26,*) npes
-    
-    !----------------New ENSI binary format----------------------------------!
-    IF(i_o==3)THEN
+    IF(i_o==3)THEN !---Open file for temperature outputs in binary ENSI format
       fname = job_name(1:INDEX(job_name, " ")-1)//".bin.ensi.NDTTR-000001"
       OPEN(27,file=fname,status='replace',action='write',                    &
       form='unformatted',access='stream')
@@ -350,8 +340,6 @@ PROGRAM xx12
       WRITE(27) int(1,kind=c_int)
       cbuffer="coordinates" ; WRITE(27) cbuffer 
     END IF
-    !----------------New ENSI binary format----------------------------------!
-    
   END IF
   
   IF(numpe==1) PRINT *, "End of 10"
@@ -467,10 +455,6 @@ PROGRAM xx12
       END DO
     END IF
     
-!    DO i = 1, loaded_freedoms_pp
-!      loads_pp(no_pp(i)-ieq_start+1) = val(loaded_freedoms_start+i-1,1)*dtim
-!    END DO
-    
     q = q + SUM_P(loads_pp)
     
 !------------------------------------------------------------------------------
@@ -545,43 +529,29 @@ PROGRAM xx12
                          node_start,node_end,eld_pp,disp_pp,1)
       
       IF(numpe==it)THEN
-        !---Write temperature outputs in Excel format
-        !---Doesn't work in parallel
+        !---Write temperature for specified node
         WRITE(11,'(E12.4,8E19.8)')t0,disp_pp(is)
-        !---For 5% node 118564, 10% node 11488731
       END IF
       
-      !---Write temperature outputs in ParaFEM format
-      IF(i_o==1)THEN
+      IF(i_o==1)THEN !---Write temperature outputs in binary ParaFEM format
         CALL write_nodal_variable_binary(label,25,tz,nodes_pp,npes,numpe,nodof, &
                                          disp_pp)
       END IF
-      IF(i_o==2)THEN
+      IF(i_o==2)THEN !---Write temperature outputs in ascii ParaFEM format
         CALL write_nodal_variable2(label,24,tz,nodes_pp,npes,numpe,nodof,disp_pp)
       END IF
       
-      !----------------New ENSI binary format----------------------------------!
-      IF(i_o==3)THEN
+      IF(i_o==3)THEN !---Write temperature outputs in binary ENSI format
         ALLOCATE(tempres(nodes_pp))
         tempres = zero
-        
-!        DO i=1,ndim; tempres=zero        
-          DO l=1,nodes_pp
-!            k=i+(ndim*(l-1))
-!            k=l+(ndim*(i-1))
-!            tempres(l)=disp_pp(k)
-            tempres(l)=disp_pp(l)
-          END DO
-          CALL dismsh_ensi_pb2(27,j,nodes_pp,npes,numpe,nodof,tempres)
-!          IF(numpe==1) PRINT *, "Time = ",t0
-!          IF(numpe==1) PRINT *, tempres
-!        END DO
+        DO l=1,nodes_pp
+          tempres(l)=disp_pp(l)
+        END DO
+        CALL dismsh_ensi_pb2(27,j,nodes_pp,npes,numpe,nodof,tempres)
         
         DEALLOCATE(tempres)
-        IF(numpe==1) CLOSE (27)
-        
+        IF(numpe==1) CLOSE (27)  
       END IF
-      !----------------New ENSI binary format----------------------------------!
       
     END IF ! From section 16
     
@@ -671,30 +641,22 @@ PROGRAM xx12
                         node_start,node_end,eld_pp,disp_pp,1)
       
       IF(numpe==it)THEN
-        !---Write temperature outputs in Excel format
-        !---Doesn't work in parallel
+        !---Write temperature for specified node
         WRITE(11,'(E12.4,8E19.8)')real_time,disp_pp(is)
-        ! For 5% node 118564, 10% node 11488731
       END IF      
       
-      !---Write temperature outputs in ParaFEM format
-      IF(i_o==1)THEN
+      IF(i_o==1)THEN !---Write temperature outputs in binary ParaFEM format
         CALL write_nodal_variable_binary(label,25,j,nodes_pp,npes,numpe,nodof,  &
                                          disp_pp)
       END IF
-      IF(i_o==2)THEN
+      IF(i_o==2)THEN !---Write temperature outputs in ascii ParaFEM format
         CALL write_nodal_variable2(label,24,j,nodes_pp,npes,numpe,nodof,disp_pp)
       END IF
       
-      !----------------New ENSI binary format----------------------------------!
-      IF(i_o==3)THEN
+      IF(i_o==3)THEN !---Write temperature outputs in binary ENSI format
         IF(numpe==1)THEN
-!          fname = job_name(1:INDEX(job_name, " ")-1)//".bin.ensi.NDTTR-"
           WRITE(stepnum,'(I0.6)') (j/npri)+1
-!          IF(numpe==1) PRINT *,"stepnum = ", stepnum
-!          fname = fname//stepnum
           fname = job_name(1:INDEX(job_name, " ")-1)//".bin.ensi.NDTTR-"//stepnum
-!          IF(numpe==1) PRINT *,"fname = ", fname
           OPEN(27,file=fname,status='replace',action='write',                    &
           form='unformatted',access='stream')
         
@@ -707,30 +669,18 @@ PROGRAM xx12
         
         ALLOCATE(tempres(nodes_pp))
         tempres = zero
-        
-!        DO i=1,ndim; tempres=zero        
-          DO l=1,nodes_pp
-!            k=i+(ndim*(l-1))
-!            k=l+(ndim*(i-1))
-!            tempres(l)=disp_pp(k)
-            tempres(l)=disp_pp(l)
-          END DO
-          CALL dismsh_ensi_pb2(27,j,nodes_pp,npes,numpe,nodof,tempres)
-!          IF(numpe==1) PRINT *, "Time = ",real_time
-!          IF(numpe==1) PRINT *, tempres
-!        END DO
-        
+        DO l=1,nodes_pp
+          tempres(l)=disp_pp(l)
+        END DO
+        CALL dismsh_ensi_pb2(27,j,nodes_pp,npes,numpe,nodof,tempres)
         DEALLOCATE(tempres)
         IF(numpe==1) CLOSE (27)
-        
       END IF
-      !----------------New ENSI binary format----------------------------------!
 
 !      IF(numpe==1) PRINT *, "Time ", real_time, "Iters ", iters
     END IF
     
     timest(14) = timest(14) + (elap_time() - timest(16))
-    
     iters_tot = iters_tot + iters
     
   END DO timesteps
@@ -743,30 +693,12 @@ PROGRAM xx12
   IF(numpe==1)THEN
     CLOSE(11)
     CLOSE(24)
-!    CLOSE(27)
   END IF
   
   IF(numpe==1) PRINT *, "Timest ", timest
   
   CALL WRITE_XX12(fixed_freedoms,iters,job_name,loaded_freedoms,neq,nn,npes,  &
                   nr,numpe,timest,q,dtim,nstep,iters_tot,tol,val0,npri)
-  
-!  !----------------New ENSI binary format-------------------------------------!
-!  
-!  ALLOCATE(nf(nodof,nn),oldlds(nn*ndim))
-!  nf=0
-!  nlen=len_trim(job_name)
-!  
-!  solid=.true.
-!  
-!  CALL rest_to_nf(rest,nf)
-!  ALLOCATE(g_coord(ndim,nn))
-!  g_coord(:,g_num_pp(:,iel)) = TRANSPOSE(coord)
-!  
-!  CALL mesh_ensi_bin(job_name,nlen,g_coord,g_num_pp,element,etype_pp,nf,      &
-!                      oldlds(1:),nstep,npri,dtim,solid)
-!  
-!  !----------------New ENSI binary format-------------------------------------!
   
   CALL shutdown()
   
