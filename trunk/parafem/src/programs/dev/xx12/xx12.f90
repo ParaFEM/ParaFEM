@@ -79,7 +79,7 @@ PROGRAM xx12
   
   CALL find_pe_procs(numpe,npes)
   
-  PRINT *, "FIND_PE_PROCS on processor ", numpe, " of ", npes
+!  PRINT *, "FIND_PE_PROCS on processor ", numpe, " of ", npes
   
   argc = iargc()
   IF(argc /= 1) CALL job_name_error(numpe,program_name)
@@ -110,7 +110,9 @@ PROGRAM xx12
   timest(2) = elap_time()
   
 ! CALL read_g_num_pp2(job_name,iel_start,nn,npes,numpe,g_num_pp)
-  CALL read_elements(job_name,iel_start,nn,npes,numpe,etype_pp,g_num_pp)
+!  CALL read_elements(job_name,iel_start,nn,npes,numpe,etype_pp,g_num_pp)
+  CALL read_g_num_pp_be(job_name,iel_start,nn,npes,numpe,g_num_pp)
+  CALL read_etype_pp(job_name,iel_start,nn,npes,numpe,nod,etype_pp)
   timest(3) = elap_time()
   
   IF(meshgen == 2)THEN
@@ -119,7 +121,8 @@ PROGRAM xx12
   END IF
   timest(4) = elap_time()
   
-  CALL read_g_coord_pp(job_name,g_num_pp,nn,npes,numpe,g_coord_pp)
+!  CALL read_g_coord_pp(job_name,g_num_pp,nn,npes,numpe,g_coord_pp)
+  CALL read_g_coord_pp_be(job_name,g_num_pp,nn,npes,numpe,g_coord_pp)
   timest(5) = elap_time()
   
   IF (nr>0) CALL read_rest(job_name,numpe,rest)
