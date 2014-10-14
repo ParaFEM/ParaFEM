@@ -149,8 +149,9 @@ PROGRAM pf2ensibin
     WRITE(13) int(temp_int(6),kind=c_int)
     WRITE(13) int(temp_int(7),kind=c_int)
     WRITE(13) int(temp_int(8),kind=c_int)
-    etype=temp_int(9)*1.0
-    WRITE(14) real(etype,kind=c_float)
+!    etype=temp_int(9)*1.0
+!    WRITE(14) real(etype,kind=c_float)
+    WRITE(14) int(temp_int(9),kind=c_int)
     WRITE(15) real(prop(2,temp_int(9)),kind=c_float)
     WRITE(16) real(prop(3,temp_int(9)),kind=c_float)
     WRITE(17) real(prop(4,temp_int(9)),kind=c_float)

@@ -19,6 +19,7 @@ MODULE INPUT
   !*    READ_G_NUM_PP_BE       Reads element nodal steering array (binary ensi)
   !*    READ_ELEMENTS          Reads the element nodal steering array
   !*    READ_ELEMENTS_2        Reads the element nodal steering array
+  !*    READ_ETYPE_PP          Reads the element material ID
   !*    READ_LOADS             Reads nodal forces
   !*    READ_LOADS_NS          Reads lid velocities for p126
   !*    READ_FIXED             Reads fixed freedoms for displacement control
@@ -1268,6 +1269,184 @@ MODULE INPUT
     RETURN
 
   END SUBROUTINE READ_ELEMENTS_2
+
+!------------------------------------------------------------------------------
+!------------------------------------------------------------------------------
+!------------------------------------------------------------------------------
+    
+  SUBROUTINE READ_ETYPE_PP(job_name,iel_start,nn,npes,numpe,nod,etype_pp)
+
+  !/****f* input/read_etype_pp
+  !*  NAME
+  !*    SUBROUTINE: read_etype_pp
+  !*  SYNOPSIS
+  !*    Usage:      CALL read_etype_pp(job_name,iel_start,nn,npes,numpe,nod,etype_pp)
+  !*  FUNCTION
+  !*    Master process reads the global array of elements IDs and broadcasts
+  !*    to slave processes.
+  !*    Processes record only its local part of elements.
+  !*  INPUTS
+  !*    The following arguments have the INTENT(IN) attribute:
+  !*
+  !*    job_name              : Character
+  !*                          : Used to create file name to read
+  !*
+  !*    iel_start             : Integer
+  !*                          : First element number in a process
+  !*
+  !*    nn                    : Integer
+  !*                          : Total number of nodes 
+  !*
+  !*    npes                  : Integer
+  !*                          : Total number of processors
+  !*
+  !*    numpe                 : Integer
+  !*                          : Process number
+  !*
+  !*    The following scalar array arguments have the INTENT(OUT) attribute:
+  !*
+  !*    etype_pp(nels_pp)     : Element property type vector     
+  !*
+  !*  AUTHOR
+  !*    L. Margetts
+  !*    Ll.M. Evans
+  !*  COPYRIGHT
+  !*    (c) University of Manchester 2007-2011
+  !******
+  !*  Place remarks that should not be included in the documentation here.
+  !*
+  !*
+  !*/
+  
+  USE, INTRINSIC :: ISO_C_BINDING ! to output C binary file
+
+  IMPLICIT NONE
+
+  CHARACTER(LEN=50), INTENT(IN) :: job_name
+  CHARACTER(LEN=50)             :: fname
+  CHARACTER(LEN=80,KIND=C_CHAR) :: cbuffer
+  INTEGER, INTENT(IN)           :: iel_start, nn, npes, numpe, nod
+  INTEGER, INTENT(INOUT)        :: etype_pp(:)
+  INTEGER(KIND=C_INT)           :: int_in,etype_int
+  INTEGER                       :: nod, nels_pp, iel, i, k
+  INTEGER                       :: bufsize, ielpe, ier, ndim=3
+  INTEGER                       :: readSteps,max_nels_pp
+  INTEGER                       :: status(MPI_STATUS_SIZE)
+  REAL(KIND=C_FLOAT)            :: etype_float
+  INTEGER, ALLOCATABLE          :: g_num_pp(:),g_num(:),localCount(:),readCount(:),etype(:)
+
+!------------------------------------------------------------------------------
+! 1. Initiallize variables
+!------------------------------------------------------------------------------
+
+!  nod       = UBOUND(g_num_pp,1)
+  nels_pp   = UBOUND(etype_pp,1)
+
+!------------------------------------------------------------------------------
+! 2. Find READSTEPS, the number of steps in which the read will be carried
+!    out and READCOUNT, the size of each read.
+!------------------------------------------------------------------------------
+
+  ALLOCATE(readCount(npes))
+  ALLOCATE(localCount(npes))
+  
+  readCount         = 0
+  localCount        = 0
+  readSteps         = npes
+  localCount(numpe) = nels_pp
+
+  CALL MPI_ALLREDUCE(localCount,readCount,npes,MPI_INTEGER,MPI_SUM,           &
+                     MPI_COMM_WORLD,ier) 
+ 
+!------------------------------------------------------------------------------
+! 3. Allocate the array g_num into which the steering array for each processor
+!    is to be read
+!------------------------------------------------------------------------------
+
+  max_nels_pp = MAXVAL(readCount,1)
+  
+  ALLOCATE(g_num(nod),g_num_pp(nod))
+  ALLOCATE(etype(max_nels_pp))
+  
+  g_num = 0             ! different value for each processor
+  etype = 0
+
+!------------------------------------------------------------------------------
+! 4. Master processor opens the data file and advances to the start of the 
+!    element steering array
+!------------------------------------------------------------------------------
+
+!  IF (numpe==1) THEN
+!    fname     = job_name(1:INDEX(job_name, " ")-1) // ".d"
+!    OPEN(10,FILE=fname,STATUS='OLD',ACTION='READ')
+!    READ(10,*)   !header
+!    READ(10,*)   !header
+!    DO i = 1,nn  
+!      READ(10,*) !skip nodes until reaching the elements
+!    END DO
+!    READ(10,*)   !header
+!  END IF
+
+  IF (numpe==1) THEN
+    fname     = job_name(1:INDEX(job_name, " ")-1) // ".bin.ensi.MATID"
+    OPEN(10,FILE=fname,STATUS='OLD',FORM='UNFORMATTED',ACTION='READ',         &
+                       ACCESS='STREAM')
+    READ(10)   cbuffer !header
+    READ(10)   cbuffer !header
+    READ(10)   int_in  !header
+    READ(10)   cbuffer !header
+  END IF
+
+!------------------------------------------------------------------------------
+! 5. Go around READSTEPS loop, read data, and send to appropriate processor
+!------------------------------------------------------------------------------
+
+  DO i=1,npes
+    IF(i == 1) THEN  ! local data
+      IF(numpe == 1) THEN
+        DO iel = 1,readCount(i)
+!-Read .d
+!          READ(10,*)k,k,k,k,g_num_pp(:),etype_pp(iel)
+!-Read .MATID float
+!          READ(10)etype_float
+!          etype_pp(iel) = int(etype_float)
+!-Read .MATID int
+          READ(10)etype_int
+          etype_pp(iel) = etype_int
+        END DO
+      END IF
+    ELSE
+      bufsize = readCount(i)
+      IF(numpe == 1) THEN
+        DO iel = 1,readCount(i)
+!          READ(10,*)k,k,k,k,g_num(:),etype(iel)
+!          READ(10)etype_float
+!          etype(iel) = etype_float
+          READ(10)etype_int
+          etype(iel) = etype_int
+        END DO
+        CALL MPI_SEND(etype(1:readCount(i)),bufsize,MPI_INTEGER,i-1,i,     &
+                      MPI_COMM_WORLD,status,ier)
+      END IF
+      IF(numpe == i) THEN
+        etype = 0
+        CALL MPI_RECV(etype,bufsize,MPI_INTEGER,0,i,MPI_COMM_WORLD,status,ier)
+        etype_pp = etype
+      END IF
+    END IF
+  END DO
+  
+!------------------------------------------------------------------------------
+! 6. Close file and deallocate global arrays
+!------------------------------------------------------------------------------
+
+  IF(numpe==1) CLOSE(10)
+
+  DEALLOCATE(g_num,readCount,localCount,etype)
+
+  RETURN
+
+  END SUBROUTINE READ_ETYPE_PP
 
 !------------------------------------------------------------------------------
 !------------------------------------------------------------------------------
