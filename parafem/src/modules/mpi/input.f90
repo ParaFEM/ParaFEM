@@ -1328,7 +1328,7 @@ MODULE INPUT
   INTEGER, INTENT(IN)           :: iel_start, nn, npes, numpe, nod
   INTEGER, INTENT(INOUT)        :: etype_pp(:)
   INTEGER(KIND=C_INT)           :: int_in,etype_int
-  INTEGER                       :: nod, nels_pp, iel, i, k
+  INTEGER                       :: nels_pp, iel, i, k
   INTEGER                       :: bufsize, ielpe, ier, ndim=3
   INTEGER                       :: readSteps,max_nels_pp
   INTEGER                       :: status(MPI_STATUS_SIZE)
