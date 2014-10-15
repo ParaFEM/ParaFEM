@@ -6705,7 +6705,7 @@ END SUBROUTINE bcast_inputdata_p127
     INTEGER                       :: i,j,k,l,m,n,nfe,nod,nels,ndim,nn
     INTEGER                       :: prnwidth,remainder
     REAL(iwp), INTENT(IN)         :: dtim
-    CHARACTER(LEN=15), INTENT(IN) :: argv,element  
+    CHARACTER(LEN=15), INTENT(IN) :: argv
     CHARACTER(LEN=80)             :: cbuffer
     LOGICAL, INTENT(IN)           :: solid
     
