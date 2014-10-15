@@ -38,7 +38,7 @@ EXT_LIB_METIS_RANLIB=	ranlib
 # Form is LIB_(MPI|SERIAL|OPENMP|GPU)_(REL|DBG)_(FFLAGS|LDFLAGS)
 # These flags are directly used by the module makefiles
 # --------------------------------------------------------------------------------
-BC3_FFLAGS=		-O2 -r8 -mt_mpi
+BC3_FFLAGS=		-O2 -r8 -mt_mpi -warn all -stand f08
 LIB_MPI_REL_FFLAGS=			$(BC3_FFLAGS)
 LIB_MPI_DBG_FFLAGS=			$(BC3_FFLAGS)
   
