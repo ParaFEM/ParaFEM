@@ -329,15 +329,26 @@ PROGRAM p12meshgenbin
 
             ! modify mesh_ensi for optional arguments
 
-            ALLOCATE(etype(nels),nf(nodof,nn),oldlds(nn*ndim)) 
-            etype=0; nf=0
-
             nstep=1; npri=1; dtim=1.0; solid=.true. 
+
+!           CALL mesh_ensi_bin(argv,nlen,g_coord,g_num,element,etype,nf,      &
+!                          oldlds(1:),nstep,npri,dtim,solid)
+
+            CALL mesh_ensi_case(argv,nlen,nstep,npri,dtim,solid) 
+
+            CALL mesh_ensi_geo_bin(argv,nlen,g_coord,g_num,element)
+ 
+            DEALLOCATE(g_num,g_coord)
+           
+            ALLOCATE(etype(nels),nf(nodof,nn),oldlds(nn*ndim)) 
+
+            etype=0; nf=0
 
             CALL rest_to_nf(rest,nf)
 
-            CALL mesh_ensi_bin(argv,nlen,g_coord,g_num,element,etype,nf,      &
-                           oldlds(1:),nstep,npri,dtim,solid)
+            CALL mesh_ensi_matid_bin(argv,nlen,nod,element,etype)
+
+            CALL mesh_ensi_ndbnd_bin(argv,nf,nlen,nod,solid)
 
           CASE DEFAULT
 
