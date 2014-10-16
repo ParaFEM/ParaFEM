@@ -6658,6 +6658,111 @@ END SUBROUTINE bcast_inputdata_p127
 !------------------------------------------------------------------------------
 !------------------------------------------------------------------------------
 
+  SUBROUTINE MESH_ENSI_MATID_BIN(argv,nlen,nod,element,etype)
+
+   !/****f* input/mesh_ensi_matid_bin
+   !*  NAME
+   !*    SUBROUTINE: mesh_ensi_matid_bin
+   !*  SYNOPSIS
+   !*    Usage:      CALL mesh_ensi_matid_bin(argv,nlen,nod,element,etype)
+   !*  FUNCTION
+   !*    This subroutine outputs material type for each element in the mesh
+   !*    in the C binary version of the Ensight gold format. Models in this 
+   !*    format can be viewed in ParaView.
+   !*  INPUTS
+   !*    Scalar integers
+   !*    nlen             : number of characters in data file base name
+   !*    nod              : number of nodes in the element
+   !*
+   !*    Scalar characters
+   !*    argv             : holds data file base name
+   !*	 element          : element type
+   !*
+   !*    Dynamic scalar arrays
+   !*    etype            : element property type vector
+   !* 
+   !*  OUTPUTS
+   !*  AUTHOR
+   !*    L. Margetts
+   !*  COPYRIGHT
+   !*    (c) University of Manchester 2004-2014
+   !******
+   !*  Place remarks that should not be included in the documentation here.
+   !*
+   !*/
+
+    USE, INTRINSIC :: ISO_C_BINDING
+    
+    IMPLICIT none
+  
+    INTEGER,PARAMETER             :: iwp=SELECTED_REAL_KIND(15)
+    INTEGER,   INTENT(IN)         :: nlen,nod
+    INTEGER,   INTENT(IN)         :: etype(:)
+    CHARACTER(LEN=15), INTENT(IN) :: argv,element  
+    CHARACTER(LEN=80)             :: cbuffer
+  
+!------------------------------------------------------------------------------
+! 1. Write file containing material IDs
+!------------------------------------------------------------------------------
+  
+    OPEN(14,FILE=argv(1:nlen)//'.bin.ensi.MATID',STATUS="REPLACE",            &
+                 FORM="UNFORMATTED", ACTION="WRITE", ACCESS="STREAM")
+
+    cbuffer = "Alya Ensight Gold --- Scalar per-element variable file"
+    WRITE(14) cbuffer
+    cbuffer = "part"
+    WRITE(14) cbuffer
+    WRITE(14) int(1,kind=c_int)
+  
+    SELECT CASE(element)
+      CASE('triangle')
+        SELECT CASE(nod) 
+          CASE(3)
+            cbuffer = "tria3" ; WRITE(14) cbuffer
+          CASE DEFAULT
+            WRITE(14,'(A)') "# Element type not recognised"
+        END SELECT
+      CASE('quadrilateral')
+        SELECT CASE(nod) 
+          CASE(4)
+            cbuffer = "quad4" ; WRITE(14) cbuffer
+          CASE(8)
+            cbuffer = "quad8" ; WRITE(14) cbuffer
+          CASE DEFAULT
+            WRITE(14,'(A)') "# Element type not recognised"
+        END SELECT
+      CASE('hexahedron')
+        SELECT CASE(nod) 
+          CASE(8)
+            cbuffer = "hexa8"   ; WRITE(14) cbuffer
+          CASE(20)
+            cbuffer = "hexa20"  ; WRITE(14) cbuffer
+          CASE DEFAULT
+            WRITE(14,'(A)') "# Element type not recognised"
+        END SELECT
+      CASE('tetrahedron')
+        SELECT CASE(nod)
+          CASE(4)
+            WRITE(14,'(A)') "tetra4"
+          CASE DEFAULT
+          WRITE(14,'(A)') "# Element type not recognised"
+        END SELECT
+      CASE DEFAULT
+        WRITE(14,'(A)')   "# Element type not recognised"
+    END SELECT
+   
+    WRITE(14) int(etype(:),kind=c_int) 
+  
+    CLOSE(14)
+  
+    RETURN
+  
+  END SUBROUTINE MESH_ENSI_MATID_BIN
+  
+!------------------------------------------------------------------------------
+!------------------------------------------------------------------------------
+!------------------------------------------------------------------------------
+
   SUBROUTINE MESH_ENSI_NDBND_BIN(argv,nf,nlen,nod,solid)
 
    !/****f* input/mesh_ensi_ndbnd_bin
