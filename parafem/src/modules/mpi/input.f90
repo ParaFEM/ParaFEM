@@ -6514,7 +6514,7 @@ END SUBROUTINE bcast_inputdata_p127
    !*    (c) University of Manchester 2004-2014
    !******
    !*  Place remarks that should not be included in the documentation here.
-   !*  
+   !* 
    !*  Used in program p12meshgenbin
    !*/
 
@@ -6658,13 +6658,13 @@ END SUBROUTINE bcast_inputdata_p127
 !------------------------------------------------------------------------------
 !------------------------------------------------------------------------------
 
-  SUBROUTINE MESH_ENSI_NDBND_BIN(argv,nlen,nf,solid)
+  SUBROUTINE MESH_ENSI_NDBND_BIN(argv,nf,nlen,nod,solid)
 
    !/****f* input/mesh_ensi_ndbnd_bin
    !*  NAME
    !*    SUBROUTINE: mesh_ensi_ndbnd_bin
    !*  SYNOPSIS
-   !*    Usage:      CALL mesh_ensi_ndbnd_bin(argv,nlen,nf,solid)
+   !*    Usage:      CALL mesh_ensi_ndbnd_bin(argv,nf,nlen,nod,solid)
    !*  FUNCTION
    !*    This subroutine outputs a file of restrained nodes in the C binary 
    !*    version of the Ensight gold format. Models in this format can be 
@@ -6672,7 +6672,7 @@ END SUBROUTINE bcast_inputdata_p127
    !*  INPUTS
    !*    Scalar integers
    !*    nlen             : number of characters in data file base name
-   !*
+   !*    nod              : number of nodes per element
    !*    Scalar characters
    !*    argv             : holds data file base name
    !*
@@ -6697,9 +6697,9 @@ END SUBROUTINE bcast_inputdata_p127
     IMPLICIT none
   
     INTEGER,PARAMETER             :: iwp=SELECTED_REAL_KIND(15)
-    INTEGER,   INTENT(IN)         :: nlen
+    INTEGER,   INTENT(IN)         :: nlen,nod
     INTEGER,   INTENT(IN)         :: nf(:,:)
-    INTEGER                       :: i,nfe,nod,nn
+    INTEGER                       :: i,nfe,nn,ndim
     CHARACTER(LEN=15), INTENT(IN) :: argv  
     CHARACTER(LEN=80)             :: cbuffer
     LOGICAL, INTENT(IN)           :: solid
@@ -6708,7 +6708,7 @@ END SUBROUTINE bcast_inputdata_p127
   ! 1. Initialisation
   !------------------------------------------------------------------------------
   
-    nod  = UBOUND(nf,1)-1  
+    ndim = UBOUND(nf,1)-1  
     nn   = UBOUND(nf,2)
   
   !------------------------------------------------------------------------------
