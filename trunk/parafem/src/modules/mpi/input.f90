@@ -6658,6 +6658,106 @@ END SUBROUTINE bcast_inputdata_p127
 !------------------------------------------------------------------------------
 !------------------------------------------------------------------------------
 
+  SUBROUTINE MESH_ENSI_NDBND_BIN(argv,nlen,nf,solid)
+
+   !/****f* input/mesh_ensi_ndbnd_bin
+   !*  NAME
+   !*    SUBROUTINE: mesh_ensi_ndbnd_bin
+   !*  SYNOPSIS
+   !*    Usage:      CALL mesh_ensi_ndbnd_bin(argv,nlen,nf,solid)
+   !*  FUNCTION
+   !*    This subroutine outputs a file of restrained nodes in the C binary 
+   !*    version of the Ensight gold format. Models in this format can be 
+   !*    viewed in ParaView.
+   !*  INPUTS
+   !*    Scalar integers
+   !*    nlen             : number of characters in data file base name
+   !*
+   !*    Scalar characters
+   !*    argv             : holds data file base name
+   !*
+   !*    Scalar logicals
+   !*    solid            : type of analysis solid if .true. fluid if .false.
+   !*
+   !*    Dynamic scalar arrays
+   !*    nf               : nodal freedom matrix
+   !*  OUTPUTS
+   !*    File: <job_name>.bin.ensi.NDBND 
+   !*  AUTHOR
+   !*    L. Margetts
+   !*  COPYRIGHT
+   !*    (c) University of Manchester 2004-2014
+   !******
+   !*  Place remarks that should not be included in the documentation here.
+   !*
+   !*/
+
+    USE, INTRINSIC :: ISO_C_BINDING
+    
+    IMPLICIT none
+  
+    INTEGER,PARAMETER             :: iwp=SELECTED_REAL_KIND(15)
+    INTEGER,   INTENT(IN)         :: nlen
+    INTEGER,   INTENT(IN)         :: nf(:,:)
+    INTEGER                       :: i,nfe,nod,nn
+    CHARACTER(LEN=15), INTENT(IN) :: argv  
+    CHARACTER(LEN=80)             :: cbuffer
+    LOGICAL, INTENT(IN)           :: solid
+    
+  !------------------------------------------------------------------------------
+  ! 1. Initialisation
+  !------------------------------------------------------------------------------
+  
+    nod  = UBOUND(nf,1)-1  
+    nn   = UBOUND(nf,2)
+  
+  !------------------------------------------------------------------------------
+  ! 2. Write boundary conditions. Encoded using formula: 4z + 2y + 1x
+  !
+  !    110 = 1   010 = 2   100 = 3   011 = 4   101 = 5   001 = 6   000 = 7
+  !-----------------------------------------------------------------------------
+  
+    IF(solid) THEN
+
+      OPEN(15,FILE=argv(1:nlen)//'.bin.ensi.NDBND',STATUS="REPLACE",           &
+                 FORM="UNFORMATTED", ACTION="WRITE", ACCESS="STREAM")
+
+      cbuffer = "Alya Ensight Gold --- Scalar per-node variable file"
+      WRITE(15)
+      cbuffer = "part"         ; WRITE(15)
+      WRITE(15) int(1,kind=c_int)
+      cbuffer = "coordinates"  ; WRITE(15)
+
+      IF(ndim==3) THEN
+        DO i=1,nod 
+          nfe=0
+          IF(nf(1,i)==0) nfe=nfe+1
+          IF(nf(2,i)==0) nfe=nfe+2
+          IF(nf(3,i)==0) nfe=nfe+4
+          WRITE(15) int(nfe,kind=c_int)
+        END DO
+      ELSE IF(ndim==2) THEN
+        DO i=1,nn
+          nfe=0
+          IF(nf(1,i)==0) nfe=nfe+1
+          IF(nf(2,i)==0) nfe=nfe+2
+          WRITE(15) int(nfe,kind=c_int)
+        END DO
+      ELSE
+        PRINT *, "Wrong number of dimensions in mesh_ensi"
+      END IF   
+    END IF
+  
+    CLOSE(15)
+  
+    RETURN
+  
+  END SUBROUTINE MESH_ENSI_NDBND_BIN
+
+!------------------------------------------------------------------------------
+!------------------------------------------------------------------------------
+!------------------------------------------------------------------------------
+
   SUBROUTINE MESH_ENSI_CASE(argv,nlen,nstep,npri,dtim,solid)
 
    !/****f* input/mesh_ensi_case
