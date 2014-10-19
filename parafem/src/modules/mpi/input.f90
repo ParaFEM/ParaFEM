@@ -49,9 +49,9 @@ MODULE INPUT
   !*    MESH_ENSI              Creates ASCII ensight gold files
   !*    MESH_ENSI_BIN          Creates BINARY ensight gold files *not tested*
   !*    MESH_ENSI_GEO_BIN      Creates BINARY ensight geo files *not tested*
-  !*    MESH_ENSI_LDS_BIN      Creates BINARY ensight LDS files *not tested*
   !*    MESH_ENSI_MATID_BIN    Creates BINARY ensight MATID files *not tested*
   !*    MESH_ENSI_NDBND_BIN    Creates BINARY ensight NDBND files *not tested*
+  !*    MESH_ENSI_NDLDS_BIN    Creates BINARY ensight LDS files *not tested*
   !*  AUTHOR
   !*    L. Margetts
   !*  COPYRIGHT
@@ -6858,6 +6858,79 @@ END SUBROUTINE bcast_inputdata_p127
     RETURN
   
   END SUBROUTINE MESH_ENSI_NDBND_BIN
+
+!------------------------------------------------------------------------------
+!------------------------------------------------------------------------------
+!------------------------------------------------------------------------------
+
+  SUBROUTINE MESH_ENSI_NDLDS_BIN(argv,nlen,nf,loads)
+
+   !/****f* input/mesh_ensi_ndlds_bin
+   !*  NAME
+   !*    SUBROUTINE: mesh_ensi_ndlds_bin
+   !*  SYNOPSIS
+   !*    Usage:      CALL mesh_ensi_ndlds_bin(argv,nlen,nf,loads)
+   !*  FUNCTION
+   !*    This subroutine outputs a file of loads in the C binary version of the 
+   !*    Ensight gold format. Models in this format can be viewed in ParaView.
+   !*  INPUTS
+   !*    Scalar integers
+   !*    nlen             : number of characters in data file base name
+   !*
+   !*    Scalar characters
+   !*    argv             : holds data file base name
+   !*
+   !*    Dynamic scalar arrays
+   !*    nf               : nodal freedom matrix
+   !* 
+   !*    Dynamic real arrays
+   !*	 oldlds           : initial loads vector
+   !*
+   !*  OUTPUTS
+   !*  AUTHOR
+   !*    L. Margetts
+   !*  COPYRIGHT
+   !*    (c) University of Manchester 2004-2014
+   !******
+   !*  Place remarks that should not be included in the documentation here.
+   !*
+   !*/
+
+    USE, INTRINSIC :: ISO_C_BINDING
+    
+    IMPLICIT none
+  
+    INTEGER,PARAMETER             :: iwp=SELECTED_REAL_KIND(15)
+    INTEGER,   INTENT(IN)         :: nlen
+    INTEGER,   INTENT(IN)         :: nf(:,:)
+    INTEGER                       :: i,j
+    REAL(iwp), INTENT(IN)         :: loads(:)
+    CHARACTER(LEN=15), INTENT(IN) :: argv,element  
+    CHARACTER(LEN=80)             :: cbuffer
+    
+  !-----------------------------------------------------------------------------
+  ! 1. Write loaded nodes
+  !-----------------------------------------------------------------------------
+  
+    OPEN(16,FILE=argv(1:nlen)//'.bin.ensi.NDLDS',STATUS="REPLACE",             &
+                 FORM="UNFORMATTED", ACTION="WRITE", ACCESS="STREAM")
+
+    cbuffer = "Alya Ensight Gold --- Vector per-node variable file"
+    WRITE(16)
+    cbuffer = "part"        ; WRITE(16)
+    WRITE(16) int(1,kind=c_int)
+    cbuffer = "coordinates" ; WRITE(16)
+
+    DO j=1,UBOUND(nf,1)
+      DO i=1, UBOUND(nf,2)
+        WRITE(16) real(loads(nf(j,i)),kind=c_float)
+      END DO
+    END DO
+    CLOSE(16)
+  
+    RETURN
+  
+  END SUBROUTINE MESH_ENSI_NDLDS_BIN
 
 !------------------------------------------------------------------------------
 !------------------------------------------------------------------------------
