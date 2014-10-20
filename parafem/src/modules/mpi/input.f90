@@ -6905,7 +6905,7 @@ END SUBROUTINE bcast_inputdata_p127
     INTEGER,   INTENT(IN)         :: nf(:,:)
     INTEGER                       :: i,j
     REAL(iwp), INTENT(IN)         :: loads(:)
-    CHARACTER(LEN=15), INTENT(IN) :: argv,element  
+    CHARACTER(LEN=15), INTENT(IN) :: argv
     CHARACTER(LEN=80)             :: cbuffer
     
   !-----------------------------------------------------------------------------
