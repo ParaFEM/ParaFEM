@@ -72,10 +72,39 @@ real( kind=rdef ) ::    &
  cgca_bcou(3)             ! upper phys. coords of the coarray on image
 !*** end CGPACK part *************************************************72
 
+!------------------------ input and initialisation -----------------------
+ALLOCATE( timest( 20 ) )
+timest = zero
+timest( 1 ) = elap_time()
+CALL find_pe_procs( numpe, npes )
+CALL getname( argv, nlen ) 
+CALL read_p121( argv, numpe, e, element, limit, loaded_nodes, meshgen, &
+   nels, nip, nn, nod, nr, partitioner, tol, v )
+CALL calc_nels_pp( argv, nels, npes, numpe, partitioner, nels_pp )
+ndof = nod * nodof
+ntot = ndof
+
+ALLOCATE( g_num_pp( nod, nels_pp ), g_coord_pp( nod, ndim, nels_pp ),    &
+   rest(nr,nodof+1) )
+g_num_pp = 0
+g_coord_pp = zero
+rest = 0
+
+CALL read_g_num_pp( argv, iel_start, nn, npes, numpe, g_num_pp )
+
+IF ( meshgen == 2 ) CALL abaqus2sg( element, g_num_pp )
+CALL read_g_coord_pp(argv,g_num_pp,nn,npes,numpe,g_coord_pp)
+CALL read_rest(argv,numpe,rest); timest(2)=elap_time()
+ALLOCATE( points(nip,ndim), dee(nst,nst), jac(ndim,ndim), der(ndim,nod), &
+   deriv( ndim, nod ), bee( nst, ntot ), weights( nip ), eps( nst ),     &
+   sigma(nst), storkm_pp( ntot, ntot, nels_pp ),                         &
+   pmul_pp( ntot, nels_pp ), utemp_pp(ntot,nels_pp),                     &
+   g_g_pp(ntot,nels_pp) )
+
 !*** CGPACK part *****************************************************72
 ! CGPACK commands
 
-! *** first executable statement ***
+! *** CGPACK first executable statement ***
 ! physical dimensions of the box, assume mm
 cgca_bsz = (/ 1.0, 2.0, 3.0 /)
 
@@ -123,35 +152,6 @@ call cgca_ds( cgca_space )
 
 !*** end CGPACK part *************************************************72
 
-
-!------------------------ input and initialisation -----------------------
-ALLOCATE( timest( 20 ) )
-timest = zero
-timest( 1 ) = elap_time()
-CALL find_pe_procs( numpe, npes )
-CALL getname( argv, nlen ) 
-CALL read_p121( argv, numpe, e, element, limit, loaded_nodes, meshgen, &
-   nels, nip, nn, nod, nr, partitioner, tol, v )
-CALL calc_nels_pp( argv, nels, npes, numpe, partitioner, nels_pp )
-ndof = nod * nodof
-ntot = ndof
-
-ALLOCATE( g_num_pp( nod, nels_pp ), g_coord_pp( nod, ndim, nels_pp ),    &
-   rest(nr,nodof+1) )
-g_num_pp = 0
-g_coord_pp = zero
-rest = 0
-
-CALL read_g_num_pp( argv, iel_start, nn, npes, numpe, g_num_pp )
-
-IF ( meshgen == 2 ) CALL abaqus2sg( element, g_num_pp )
-CALL read_g_coord_pp(argv,g_num_pp,nn,npes,numpe,g_coord_pp)
-CALL read_rest(argv,numpe,rest); timest(2)=elap_time()
-ALLOCATE( points(nip,ndim), dee(nst,nst), jac(ndim,ndim), der(ndim,nod), &
-   deriv( ndim, nod ), bee( nst, ntot ), weights( nip ), eps( nst ),     &
-   sigma(nst), storkm_pp( ntot, ntot, nels_pp ),                         &
-   pmul_pp( ntot, nels_pp ), utemp_pp(ntot,nels_pp),                     &
-   g_g_pp(ntot,nels_pp) )
 
 !*********************************************************************72
 ! CGPACK commands
