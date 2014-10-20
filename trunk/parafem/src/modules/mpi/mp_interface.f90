@@ -99,7 +99,7 @@ MODULE MP_INTERFACE
     IMPLICIT NONE
 
     CALL MPI_FINALIZE(ier)
-    STOP
+    STOP "ParaFEM: shutdown: the program terminated successfully"
     
     RETURN
 
