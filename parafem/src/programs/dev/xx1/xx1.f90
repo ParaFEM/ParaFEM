@@ -34,8 +34,8 @@ PROGRAM xx1
   CHARACTER(LEN=50)     :: program_name='xx1'
   CHARACTER(LEN=50)     :: fname,job_name,label
   LOGICAL               :: converged=.false.
-! LOGICAL               :: sym_storkm=.true.
-  LOGICAL               :: sym_storkm=.false.
+  LOGICAL               :: sym_storkm=.true.
+! LOGICAL               :: sym_storkm=.false.
 ! LOGICAL               :: io_binary=.false.
   LOGICAL               :: io_binary=.true.
 
@@ -103,9 +103,6 @@ PROGRAM xx1
   CALL read_xx1(job_name,numpe,e,element,fixed_freedoms,limit,loaded_nodes, &
                  meshgen,nels,nip,nn,nod,nr,partitioner,tol,v)
 
-  PRINT *, "numpe =", numpe,e,fixed_freedoms,limit,loaded_nodes,meshgen,    &
-            nels,nip,nn,nod,nr,partitioner,tol,v
-
   CALL calc_nels_pp(job_name,nels,npes,numpe,partitioner,nels_pp)
 
   ndof = nod*nodof
@@ -121,15 +118,23 @@ PROGRAM xx1
 
   timest(2) = elap_time()
 
-! CALL read_g_num_pp(job_name,iel_start,nn,npes,numpe,g_num_pp)
-  CALL read_g_num_pp_be(job_name,iel_start,nn,npes,numpe,g_num_pp)
+  IF(io_binary) THEN
+    CALL read_g_num_pp_be(job_name,iel_start,nn,npes,numpe,g_num_pp)
+  ELSE 
+    CALL read_g_num_pp(job_name,iel_start,nn,npes,numpe,g_num_pp)
+  END IF
+
   timest(3) = elap_time()
 
   IF(meshgen == 2) CALL abaqus2sg(element,g_num_pp)
   timest(4) = elap_time()
 
-! CALL read_g_coord_pp(job_name,g_num_pp,nn,npes,numpe,g_coord_pp)
-  CALL read_g_coord_pp_be(job_name,g_num_pp,nn,npes,numpe,g_coord_pp)
+  IF(io_binary) THEN
+    CALL read_g_coord_pp_be(job_name,g_num_pp,nn,npes,numpe,g_coord_pp)
+  ELSE
+    CALL read_g_coord_pp(job_name,g_num_pp,nn,npes,numpe,g_coord_pp)
+  END IF
+
   timest(5) = elap_time()
 
   CALL read_rest(job_name,numpe,rest)
@@ -299,8 +304,6 @@ PROGRAM xx1
 ! 10. Read in fixed nodal displacements and assign to equations
 !------------------------------------------------------------------------------
 
-  PRINT *, "fixed_freedoms=", fixed_freedoms
-
   fixed_freedoms_pp = 0
 
   IF(fixed_freedoms > 0) THEN
@@ -332,8 +335,6 @@ PROGRAM xx1
 ! 11. Read in loaded nodes and get starting r_pp
 !------------------------------------------------------------------------------
  
-  PRINT *, "loaded_nodes= ", loaded_nodes
-
   IF(loaded_nodes > 0) THEN
 
     ALLOCATE(node(loaded_nodes),val(ndim,loaded_nodes))
@@ -435,8 +436,6 @@ PROGRAM xx1
 
   END DO iterations
 
-  PRINT *, "Iters= ", iters
-
   DEALLOCATE(p_pp,r_pp,x_pp,u_pp,d_pp,diag_precon_pp,pmul_pp) 
  
   IF(sym_storkm) THEN
@@ -530,11 +529,6 @@ PROGRAM xx1
 
   IF(numpe==1) CLOSE(24)
   
-! PRINT *, "Write Displacement"
-
-! Extrae output shows all cores performing I/O and the time spent is 
-! significant. This is due to the PRINT * statement now commented out.
-
 !------------------------------------------------------------------------------
 ! 16b. Stresses
 !------------------------------------------------------------------------------
@@ -671,9 +665,13 @@ PROGRAM xx1
 ! 17. Output performance data
 !------------------------------------------------------------------------------
 
-  CALL WRITE_XX1(fixed_freedoms,iters,job_name,loaded_nodes,neq,nn,npes,nr,  &
-                 numpe,timest,tload)
+  IF(numpe==1) THEN
+    CALL WRITE_XX1(fixed_freedoms,iters,job_name,loaded_nodes,neq,nn,npes,nr, &
+                   numpe,timest,tload)
+  END IF
  
+  CALL MPI_BARRIER(mpi_comm_world,ier)
+  
   CALL shutdown() 
  
 END PROGRAM XX1
