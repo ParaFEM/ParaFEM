@@ -945,7 +945,7 @@ MODULE OUTPUT
   CHARACTER(LEN=50)              :: fname
   INTEGER                        :: i          ! loop counter
  
-  IF(numpe==1) THEN
+! IF(numpe==1) THEN
 
     fname       = job_name(1:INDEX(job_name, " ")-1) // ".res"
     OPEN(11,FILE=fname,STATUS='REPLACE',ACTION='WRITE')     
@@ -1027,7 +1027,7 @@ MODULE OUTPUT
                           timest(16)-timest(1),"  100.00"
     CLOSE(11)
     
-  END IF
+! END IF
   
   RETURN
 
