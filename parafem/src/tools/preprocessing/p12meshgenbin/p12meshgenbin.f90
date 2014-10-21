@@ -350,6 +350,8 @@ PROGRAM p12meshgenbin
 
             CALL mesh_ensi_ndbnd_bin(argv,nf,nlen,nod,solid)
 
+            CALL mesh_ensi_ndlds_bin(argv,nlen,nf,oldlds)
+
           CASE DEFAULT
 
             PRINT *, "  Option ", iotype, " not recognised."; PRINT *, ""
