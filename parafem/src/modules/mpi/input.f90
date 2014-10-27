@@ -857,13 +857,13 @@ MODULE INPUT
   INTEGER, INTENT(IN)           :: iel_start, nn, npes, numpe
   INTEGER, INTENT(INOUT)        :: g_num_pp(:,:)
   INTEGER(KIND=C_INT)           :: nn_in,nels_in,part
-  INTEGER                       :: nod, nels_pp, iel, i, j, k
+  INTEGER                       :: nod, nels_pp, iel, i, j, k, ipos
   INTEGER                       :: bufsize, ielpe, ier, ndim=3
   INTEGER                       :: readSteps,max_nels_pp
   INTEGER                       :: status(MPI_STATUS_SIZE)
   INTEGER, ALLOCATABLE          :: g_num(:,:),localCount(:),readCount(:)
-  LOGICAL                       :: verbose=.false.
-! LOGICAL                       :: verbose=.true.
+! LOGICAL                       :: verbose=.false.
+  LOGICAL                       :: verbose=.true.
 
 !------------------------------------------------------------------------------
 ! 1. Initiallize variables
@@ -923,22 +923,23 @@ MODULE INPUT
     
     READ(10)   nn_in   ; IF(verbose) PRINT *, "nn_in = ",nn_in
     
-    ! Skip the nodes. Not very efficient, but necessary to preserve the 
-    ! use of the Ensight gold data format.
-    
-    READ(10) (rdummy,i=1,nn*ndim) 
-
   END IF
 
 !------------------------------------------------------------------------------
 ! 5. Go around READSTEPS loop, read data, and send to appropriate processor
+!
+!    Use INQUIRE to find out file position then skip coordinate data nn*ndim 
+!    entries. Assumes single precision 4 byte reals for each value skipped.
 !------------------------------------------------------------------------------
 
   DO i=1,npes
     IF(i == 1) THEN  ! local data
       IF(numpe == 1) THEN
-        READ(10) cbuffer ; IF(verbose) PRINT *, cbuffer
-        READ(10) nels_in ; IF(verbose) PRINT *, nels_in
+        ipos = 0
+        INQUIRE(UNIT=10,POS=ipos)
+        ipos = ipos + (4 * nn * ndim) ; IF(verbose) PRINT *, "POS = ", ipos
+        READ(10,POS=ipos) cbuffer     ; IF(verbose) PRINT *, cbuffer
+        READ(10) nels_in              ; IF(verbose) PRINT *, nels_in
         iel = readCount(i)
         READ(10) g_num_pp(:,1:iel)
       END IF
