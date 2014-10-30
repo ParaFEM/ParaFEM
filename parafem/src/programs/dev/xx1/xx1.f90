@@ -52,6 +52,7 @@ PROGRAM xx1
   REAL(iwp)             :: sse,spd,scd,rpl,dtime,temp,dtemp,pnewdt,celent
   CHARACTER(LEN=80)     :: cmname
   CHARACTER(LEN=80)     :: cbuffer
+  CHARACTER(LEN=50)     :: fname   ! should be obsolete
 
 !------------------------------------------------------------------------------
 ! 2. Declare dynamic arrays
@@ -72,6 +73,7 @@ PROGRAM xx1
   REAL(iwp),ALLOCATABLE :: tempres(:)  
   INTEGER,  ALLOCATABLE :: rest(:,:),g_num_pp(:,:),g_g_pp(:,:),node(:)
   INTEGER,  ALLOCATABLE :: no(:),no_pp(:),no_pp_temp(:),sense(:)
+  INTEGER,  ALLOCATABLE :: etype_pp(:)
 
 !------------------------------------------------------------------------------
 ! 2a. Declare dynamic arrays required by UMAT
@@ -111,10 +113,14 @@ PROGRAM xx1
   ALLOCATE(g_num_pp(nod, nels_pp)) 
   ALLOCATE(g_coord_pp(nod,ndim,nels_pp)) 
   ALLOCATE(rest(nr,nodof+1)) 
+! ALLOCATE(etype_pp(nels_pp))
+! ALLOCATE(prop(nprops,np_types))
  
   g_num_pp  = 0
   g_coord_pp= zero
   rest      = 0
+! etype_pp  = 0
+! prop      = 0
 
   timest(2) = elap_time()
 
@@ -138,6 +144,17 @@ PROGRAM xx1
   timest(5) = elap_time()
 
   CALL read_rest(job_name,numpe,rest)
+
+! fname = job_name(1:LEN_TRIM(job_name)) // ".mat"
+! CALL read_materialValue(prop,fname,numpe,npes)
+
+! IF(io_binary) THEN
+!   CALL read_etype_pp_be(job_name,iel_start,npes,numpe,etype_pp)
+! ELSE
+!   PRINT *, "Different material types not supported for ASCII files"
+!   CALL shutdown()
+! END IF
+
   timest(6) = elap_time()
     
 !------------------------------------------------------------------------------
@@ -223,7 +240,7 @@ PROGRAM xx1
 
   CALL sample(element,points,weights)
 
-  dee = zero
+  dee = zero              ! comment out if different material types
   CALL deemat(dee,e,v)
 
 ! dee = zero
@@ -236,6 +253,10 @@ PROGRAM xx1
     vstorkm_pp       = zero
     elements_3: DO iel=1,nels_pp
       km = zero
+!     e  = prop(1,etype_pp(iel))  ! if each element has own properties
+!     v  = prop(2,etype_pp(iel))
+!     dee = zero
+!     CALL deemat(e,v,dee)
       gauss_pts_1: DO i=1,nip
         CALL shape_der(der,points,i)
         jac   = MATMUL(der,g_coord_pp(:,:,iel))
@@ -254,6 +275,10 @@ PROGRAM xx1
     END DO elements_3
   ELSE
     storkm_pp        = zero
+!   e  = prop(1,etype_pp(iel))  ! if each element has own properties
+!   v  = prop(2,etype_pp(iel))
+!   dee = zero
+!   CALL deemat(e,v,dee)
     elements_3a: DO iel=1,nels_pp
       gauss_pts_1a: DO i=1,nip
         CALL shape_der(der,points,i)
