@@ -3677,7 +3677,7 @@ MODULE INPUT
 
   SUBROUTINE READ_XX12(job_name,numpe,dtim,element,fixed_freedoms,            &
                        limit,loaded_nodes,mesh,nels,nip,nn,nod,npri,nr,       &
-                       nstep,partition,theta,tol,np_types,val0,el_print,i_o)
+                       nstep,partition,theta,tol,np_types,chk,val0,el_print,i_o)
 
   !/****f* input/read_xx12
   !*  NAME
@@ -3704,6 +3704,9 @@ MODULE INPUT
   !*
   !*    element                : Element type
   !*                           : Values: 'hexahedron' or 'tetrahedron'
+  !*
+  !*    chk                    : Checkpoint flag
+  !*                           : Values: 'initialise' or 'restart'
   !*
   !*    The following scalar integers have the INTENT(INOUT) attribute:
   !*
@@ -3750,7 +3753,7 @@ MODULE INPUT
   IMPLICIT NONE
 
   CHARACTER(LEN=50), INTENT(IN)    :: job_name
-  CHARACTER(LEN=15), INTENT(INOUT) :: element
+  CHARACTER(LEN=15), INTENT(INOUT) :: element,chk
   INTEGER, INTENT(IN)              :: numpe
   INTEGER, INTENT(INOUT)           :: nels,nn,nr,nod,nip,loaded_nodes
   INTEGER, INTENT(INOUT)           :: limit,mesh,fixed_freedoms,partition 
@@ -3776,7 +3779,7 @@ MODULE INPUT
     fname = job_name(1:INDEX(job_name, " ") -1) // ".dat"
     OPEN(10,FILE=fname,STATUS='OLD',ACTION='READ')
     READ(10,*) element,mesh,partition,np_types,nels,nn,nr,nip,nod,            &
-               loaded_nodes,fixed_freedoms,val0,                              &
+               loaded_nodes,fixed_freedoms,chk,val0,                          &
                dtim,nstep,npri,theta,tol,limit,el_print,i_o
     CLOSE(10)
    
@@ -3819,7 +3822,10 @@ MODULE INPUT
 
   bufsize = 15
   CALL MPI_BCAST(element,bufsize,MPI_CHARACTER,0,MPI_COMM_WORLD,ier)
-
+  
+  bufsize = 15
+  CALL MPI_BCAST(chk,bufsize,MPI_CHARACTER,0,MPI_COMM_WORLD,ier)
+  
 !------------------------------------------------------------------------------
 ! 4. Slave processors extract the variables from the temporary arrays
 !------------------------------------------------------------------------------
