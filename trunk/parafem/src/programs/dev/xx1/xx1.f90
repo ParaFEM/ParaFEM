@@ -113,13 +113,13 @@ PROGRAM xx1
   ALLOCATE(g_num_pp(nod, nels_pp)) 
   ALLOCATE(g_coord_pp(nod,ndim,nels_pp)) 
   ALLOCATE(rest(nr,nodof+1)) 
-! ALLOCATE(etype_pp(nels_pp))
+  ALLOCATE(etype_pp(nels_pp))
 ! ALLOCATE(prop(nprops,np_types))
  
   g_num_pp  = 0
   g_coord_pp= zero
   rest      = 0
-! etype_pp  = 0
+  etype_pp  = 0
 ! prop      = 0
 
   timest(2) = elap_time()
@@ -145,17 +145,19 @@ PROGRAM xx1
 
   CALL read_rest(job_name,numpe,rest)
 
+  timest(6) = elap_time()
+
 ! fname = job_name(1:LEN_TRIM(job_name)) // ".mat"
 ! CALL read_materialValue(prop,fname,numpe,npes)
 
-! IF(io_binary) THEN
-!   CALL read_etype_pp_be(job_name,iel_start,npes,numpe,etype_pp)
-! ELSE
-!   PRINT *, "Different material types not supported for ASCII files"
-!   CALL shutdown()
-! END IF
+  IF(io_binary) THEN
+    CALL read_etype_pp_be(job_name,npes,numpe,etype_pp)
+  ELSE
+    PRINT *, "Different material types not supported for ASCII files"
+    CALL shutdown()
+  END IF
 
-  timest(6) = elap_time()
+  timest(7) = elap_time()
     
 !------------------------------------------------------------------------------
 ! 4. Allocate dynamic arrays used in main program
@@ -204,7 +206,7 @@ PROGRAM xx1
 
   neq = MAXVAL(g_g_pp); neq= MAX_P(neq)
  
-  timest(7) = elap_time()
+  timest(8) = elap_time()
 
 !------------------------------------------------------------------------------
 ! 6. Create interprocessor communication tables
@@ -214,7 +216,7 @@ PROGRAM xx1
   CALL calc_npes_pp(npes,npes_pp)
   CALL make_ggl(npes_pp,npes,g_g_pp)
  
-  timest(8) = elap_time()
+  timest(9) = elap_time()
 
   CALL MPI_BARRIER(MPI_COMM_WORLD,ier)
 
@@ -228,7 +230,7 @@ PROGRAM xx1
   p_pp    = zero  ;  r_pp = zero  ;  x_pp = zero
   xnew_pp = zero  ;  u_pp = zero  ;  d_pp = zero  ; diag_precon_pp = zero
 
-  timest(9) = elap_time()
+  timest(10) = elap_time()
 
 !------------------------------------------------------------------------------
 ! 8. Element stiffness integration and storage
@@ -294,7 +296,7 @@ PROGRAM xx1
     END DO elements_3a
   END IF
  
-  timest(10) = elap_time()
+  timest(11) = elap_time()
 
 !------------------------------------------------------------------------------
 ! 9. Build the diagonal preconditioner
@@ -323,7 +325,7 @@ PROGRAM xx1
 
   DEALLOCATE(diag_precon_tmp)
 
-  timest(11) = elap_time()
+  timest(12) = elap_time()
 
 !------------------------------------------------------------------------------
 ! 10. Read in fixed nodal displacements and assign to equations
@@ -381,7 +383,7 @@ PROGRAM xx1
   
   DEALLOCATE(g_g_pp)
   
-  timest(12) = elap_time()
+  timest(13) = elap_time()
 
 !------------------------------------------------------------------------------
 ! 12. Invert the preconditioner.
@@ -469,7 +471,7 @@ PROGRAM xx1
     DEALLOCATE(storkm_pp)
   END IF
  
-  timest(13) = elap_time()
+  timest(14) = elap_time()
 
 !------------------------------------------------------------------------------
 ! 15. Print out displacements, stress, principal stress and reactions
@@ -477,7 +479,7 @@ PROGRAM xx1
 
   CALL calc_nodes_pp(nn,npes,numpe,node_end,node_start,nodes_pp)
   
-  timest(14) = elap_time()
+  timest(15) = elap_time()
 
   IF(numpe==1) THEN
     fname = job_name(1:INDEX(job_name, " ")-1)//".dis"
@@ -509,7 +511,7 @@ PROGRAM xx1
   CALL scatter_nodes(npes,nn,nels_pp,g_num_pp,nod,ndim,nodes_pp,              &
                      node_start,node_end,eld_pp,disp_pp,1)
 
-  timest(15) = elap_time()
+  timest(16) = elap_time()
 
   IF(io_binary) THEN
 
@@ -550,7 +552,7 @@ PROGRAM xx1
 
   DEALLOCATE(disp_pp)
 
-  timest(16) = elap_time()
+  timest(17) = elap_time()
 
   IF(numpe==1) CLOSE(24)
   
