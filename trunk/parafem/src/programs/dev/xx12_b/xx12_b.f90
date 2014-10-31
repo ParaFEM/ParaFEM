@@ -24,7 +24,7 @@ PROGRAM xx12
   
   INTEGER, PARAMETER  :: ndim=3,nodof=1,nprops=5
   INTEGER             :: nod,nn,nr,nip
-  INTEGER             :: i,j,k,l,iters,iters_tot,limit,iel
+  INTEGER             :: i,j,k,l,iters,iters_tot,limit,iel,j_chk
   INTEGER             :: nxe,nye,nze,neq_temp,nn_temp
   INTEGER             :: nstep,npri,nres,it,is,nlen
   INTEGER             :: node_end,node_start,nodes_pp
@@ -435,8 +435,19 @@ PROGRAM xx12
 ! 14. Start time stepping loop
 !------------------------------------------------------------------------------
   
+  SELECT CASE (chk)
+    CASE('initialise')
+      j_chk=0
+    CASE('restart')
+      CALL read_x_pp(job_name,npes,numpe,j_chk,x_pp)
+!      j_chk=j_chk+1
+    CASE default
+      PRINT*, "Invalid checkpoint flag in .dat"
+      PRINT*, "Program aborting"
+    END SELECT
+  
   iters_tot = 0
-  timesteps: DO j=1,nstep
+  timesteps: DO j=j_chk+1,nstep
   
     timest(15) = elap_time()
     
@@ -470,6 +481,10 @@ PROGRAM xx12
     utemp_pp          = zero
     
     IF(j/=1) THEN
+      
+      !--test checkpoint
+!      x_pp = zero
+!      CALL read_x_pp(job_name,npes,numpe,j_chk,x_pp)
       
       IF(fixed_freedoms_pp > 0) THEN
         DO i = 1, fixed_freedoms_pp
@@ -685,13 +700,12 @@ PROGRAM xx12
         IF(numpe==1)THEN
           fname = job_name(1:INDEX(job_name, " ")-1)//".chk"
           OPEN(28,file=fname,status='replace',action='write',                    &
-          form='unformatted',access='stream')
+               form='unformatted',access='stream')
           WRITE(28) int(j,kind=c_int)  
         END IF
 !        CALL dismsh_ensi_pb3(28,j,nodes_pp,npes,numpe,nodof,x_pp)
-        CALL write_nodal_variable_binary(label,28,j,nodes_pp,npes,numpe,nodof,  &
-                                         x_pp)
-        IF(numpe==1) PRINT *, x_pp
+        CALL write_x_pp(label,28,j,nodes_pp,npes,numpe,nodof,x_pp)
+!        IF(numpe==1) PRINT *, x_pp
         IF(numpe==1) CLOSE (28)
       END IF
 
