@@ -20,7 +20,7 @@ MODULE INPUT
   !*    READ_ELEMENTS          Reads the element nodal steering array
   !*    READ_ELEMENTS_2        Reads the element nodal steering array
   !*    READ_ETYPE_PP          Reads the element material ID
-  !*    READ_ETYPE_PP_BE       Reads the element material ID  
+  !*    READ_ETYPE_PP_BE       Reads the element material ID (binary ensi)
   !*    READ_LOADS             Reads nodal forces
   !*    READ_LOADS_NS          Reads lid velocities for p126
   !*    READ_FIXED             Reads fixed freedoms for displacement control
