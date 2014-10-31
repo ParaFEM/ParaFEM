@@ -1503,10 +1503,11 @@ MODULE INPUT
   INTEGER, INTENT(IN)               :: npes, numpe
   INTEGER, INTENT(INOUT)            :: etype_pp(:)
   INTEGER                           :: nels_pp,i,ier,bufsize
+  INTEGER(KIND=C_INT)               :: int_in
   INTEGER                           :: readSteps,max_nels_pp
   INTEGER                           :: status(MPI_STATUS_SIZE)
   INTEGER, ALLOCATABLE              :: localCount(:),readCount(:)
-  INTEGER, ALLOCATABLE (KIND=C_INT) :: etype(:)
+  INTEGER(KIND=C_INT), ALLOCATABLE  :: etype(:)
 
 !------------------------------------------------------------------------------
 ! 1. Initiallize variables
