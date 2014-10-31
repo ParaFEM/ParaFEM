@@ -20,6 +20,7 @@ MODULE INPUT
   !*    READ_ELEMENTS          Reads the element nodal steering array
   !*    READ_ELEMENTS_2        Reads the element nodal steering array
   !*    READ_ETYPE_PP          Reads the element material ID
+  !*    READ_ETYPE_PP_BE       Reads the element material ID  
   !*    READ_LOADS             Reads nodal forces
   !*    READ_LOADS_NS          Reads lid velocities for p126
   !*    READ_FIXED             Reads fixed freedoms for displacement control
@@ -1448,6 +1449,145 @@ MODULE INPUT
   RETURN
 
   END SUBROUTINE READ_ETYPE_PP
+
+!------------------------------------------------------------------------------
+!------------------------------------------------------------------------------
+!------------------------------------------------------------------------------
+    
+  SUBROUTINE READ_ETYPE_PP_BE(job_name,npes,numpe,etype_pp)
+
+  !/****f* input/read_etype_pp_be
+  !*  NAME
+  !*    SUBROUTINE: read_etype_pp_be
+  !*  SYNOPSIS
+  !*    Usage:      CALL read_etype_pp_be(job_name,npes,numpe,etype_pp)
+  !*  FUNCTION
+  !*    The master process reads the element property type for each element 
+  !*    and broadcasts that data to the slave processes. Each process only 
+  !*    records its local data.
+  !*  INPUTS
+  !*    The following character argument has the INTENT(IN) attribute:
+  !*
+  !*    job_name              : Used to create file name to read
+  !*
+  !*    The following scalar integer arguments have the INTENT(IN) attribute:
+  !*
+  !*    npes                  : Integer
+  !*                          : Total number of processors
+  !*
+  !*    numpe                 : Integer
+  !*                          : Process number
+  !*
+  !*    The following scalar array argument has the INTENT(INOUT) attribute:
+  !*
+  !*    etype_pp(nels_pp)     : Element property type vector     
+  !*
+  !*  AUTHOR
+  !*    L. Margetts
+  !*    Ll. Evans
+  !*  COPYRIGHT
+  !*    (c) University of Manchester 2007-2014
+  !******
+  !*  Place remarks that should not be included in the documentation here.
+  !*  This subroutine can be modified to use MPI I/O
+  !*
+  !*/
+  
+  USE, INTRINSIC :: ISO_C_BINDING
+
+  IMPLICIT NONE
+
+  CHARACTER(LEN=50), INTENT(IN)     :: job_name
+  CHARACTER(LEN=50)                 :: fname
+  CHARACTER(LEN=80,KIND=C_CHAR)     :: cbuffer
+  INTEGER, INTENT(IN)               :: npes, numpe
+  INTEGER, INTENT(INOUT)            :: etype_pp(:)
+  INTEGER                           :: nels_pp,i,ier,bufsize
+  INTEGER                           :: readSteps,max_nels_pp
+  INTEGER                           :: status(MPI_STATUS_SIZE)
+  INTEGER, ALLOCATABLE              :: localCount(:),readCount(:)
+  INTEGER, ALLOCATABLE (KIND=C_INT) :: etype(:)
+
+!------------------------------------------------------------------------------
+! 1. Initiallize variables
+!------------------------------------------------------------------------------
+
+  nels_pp   = UBOUND(etype_pp,1)
+
+!------------------------------------------------------------------------------
+! 2. Find READSTEPS, the number of steps in which the read will be carried
+!    out and READCOUNT, the size of each read.
+!------------------------------------------------------------------------------
+
+  ALLOCATE(readCount(npes))
+  ALLOCATE(localCount(npes))
+  
+  readCount         = 0
+  localCount        = 0
+  readSteps         = npes
+  localCount(numpe) = nels_pp
+
+  CALL MPI_ALLREDUCE(localCount,readCount,npes,MPI_INTEGER,MPI_SUM,           &
+                     MPI_COMM_WORLD,ier) 
+ 
+!------------------------------------------------------------------------------
+! 3. Allocate the array etype into which the element property type vector is  
+!    to be read.
+!------------------------------------------------------------------------------
+
+  max_nels_pp = MAXVAL(readCount,1)
+  
+  ALLOCATE(etype(max_nels_pp))
+  
+  etype    = 0
+  etype_pp = 0
+  
+!------------------------------------------------------------------------------
+! 4. The master process opens the data file
+!------------------------------------------------------------------------------
+
+  IF (numpe==1) THEN
+    fname     = job_name(1:INDEX(job_name, " ")-1) // ".bin.ensi.MATID"
+    OPEN(10,FILE=fname,STATUS='OLD',FORM='UNFORMATTED',ACTION='READ',         &
+                       ACCESS='STREAM')
+    READ(10)   cbuffer !header
+    READ(10)   cbuffer !header
+    READ(10)   int_in  !header
+    READ(10)   cbuffer !header
+  END IF
+
+!------------------------------------------------------------------------------
+! 5. Go around READSTEPS loop, read data, and send to appropriate process
+!------------------------------------------------------------------------------
+
+  DO i=1,npes
+    IF(i == 1) THEN  ! local data
+      IF(numpe == 1) READ(10) etype_pp(1:readCount(i))
+    ELSE
+      bufsize = readCount(i)
+      IF(numpe == 1) THEN
+        READ(10) etype(1:readCount(i))
+        CALL MPI_SEND(etype(1:readCount(i)),bufsize,MPI_INTEGER,i-1,i,         &
+                      MPI_COMM_WORLD,status,ier)
+      END IF
+      IF(numpe == i) THEN
+        CALL MPI_RECV(etype_pp,bufsize,MPI_INTEGER,0,i,MPI_COMM_WORLD,status,  &
+                      ier)
+      END IF
+    END IF
+  END DO
+  
+!------------------------------------------------------------------------------
+! 6. Close file and deallocate global arrays
+!------------------------------------------------------------------------------
+
+  IF(numpe==1) CLOSE(10)
+
+  DEALLOCATE(readCount,localCount,etype)
+
+  RETURN
+
+  END SUBROUTINE READ_ETYPE_PP_BE
 
 !------------------------------------------------------------------------------
 !------------------------------------------------------------------------------
