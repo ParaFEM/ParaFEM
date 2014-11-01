@@ -342,7 +342,9 @@ PROGRAM p12meshgenbin
            
             ALLOCATE(etype(nels),nf(nodof,nn),oldlds(nn*ndim)) 
 
-            etype=0; nf=0
+            etype = 1  ! all elements are of the same type 
+
+            nf    = 0
 
             CALL rest_to_nf(rest,nf)
 
