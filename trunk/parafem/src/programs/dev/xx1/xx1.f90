@@ -1,8 +1,12 @@
 PROGRAM xx1         
 !------------------------------------------------------------------------------ 
-!      Program XX.1 Three dimensional analysis of an elastic solid using load 
-!                   control or displacement control. Added support for Abaqus
-!                   UMAT. Compare with P121.
+! Program XX.1 Three dimensional analysis of an elastic solid using load 
+!              control or displacement control. Compare with P121.
+!
+!              Support for Abaqus UMAT
+!              Some binary I/O. 
+!              Support for multiple material types.
+!              Vector storage for symmetric element stiffness matrix.
 !------------------------------------------------------------------------------ 
                                  
   USE precision     ; USE global_variables ; USE mp_interface
@@ -27,12 +31,13 @@ PROGRAM xx1
   INTEGER               :: node_end,node_start,nodes_pp
   INTEGER               :: argc,iargc,meshgen,partitioner=1
   INTEGER               :: fixed_freedoms_pp,fixed_freedoms_start
+  INTEGER               :: nprops,np_types
   REAL(iwp)             :: e,v,det,tol,up,alpha,beta,tload
   REAL(iwp),PARAMETER   :: zero=0.0_iwp
   REAL(iwp),PARAMETER   :: penalty=1.0e20_iwp
   CHARACTER(LEN=15)     :: element
   CHARACTER(LEN=50)     :: program_name='xx1'
-  CHARACTER(LEN=50)     :: fname,job_name,label
+  CHARACTER(LEN=50)     :: job_name,label
   LOGICAL               :: converged=.false.
   LOGICAL               :: sym_storkm=.true.
 ! LOGICAL               :: sym_storkm=.false.
@@ -47,7 +52,7 @@ PROGRAM xx1
 !
 !------------------------------------------------------------------------------
 
-  INTEGER,PARAMETER     :: ndi=3,nprops=2
+! INTEGER,PARAMETER     :: ndi=3,nprops=2
   INTEGER               :: nshr,nstatv,npt,layer,kspt,kstep,kinc
   REAL(iwp)             :: sse,spd,scd,rpl,dtime,temp,dtemp,pnewdt,celent
   CHARACTER(LEN=80)     :: cmname
@@ -70,7 +75,7 @@ PROGRAM xx1
   REAL(iwp),ALLOCATABLE :: stress_integral_pp(:,:),stressnodes_pp(:)
   REAL(iwp),ALLOCATABLE :: principal_integral_pp(:,:),princinodes_pp(:)
   REAL(iwp),ALLOCATABLE :: principal(:),reacnodes_pp(:)
-  REAL(iwp),ALLOCATABLE :: tempres(:)  
+  REAL(iwp),ALLOCATABLE :: tempres(:),prop(:,:) 
   INTEGER,  ALLOCATABLE :: rest(:,:),g_num_pp(:,:),g_g_pp(:,:),node(:)
   INTEGER,  ALLOCATABLE :: no(:),no_pp(:),no_pp_temp(:),sense(:)
   INTEGER,  ALLOCATABLE :: etype_pp(:)
@@ -104,7 +109,10 @@ PROGRAM xx1
 
   CALL read_xx1(job_name,numpe,e,element,fixed_freedoms,limit,loaded_nodes, &
                  meshgen,nels,nip,nn,nod,nr,partitioner,tol,v)
-
+ 
+  nprops   = 2   ! needs to go in .dat file and be read using READ_XX1
+  np_types = 1   ! needs to go in .dat file and be read using READ_XX1
+ 
   CALL calc_nels_pp(job_name,nels,npes,numpe,partitioner,nels_pp)
 
   ndof = nod*nodof
@@ -114,13 +122,13 @@ PROGRAM xx1
   ALLOCATE(g_coord_pp(nod,ndim,nels_pp)) 
   ALLOCATE(rest(nr,nodof+1)) 
   ALLOCATE(etype_pp(nels_pp))
-! ALLOCATE(prop(nprops,np_types))
+  ALLOCATE(prop(nprops,np_types))
  
   g_num_pp  = 0
   g_coord_pp= zero
   rest      = 0
   etype_pp  = 0
-! prop      = 0
+  prop      = 0
 
   timest(2) = elap_time()
 
@@ -147,8 +155,8 @@ PROGRAM xx1
 
   timest(6) = elap_time()
 
-! fname = job_name(1:LEN_TRIM(job_name)) // ".mat"
-! CALL read_materialValue(prop,fname,numpe,npes)
+  fname = job_name(1:LEN_TRIM(job_name)) // ".mat"
+  CALL read_materialValue(prop,fname,numpe,npes)
 
   IF(io_binary) THEN
     CALL read_etype_pp_be(job_name,npes,numpe,etype_pp)
@@ -235,15 +243,15 @@ PROGRAM xx1
 !------------------------------------------------------------------------------
 ! 8. Element stiffness integration and storage
 !
-!    Note that the DEEMAT and UMAT subroutines are currently outside the loop
+!    Note that the UMAT subroutine is currently outside the loop
 !    elements_3. This is only correct when all the elements are of the same
 !    type and have the same material properties.
 !------------------------------------------------------------------------------
 
   CALL sample(element,points,weights)
 
-  dee = zero              ! comment out if different material types
-  CALL deemat(dee,e,v)
+! dee = zero              ! comment out if different material types
+! CALL deemat(dee,e,v)
 
 ! dee = zero
 ! CALL umat(sigma,statev,dee,sse,spd,scd,rpl,ddsddt,drplde,drpldt,stran,      &
@@ -255,10 +263,10 @@ PROGRAM xx1
     vstorkm_pp       = zero
     elements_3: DO iel=1,nels_pp
       km = zero
-!     e  = prop(1,etype_pp(iel))  ! if each element has own properties
-!     v  = prop(2,etype_pp(iel))
-!     dee = zero
-!     CALL deemat(e,v,dee)
+      e  = prop(1,etype_pp(iel))  ! if each element has own properties
+      v  = prop(2,etype_pp(iel))
+      dee = zero
+      CALL deemat(dee,e,v)
       gauss_pts_1: DO i=1,nip
         CALL shape_der(der,points,i)
         jac   = MATMUL(der,g_coord_pp(:,:,iel))
@@ -277,10 +285,10 @@ PROGRAM xx1
     END DO elements_3
   ELSE
     storkm_pp        = zero
-!   e  = prop(1,etype_pp(iel))  ! if each element has own properties
-!   v  = prop(2,etype_pp(iel))
-!   dee = zero
-!   CALL deemat(e,v,dee)
+    e  = prop(1,etype_pp(iel))  ! if each element has own properties
+    v  = prop(2,etype_pp(iel))
+    dee = zero
+    CALL deemat(dee,e,v)
     elements_3a: DO iel=1,nels_pp
       gauss_pts_1a: DO i=1,nip
         CALL shape_der(der,points,i)
