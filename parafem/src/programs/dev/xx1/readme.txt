@@ -53,17 +53,41 @@
      xx1.f90. This is not an Ensight Gold file. The "bin.ensi" naming
      convention is followed for convenience.
 
-
+  9. <job_name>.bin.ensi.mat           ParaFEM format materials data
+                                   
+     An ASCII file that contains the materials data required by program 
+     xx1.f90. This is not an Ensight Gold file. The "bin.ensi" naming
+     convention is followed for convenience.
+     
+     The file contains the following variables where NMATS is the number of
+     materials and NVALS is the number of values for those materials:
+     
+     KEYWORD NMATS NVALS
+     LABEL1 LABEL2 ... LABEL_N
+     MATERIALTYPE_1 VALUE_1 VALUE_2 ... VALUE_N
+     MATERIALTYPE_2 VALUE_1 VALUE_2 ... VALUE_N
+     .
+     .
+     .
+     MATERIALTYPE_N VALUE_1 VALUE_2 ... VALUE_N
+     
+     An example follows for a model with two elastic materials:
+     
+     *MATERIAL  2  2
+     e v
+     1 104000. 0.3
+     2 370000. 0.4
+     
   OUTPUT DATA
   
-  8. <job_name>.bin.ensi.DISPL-000001  Ensight Gold format displacements
+  10. <job_name>.bin.ensi.DISPL-000001  Ensight Gold format displacements
   
-     A C binary file that contains the computed displacements at each node.
+      A C binary file that contains the computed displacements at each node.
                                     
-  9. <job_name>.bin.ensi.res           ParaFEM format results 
+  11. <job_name>.bin.ensi.res           ParaFEM format results 
   
-     An ASCII filecontaining basic job information as well as a break down of
-     time spent in the main program sections.
+      An ASCII filecontaining basic job information as well as a break down of
+      time spent in the main program sections.
   
   NOTES
 
