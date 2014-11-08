@@ -3816,8 +3816,8 @@ MODULE INPUT
 !------------------------------------------------------------------------------
 !------------------------------------------------------------------------------
 
-  SUBROUTINE READ_XX12(job_name,numpe,dtim,element,fixed_freedoms,            &
-                       limit,loaded_nodes,mesh,nels,nip,nn,nod,npri,nr,       &
+  SUBROUTINE READ_XX12(job_name,numpe,dtim,element,fixed_freedoms,limit,      &
+                       loaded_nodes,mesh,nels,nip,nn,nod,npri,npri_chk,nr,    &
                        nstep,partition,theta,tol,np_types,chk,val0,el_print,i_o)
 
   !/****f* input/read_xx12
@@ -3826,8 +3826,8 @@ MODULE INPUT
   !*  SYNOPSIS
   !*    Usage:      CALL read_xx12(job_name,numpe,dtim,element,fixed_freedoms,
   !*                               kx,ky,kz,limit,loaded_nodes,mesh,nels,nip,
-  !*                               nn,nod,npri,nr,nstep,partition,theta,tol,
-  !*                               np_types,rho,cp,val0,el_print,i_o)
+  !*                               nn,nod,npri,npri_chk,nr,nstep,partition,
+  !*                               theta,tol,np_types,rho,cp,val0,el_print,i_o)
   !*  FUNCTION
   !*    Master processor reads the general data for the problem and broadcasts 
   !*    it to the slave processors.
@@ -3898,7 +3898,7 @@ MODULE INPUT
   INTEGER, INTENT(IN)              :: numpe
   INTEGER, INTENT(INOUT)           :: nels,nn,nr,nod,nip,loaded_nodes
   INTEGER, INTENT(INOUT)           :: limit,mesh,fixed_freedoms,partition 
-  INTEGER, INTENT(INOUT)           :: npri,nstep,el_print,i_o
+  INTEGER, INTENT(INOUT)           :: npri,npri_chk,nstep,el_print,i_o
   INTEGER, INTENT(INOUT)           :: np_types
   REAL(iwp), INTENT(INOUT)         :: tol
   REAL(iwp), INTENT(INOUT)         :: dtim,theta
@@ -3908,7 +3908,7 @@ MODULE INPUT
 ! 1. Local variables
 !------------------------------------------------------------------------------
 
-  INTEGER                          :: bufsize,ier,integer_store(15)
+  INTEGER                          :: bufsize,ier,integer_store(16)
   REAL(iwp)                        :: real_store(4)
   CHARACTER(LEN=50)                :: fname
   
@@ -3921,7 +3921,7 @@ MODULE INPUT
     OPEN(10,FILE=fname,STATUS='OLD',ACTION='READ')
     READ(10,*) element,mesh,partition,np_types,nels,nn,nr,nip,nod,            &
                loaded_nodes,fixed_freedoms,chk,val0,                          &
-               dtim,nstep,npri,theta,tol,limit,el_print,i_o
+               dtim,nstep,npri,npri_chk,theta,tol,limit,el_print,i_o
     CLOSE(10)
    
     integer_store      = 0
@@ -3937,10 +3937,11 @@ MODULE INPUT
     integer_store(9)   = limit
     integer_store(10)  = partition
     integer_store(11)  = npri
-    integer_store(12)  = nstep
-    integer_store(13)  = np_types
-    integer_store(14)  = el_print
-    integer_store(15)  = i_o
+    integer_store(12)  = npri_chk
+    integer_store(13)  = nstep
+    integer_store(14)  = np_types
+    integer_store(15)  = el_print
+    integer_store(16)  = i_o
 
     real_store         = 0.0_iwp
 
@@ -3955,7 +3956,7 @@ MODULE INPUT
 ! 3. Master processor broadcasts the temporary arrays to the slave processors
 !------------------------------------------------------------------------------
 
-  bufsize = 15
+  bufsize = 16
   CALL MPI_BCAST(integer_store,bufsize,MPI_INTEGER,0,MPI_COMM_WORLD,ier)
 
   bufsize = 4
@@ -3984,10 +3985,11 @@ MODULE INPUT
     limit           = integer_store(9)
     partition       = integer_store(10)
     npri            = integer_store(11)
-    nstep           = integer_store(12)
-    np_types        = integer_store(13)
-    el_print        = integer_store(14)
-    i_o             = integer_store(15)
+    npri_chk        = integer_store(12)
+    nstep           = integer_store(13)
+    np_types        = integer_store(14)
+    el_print        = integer_store(15)
+    i_o             = integer_store(16)
 
     tol             = real_store(1)
     dtim            = real_store(2)

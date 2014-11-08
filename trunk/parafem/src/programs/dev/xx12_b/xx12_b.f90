@@ -24,9 +24,9 @@ PROGRAM xx12
   
   INTEGER, PARAMETER  :: ndim=3,nodof=1,nprops=5
   INTEGER             :: nod,nn,nr,nip
-  INTEGER             :: i,j,k,l,iters,iters_tot,limit,iel,j_chk
+  INTEGER             :: i,j,k,l,iters,iters_tot,limit,iel,j_chk,red_blk
   INTEGER             :: nxe,nye,nze,neq_temp,nn_temp
-  INTEGER             :: nstep,npri,nres,it,is,nlen
+  INTEGER             :: nstep,npri,npri_chk,nres,it,is,nlen
   INTEGER             :: node_end,node_start,nodes_pp
   INTEGER             :: loaded_freedoms,fixed_freedoms,loaded_nodes
   INTEGER             :: fixed_freedoms_pp,fixed_freedoms_start
@@ -43,6 +43,7 @@ PROGRAM xx12
   CHARACTER(LEN=15)   :: element,chk
   CHARACTER(LEN=50)   :: fname,job_name,label,stepnum
   CHARACTER(LEN=50)   :: program_name='xx12'
+!  character (len=512) command
   LOGICAL             :: converged = .false.
   LOGICAL             :: solid=.true.
   CHARACTER(LEN=80)   :: cbuffer
@@ -86,8 +87,8 @@ PROGRAM xx12
   CALL GETARG(1,job_name)
   
   CALL read_xx12(job_name,numpe,dtim,element,fixed_freedoms,limit,            &
-                 loaded_nodes,meshgen,nels,nip,nn,nod,npri,nr,nstep,          &
-                 partitioner,theta,tol,np_types,chk,val0,el_print,i_o)
+                 loaded_nodes,meshgen,nels,nip,nn,nod,npri,npri_chk,nr,       &
+                 nstep,partitioner,theta,tol,np_types,chk,val0,el_print,i_o)
   
   CALL calc_nels_pp(job_name,nels,npes,numpe,partitioner,nels_pp)
   
@@ -435,8 +436,9 @@ PROGRAM xx12
 ! 14. Start time stepping loop
 !------------------------------------------------------------------------------
   
+  red_blk=1
   SELECT CASE (chk)
-    CASE('initialise')
+    CASE('start')
       j_chk=0
     CASE('restart')
       CALL read_x_pp(job_name,npes,numpe,j_chk,x_pp)
@@ -690,24 +692,42 @@ PROGRAM xx12
         DO l=1,nodes_pp
           tempres(l)=disp_pp(l)
         END DO
+        !-Is tempres needed? Would passing disp_pp directly work the same?
         CALL dismsh_ensi_pb2(27,j,nodes_pp,npes,numpe,nodof,tempres)
         DEALLOCATE(tempres)
         IF(numpe==1) CLOSE (27)
       END IF
       
       !--Write checkpoint file
-      IF(j==nstep)THEN
+    IF((j/npri*npri)/npri_chk*npri_chk==j)THEN
+      IF(numpe==1 .AND. red_blk==1) PRINT *, "Checkpoint: j =",j,", red_blk = blk"
+      IF(numpe==1 .AND. red_blk==-1) PRINT *, "Checkpoint: j =",j,", red_blk = red"
+      IF(red_blk==1)THEN
         IF(numpe==1)THEN
-          fname = job_name(1:INDEX(job_name, " ")-1)//".chk"
+!          CALL RENAME('oldname.test','newname.test')
+!          command = 'mv oldname.test newname.test'
+!          CALL system (command)
+!          CALL EXECUTE_COMMAND_LINE("mv oldname.test newname.test")
+          fname = job_name(1:INDEX(job_name, " ")-1)//".chk_blk"
           OPEN(28,file=fname,status='replace',action='write',                    &
                form='unformatted',access='stream')
-          WRITE(28) int(j,kind=c_int)  
+          WRITE(28) int(j,kind=c_int)
         END IF
-!        CALL dismsh_ensi_pb3(28,j,nodes_pp,npes,numpe,nodof,x_pp)
-        CALL write_x_pp(label,28,j,nodes_pp,npes,numpe,nodof,x_pp)
-!        IF(numpe==1) PRINT *, x_pp
-        IF(numpe==1) CLOSE (28)
       END IF
+      IF(red_blk==-1)THEN
+        IF(numpe==1)THEN
+          fname = job_name(1:INDEX(job_name, " ")-1)//".chk_red"
+          OPEN(28,file=fname,status='replace',action='write',                    &
+               form='unformatted',access='stream')
+          WRITE(28) int(j,kind=c_int)
+        END IF
+      END IF
+!        CALL dismsh_ensi_pb3(28,j,nodes_pp,npes,numpe,nodof,x_pp)
+      CALL write_x_pp(label,28,j,nodes_pp,npes,numpe,nodof,x_pp)
+!        IF(numpe==1) PRINT *, x_pp
+      IF(numpe==1) CLOSE (28)
+      red_blk=red_blk*(-1)
+    END IF
 
 !      IF(numpe==1) PRINT *, "Time ", real_time, "Iters ", iters
     END IF
