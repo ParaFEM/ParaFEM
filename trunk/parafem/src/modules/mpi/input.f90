@@ -3816,9 +3816,9 @@ MODULE INPUT
 !------------------------------------------------------------------------------
 !------------------------------------------------------------------------------
 
-  SUBROUTINE READ_XX12(job_name,numpe,dtim,element,fixed_freedoms,limit,      &
-                       loaded_nodes,mesh,nels,nip,nn,nod,npri,npri_chk,nr,    &
-                       nstep,partition,theta,tol,np_types,chk,val0,el_print,i_o)
+  SUBROUTINE READ_XX12(job_name,numpe,element,fixed_freedoms,limit,            &
+                       loaded_nodes,mesh,nels,nip,nn,nod,ntime,nr,             &
+                       partition,theta,tol,np_types,chk,val0,el_print,i_o)
 
   !/****f* input/read_xx12
   !*  NAME
@@ -3893,23 +3893,21 @@ MODULE INPUT
 
   IMPLICIT NONE
 
-  CHARACTER(LEN=50), INTENT(IN)    :: job_name
-  CHARACTER(LEN=15), INTENT(INOUT) :: element,chk
-  INTEGER, INTENT(IN)              :: numpe
-  INTEGER, INTENT(INOUT)           :: nels,nn,nr,nod,nip,loaded_nodes
-  INTEGER, INTENT(INOUT)           :: limit,mesh,fixed_freedoms,partition 
-  INTEGER, INTENT(INOUT)           :: npri,npri_chk,nstep,el_print,i_o
-  INTEGER, INTENT(INOUT)           :: np_types
-  REAL(iwp), INTENT(INOUT)         :: tol
-  REAL(iwp), INTENT(INOUT)         :: dtim,theta
-  REAL(iwp), INTENT(INOUT)         :: val0
-
+  CHARACTER(LEN=50), INTENT(IN)       :: job_name
+  CHARACTER(LEN=15), INTENT(INOUT)    :: element,chk
+  INTEGER, INTENT(IN)                 :: numpe
+  INTEGER, INTENT(INOUT)              :: nels,nn,nr,nod,nip,loaded_nodes
+  INTEGER, INTENT(INOUT)              :: limit,mesh,fixed_freedoms,partition 
+  INTEGER, INTENT(INOUT)              :: el_print,i_o
+  INTEGER, INTENT(INOUT)              :: np_types,ntime
+  REAL(iwp), INTENT(INOUT)            :: tol,theta,val0
+  
 !------------------------------------------------------------------------------
 ! 1. Local variables
 !------------------------------------------------------------------------------
 
-  INTEGER                          :: bufsize,ier,integer_store(16)
-  REAL(iwp)                        :: real_store(4)
+  INTEGER                          :: bufsize,ier,integer_store(14),i
+  REAL(iwp)                        :: real_store(3)
   CHARACTER(LEN=50)                :: fname
   
 !------------------------------------------------------------------------------
@@ -3919,9 +3917,19 @@ MODULE INPUT
   IF (numpe==1) THEN
     fname = job_name(1:INDEX(job_name, " ") -1) // ".dat"
     OPEN(10,FILE=fname,STATUS='OLD',ACTION='READ')
-    READ(10,*) element,mesh,partition,np_types,nels,nn,nr,nip,nod,            &
-               loaded_nodes,fixed_freedoms,chk,val0,                          &
-               dtim,nstep,npri,npri_chk,theta,tol,limit,el_print,i_o
+    READ(10,*) element,mesh,partition,np_types,nels,nn,nr,nip,nod,loaded_nodes, &
+               fixed_freedoms,chk,val0,ntime,theta,tol,limit,el_print,i_o
+    
+!    ALLOCATE(dtim(nsection),npri(nsection),npri_chk(nsection),nstep(nsection))    
+!    dtim     = 0.0_iwp
+!    nstep    = 0
+!    npri     = 0
+!    npri_chk = 0
+!    DO i=1,nsection
+!      READ(10,*) dtim(i),nstep(i),npri(i),npri_chk(i)
+!    END DO    
+!    READ(10,*) theta,tol,limit,el_print,i_o
+
     CLOSE(10)
    
     integer_store      = 0
@@ -3936,30 +3944,38 @@ MODULE INPUT
     integer_store(8)   = fixed_freedoms
     integer_store(9)   = limit
     integer_store(10)  = partition
-    integer_store(11)  = npri
-    integer_store(12)  = npri_chk
-    integer_store(13)  = nstep
-    integer_store(14)  = np_types
-    integer_store(15)  = el_print
-    integer_store(16)  = i_o
+    integer_store(11)  = np_types
+    integer_store(12)  = el_print
+    integer_store(13)  = i_o
+    integer_store(14)  = ntime
+
+!    integer_store(11)  = npri
+!    integer_store(12)  = npri_chk
+!    integer_store(13)  = nstep
+!    real_store(2)      = dtim  
 
     real_store         = 0.0_iwp
 
     real_store(1)      = tol  
-    real_store(2)      = dtim  
-    real_store(3)      = theta
-    real_store(4)      = val0
+    real_store(2)      = theta
+    real_store(3)      = val0
 
   END IF
 
 !------------------------------------------------------------------------------
 ! 3. Master processor broadcasts the temporary arrays to the slave processors
 !------------------------------------------------------------------------------
-
-  bufsize = 16
+  
+!  bufsize = nsection
+!  CALL MPI_BCAST(npri,bufsize,MPI_INTEGER,0,MPI_COMM_WORLD,ier)
+!  CALL MPI_BCAST(npri_chk,bufsize,MPI_INTEGER,0,MPI_COMM_WORLD,ier)
+!  CALL MPI_BCAST(nstep,bufsize,MPI_INTEGER,0,MPI_COMM_WORLD,ier)
+!  CALL MPI_BCAST(dtim,bufsize,MPI_REAL8,0,MPI_COMM_WORLD,ier)
+  
+  bufsize = 14
   CALL MPI_BCAST(integer_store,bufsize,MPI_INTEGER,0,MPI_COMM_WORLD,ier)
 
-  bufsize = 4
+  bufsize = 3
   CALL MPI_BCAST(real_store,bufsize,MPI_REAL8,0,MPI_COMM_WORLD,ier)
 
   bufsize = 15
@@ -3984,17 +4000,19 @@ MODULE INPUT
     fixed_freedoms  = integer_store(8)
     limit           = integer_store(9)
     partition       = integer_store(10)
-    npri            = integer_store(11)
-    npri_chk        = integer_store(12)
-    nstep           = integer_store(13)
-    np_types        = integer_store(14)
-    el_print        = integer_store(15)
-    i_o             = integer_store(16)
+    np_types        = integer_store(11)
+    el_print        = integer_store(12)
+    i_o             = integer_store(13)
+    ntime           = integer_store(14)
+
+!    npri            = integer_store(11)
+!    npri_chk        = integer_store(12)
+!    nstep           = integer_store(13)
+!    dtim            = real_store(2)
 
     tol             = real_store(1)
-    dtim            = real_store(2)
-    theta           = real_store(3)
-    val0            = real_store(4)
+    theta           = real_store(2)
+    val0            = real_store(3)
 
   END IF
 
@@ -4011,6 +4029,70 @@ MODULE INPUT
 
   RETURN
   END SUBROUTINE READ_xx12
+  
+!------------------------------------------------------------------------------
+!------------------------------------------------------------------------------
+!------------------------------------------------------------------------------
+
+  SUBROUTINE READ_TIMESTEPS(TIMESTEPS_REAL,TIMESTEPS_INT,FNAME,NUMPE,NPES)
+
+    !Master process reads the global array from a single file and 
+    !sends a copy to each slave. (I/O method 1: refer to notes)
+    !k is the material number in the file, it is read and discarded
+
+    IMPLICIT NONE
+    INTEGER                       :: i,j,k,ntime,n_int,nreal,bufsize,ier,ielpe
+    INTEGER,INTENT(IN)            :: numpe,npes
+!    INTEGER,ALLOCATABLE,INTENT(INOUT)         :: timesteps_int(:,:)
+!    REAL(iwp),ALLOCATABLE,INTENT(INOUT)       :: timesteps_real(:,:)
+    INTEGER,INTENT(INOUT)         :: timesteps_int(:,:)
+    REAL(iwp),INTENT(INOUT)       :: timesteps_real(:,:)
+    CHARACTER(LEN=50), INTENT(in) :: fname
+    CHARACTER(LEN=10)             :: keyword
+
+    IF(numpe==1)THEN
+     OPEN(21,FILE=fname, STATUS='OLD', ACTION='READ')
+     !Read the *MATERIAL keyword, num of materials in file and num values per material line (2)
+     READ(21,*) keyword, ntime, nreal, n_int
+     !Read the material labels line
+     READ(21,*)                  ! skip line
+
+     PRINT *, "ntime =", ntime
+     PRINT *, "nreal =", nreal
+     PRINT *, "n_int =", n_int
+     
+!     ALLOCATE(timesteps_real(ntime,nreal),timesteps_int(ntime,n_int))
+     
+     DO i = 1,ntime
+       READ(21,*)k, timesteps_real(i,:), timesteps_int(i,:)
+       PRINT *, "k              =", k
+       PRINT *, "timesteps_real =", timesteps_real(i,:)
+       PRINT *, "timesteps_int  =", timesteps_int(i,:)
+     END DO
+     
+!     DO i = 1,ntime
+!       READ(21,'(I1)',ADVANCE='no')k
+!       PRINT *, "k =", k
+!       DO j = 1,nreal
+!         READ(21,'(F5.3)',ADVANCE='no')timesteps_real(i,j)
+!         PRINT *, "timesteps_real =", timesteps_real(i,j)
+!       END DO
+!       DO j = 1,n_int
+!         READ(21,*)timesteps_int(i,j)
+!         PRINT *, "timesteps_int =", timesteps_int(i,j)
+!       END DO
+!     END DO
+     CLOSE(21)
+    END IF
+    
+    bufsize       = ubound(timesteps_real,1)*ubound(timesteps_real,2)
+    CALL MPI_BCAST(timesteps_real,bufsize,MPI_REAL8,0,MPI_COMM_WORLD,ier)
+    bufsize       = ubound(timesteps_int,1)*ubound(timesteps_int,2)
+    CALL MPI_BCAST(timesteps_int,bufsize,MPI_INTEGER,0,MPI_COMM_WORLD,ier)
+   
+    RETURN
+
+  END SUBROUTINE READ_TIMESTEPS
   
 !---------------------------------------------------------------------------
 !---------------------------------------------------------------------------

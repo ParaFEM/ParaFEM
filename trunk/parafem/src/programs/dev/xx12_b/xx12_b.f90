@@ -23,17 +23,17 @@ PROGRAM xx12
 ! neq,ntot are now global variables - not declared
   
   INTEGER, PARAMETER  :: ndim=3,nodof=1,nprops=5
-  INTEGER             :: nod,nn,nr,nip
+  INTEGER             :: nod,nn,nr,nip,j_glob,j_loc,j_step
   INTEGER             :: i,j,k,l,iters,iters_tot,limit,iel,j_chk,red_blk
   INTEGER             :: nxe,nye,nze,neq_temp,nn_temp
-  INTEGER             :: nstep,npri,npri_chk,nres,it,is,nlen
+  INTEGER             :: nstep,nstep_tot,npri,npri_chk,nres,it,is,nlen
   INTEGER             :: node_end,node_start,nodes_pp
   INTEGER             :: loaded_freedoms,fixed_freedoms,loaded_nodes
   INTEGER             :: fixed_freedoms_pp,fixed_freedoms_start
   INTEGER             :: loaded_freedoms_pp,loaded_freedoms_start
   INTEGER             :: nels,ndof,ielpe,npes_pp
   INTEGER             :: argc,iargc,meshgen,partitioner
-  INTEGER             :: np_types,el_print,i_o
+  INTEGER             :: np_types,ntime,el_print,i_o
   INTEGER             :: prog,tz
   REAL(iwp)           :: aa,bb,cc,kx,ky,kz,det,theta,dtim,real_time
   REAL(iwp)           :: tol,alpha,beta,up,big,q
@@ -63,10 +63,10 @@ PROGRAM xx12
   REAL(iwp),ALLOCATABLE :: val(:,:),val_f(:),store_pp(:),r_pp(:)
   REAL(iwp),ALLOCATABLE :: kcx(:,:),kcy(:,:),kcz(:,:)
   REAL(iwp),ALLOCATABLE :: eld(:),col(:,:),row(:,:),storkc_pp(:,:,:)
-  REAL(iwp),ALLOCATABLE :: prop(:,:),amp(:),tempres(:)
+  REAL(iwp),ALLOCATABLE :: prop(:,:),amp(:),tempres(:),timesteps_real(:,:)
   INTEGER,ALLOCATABLE   :: rest(:,:),g(:),num(:),g_num_pp(:,:),g_g_pp(:,:),no(:)
   INTEGER,ALLOCATABLE   :: no_pp(:),no_f_pp(:),no_pp_temp(:)
-  INTEGER,ALLOCATABLE   :: sense(:),node(:)
+  INTEGER,ALLOCATABLE   :: sense(:),node(:),timesteps_int(:,:)
   INTEGER,ALLOCATABLE   :: etype_pp(:),nf(:,:),oldlds(:),g_coord(:,:)
   
 !------------------------------------------------------------------------------
@@ -86,9 +86,9 @@ PROGRAM xx12
   IF(argc /= 1) CALL job_name_error(numpe,program_name)
   CALL GETARG(1,job_name)
   
-  CALL read_xx12(job_name,numpe,dtim,element,fixed_freedoms,limit,            &
-                 loaded_nodes,meshgen,nels,nip,nn,nod,npri,npri_chk,nr,       &
-                 nstep,partitioner,theta,tol,np_types,chk,val0,el_print,i_o)
+  CALL read_xx12(job_name,numpe,element,fixed_freedoms,limit,                 &
+                 loaded_nodes,meshgen,nels,nip,nn,nod,ntime,nr,               &
+                 partitioner,theta,tol,np_types,chk,val0,el_print,i_o)
   
   CALL calc_nels_pp(job_name,nels,npes,numpe,partitioner,nels_pp)
   
@@ -100,6 +100,7 @@ PROGRAM xx12
   IF (nr>0) ALLOCATE(rest(nr,nodof+1))
   ALLOCATE(etype_pp(nels_pp))
   ALLOCATE(prop(nprops,np_types))
+  ALLOCATE(timesteps_real(ntime,1),timesteps_int(ntime,3))
   
   g_num_pp       = 0
   g_coord_pp     = zero
@@ -133,6 +134,19 @@ PROGRAM xx12
   
   fname = job_name(1:INDEX(job_name, " ")-1) // ".mat"  
   CALL read_materialValue(prop,fname,numpe,npes)
+
+  fname = job_name(1:INDEX(job_name, " ")-1) // ".time"  
+  CALL read_timesteps(timesteps_real,timesteps_int,fname,numpe,npes)
+!  dtim     = timesteps_real(1,1)
+!  nstep    = timesteps_int(1,1)
+!  npri     = timesteps_int(1,2)
+!  npri_chk = timesteps_int(1,3)
+  
+  nstep_tot = 0
+  DO i=1,ntime
+    nstep_tot = nstep_tot + timesteps_int(i,1)
+  END DO
+  IF(numpe==1) PRINT *,"nstep_tot = ",nstep_tot
   
   IF(numpe==1) PRINT *, " *** Read input data in: ", timest(6)-timest(1)," s"
   
@@ -155,7 +169,7 @@ PROGRAM xx12
             pmul_pp(ntot,nels_pp))
   ALLOCATE (kcx(ntot,ntot),kcy(ntot,ntot),kcz(ntot,ntot),                     &
             eld(ntot),col(ntot,1),row(1,ntot),storkc_pp(ntot,ntot,nels_pp))
-  ALLOCATE (amp(nstep))
+  ALLOCATE (amp(nstep_tot))
   
   IF(numpe==1) PRINT *, " *** Allocated dynamic arrays in: ",                 &
                           elap_time()-timest(6)," s"
@@ -229,6 +243,14 @@ PROGRAM xx12
 !------------------------------------------------------------------------------
   
   CALL sample(element,points,weights)
+  
+  j_glob=1
+  !TEST variable timestep
+  DO j_step=1,ntime
+  dtim     = timesteps_real(j_step,1)
+  nstep    = timesteps_int(j_step,1)
+  npri     = timesteps_int(j_step,2)
+  npri_chk = timesteps_int(j_step,3)
   
   storka_pp = zero 
   storkb_pp = zero
@@ -308,6 +330,9 @@ PROGRAM xx12
 ! 10. Allocate disp_pp array and open file to write temperature output
 !------------------------------------------------------------------------------
   
+  !TEST variable timestep
+  IF(j_step==1)THEN
+  
   IF(numpe==it)THEN !---Open file for temperature outputs of specified node  
     fname = job_name(1:INDEX(job_name, " ")-1) // ".ttr2"
     OPEN(11,FILE=fname,STATUS='REPLACE',ACTION='WRITE')
@@ -346,13 +371,16 @@ PROGRAM xx12
     END IF
   END IF
   
+  !TEST variable timestep
+  END IF
+  
   IF(numpe==1) PRINT *, "End of 10"
   
 !------------------------------------------------------------------------------
 ! 11. Read in fixed nodal temperatures and assign to equations
 !------------------------------------------------------------------------------
   
-  IF(fixed_freedoms > 0) THEN
+  IF(fixed_freedoms > 0 .AND. j_glob == 1) THEN
     
     ALLOCATE(node(fixed_freedoms),no(fixed_freedoms),                         &
              no_pp_temp(fixed_freedoms),sense(fixed_freedoms))
@@ -409,14 +437,14 @@ PROGRAM xx12
     
     loaded_freedoms = loaded_nodes ! hack
     IF(loaded_freedoms==0) loaded_freedoms_pp=0
-    IF(loaded_freedoms > 0) THEN
+    IF(loaded_freedoms > 0 .AND. j_glob == 1) THEN
       
       ALLOCATE(node(loaded_freedoms),val(nodof,loaded_freedoms))
       ALLOCATE(no_pp_temp(loaded_freedoms))
       
       val = zero ; node = 0
       
-      CALL read_amplitude(job_name,numpe,nstep,amp)
+      CALL read_amplitude(job_name,numpe,nstep_tot,amp)
       CALL read_loads(job_name,numpe,node,val)
       CALL reindex(ieq_start,node,no_pp_temp,loaded_freedoms_pp,             &
                    loaded_freedoms_start,neq_pp)
@@ -431,6 +459,7 @@ PROGRAM xx12
     END IF
   
   timest(12) = elap_time()
+  IF(numpe==1) PRINT *, "End of 13"
   
 !------------------------------------------------------------------------------
 ! 14. Start time stepping loop
@@ -449,11 +478,17 @@ PROGRAM xx12
     END SELECT
   
   iters_tot = 0
-  timesteps: DO j=j_chk+1,nstep
+  timesteps: DO j_loc=j_chk+1,nstep
   
     timest(15) = elap_time()
     
-    real_time = j*dtim
+    real_time = 0
+    IF(j_step>1)THEN
+      DO i = 1,j_step-1
+        real_time = real_time + timesteps_real(i,1)*timesteps_int(i,1)
+      END DO
+    END IF
+    real_time = real_time + j_loc*dtim
     
 !------------------------------------------------------------------------------
 ! 15. Apply loads (sources and/or sinks) supplied as a boundary value
@@ -463,10 +498,10 @@ PROGRAM xx12
     
     IF(loaded_freedoms_pp > 0) THEN
       DO i = 1, loaded_freedoms_pp
-        IF(amp(j)==0.0)THEN
+        IF(amp(j_loc)==0.0)THEN
           loads_pp(no_pp(i)-ieq_start+1) = val(loaded_freedoms_start+i-1,1)*dtim*(1.0E-34)
         ELSE
-          loads_pp(no_pp(i)-ieq_start+1) = val(loaded_freedoms_start+i-1,1)*dtim*amp(j)
+          loads_pp(no_pp(i)-ieq_start+1) = val(loaded_freedoms_start+i-1,1)*dtim*amp(j_loc)
         END IF
       END DO
     END IF
@@ -482,7 +517,7 @@ PROGRAM xx12
     pmul_pp           = zero
     utemp_pp          = zero
     
-    IF(j/=1) THEN
+    IF(j_glob/=1) THEN
       
       !--test checkpoint
 !      x_pp = zero
@@ -567,7 +602,7 @@ PROGRAM xx12
         DO l=1,nodes_pp
           tempres(l)=disp_pp(l)
         END DO
-        CALL dismsh_ensi_pb2(27,j,nodes_pp,npes,numpe,nodof,tempres)
+        CALL dismsh_ensi_pb2(27,j_glob,nodes_pp,npes,numpe,nodof,tempres)
         
         DEALLOCATE(tempres)
         IF(numpe==1) CLOSE (27)  
@@ -651,13 +686,13 @@ PROGRAM xx12
     timest(13) = timest(13) + (elap_time() - timest(15))
     timest(16) = elap_time()
     
-    IF(j/npri*npri==j)THEN
+    IF(j_loc/npri*npri==j_loc)THEN
       
       eld_pp   = zero
       disp_pp  = zero
       CALL gather(xnew_pp(1:),eld_pp)
       
-      CALL scatter_nodes(npes,nn,nels_pp,g_num_pp,nod,nodof,nodes_pp,         &
+      CALL scatter_nodes(npes,nn,nels_pp,g_num_pp,nod,nodof,nodes_pp,            &
                         node_start,node_end,eld_pp,disp_pp,1)
       
       IF(numpe==it)THEN
@@ -666,16 +701,18 @@ PROGRAM xx12
       END IF      
       
       IF(i_o==1)THEN !---Write temperature outputs in binary ParaFEM format
-        CALL write_nodal_variable_binary(label,25,j,nodes_pp,npes,numpe,nodof,  &
-                                         disp_pp)
+        CALL write_nodal_variable_binary(label,25,j_glob,nodes_pp,npes,numpe,    &
+                                         nodof,disp_pp)
       END IF
       IF(i_o==2)THEN !---Write temperature outputs in ascii ParaFEM format
-        CALL write_nodal_variable2(label,24,j,nodes_pp,npes,numpe,nodof,disp_pp)
+        CALL write_nodal_variable2(label,24,j_glob,nodes_pp,npes,numpe,nodof,disp_pp)
       END IF
       
       IF(i_o==3)THEN !---Write temperature outputs in binary ENSI format
         IF(numpe==1)THEN
-          WRITE(stepnum,'(I0.6)') (j/npri)+1
+!          NEEDS CORRECTING
+!          WRITE(stepnum,'(I0.6)') (j/npri)+1
+          WRITE(stepnum,'(I0.6)') (j_glob)+1
           fname = job_name(1:INDEX(job_name, " ")-1)//".bin.ensi.NDTTR-"//stepnum
           OPEN(27,file=fname,status='replace',action='write',                    &
           form='unformatted',access='stream')
@@ -693,15 +730,17 @@ PROGRAM xx12
           tempres(l)=disp_pp(l)
         END DO
         !-Is tempres needed? Would passing disp_pp directly work the same?
-        CALL dismsh_ensi_pb2(27,j,nodes_pp,npes,numpe,nodof,tempres)
+        CALL dismsh_ensi_pb2(27,j_glob,nodes_pp,npes,numpe,nodof,tempres)
         DEALLOCATE(tempres)
         IF(numpe==1) CLOSE (27)
       END IF
       
       !--Write checkpoint file
-    IF((j/npri*npri)/npri_chk*npri_chk==j)THEN
-      IF(numpe==1 .AND. red_blk==1) PRINT *, "Checkpoint: j =",j,", red_blk = blk"
-      IF(numpe==1 .AND. red_blk==-1) PRINT *, "Checkpoint: j =",j,", red_blk = red"
+    IF((j_loc/npri*npri)/npri_chk*npri_chk==j_loc)THEN
+      IF(numpe==1 .AND. red_blk==1)                                              &
+         PRINT *, "Checkpoint: j =",j_glob,", red_blk = blk"
+      IF(numpe==1 .AND. red_blk==-1)                                             &
+         PRINT *, "Checkpoint: j =",j_glob,", red_blk = red"
       IF(red_blk==1)THEN
         IF(numpe==1)THEN
 !          CALL RENAME('oldname.test','newname.test')
@@ -719,24 +758,27 @@ PROGRAM xx12
           fname = job_name(1:INDEX(job_name, " ")-1)//".chk_red"
           OPEN(28,file=fname,status='replace',action='write',                    &
                form='unformatted',access='stream')
-          WRITE(28) int(j,kind=c_int)
+          WRITE(28) int(j_glob,kind=c_int)
         END IF
       END IF
-!        CALL dismsh_ensi_pb3(28,j,nodes_pp,npes,numpe,nodof,x_pp)
-      CALL write_x_pp(label,28,j,nodes_pp,npes,numpe,nodof,x_pp)
+!        CALL dismsh_ensi_pb3(28,j_glob,nodes_pp,npes,numpe,nodof,x_pp)
+      CALL write_x_pp(label,28,j_glob,nodes_pp,npes,numpe,nodof,x_pp)
 !        IF(numpe==1) PRINT *, x_pp
       IF(numpe==1) CLOSE (28)
       red_blk=red_blk*(-1)
     END IF
 
-!      IF(numpe==1) PRINT *, "Time ", real_time, "Iters ", iters
+      IF(numpe==1) PRINT *, "Time ", real_time, "Iters ", iters
     END IF
     
     timest(14) = timest(14) + (elap_time() - timest(16))
     iters_tot = iters_tot + iters
     
+    !TEST variable timestep
+    j_glob=j_glob+1
   END DO timesteps
-  
+  END DO  
+
   timest(13) = timest(12) + timest(13)
   timest(14) = timest(13) + timest(14)
   
