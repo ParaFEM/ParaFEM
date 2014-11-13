@@ -23,7 +23,7 @@ PROGRAM xx12
 ! neq,ntot are now global variables - not declared
   
   INTEGER, PARAMETER  :: ndim=3,nodof=1,nprops=5
-  INTEGER             :: nod,nn,nr,nip,j_glob,j_loc,j_step
+  INTEGER             :: nod,nn,nr,nip,j_glob,j_loc,j_step,j_step2,j_temp,j_chk2
   INTEGER             :: i,j,k,l,iters,iters_tot,limit,iel,j_chk,red_blk
   INTEGER             :: nxe,nye,nze,neq_temp,nn_temp
   INTEGER             :: nstep,nstep_tot,npri,npri_chk,nres,it,is,nlen
@@ -244,9 +244,36 @@ PROGRAM xx12
   
   CALL sample(element,points,weights)
   
-  j_glob=1
+  red_blk=1
+  SELECT CASE (chk)
+    CASE('start')
+      j_chk   = 0
+      j_glob  = 1
+      j_step2 = 1
+      j_chk2  = 0
+    CASE('restart')
+      j_chk2  = 1
+      CALL read_x_pp(job_name,npes,numpe,j_chk,x_pp)
+      j_glob = j_chk
+      j_temp = 0
+      DO i=1,ntime
+        j_temp  = j_temp + timesteps_int(i,1)
+        j_step2 = i
+        IF(j_temp>j_glob)EXIT 
+      END DO
+      IF(j_step2>1) j_chk = j_glob - j_temp
+!      j_chk=j_chk+1
+    CASE default
+      PRINT*, "Invalid checkpoint flag in .dat"
+      PRINT*, "Program aborting"
+  END SELECT
+  
+  PRINT*, "j_step = ",j_step2
+  PRINT*, "j_loc  = ",j_chk
+  PRINT*, "j_glob = ",j_glob
+  
   !TEST variable timestep
-  DO j_step=1,ntime
+  DO j_step=j_step2,ntime
   dtim     = timesteps_real(j_step,1)
   nstep    = timesteps_int(j_step,1)
   npri     = timesteps_int(j_step,2)
@@ -331,7 +358,7 @@ PROGRAM xx12
 !------------------------------------------------------------------------------
   
   !TEST variable timestep
-  IF(j_step==1)THEN
+  IF(j_step==1 .OR. j_chk2==1)THEN
   
   IF(numpe==it)THEN !---Open file for temperature outputs of specified node  
     fname = job_name(1:INDEX(job_name, " ")-1) // ".ttr2"
@@ -380,7 +407,8 @@ PROGRAM xx12
 ! 11. Read in fixed nodal temperatures and assign to equations
 !------------------------------------------------------------------------------
   
-  IF(fixed_freedoms > 0 .AND. j_glob == 1) THEN
+  IF((fixed_freedoms > 0 .AND. j_glob == 1) .OR.                              &
+     (fixed_freedoms > 0 .AND. j_chk2 == 1)) THEN
     
     ALLOCATE(node(fixed_freedoms),no(fixed_freedoms),                         &
              no_pp_temp(fixed_freedoms),sense(fixed_freedoms))
@@ -437,7 +465,8 @@ PROGRAM xx12
     
     loaded_freedoms = loaded_nodes ! hack
     IF(loaded_freedoms==0) loaded_freedoms_pp=0
-    IF(loaded_freedoms > 0 .AND. j_glob == 1) THEN
+    IF((loaded_freedoms > 0 .AND. j_glob == 1) .OR.                           &
+       (loaded_freedoms > 0 .AND. j_chk2 == 1)) THEN
       
       ALLOCATE(node(loaded_freedoms),val(nodof,loaded_freedoms))
       ALLOCATE(no_pp_temp(loaded_freedoms))
@@ -464,18 +493,6 @@ PROGRAM xx12
 !------------------------------------------------------------------------------
 ! 14. Start time stepping loop
 !------------------------------------------------------------------------------
-  
-  red_blk=1
-  SELECT CASE (chk)
-    CASE('start')
-      j_chk=0
-    CASE('restart')
-      CALL read_x_pp(job_name,npes,numpe,j_chk,x_pp)
-!      j_chk=j_chk+1
-    CASE default
-      PRINT*, "Invalid checkpoint flag in .dat"
-      PRINT*, "Program aborting"
-    END SELECT
   
   iters_tot = 0
   timesteps: DO j_loc=j_chk+1,nstep
@@ -750,7 +767,7 @@ PROGRAM xx12
           fname = job_name(1:INDEX(job_name, " ")-1)//".chk_blk"
           OPEN(28,file=fname,status='replace',action='write',                    &
                form='unformatted',access='stream')
-          WRITE(28) int(j,kind=c_int)
+          WRITE(28) int(j_glob,kind=c_int)
         END IF
       END IF
       IF(red_blk==-1)THEN
@@ -775,6 +792,7 @@ PROGRAM xx12
     iters_tot = iters_tot + iters
     
     !TEST variable timestep
+    j_chk2  = 0
     j_glob=j_glob+1
   END DO timesteps
   END DO  
