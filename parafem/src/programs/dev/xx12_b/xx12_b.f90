@@ -23,9 +23,10 @@ PROGRAM xx12
 ! neq,ntot are now global variables - not declared
   
   INTEGER, PARAMETER  :: ndim=3,nodof=1,nprops=5
-  INTEGER             :: nod,nn,nr,nip,j_glob,j_loc,j_step,j_step2,j_temp,j_chk2
-  INTEGER             :: i,j,k,l,iters,iters_tot,limit,iel,j_chk,red_blk
-  INTEGER             :: nxe,nye,nze,neq_temp,nn_temp
+  INTEGER             :: nod,nn,nr,nip
+  INTEGER             :: j_glob,j_loc,j_step,j_step2,j_temp,j_chk,j_chk2,j_npri
+  INTEGER             :: i,j,k,l,iters,iters_tot,limit,iel,red_blk
+  INTEGER             :: nxe,nye,nze,neq_temp,nn_temp,npp
   INTEGER             :: nstep,nstep_tot,npri,npri_chk,nres,it,is,nlen
   INTEGER             :: node_end,node_start,nodes_pp
   INTEGER             :: loaded_freedoms,fixed_freedoms,loaded_nodes
@@ -143,8 +144,10 @@ PROGRAM xx12
 !  npri_chk = timesteps_int(1,3)
   
   nstep_tot = 0
+  npp = 0
   DO i=1,ntime
     nstep_tot = nstep_tot + timesteps_int(i,1)
+    npp = npp + timesteps_int(i,1)/timesteps_int(i,2)
   END DO
   IF(numpe==1) PRINT *,"nstep_tot = ",nstep_tot
   
@@ -254,14 +257,14 @@ PROGRAM xx12
     CASE('restart')
       j_chk2  = 1
       CALL read_x_pp(job_name,npes,numpe,j_chk,x_pp)
-      j_glob = j_chk
+      j_glob = j_chk+1
       j_temp = 0
       DO i=1,ntime
         j_temp  = j_temp + timesteps_int(i,1)
         j_step2 = i
-        IF(j_temp>j_glob)EXIT 
+        IF(j_temp>j_glob-1)EXIT 
       END DO
-      IF(j_step2>1) j_chk = j_glob - j_temp
+      IF(j_step2>1) j_chk = (j_glob-1) - (j_temp-timesteps_int(j_step2,1))
 !      j_chk=j_chk+1
     CASE default
       PRINT*, "Invalid checkpoint flag in .dat"
@@ -383,7 +386,9 @@ PROGRAM xx12
     OPEN(26, file=fname, status='replace', action='write')
     label   = "*TEMPERATURE"  
     WRITE(26,*) nn
-    WRITE(26,*) nstep/npri
+!    WRITE(26,*) nstep/npri
+    !-Unchecked
+    WRITE(26,*) npp
     WRITE(26,*) npes
     IF(i_o==3)THEN !---Open file for temperature outputs in binary ENSI format
       fname = job_name(1:INDEX(job_name, " ")-1)//".bin.ensi.NDTTR-000001"
@@ -495,17 +500,27 @@ PROGRAM xx12
 !------------------------------------------------------------------------------
   
   iters_tot = 0
+  IF(j_chk2==0)j_chk=0
   timesteps: DO j_loc=j_chk+1,nstep
   
-    timest(15) = elap_time()
+!    PRINT*, "j_step = ",j_step
+!    PRINT*, "j_loc  = ",j_loc
+!    PRINT*, "j_glob = ",j_glob
     
     real_time = 0
+    j_npri = 0
     IF(j_step>1)THEN
       DO i = 1,j_step-1
         real_time = real_time + timesteps_real(i,1)*timesteps_int(i,1)
+        j_npri = j_npri + timesteps_int(i,1)/timesteps_int(i,2)
       END DO
     END IF
     real_time = real_time + j_loc*dtim
+    j_npri = j_npri + j_loc/npri + 1
+    
+!    PRINT*, "j_npri = ",j_npri
+    
+    timest(15) = elap_time()
     
 !------------------------------------------------------------------------------
 ! 15. Apply loads (sources and/or sinks) supplied as a boundary value
@@ -729,7 +744,7 @@ PROGRAM xx12
         IF(numpe==1)THEN
 !          NEEDS CORRECTING
 !          WRITE(stepnum,'(I0.6)') (j/npri)+1
-          WRITE(stepnum,'(I0.6)') (j_glob)+1
+          WRITE(stepnum,'(I0.6)') j_npri
           fname = job_name(1:INDEX(job_name, " ")-1)//".bin.ensi.NDTTR-"//stepnum
           OPEN(27,file=fname,status='replace',action='write',                    &
           form='unformatted',access='stream')
