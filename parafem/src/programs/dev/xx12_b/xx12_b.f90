@@ -115,7 +115,8 @@ PROGRAM xx12
 ! CALL read_g_num_pp2(job_name,iel_start,nn,npes,numpe,g_num_pp)
 !  CALL read_elements(job_name,iel_start,nn,npes,numpe,etype_pp,g_num_pp)
   CALL read_g_num_pp_be(job_name,iel_start,nn,npes,numpe,g_num_pp)
-  CALL read_etype_pp(job_name,iel_start,nn,npes,numpe,nod,etype_pp)
+!  CALL read_etype_pp(job_name,iel_start,nn,npes,numpe,nod,etype_pp)
+  CALL read_etype_pp_be(job_name,npes,numpe,etype_pp)
   timest(3) = elap_time()
   
   IF(meshgen == 2)THEN
@@ -271,9 +272,9 @@ PROGRAM xx12
       PRINT*, "Program aborting"
   END SELECT
   
-  PRINT*, "j_step = ",j_step2
-  PRINT*, "j_loc  = ",j_chk
-  PRINT*, "j_glob = ",j_glob
+!  IF(numpe==1)  PRINT*, "j_step = ",j_step2
+!  IF(numpe==1)  PRINT*, "j_loc  = ",j_chk
+!  IF(numpe==1)  PRINT*, "j_glob = ",j_glob
   
   !TEST variable timestep
   DO j_step=j_step2,ntime
