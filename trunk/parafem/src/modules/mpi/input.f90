@@ -1491,6 +1491,11 @@ MODULE INPUT
   !*  Place remarks that should not be included in the documentation here.
   !*  This subroutine can be modified to use MPI I/O
   !*
+  !*  ParaView includes a bug which prevents the 'Material' section of the 
+  !*  ENSIGHT Gold to be read and therefore integer MATID values
+  !*  http://www.paraview.org/Bug/view.php?id=15151
+  !*  http://www3.ensight.com/EnSight10_Docs/UserManual.pdf pp.713
+  !*  Workaround - use MATIDs as reals and convert into int for ParaFEM
   !*/
   
   USE, INTRINSIC :: ISO_C_BINDING
@@ -1507,7 +1512,7 @@ MODULE INPUT
   INTEGER                           :: readSteps,max_nels_pp
   INTEGER                           :: status(MPI_STATUS_SIZE)
   INTEGER, ALLOCATABLE              :: localCount(:),readCount(:)
-  INTEGER(KIND=C_INT), ALLOCATABLE  :: etype(:)
+  REAL(KIND=C_FLOAT), ALLOCATABLE   :: etype(:)
 
 !------------------------------------------------------------------------------
 ! 1. Initiallize variables
@@ -1540,7 +1545,7 @@ MODULE INPUT
   
   ALLOCATE(etype(max_nels_pp))
   
-  etype    = 0
+  etype    = 0.0_iwp
   etype_pp = 0
   
 !------------------------------------------------------------------------------
@@ -1563,12 +1568,14 @@ MODULE INPUT
 
   DO i=1,npes
     IF(i == 1) THEN  ! local data
-      IF(numpe == 1) READ(10) etype_pp(1:readCount(i))
+      IF(numpe == 1) READ(10) etype(1:readCount(i))
+      etype_pp(1:readCount(i))=int(etype(1:readCount(i)))
     ELSE
       bufsize = readCount(i)
       IF(numpe == 1) THEN
         READ(10) etype(1:readCount(i))
-        CALL MPI_SEND(etype(1:readCount(i)),bufsize,MPI_INTEGER,i-1,i,         &
+        etype_pp(1:readCount(i))=int(etype(1:readCount(i)))
+        CALL MPI_SEND(etype_pp(1:readCount(i)),bufsize,MPI_INTEGER,i-1,i,      &
                       MPI_COMM_WORLD,status,ier)
       END IF
       IF(numpe == i) THEN

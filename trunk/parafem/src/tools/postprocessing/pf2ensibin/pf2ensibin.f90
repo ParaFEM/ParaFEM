@@ -16,21 +16,23 @@ PROGRAM pf2ensibin
   INTEGER,PARAMETER   :: iwp=SELECTED_REAL_KIND(15)
   INTEGER, PARAMETER  :: ndim=3,nodof=1,nprops=5
   INTEGER             :: meshgen,partitioner,np_types,nels,nn,nr,nip,nod
-  INTEGER             :: loaded_nodes,fixed_freedoms,nstep,npri
-  INTEGER             :: limit,el_print,i_o
-  INTEGER             :: i,j,k,prnwidth
+  INTEGER             :: loaded_nodes,fixed_freedoms,nstep,npri,npri_chk,ntime
+  INTEGER             :: limit,el_print,i_o,nreal,n_int,npp,j_loc,j_step
+  INTEGER             :: i,j,k,prnwidth,err
   REAL(iwp),PARAMETER :: zero = 0.0_iwp
   REAL(iwp)           :: val0,dtim,theta,tol,etype,real_time
   CHARACTER(LEN=50)   :: fname,job_name
-  CHARACTER(LEN=15)   :: element
+  CHARACTER(LEN=15)   :: element,chk
   CHARACTER(LEN=80)   :: cbuffer
+  CHARACTER(LEN=10)   :: keyword
   
 !------------------------------------------------------------------------------
 ! 2. Declare dynamic arrays
 !------------------------------------------------------------------------------
   
   REAL(iwp),ALLOCATABLE :: temp_real(:),prop(:,:),val_f(:),val(:,:)
-  INTEGER,ALLOCATABLE   :: temp_int(:),node(:),sense(:)
+  REAL(iwp),ALLOCATABLE :: timesteps_real(:,:)
+  INTEGER,ALLOCATABLE   :: temp_int(:),node(:),sense(:),timesteps_int(:,:)
   
 !------------------------------------------------------------------------------
 ! 3. Read job_name from the command line.
@@ -45,11 +47,36 @@ PROGRAM pf2ensibin
   OPEN(10,FILE=fname,STATUS='OLD',ACTION='READ')
   READ(10,*) element,meshgen,partitioner,np_types,                            &
              nels,nn,nr,nip,nod,loaded_nodes,fixed_freedoms,                  &
-             val0,                                                            &
-             dtim,nstep,npri,theta,                                           &
-             tol,limit,el_print,i_o
+             chk,val0,                                                        &
+             ntime,theta,tol,limit,                                           &
+             el_print,i_o
   CLOSE(10)
   
+  fname = job_name(1:INDEX(job_name, " ") -1) // ".time"
+  OPEN(21,FILE=fname, STATUS='OLD', ACTION='READ')
+  READ(21,*) keyword, ntime, nreal, n_int
+  !Read the material labels line
+  READ(21,*)                  ! skip line
+  
+  ALLOCATE(timesteps_real(ntime,nreal),timesteps_int(ntime,n_int))
+  
+  DO i = 1,ntime
+    READ(21,*)j, timesteps_real(i,:), timesteps_int(i,:)
+  END DO
+  
+  CLOSE(21)
+  
+  !- Needs fixing for multiple time sections
+!  dtim     = timesteps_real(1,1)
+!  nstep    = timesteps_int(1,1)
+!  npri     = timesteps_int(1,2)
+!  npri_chk = timesteps_int(1,3)
+
+  npp = 0
+  DO i=1,ntime
+    npp = npp + timesteps_int(i,1)/timesteps_int(i,2)
+  END DO
+
 !----------------------------------------------------------------------------
 ! 4. Read material properties
 !----------------------------------------------------------------------------
@@ -68,13 +95,15 @@ PROGRAM pf2ensibin
 !----------------------------------------------------------------------------
 ! 5. Open files
 !----------------------------------------------------------------------------
-
+  
+  err=0
   fname   = job_name(1:INDEX(job_name, " ")-1)//".d"
-  OPEN(12,FILE=fname,STATUS='OLD',ACTION='READ')
+  OPEN(12,FILE=fname,STATUS='OLD',ACTION='READ',IOSTAT=err)
+  IF(err>0)  PRINT *, "There is an error reading the .d file"
   
   fname   = job_name(1:INDEX(job_name, " ")-1)//".bin.ensi.geo"
-  OPEN(13,FILE=fname,STATUS="REPLACE",FORM="UNFORMATTED",                   &
-                ACTION="WRITE", ACCESS="STREAM")
+  OPEN(13,FILE=fname,STATUS="REPLACE",FORM="UNFORMATTED",                     &
+          ACTION="WRITE", ACCESS="STREAM")
   
   OPEN(14,FILE=job_name(1:INDEX(job_name, " ")-1)//'.bin.ensi.MATID',         &
           STATUS="REPLACE",FORM="UNFORMATTED", ACTION="WRITE", ACCESS="STREAM")
@@ -88,7 +117,7 @@ PROGRAM pf2ensibin
   OPEN(17,FILE=job_name(1:INDEX(job_name, " ")-1)//'.bin.ensi.ELMAT_3_kz',    &
           STATUS="REPLACE",FORM="UNFORMATTED", ACTION="WRITE", ACCESS="STREAM")
 
-  OPEN(18,FILE=job_name(1:INDEX(job_name, " ")-1)//'.bin.ensi.ELMAT_4_rho',    &
+  OPEN(18,FILE=job_name(1:INDEX(job_name, " ")-1)//'.bin.ensi.ELMAT_4_rho',   &
           STATUS="REPLACE",FORM="UNFORMATTED", ACTION="WRITE", ACCESS="STREAM")
 
   OPEN(19,FILE=job_name(1:INDEX(job_name, " ")-1)//'.bin.ensi.ELMAT_5_cp',    &
@@ -149,9 +178,9 @@ PROGRAM pf2ensibin
     WRITE(13) int(temp_int(6),kind=c_int)
     WRITE(13) int(temp_int(7),kind=c_int)
     WRITE(13) int(temp_int(8),kind=c_int)
-!    etype=temp_int(9)*1.0
-!    WRITE(14) real(etype,kind=c_float)
-    WRITE(14) int(temp_int(9),kind=c_int)
+    etype=temp_int(9)*1.0
+    WRITE(14) real(etype,kind=c_float)
+!    WRITE(14) int(temp_int(9),kind=c_int)
     WRITE(15) real(prop(2,temp_int(9)),kind=c_float)
     WRITE(16) real(prop(3,temp_int(9)),kind=c_float)
     WRITE(17) real(prop(4,temp_int(9)),kind=c_float)
@@ -271,25 +300,44 @@ PROGRAM pf2ensibin
   WRITE(24,'(2A)')     "scalar per node:     loaded_nodes  ",                &
                         job_name(1:INDEX(job_name, " ")-1)//'.bin.ensi.NDLDS'
   WRITE(24,'(A/A)')     "TIME","time set:     1"
-  WRITE(24,'(A,I5)')    "number of steps:",nstep/npri+1
+  WRITE(24,'(A,I5)')    "number of steps:",npp+1
   WRITE(24,'(A,I5)')    "filename start number:",1
   WRITE(24,'(A,I5)')    "filename increment:",1
   WRITE(24,'(A)')       "time values:"
   
   prnwidth = 5
   j=1
+!  PRINT *, "Starting Time Steps"
   WRITE(24,'(E12.5)',ADVANCE='no') zero
-  timesteps: DO i=1,nstep
-    real_time = i*dtim
-    IF(i/npri*npri==i)THEN
-      WRITE(24,'(E12.5)',ADVANCE='no') real_time
-      j=j+1
-    END IF
-    IF(j==prnwidth)THEN
-        WRITE(24,*)''
-        j=0
-    END IF
-  END DO timesteps
+  DO j_step=1,ntime
+    dtim     = timesteps_real(j_step,1)
+    nstep    = timesteps_int(j_step,1)
+    npri     = timesteps_int(j_step,2)
+    npri_chk = timesteps_int(j_step,3)
+
+!    PRINT *, "ntime = ",j_step
+    timesteps: DO j_loc=1,nstep
+
+      real_time = 0
+      IF(j_step>1)THEN
+        DO i = 1,j_step-1
+          real_time = real_time + timesteps_real(i,1)*timesteps_int(i,1)
+        END DO
+      END IF
+
+!      real_time = i*dtim
+      real_time = real_time + j_loc*dtim
+      IF(j_loc/npri*npri==j_loc)THEN
+!        PRINT *, "real_time = ",real_time
+        WRITE(24,'(E12.5)',ADVANCE='no') real_time
+        j=j+1
+      END IF
+      IF(j==prnwidth)THEN
+          WRITE(24,*)''
+          j=0
+      END IF
+    END DO timesteps
+  END DO
   WRITE(24,*)''
   CLOSE(24)
   
