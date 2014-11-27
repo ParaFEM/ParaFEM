@@ -24,7 +24,8 @@ PROGRAM xx12
   
   INTEGER, PARAMETER  :: ndim=3,nodof=1,nprops=5
   INTEGER             :: nod,nn,nr,nip
-  INTEGER             :: j_glob,j_loc,j_step,j_step2,j_temp,j_chk,j_chk2,j_npri
+  INTEGER             :: j_glob,j_loc,j_step,j_step2,j_temp,j_chk,j_chk2
+  INTEGER             :: j_npri,j_npri_chk
   INTEGER             :: i,j,k,l,iters,iters_tot,limit,iel,red_blk
   INTEGER             :: nxe,nye,nze,neq_temp,nn_temp,npp
   INTEGER             :: nstep,nstep_tot,npri,npri_chk,nres,it,is,nlen
@@ -143,6 +144,7 @@ PROGRAM xx12
 !  nstep    = timesteps_int(1,1)
 !  npri     = timesteps_int(1,2)
 !  npri_chk = timesteps_int(1,3)
+  j_npri_chk = 0
   
   nstep_tot = 0
   npp = 0
@@ -720,6 +722,7 @@ PROGRAM xx12
     timest(16) = elap_time()
     
     IF(j_loc/npri*npri==j_loc)THEN
+    j_npri_chk=j_npri_chk+1
       
       eld_pp   = zero
       disp_pp  = zero
@@ -769,7 +772,9 @@ PROGRAM xx12
       END IF
       
       !--Write checkpoint file
-    IF((j_loc/npri*npri)/npri_chk*npri_chk==j_loc)THEN
+!    IF((j_loc/npri*npri)/npri_chk*npri_chk==j_loc)THEN
+    IF(j_npri_chk==npri_chk)THEN
+      j_npri_chk=0
       IF(numpe==1 .AND. red_blk==1)                                              &
          PRINT *, "Checkpoint: j =",j_glob,", red_blk = blk"
       IF(numpe==1 .AND. red_blk==-1)                                             &
