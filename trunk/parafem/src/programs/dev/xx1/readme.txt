@@ -30,7 +30,9 @@
   4. <job_name>.bin.ensi.MATID         Ensight Gold format material type      
   
      A C binary file that lists the element property type ETYPE for each 
-     element. 
+     element. Note that the element property type needs to be a "c_float" 
+     rather than an integer. This is a workaround for a bug found in 
+     ParaView. 
                            
   5. <job_name>.bin.ensi.NDBND         Ensight Gold format restraints    
   
