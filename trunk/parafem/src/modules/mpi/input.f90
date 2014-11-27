@@ -403,8 +403,8 @@ MODULE INPUT
   REAL(iwp), INTENT(INOUT)     :: g_coord_pp(:,:,:) 
   REAL(KIND=C_FLOAT), ALLOCATABLE :: ord(:)    ! temporary array
   REAL(iwp)                    :: zero = 0.0_iwp
-!  LOGICAL                      :: verbose=.true.
-  LOGICAL                      :: verbose=.false.
+  LOGICAL                      :: verbose=.true.
+! LOGICAL                      :: verbose=.false.
 
 !------------------------------------------------------------------------------
 ! 1. Find READSTEPS, the number of steps in which the read will be carried
@@ -863,8 +863,8 @@ MODULE INPUT
   INTEGER                       :: readSteps,max_nels_pp
   INTEGER                       :: status(MPI_STATUS_SIZE)
   INTEGER, ALLOCATABLE          :: g_num(:,:),localCount(:),readCount(:)
-  LOGICAL                       :: verbose=.false.
-!  LOGICAL                       :: verbose=.true.
+! LOGICAL                       :: verbose=.false.
+  LOGICAL                       :: verbose=.true.
 
 !------------------------------------------------------------------------------
 ! 1. Initiallize variables
@@ -6540,12 +6540,12 @@ END SUBROUTINE bcast_inputdata_p127
    !*
    !*    Dynamic scalar arrays
    !*    g_num            : global element node numbers vector
-   !*    etype            : element property type vector
    !*    nf               : nodal freedom matrix
    !* 
    !*    Dynamic real arrays
    !* 	 g_coord          : global nodal coordinates
    !*	 oldlds           : initial loads vector
+   !*    etype            : element property type vector
    !*
    !*  OUTPUTS
    !*  AUTHOR
@@ -6563,24 +6563,25 @@ END SUBROUTINE bcast_inputdata_p127
   
     INTEGER,PARAMETER             :: iwp=SELECTED_REAL_KIND(15)
     INTEGER,   INTENT(IN)         :: nlen,nstep,npri
-    INTEGER,   INTENT(IN)         :: g_num(:,:),etype(:),nf(:,:)
+    INTEGER,   INTENT(IN)         :: g_num(:,:),nf(:,:)
     INTEGER                       :: i,j,k,l,m,n,nfe,nod,nels,ndim,nn
     INTEGER                       :: prnwidth,remainder
     REAL(iwp), INTENT(IN)         :: g_coord(:,:),loads(:),dtim
+    REAL(iwp), INTENT(IN)         :: etype(:)
     CHARACTER(LEN=15), INTENT(IN) :: argv,element  
     CHARACTER(LEN=80)             :: cbuffer
     LOGICAL, INTENT(IN)           :: solid
     
-  !------------------------------------------------------------------------------
-  ! 1. Initialisation
-  !------------------------------------------------------------------------------
+!------------------------------------------------------------------------------
+! 1. Initialisation
+!------------------------------------------------------------------------------
   
     nn   = UBOUND(g_coord,2) ; ndim = UBOUND(g_coord,1)
     nels = UBOUND(g_num,2)   ; nod  = UBOUND(g_num,1)
   
-  !------------------------------------------------------------------------------
-  ! 2. Write case file
-  !------------------------------------------------------------------------------
+!------------------------------------------------------------------------------
+! 2. Write case file
+!------------------------------------------------------------------------------
   
     OPEN(12,FILE=argv(1:nlen)//'.bin.ensi.case')
   
@@ -6811,7 +6812,7 @@ END SUBROUTINE bcast_inputdata_p127
         WRITE(14,'(A)')   "# Element type not recognised"
     END SELECT
    
-    WRITE(14) int(etype(:),kind=c_int) 
+    WRITE(14) real(etype(:),kind=c_float) 
   
     CLOSE(14)
   
@@ -7090,6 +7091,12 @@ END SUBROUTINE bcast_inputdata_p127
    !******
    !*  Place remarks that should not be included in the documentation here.
    !*
+   !*  ParaView has a bug which prevents the 'Material' section of the 
+   !*  ENSIGHT Gold to be read and therefore integer MATID values
+   !*  http://www.paraview.org/Bug/view.php?id=15151
+   !*  http://www3.ensight.com/EnSight10_Docs/UserManual.pdf pp.713
+   !*  Workaround - use MATIDs as reals and convert into int for ParaFEM
+   !*
    !*/
 
     USE, INTRINSIC :: ISO_C_BINDING
@@ -7098,7 +7105,7 @@ END SUBROUTINE bcast_inputdata_p127
   
     INTEGER,PARAMETER             :: iwp=SELECTED_REAL_KIND(15)
     INTEGER,   INTENT(IN)         :: nlen,nod
-    INTEGER,   INTENT(IN)         :: etype(:)
+    REAL(iwp), INTENT(IN)         :: etype(:)
     CHARACTER(LEN=15), INTENT(IN) :: argv,element  
     CHARACTER(LEN=80)             :: cbuffer
   
@@ -7152,7 +7159,7 @@ END SUBROUTINE bcast_inputdata_p127
         WRITE(14,'(A)')   "# Element type not recognised"
     END SELECT
    
-    WRITE(14) int(etype(:),kind=c_int) 
+    WRITE(14) real(etype(:),kind=c_float) 
   
     CLOSE(14)
   
