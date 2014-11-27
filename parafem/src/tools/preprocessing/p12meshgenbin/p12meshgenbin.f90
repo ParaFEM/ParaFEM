@@ -60,9 +60,9 @@ PROGRAM p12meshgenbin
 !------------------------------------------------------------------------------
 
   INTEGER, ALLOCATABLE   :: g_num(:,:),rest(:,:),nf(:,:),no(:),no_f(:)
-  INTEGER, ALLOCATABLE   :: num(:),etype(:)
+  INTEGER, ALLOCATABLE   :: num(:)
   REAL(iwp), ALLOCATABLE :: g_coord(:,:),coord(:,:),val(:),val_f(:),qinc(:)
-  REAL(iwp), ALLOCATABLE :: oldlds(:)
+  REAL(iwp), ALLOCATABLE :: oldlds(:),etype(:)
 
 !------------------------------------------------------------------------------
 ! 3. Read data file base name "argv" from the command line
@@ -342,7 +342,7 @@ PROGRAM p12meshgenbin
            
             ALLOCATE(etype(nels),nf(nodof,nn),oldlds(nn*ndim)) 
 
-            etype = 1  ! all elements are of the same type 
+            etype = 1.0_iwp  ! all elements are of the same type 
 
             nf    = 0
 
