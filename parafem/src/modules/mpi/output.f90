@@ -1039,22 +1039,19 @@ MODULE OUTPUT
 !------------------------------------------------------------------------------
 !------------------------------------------------------------------------------
 !------------------------------------------------------------------------------
-
-!  SUBROUTINE WRITE_XX12(fixed_freedoms,iters,job_name,loaded_freedoms,neq,nn, &
-!                        npes,nr,numpe,timest,tload,dtim,nstep,iters_tot,tol,  &
-!                        val0,npri,ntime,timesteps_int,timesteps_real)
+  
   SUBROUTINE WRITE_XX12(fixed_freedoms,job_name,loaded_freedoms,neq,nn,npes,  &
                         nr,numpe,timest,tload,iters,iters_tot,tol,val0,ntime, &
                         timesteps_int,timesteps_real)
-
+  
   !/****f* output/write_xx12
   !*  NAME
   !*    SUBROUTINE: write_xx12
   !*  SYNOPSIS
-  !*    Usage:      CALL write_xx12(fixed_freedoms,iters,job_name,            &
-  !*                                loaded_freedoms,neq,nn,npes,nr,numpe,     &
-  !*                                timest,tload,dtim,nstep,iters_tot,tol,    &
-  !*                                val0,npri)
+  !*    Usage:      CALL write_xx12(fixed_freedoms,job_name,loaded_freedoms,  &
+  !*                                neq,nn,npes,nr,numpe,timest,tload,iters,  &
+  !*                                iters_tot,tol,val0,ntime,timesteps_int,   &
+  !*                                timesteps_real)
   !*  FUNCTION
   !*    Master processor writes out brief details about the problem and 
   !*    some performance data
@@ -1062,21 +1059,19 @@ MODULE OUTPUT
   !*    The following scalar integers have the INTENT(IN) attribute:
   !*
   !*    fixed_freedoms         : Number of fixed displacements
-  !*    iters                  : Number of PCG iterations in last time step
-  !*    iters_tot              : Total number of PCG iterations
-  !*    loaded_nodes           : Number of loaded_nodes
+  !*    loaded_freedoms        : Number of loaded_nodes
   !*    neq                    : Total number of equations in the mesh
   !*    nn                     : Number of nodes in the mesh
   !*    npes                   : Number of processors used in the simulations
   !*    nr                     : Number of restrained nodes in the mesh
   !*    numpe                  : Processor number
-  !*    nstep                  : Number of time steps
-  !*    npri                   : Output frequency
+  !*    iters                  : Number of PCG iterations in last time step
+  !*    iters_tot              : Total number of PCG iterations
+  !*    ntime                  : Number of time sections
   !*
-  !*    The following scalar real has the INTENT(IN) attribute:
+  !*    The following scalar real have the INTENT(IN) attribute:
   !*
   !*    tload                  : Total applied load
-  !*    dtim                   : Time step size
   !*    tol                    : Stopping criterion for PCG iterations
   !*    val0                   : Initial global temperature
   !*
@@ -1087,6 +1082,13 @@ MODULE OUTPUT
   !*    The following dynamic real array has the INTENT(IN) attribute:
   !*
   !*    timest(:)              : Holds timing information
+  !*    timesteps_real(:,:)    : Holds timestep size for time sections
+  !*
+  !*    The following dynamic integer array has the INTENT(IN) attribute:
+  !*
+  !*    iters(:)               : Holds iteration information for time sections
+  !*    iters_tot(:)           : Holds iteration count for time sections
+  !*    timesteps_int(:,:)     : Holds timestep count for time sections
   !*
   !*  AUTHOR
   !*    Lee Margetts, Llion Evans
@@ -1102,14 +1104,14 @@ MODULE OUTPUT
   !*/  
   
   IMPLICIT NONE
-
+  
   CHARACTER(LEN=50), INTENT(IN)  :: job_name
   INTEGER, INTENT(IN)            :: numpe,npes,nn,nr,neq,ntime
   INTEGER, INTENT(IN)            :: fixed_freedoms,loaded_freedoms
   INTEGER, INTENT(IN)            :: iters(:),iters_tot(:),timesteps_int(:,:)
   REAL(iwp), INTENT(IN)          :: tload,tol,val0
   REAL(iwp), INTENT(IN)          :: timest(:),timesteps_real(:,:)
-
+  
 !------------------------------------------------------------------------------
 ! 1. Local variables
 !------------------------------------------------------------------------------
@@ -1119,73 +1121,52 @@ MODULE OUTPUT
   INTEGER                        :: nstep,npri,npri_chk
   REAL(iwp)                      :: dtim,time_tot
   REAL(iwp),ALLOCATABLE          :: totals(:)
- 
+  
   IF(numpe==1) THEN
     
     ALLOCATE(totals(5))
     totals=0.0_iwp
-
+    
     fname       = job_name(1:INDEX(job_name, " ")-1) // ".res"
     OPEN(11,FILE=fname,STATUS='REPLACE',ACTION='WRITE')     
-
+    
 !------------------------------------------------------------------------------
 ! 2. Write basic details about the problem
 !------------------------------------------------------------------------------
-
+    
     WRITE(11,'(/A)')   "BASIC JOB DATA                                  "     
- 
-    WRITE(11,'(A,I12)')    "Number of processors used                   ",npes 
+    
+    WRITE(11,'(A,I12)')    "Number of processors used                   ",npes
     WRITE(11,'(A,I12)')    "Number of nodes in the mesh                 ",nn
     WRITE(11,'(A,I12)')    "Number of equations solved                  ",neq
-!    WRITE(11,'(A,I12)')    "Number of PCG iterations in last step       ",iters
-!    WRITE(11,'(A,I12)')    "Total number of PCG iterations              ",iters_tot
     WRITE(11,'(A,E12.4)')  "Stopping criterion for PCG iterations       ",tol
-
-    WRITE(11,'(/A)')   "BOUNDARY CONDITION DATA                         "   
-
+    
+    WRITE(11,'(/A)')   "BOUNDARY CONDITION DATA                         "
+    
     WRITE(11,'(A,I12)')    "Number of nodes that were restrained        ",nr
     IF(loaded_freedoms > 0) THEN
-      WRITE(11,'(A,I12)')    "Number of loaded freedoms                   ",   &
+      WRITE(11,'(A,I12)')    "Number of loaded freedoms                   ",  &
                               loaded_freedoms 
-!      WRITE(11,'(A,E12.4)')  "Average power applied                       ",   &
-!                              tload/(dtim*nstep)
-      WRITE(11,'(A,E12.4)')  "Total energy delivered (load)               ",   &
+      WRITE(11,'(A,E12.4)')  "Total energy delivered (load)               ",  &
                               tload
     END IF
     WRITE(11,'(A,E12.4)')  "Initial global temperature                  ",val0
     IF(fixed_freedoms > 0) THEN
-      WRITE(11,'(A,I12)')    "Number of fixed nodal values                ",   &
+      WRITE(11,'(A,I12)')    "Number of fixed nodal values                ",  &
                               fixed_freedoms 
     END IF
-
-!    WRITE(11,'(/A)')   "TRANSIENT STATE DETAILS                         "
-!    time_tot = 0
-!    DO i=1,ntime
-!      dtim2     = timesteps_real(i,1)
-!      nstep2    = timesteps_int(i,1)
-!      npri2     = timesteps_int(i,2)
-!      npri_chk = timesteps_int(i,3)
-!      WRITE(11,'(A,I12)')    "Time section                                ",i
-!      WRITE(11,'(A,E12.4)')  "Time step size                              ",dtim2
-!      WRITE(11,'(A,I12)')    "Number of time steps                        ",nstep2
-!      WRITE(11,'(A,I12)')    "Frequency of data output per timestep       ",npri2
-!      WRITE(11,'(A,I12)')    "Frequency of checkpointing per output       ",npri_chk
-!      WRITE(11,'(A,E12.4)')  "Time for section                            ",dtim2*nstep2
-!      WRITE(11,'(A)')   "***                                             "     
-!      time_tot = time_tot + dtim2*nstep2
-!    END DO
-!    WRITE(11,'(A,E12.4)')  "Total time                                  ",time_tot
-
+    
     WRITE(11,'(/A)')   "TRANSIENT STATE DETAILS                         "
-    WRITE(11,'(A)')    "Section   dt               nstep        npri   npri_chk   time        #iters*   Tot#iters"
+    WRITE(11,'(A,A)')    "Section   dt               nstep        npri",      &
+                         "   npri_chk   time        #iters*   Tot#iters"
     time_tot = 0
     DO i=1,ntime
       dtim      = timesteps_real(i,1)
       nstep     = timesteps_int(i,1)
       npri      = timesteps_int(i,2)
-      npri_chk = timesteps_int(i,3)
-      WRITE(11,'(I7,A,E12.4,A,I9,A,I9,A,I11,A,E12.4,A,I6,A,I9)')           &
-            i," ",dtim,"   ",nstep,"   ",npri,"",npri_chk," ",             &
+      npri_chk  = timesteps_int(i,3)
+      WRITE(11,'(I7,A,E12.4,A,I9,A,I9,A,I11,A,E12.4,A,I6,A,I9)')              &
+            i," ",dtim,"   ",nstep,"   ",npri,"",npri_chk," ",                &
             dtim*nstep,"   ",iters(i),"   ",iters_tot(i)
       time_tot = time_tot + dtim*nstep
       totals(1) = totals(1) + nstep
@@ -1194,18 +1175,20 @@ MODULE OUTPUT
       totals(4) = totals(4) + dtim*nstep
       totals(5) = totals(5) + iters_tot(i)
     END DO
-    WRITE(11,'(A)')  "-----------------------------------------------------------------------------------------"
-!    WRITE(11,'(A,E12.4)')  "Total time                                              ",time_tot
+    WRITE(11,'(A,A)')  "----------------------------------------------------",&
+                       "-------------------------------------"
     WRITE(11,'(A,I9,A,I9,A,I8,A,E12.4,A,I9)')  "Totals                 ",     &
           int(totals(1)),"   ",          int(totals(2)),"   ",int(totals(3)), &
           " ",totals(4),"            ",int(totals(5))
-    WRITE(11,'(A)')  "-----------------------------------------------------------------------------------------"
-    WRITE(11,'(A)')  "*Number of iterations to complete last timestep of section"
-
+    WRITE(11,'(A,A)')  "----------------------------------------------------",&
+                       "-------------------------------------"
+    WRITE(11,'(A,A)')  "*Number of iterations to complete last timestep of",  &
+                     " section"
+    
 !------------------------------------------------------------------------------
 ! 3. Output timing data
 !------------------------------------------------------------------------------
-
+    
     WRITE(11,'(/3A)')   "PROGRAM SECTION EXECUTION TIMES                  ",  &
                         "SECONDS  ", "%TOTAL    "
     WRITE(11,'(A,F12.6,F8.2)') "Setup                                       ",&
@@ -1233,28 +1216,28 @@ MODULE OUTPUT
                            timest(9)-timest(8),                               &
                           ((timest(9)-timest(8))/(timest(14)-timest(1)))*100  
     WRITE(11,'(A,F12.6,F8.2)') "Compute element stiffness matrices          ",&
-                            timest(10)-timest(9),                              &
+                            timest(10)-timest(9),                             &
                           ((timest(10)-timest(9))/(timest(14)-timest(1)))*100  
     WRITE(11,'(A,F12.6,F8.2)') "Build the preconditioner                    ",&
-                           timest(11)-timest(10),                               &
+                           timest(11)-timest(10),                             &
                           ((timest(11)-timest(10))/(timest(14)-timest(1)))*100  
     WRITE(11,'(A,F12.6,F8.2)') "Get starting r                              ",&
-                           timest(12)-timest(11),                               &
+                           timest(12)-timest(11),                             &
                           ((timest(12)-timest(11))/(timest(14)-timest(1)))*100  
     WRITE(11,'(A,F12.6,F8.2)') "Solve equations                             ",&
-                           timest(13)-timest(12),                               &
+                           timest(13)-timest(12),                             &
                            ((timest(13)-timest(12))/(timest(14)-timest(1)))*100  
     WRITE(11,'(A,F12.6,F8.2)') "Output results                              ",&
-                           timest(14)-timest(13),                              &
+                           timest(14)-timest(13),                             &
                           ((timest(14)-timest(13))/(timest(14)-timest(1)))*100  
-    WRITE(11,'(A,F12.6,A/)')  "Total execution time                        ",  &
+    WRITE(11,'(A,F12.6,A/)')  "Total execution time                        ", &
                           timest(14)-timest(1),"  100.00"
     CLOSE(11)
     
   END IF
   
   RETURN
-
+  
   END SUBROUTINE WRITE_XX12
 
 !------------------------------------------------------------------------------
