@@ -1040,9 +1040,12 @@ MODULE OUTPUT
 !------------------------------------------------------------------------------
 !------------------------------------------------------------------------------
 
-  SUBROUTINE WRITE_XX12(fixed_freedoms,iters,job_name,loaded_freedoms,neq,nn, &
-                        npes,nr,numpe,timest,tload,dtim,nstep,iters_tot,tol,  &
-                        val0,npri)
+!  SUBROUTINE WRITE_XX12(fixed_freedoms,iters,job_name,loaded_freedoms,neq,nn, &
+!                        npes,nr,numpe,timest,tload,dtim,nstep,iters_tot,tol,  &
+!                        val0,npri,ntime,timesteps_int,timesteps_real)
+  SUBROUTINE WRITE_XX12(fixed_freedoms,job_name,loaded_freedoms,neq,nn,npes,  &
+                        nr,numpe,timest,tload,iters,iters_tot,tol,val0,ntime, &
+                        timesteps_int,timesteps_real)
 
   !/****f* output/write_xx12
   !*  NAME
@@ -1101,9 +1104,11 @@ MODULE OUTPUT
   IMPLICIT NONE
 
   CHARACTER(LEN=50), INTENT(IN)  :: job_name
-  INTEGER, INTENT(IN)            :: numpe,npes,nn,nr,neq,iters,iters_tot,nstep,npri
+  INTEGER, INTENT(IN)            :: numpe,npes,nn,nr,neq,ntime
   INTEGER, INTENT(IN)            :: fixed_freedoms,loaded_freedoms
-  REAL(iwp), INTENT(IN)          :: timest(:),tload,dtim,tol,val0
+  INTEGER, INTENT(IN)            :: iters(:),iters_tot(:),timesteps_int(:,:)
+  REAL(iwp), INTENT(IN)          :: tload,tol,val0
+  REAL(iwp), INTENT(IN)          :: timest(:),timesteps_real(:,:)
 
 !------------------------------------------------------------------------------
 ! 1. Local variables
@@ -1111,8 +1116,14 @@ MODULE OUTPUT
   
   CHARACTER(LEN=50)              :: fname
   INTEGER                        :: i          ! loop counter
+  INTEGER                        :: nstep,npri,npri_chk
+  REAL(iwp)                      :: dtim,time_tot
+  REAL(iwp),ALLOCATABLE          :: totals(:)
  
   IF(numpe==1) THEN
+    
+    ALLOCATE(totals(5))
+    totals=0.0_iwp
 
     fname       = job_name(1:INDEX(job_name, " ")-1) // ".res"
     OPEN(11,FILE=fname,STATUS='REPLACE',ACTION='WRITE')     
@@ -1126,8 +1137,8 @@ MODULE OUTPUT
     WRITE(11,'(A,I12)')    "Number of processors used                   ",npes 
     WRITE(11,'(A,I12)')    "Number of nodes in the mesh                 ",nn
     WRITE(11,'(A,I12)')    "Number of equations solved                  ",neq
-    WRITE(11,'(A,I12)')    "Number of PCG iterations in last step       ",iters
-    WRITE(11,'(A,I12)')    "Total number of PCG iterations              ",iters_tot
+!    WRITE(11,'(A,I12)')    "Number of PCG iterations in last step       ",iters
+!    WRITE(11,'(A,I12)')    "Total number of PCG iterations              ",iters_tot
     WRITE(11,'(A,E12.4)')  "Stopping criterion for PCG iterations       ",tol
 
     WRITE(11,'(/A)')   "BOUNDARY CONDITION DATA                         "   
@@ -1136,23 +1147,60 @@ MODULE OUTPUT
     IF(loaded_freedoms > 0) THEN
       WRITE(11,'(A,I12)')    "Number of loaded freedoms                   ",   &
                               loaded_freedoms 
-      WRITE(11,'(A,E12.4)')  "Average power applied                       ",   &
-                              tload/(dtim*nstep)
+!      WRITE(11,'(A,E12.4)')  "Average power applied                       ",   &
+!                              tload/(dtim*nstep)
       WRITE(11,'(A,E12.4)')  "Total energy delivered (load)               ",   &
                               tload
     END IF
     WRITE(11,'(A,E12.4)')  "Initial global temperature                  ",val0
     IF(fixed_freedoms > 0) THEN
-      WRITE(11,'(A,I12)')    "Number of fixed displacements               ",   &
+      WRITE(11,'(A,I12)')    "Number of fixed nodal values                ",   &
                               fixed_freedoms 
     END IF
 
-    WRITE(11,'(/A)')   "TRANSIENT STATE DETAILS                         "     
+!    WRITE(11,'(/A)')   "TRANSIENT STATE DETAILS                         "
+!    time_tot = 0
+!    DO i=1,ntime
+!      dtim2     = timesteps_real(i,1)
+!      nstep2    = timesteps_int(i,1)
+!      npri2     = timesteps_int(i,2)
+!      npri_chk = timesteps_int(i,3)
+!      WRITE(11,'(A,I12)')    "Time section                                ",i
+!      WRITE(11,'(A,E12.4)')  "Time step size                              ",dtim2
+!      WRITE(11,'(A,I12)')    "Number of time steps                        ",nstep2
+!      WRITE(11,'(A,I12)')    "Frequency of data output per timestep       ",npri2
+!      WRITE(11,'(A,I12)')    "Frequency of checkpointing per output       ",npri_chk
+!      WRITE(11,'(A,E12.4)')  "Time for section                            ",dtim2*nstep2
+!      WRITE(11,'(A)')   "***                                             "     
+!      time_tot = time_tot + dtim2*nstep2
+!    END DO
+!    WRITE(11,'(A,E12.4)')  "Total time                                  ",time_tot
 
-    WRITE(11,'(A,E12.4)')  "Time step size                              ",dtim
-    WRITE(11,'(A,I12)')    "Number of time steps                        ",nstep
-    WRITE(11,'(A,I12)')    "Frequency of data output                    ",npri
-    WRITE(11,'(A,E12.4)')  "Total time                                  ",dtim*nstep
+    WRITE(11,'(/A)')   "TRANSIENT STATE DETAILS                         "
+    WRITE(11,'(A)')    "Section   dt               nstep        npri   npri_chk   time        #iters*   Tot#iters"
+    time_tot = 0
+    DO i=1,ntime
+      dtim      = timesteps_real(i,1)
+      nstep     = timesteps_int(i,1)
+      npri      = timesteps_int(i,2)
+      npri_chk = timesteps_int(i,3)
+      WRITE(11,'(I7,A,E12.4,A,I9,A,I9,A,I11,A,E12.4,A,I6,A,I9)')           &
+            i," ",dtim,"   ",nstep,"   ",npri,"",npri_chk," ",             &
+            dtim*nstep,"   ",iters(i),"   ",iters_tot(i)
+      time_tot = time_tot + dtim*nstep
+      totals(1) = totals(1) + nstep
+      totals(2) = totals(2) + nstep/npri
+      totals(3) = totals(3) + int((nstep/npri)/npri_chk)*1.0
+      totals(4) = totals(4) + dtim*nstep
+      totals(5) = totals(5) + iters_tot(i)
+    END DO
+    WRITE(11,'(A)')  "-----------------------------------------------------------------------------------------"
+!    WRITE(11,'(A,E12.4)')  "Total time                                              ",time_tot
+    WRITE(11,'(A,I9,A,I9,A,I8,A,E12.4,A,I9)')  "Totals                 ",     &
+          int(totals(1)),"   ",          int(totals(2)),"   ",int(totals(3)), &
+          " ",totals(4),"            ",int(totals(5))
+    WRITE(11,'(A)')  "-----------------------------------------------------------------------------------------"
+    WRITE(11,'(A)')  "*Number of iterations to complete last timestep of section"
 
 !------------------------------------------------------------------------------
 ! 3. Output timing data
