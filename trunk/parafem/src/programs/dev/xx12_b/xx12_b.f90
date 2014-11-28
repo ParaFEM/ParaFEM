@@ -26,7 +26,7 @@ PROGRAM xx12
   INTEGER             :: nod,nn,nr,nip
   INTEGER             :: j_glob,j_loc,j_step,j_step2,j_temp,j_chk,j_chk2
   INTEGER             :: j_npri,j_npri_chk
-  INTEGER             :: i,j,k,l,iters,iters_tot,limit,iel,red_blk
+  INTEGER             :: i,j,k,l,limit,iel,red_blk
   INTEGER             :: nxe,nye,nze,neq_temp,nn_temp,npp
   INTEGER             :: nstep,nstep_tot,npri,npri_chk,nres,it,is,nlen
   INTEGER             :: node_end,node_start,nodes_pp
@@ -67,8 +67,8 @@ PROGRAM xx12
   REAL(iwp),ALLOCATABLE :: eld(:),col(:,:),row(:,:),storkc_pp(:,:,:)
   REAL(iwp),ALLOCATABLE :: prop(:,:),amp(:),tempres(:),timesteps_real(:,:)
   INTEGER,ALLOCATABLE   :: rest(:,:),g(:),num(:),g_num_pp(:,:),g_g_pp(:,:),no(:)
-  INTEGER,ALLOCATABLE   :: no_pp(:),no_f_pp(:),no_pp_temp(:)
-  INTEGER,ALLOCATABLE   :: sense(:),node(:),timesteps_int(:,:)
+  INTEGER,ALLOCATABLE   :: no_pp(:),no_f_pp(:),no_pp_temp(:),sense(:),node(:)
+  INTEGER,ALLOCATABLE   :: iters(:),iters_tot(:),timesteps_int(:,:)
   INTEGER,ALLOCATABLE   :: etype_pp(:),nf(:,:),oldlds(:),g_coord(:,:)
   
 !------------------------------------------------------------------------------
@@ -144,7 +144,7 @@ PROGRAM xx12
 !  nstep    = timesteps_int(1,1)
 !  npri     = timesteps_int(1,2)
 !  npri_chk = timesteps_int(1,3)
-  j_npri_chk = 0
+!  j_npri_chk = 0
   
   nstep_tot = 0
   npp = 0
@@ -172,7 +172,7 @@ PROGRAM xx12
             kc(ntot,ntot),funny(1,nod),num(nod),                              &
             g_g_pp(ntot,nels_pp),storka_pp(ntot,ntot,nels_pp),                &
             utemp_pp(ntot,nels_pp),storkb_pp(ntot,ntot,nels_pp),              &
-            pmul_pp(ntot,nels_pp))
+            pmul_pp(ntot,nels_pp),iters(ntime),iters_tot(ntime))
   ALLOCATE (kcx(ntot,ntot),kcy(ntot,ntot),kcz(ntot,ntot),                     &
             eld(ntot),col(ntot,1),row(1,ntot),storkc_pp(ntot,ntot,nels_pp))
   ALLOCATE (amp(nstep_tot))
@@ -278,12 +278,16 @@ PROGRAM xx12
 !  IF(numpe==1)  PRINT*, "j_loc  = ",j_chk
 !  IF(numpe==1)  PRINT*, "j_glob = ",j_glob
   
+  iters_tot = 0
+  iters = 0
+  
   !TEST variable timestep
   DO j_step=j_step2,ntime
-  dtim     = timesteps_real(j_step,1)
-  nstep    = timesteps_int(j_step,1)
-  npri     = timesteps_int(j_step,2)
-  npri_chk = timesteps_int(j_step,3)
+  j_npri_chk = 0
+  dtim       = timesteps_real(j_step,1)
+  nstep      = timesteps_int(j_step,1)
+  npri       = timesteps_int(j_step,2)
+  npri_chk   = timesteps_int(j_step,3)
   
   storka_pp = zero 
   storkb_pp = zero
@@ -502,7 +506,7 @@ PROGRAM xx12
 ! 14. Start time stepping loop
 !------------------------------------------------------------------------------
   
-  iters_tot = 0
+!  iters_tot = 0
   IF(j_chk2==0)j_chk=0
   timesteps: DO j_loc=j_chk+1,nstep
   
@@ -678,11 +682,11 @@ PROGRAM xx12
 ! 20. Solve simultaneous equations by pcg
 !------------------------------------------------------------------------------
     
-    iters = 0
+    iters(j_step) = 0
     
     iterations: DO
       
-      iters    = iters+1
+      iters(j_step) = iters(j_step)+1
       
       u_pp     = zero
       pmul_pp  = zero
@@ -714,7 +718,7 @@ PROGRAM xx12
       p_pp     = d_pp+p_pp*beta
       
       CALL checon_par(xnew_pp,tol,converged,x_pp)
-      IF(converged.OR.iters==limit)EXIT
+      IF(converged.OR.iters(j_step)==limit)EXIT
       
     END DO iterations
     
@@ -770,6 +774,8 @@ PROGRAM xx12
         DEALLOCATE(tempres)
         IF(numpe==1) CLOSE (27)
       END IF
+
+      IF(numpe==1) PRINT *, "Time ", real_time, "Iters ", iters(j_step)
       
       !--Write checkpoint file
 !    IF((j_loc/npri*npri)/npri_chk*npri_chk==j_loc)THEN
@@ -806,11 +812,10 @@ PROGRAM xx12
       red_blk=red_blk*(-1)
     END IF
 
-      IF(numpe==1) PRINT *, "Time ", real_time, "Iters ", iters
     END IF
     
     timest(14) = timest(14) + (elap_time() - timest(16))
-    iters_tot = iters_tot + iters
+    iters_tot(j_step) = iters_tot(j_step) + iters(j_step)
     
     !TEST variable timestep
     j_chk2  = 0
@@ -830,8 +835,12 @@ PROGRAM xx12
   
   IF(numpe==1) PRINT *, "Timest ", timest
   
-  CALL WRITE_XX12(fixed_freedoms,iters,job_name,loaded_freedoms,neq,nn,npes,  &
-                  nr,numpe,timest,q,dtim,nstep,iters_tot,tol,val0,npri)
+!  CALL WRITE_XX12(fixed_freedoms,iters,job_name,loaded_freedoms,neq,nn,npes,  &
+!                  nr,numpe,timest,q,dtim,nstep,iters_tot,tol,val0,npri,       &
+!                  ntime,timesteps_int,timesteps_real)
+  CALL WRITE_XX12(fixed_freedoms,job_name,loaded_freedoms,neq,nn,npes,nr,     &
+                  numpe,timest,q,iters,iters_tot,tol,val0,ntime,              &
+                  timesteps_int,timesteps_real)
   
   CALL shutdown()
   
