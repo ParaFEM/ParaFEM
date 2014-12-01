@@ -255,7 +255,8 @@ cgca_el_centroid = sum( g_coord_pp(:,:,:), dim=1 ) / nod
 ! dump the centroid coord.
 
 do cgca_count1 = 1, nels_pp
-  write (*,*) "MPI rank", numpe, cgca_el_centroid( :, cgca_count1 ) 
+  write (*,*) "MPI rank", numpe, "el. no.", iel_start+(cgca_count1-1), &
+              cgca_el_centroid( :, cgca_count1 ) 
 end do
 
 ! calculate coordinates of regions
@@ -280,6 +281,8 @@ call cgca_ds( cgca_space )
  g_g_pp = 0
     neq = 0
 
+! map equations to elements
+! http://parafem.googlecode.com/svn/trunk/parafem/src/modules/shared/new_library.f90
  elements_0: DO iel=1,nels_pp
                CALL find_g3(g_num_pp(:,iel),g_g_pp(:,iel),rest)
              END DO elements_0
