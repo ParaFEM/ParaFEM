@@ -31,7 +31,7 @@ USE new_library
 
 IMPLICIT NONE
 
-! neq,ntot are now global variables - must not be declared
+! neq, ntot are now global variables - must not be declared
 
 INTEGER, PARAMETER :: nodof = 3, ndim = 3, nst = 6
 INTEGER :: loaded_nodes, iel, i, j, k, iters, limit, nn, nr, nip, nod,   &
@@ -58,48 +58,123 @@ INTEGER, ALLOCATABLE :: rest(:,:), g_num_pp(:,:), g_g_pp(:,:), node(:)
 
 !*** CGPACK part *****************************************************72
 ! CGPACK variables and parameters
-integer( kind=idef ) :: cgca_ir(3), cgca_img, cgca_nimgs, cgca_lres, &
- cgca_ng                          ! number of grains in the whole model
+integer( kind=idef ) :: &
+ cgca_ir(3),            &
+ cgca_img,              &
+ cgca_nimgs,            &
+ cgca_lres,             &
+ cgca_ng,               & ! number of grains in the whole model
+ cgca_count1              ! a counter
 integer( kind=iarr ) :: cgca_c(3) ! coarray dimensions
 integer( kind=iarr ), allocatable :: cgca_space(:,:,:,:) [:,:,:]
+integer :: cgca_errstat
 
+real( kind=rdef ), parameter :: cgca_zero = 0.0_rdef, cgca_one = 1.0_rdef
 real( kind=rdef ) ::    &
  cgca_qual,             & ! quality
  cgca_bsz(3),           & ! the given and the updated "box" size
+ cgca_origin(3),        & ! origin of the "box" cs, in FE cs
+ cgca_rot(3,3),         & ! rotation tensor *from* FE cs *to* CA cs
  cgca_dm,               & ! mean grain size, linear dim, phys units
  cgca_res,              & ! resolutions, cells per grain
  cgca_bcol(3),          & ! lower phys. coords of the coarray on image
  cgca_bcou(3)             ! upper phys. coords of the coarray on image
+
+! iwp is defined in
+! http://parafem.googlecode.com/svn/trunk/parafem/src/modules/shared/precision.f90
+! seems it is double precision:
+! INTEGER, PARAMETER :: iwp = SELECTED_REAL_KIND(15,300)
+real( kind=iwp ), allocatable :: cgca_el_centroid(:,:)
+
 !*** end CGPACK part *************************************************72
 
-!------------------------ input and initialisation -----------------------
+
+!------------------------ input and initialisation ---------------------
 ALLOCATE( timest( 20 ) )
 timest = zero
 timest( 1 ) = elap_time()
+
+!*    Get the rank of the processes and the total number of processes
+!* intent( out ):
+!*          numpe - integer, process number (rank)
+!*           npes - integer, total number of processes (size)
 CALL find_pe_procs( numpe, npes )
+
+!*    Returns the base name of the data file.
+!* intent( out ):
+!*           argv - character(*), data file base name
+!*           nlen - integer, number of characters in data file base name
 CALL getname( argv, nlen ) 
+
+!*    Master processor reads the general data for the problem
+!     and broadcasts it to the slave processors.
+!  in:
+!      argv - character, file name to read from
+!     numpe - MPI rank
+!         e - Young's modulus
+!   element - character, element type 
+!     limit - max number of iterations
+! loaded_nodes - number of nodes with applied forces
+!   meshgen - mesh numbering scheme
+!      nels - total number of elements
+!       nip - number of Gauss points
+!        nn - total number of nodes in the mesh
+!       nod - number of nodes per element
+!       tol - tolerance
+!         v - Poisson's ratio
+! http://parafem.googlecode.com/svn/trunk/parafem/src/modules/mpi/input.f90
 CALL read_p121( argv, numpe, e, element, limit, loaded_nodes, meshgen, &
-   nels, nip, nn, nod, nr, partitioner, tol, v )
+                nels, nip, nn, nod, nr, partitioner, tol, v )
+
+!*    Calculates the number of elements, NELS_PP, assigned to each processor.
+!*    It is effectively a very naive method of mesh partitioning. The 
+!*    subroutine also computes, IEL_START, the first element number on each 
+!*    processor. IEL_START and NELS_PP are the external variables modified by
+!*    this subroutine. Note that they are global variables that are not
+!*    passed through the list of arguments.
+!
+! http://parafem.googlecode.com/svn/trunk/parafem/src/modules/mpi/gather_scatter.f90
+!
+! nels_pp is indeed a global var, defined in
+! http://parafem.googlecode.com/svn/trunk/parafem/src/modules/shared/global_variables.f90
 CALL calc_nels_pp( argv, nels, npes, numpe, partitioner, nels_pp )
+
+!   nod - number of nodes per element
+! nodof = 3 (see the beginning of this file), probably
+!           degrees of freedom per node.
 ndof = nod * nodof
+
+! ntot - a global variable,
+! the total number of degrees of freedom per element
 ntot = ndof
 
-ALLOCATE( g_num_pp( nod, nels_pp ), g_coord_pp( nod, ndim, nels_pp ),    &
-   rest(nr,nodof+1) )
+! g_num_pp(nod,nels_pp) - integer, elements connectivity
+! g_coord_pp - global coord?
+! http://parafem.googlecode.com/svn/trunk/parafem/src/modules/mpi/input.f90
+ALLOCATE(   g_num_pp( nod, nels_pp ),        &
+          g_coord_pp( nod, ndim, nels_pp ),  &
+                rest( nr,nodof+1)     )
 g_num_pp = 0
 g_coord_pp = zero
 rest = 0
 
+! http://parafem.googlecode.com/svn/trunk/parafem/src/modules/mpi/input.f90
 CALL read_g_num_pp( argv, iel_start, nn, npes, numpe, g_num_pp )
 
 IF ( meshgen == 2 ) CALL abaqus2sg( element, g_num_pp )
-CALL read_g_coord_pp(argv,g_num_pp,nn,npes,numpe,g_coord_pp)
-CALL read_rest(argv,numpe,rest); timest(2)=elap_time()
-ALLOCATE( points(nip,ndim), dee(nst,nst), jac(ndim,ndim), der(ndim,nod), &
-   deriv( ndim, nod ), bee( nst, ntot ), weights( nip ), eps( nst ),     &
-   sigma(nst), storkm_pp( ntot, ntot, nels_pp ),                         &
-   pmul_pp( ntot, nels_pp ), utemp_pp(ntot,nels_pp),                     &
+CALL read_g_coord_pp( argv, g_num_pp, nn, npes, numpe, g_coord_pp )
+CALL read_rest( argv, numpe, rest )
+
+timest(2) = elap_time()
+
+ALLOCATE( points(nip,ndim), dee(nst,nst), jac(ndim,ndim),              &
+   der(ndim,nod),                                                      &
+   deriv( ndim, nod ), bee( nst, ntot ), weights( nip ), eps( nst ),   &
+   sigma(nst), storkm_pp( ntot, ntot, nels_pp ),                       &
+   pmul_pp( ntot, nels_pp ), utemp_pp(ntot,nels_pp),                   &
    g_g_pp(ntot,nels_pp) )
+!*** end of ParaFEM input and initialisation *************************72
+
 
 !*** CGPACK part *****************************************************72
 ! CGPACK commands
@@ -108,13 +183,24 @@ ALLOCATE( points(nip,ndim), dee(nst,nst), jac(ndim,ndim), der(ndim,nod), &
 ! physical dimensions of the box, assume mm
 cgca_bsz = (/ 1.0, 2.0, 3.0 /)
 
+! origin of the box cs, assume mm
+cgca_origin = (/ 10.0, 11.0, 12.0 /)
+
+! rotation tensor *from* FE cs *to* CA cs.
+! The box cs is aligned with the box.
+cgca_rot = cgca_zero
+cgca_rot(1,1) = cgca_one
+cgca_rot(2,2) = cgca_one
+cgca_rot(3,3) = cgca_one
+
 ! mean grain size, also mm
 cgca_dm = 1.0e-1
 
 ! resolution
 cgca_res = 1.0e5
 
-! In this test set the number of images via the env var
+! In this test set the number of images via the env var,
+! or simply as an argument to aprun.
 ! the code must be able to cope with any value >= 1.
   cgca_img = this_image()
 cgca_nimgs = num_images()
@@ -125,44 +211,52 @@ call cgca_gdim( cgca_nimgs, cgca_ir, cgca_qual )
 ! calculate the resolution and the actual phys dimensions
 ! of the box
 ! subroutine cgca_cadim( bsz, res, dm, ir, c, lres, ng )
-call cgca_cadim( cgca_bsz, cgca_res, cgca_dm, cgca_ir, cgca_c, &
+call cgca_cadim( cgca_bsz, cgca_res, cgca_dm, cgca_ir, cgca_c,         &
                  cgca_lres, cgca_ng )
 
-write ( *, "(9(a,i0),tr1,g0,tr1,i0,3(a,g0),a)" )               &
-    "img: ", cgca_img, " nimgs: ", cgca_nimgs,                 &
-     " (", cgca_c(1), ",", cgca_c(2), ",", cgca_c(3),          &
-     ")[", cgca_ir(1), ",", cgca_ir(2), ",", cgca_ir(3),       &
-     "] ", cgca_ng,                                            &
-    cgca_qual, cgca_lres,                                      &
+write ( *, "(9(a,i0),tr1,g0,tr1,i0,3(a,g0),a)" )                       &
+    "img: ", cgca_img, " nimgs: ", cgca_nimgs,                         &
+     " (", cgca_c(1), ",", cgca_c(2), ",", cgca_c(3),                  &
+     ")[", cgca_ir(1), ",", cgca_ir(2), ",", cgca_ir(3),               &
+     "] ", cgca_ng,                                                    &
+    cgca_qual, cgca_lres,                                              &
     " (", cgca_bsz(1), ",", cgca_bsz(2), ",", cgca_bsz(3), ")"
 
 ! allocate space coarray with a single layer
-call cgca_as( 1, cgca_c(1),  1, cgca_c(2),  1, cgca_c(3),      &
+call cgca_as( 1, cgca_c(1),  1, cgca_c(2),  1, cgca_c(3),              &
               1, cgca_ir(1), 1, cgca_ir(2), 1, 1, cgca_space )
 
 ! calculate the phys. dim. of the coarray on each image
 !subroutine cgca_imco( space, lres, bcol, bcou )
 call cgca_imco( cgca_space, cgca_lres, cgca_bcol, cgca_bcou )
 
-write ( *,"(a,i0,2(a,3(g0,tr1)),a)" ) "img: ", cgca_img,       &
+write ( *,"(a,i0,2(a,3(g0,tr1)),a)" ) "img: ", cgca_img,               &
   " bcol: (", cgca_bcol, ") bcou: (", cgca_bcou, ")"
 
-! deallocate space
-call cgca_ds( cgca_space )
+! and now in FE cs:
+write ( *,"(a,i0,2(a,3(g0,tr1)),a)" ) "img: ", cgca_img,               &
+   " FE bcol: (",                                                      &
+    matmul( transpose( cgca_rot ),cgca_bcol ) + cgca_origin,           &
+  ") FE bcou: (",                                                      &
+    matmul( transpose( cgca_rot ),cgca_bcou ) + cgca_origin, ")"
 
-!*** end CGPACK part *************************************************72
+! Creating mapping FE <-> CA
 
+! Calculate centroid coordinates
+! first dim - coord, 1,2,3
+! second dim - element number
+!
+! g_coord_pp is allocated as g_coord_pp( nod, ndim, nels_pp )
+allocate( cgca_el_centroid( ndim, nels_pp ), stat=cgca_errstat )
+if ( cgca_errstat .ne. 0 )                                             &
+  error stop "***** ERROR: allocate( cgca_el_centroid )"
+cgca_el_centroid = sum( g_coord_pp(:,:,:), dim=1 ) / nod
 
-!*********************************************************************72
-! CGPACK commands
+! dump the centroid coord.
 
-! creating mapping FE <-> CA
-
-! calculate centroid coordinates
-!  cgca_el_centroid = sum( g_coord_pp(:,:,:), dim=1 ) / nod
-! in centroid array:
-! first dim - node number
-! second dim - coord
+do cgca_count1 = 1, nels_pp
+  write (*,*) "MPI rank", numpe, cgca_el_centroid( :, cgca_count1 ) 
+end do
 
 ! calculate coordinates of regions
 !do i = 1, num_images()
@@ -175,20 +269,43 @@ call cgca_ds( cgca_space )
   ! calculate coordinate 
   ! see if the centroid is within a CA region
 
-! End of CGPACK commands
-!*********************************************************************72
+! deallocate space
+call cgca_ds( cgca_space )
+
+!*** end CGPACK part *************************************************72
 
 
-!----------  find the steering array and equations per process -----------
- CALL rearrange(rest); g_g_pp=0; neq=0
+!----------  find the steering array and equations per process ---------
+ CALL rearrange(rest)
+ g_g_pp = 0
+    neq = 0
+
  elements_0: DO iel=1,nels_pp
-   CALL find_g3(g_num_pp(:,iel),g_g_pp(:,iel),rest)
- END DO elements_0
- neq=MAXVAL(g_g_pp); neq=max_p(neq); CALL calc_neq_pp
- CALL calc_npes_pp(npes,npes_pp); CALL make_ggl(npes_pp,npes,g_g_pp)
- ALLOCATE(p_pp(neq_pp),r_pp(neq_pp),x_pp(neq_pp),xnew_pp(neq_pp),        &
-   u_pp(neq_pp),d_pp(neq_pp),diag_precon_pp(neq_pp)); diag_precon_pp=zero
- p_pp=zero;  r_pp=zero;  x_pp=zero; xnew_pp=zero; u_pp=zero; d_pp=zero
+               CALL find_g3(g_num_pp(:,iel),g_g_pp(:,iel),rest)
+             END DO elements_0
+
+ neq=MAXVAL(g_g_pp)
+ neq=max_p(neq)
+ CALL calc_neq_pp
+ CALL calc_npes_pp( npes, npes_pp )
+ CALL make_ggl( npes_pp, npes, g_g_pp )
+
+ ALLOCATE( p_pp(neq_pp), source=zero )
+ allocate( r_pp(neq_pp), source=zero )
+ allocate( x_pp(neq_pp), source=zero )
+ allocate( xnew_pp(neq_pp), source=zero )
+ allocate( u_pp(neq_pp), source=zero )
+ allocate( d_pp(neq_pp), source=zero )
+ allocate( diag_precon_pp(neq_pp), source=zero )
+
+! diag_precon_pp = zero
+!           p_pp = zero
+!           r_pp = zero
+!           x_pp = zero
+!        xnew_pp = zero
+!           u_pp = zero
+!           d_pp = zero
+
 !------ element stiffness integration and build the preconditioner -------
 
 ! deemat needs to go into a loop elements_1
@@ -256,18 +373,30 @@ call cgca_ds( cgca_space )
 
 ! change to stresses in all elements 
 
- ALLOCATE(eld_pp(ntot,nels_pp)); eld_pp=zero; points=zero; nip=1; iel=1
+ ALLOCATE(eld_pp(ntot,nels_pp))
+ eld_pp = zero
+ points = zero
+    nip = 1
+    iel = 1
  CALL gather(xnew_pp(1:),eld_pp); DEALLOCATE(xnew_pp)
  IF(numpe==1)write(11,'(A)')"The Centroid point stresses for element 1 are"
  gauss_pts_2: DO i=1,nip
-   CALL shape_der(der,points,i); jac=MATMUL(der,g_coord_pp(:,:,iel))
-   CALL invert(jac); deriv=MATMUL(jac,der); CALL beemat(bee,deriv)
-   eps=MATMUL(bee,eld_pp(:,iel)); sigma=MATMUL(dee,eps)
+   CALL shape_der(der,points,i)
+       jac = MATMUL(der,g_coord_pp(:,:,iel))
+   CALL invert(jac)
+     deriv = MATMUL(jac,der)
+   CALL beemat(bee,deriv)
+       eps = MATMUL(bee,eld_pp(:,iel))
+     sigma = MATMUL(dee,eps)
    IF(numpe==1.AND.i==1) THEN
-     write(11,'(A,I5)')"Point ",i ; write(11,'(6E12.4)') sigma
+     write( 11, '(A,I5)'  ) "Point ", i
+     write( 11, '(6E12.4)') sigma
    END IF
- END DO gauss_pts_2; DEALLOCATE(g_coord_pp)
+ END DO gauss_pts_2
+ DEALLOCATE(g_coord_pp)
+
 !------------------------ write out displacements ------------------------
+
  CALL calc_nodes_pp(nn,npes,numpe,node_end,node_start,nodes_pp)
  IF(numpe==1) THEN;  write(ch,'(I6.6)') numpe
    OPEN(12,file=argv(1:nlen)//".ensi.DISPL-"//ch,status='replace',       &
