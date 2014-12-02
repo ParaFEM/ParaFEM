@@ -24,6 +24,9 @@ include ../../../../build/$(MACHINE).inc
 
 MODULE	= ../../../../include/mpi
 LIB	= ../../../../lib
+
+CGPACK=	$(HOME)/lib/libcgcapack.a
+
 .SUFFIXES: .o .f90
 
 all:	release
@@ -44,10 +47,12 @@ debug:
 	LDFLAGS="-L$(LIB) -lParaFEM_mpi_D.$(VERSION) $(XX14_MPI_DBG_LDFLAGS)"
 	@echo "Done xx14 DEBUG"
 
+
 xx14: xx14.o
 	$(FC) xx14.o -o xx14 $(LDFLAGS)
 
-xx14.o: xx14.f90
+# always rebuild if the CGPACK module has updated
+xx14.o: xx14.f90 $(CGPACK)
 	$(FC) xx14.f90 $(FFLAGS)
 
 clean:

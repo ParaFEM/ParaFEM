@@ -256,29 +256,29 @@ call cgca_pfem_cta( ndim, cgca_pfem_centroid_tmp )
 ! first dim - coord, 1,2,3
 ! second dim - element number
 ! g_coord_pp is allocated as g_coord_pp( nod, ndim, nels_pp )
-cgca_pfem_centroid_tmp%i = sum( g_coord_pp(:,:,:), dim=1 ) / nod
+cgca_pfem_centroid_tmp%r = sum( g_coord_pp(:,:,:), dim=1 ) / nod
 
 ! sync all is required here because the allocatable arrays
 ! are *not* coarrays, so no implicit sync is involved.
 ! Need to sync here to wait for all images to set their data.
 sync all
 
-! dump the centroid coord.
-do cgca_count1 = 1, nels_pp
-  write (*,*) "MPI rank", numpe, "el. no.", iel_start+(cgca_count1-1), &
-              cgca_pfem_centroid_tmp%i( :, cgca_count1 ) 
-end do
+!subroutine cgca_pfem_cenc( origin, rot, bcol, bcou )
+call cgca_pfem_cenc( cgca_origin, cgca_rot, cgca_bcol, cgca_bcou )
 
-! Second each image reads centroids coarrays from all images, including
-! itself, and sets up a local, *not* coarray array with centroids of
-! only those elements which map to cells within its own box.
-!
-! sync all after that.
-!
-! the centroids coarrays can be deallocated.
+! need to sync before deallocating temp coarrays,
+! to make sure all images finished processing data
+sync all
 
 ! deallocate the temp centroids array
 call cgca_pfem_ctd( cgca_pfem_centroid_tmp )
+
+! dump the centroid coord.
+do cgca_count1 = 1, nels_pp
+  write (*,*) "MPI rank", cgca_pfem_centroid(i)%mpirank,               &
+   "el. no.", cgca_pfem_centroid(i)%elnum,                             &
+   "centr. in CA cs", cgca_pfem_centroid(i)%centr
+end do
 
 !allocate( cgca_el_centroid( ndim, nels_pp ), stat=cgca_errstat )
 !if ( cgca_errstat .ne. 0 )                                             &
