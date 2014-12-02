@@ -84,7 +84,7 @@ real( kind=rdef ) ::    &
 ! http://parafem.googlecode.com/svn/trunk/parafem/src/modules/shared/precision.f90
 ! seems it is double precision:
 ! INTEGER, PARAMETER :: iwp = SELECTED_REAL_KIND(15,300)
-real( kind=iwp ), allocatable :: cgca_el_centroid(:,:)
+!real( kind=iwp ), allocatable :: cgca_el_centroid(:,:)
 
 !*** end CGPACK part *************************************************72
 
@@ -242,22 +242,49 @@ write ( *,"(a,i0,2(a,3(g0,tr1)),a)" ) "img: ", cgca_img,               &
 
 ! Creating mapping FE <-> CA
 
-! Calculate centroid coordinates
+! copy nels_pp and iel_start into coarray variables
+! The coarray vars are defined in:
+! https://sourceforge.net/p/cgpack/code/HEAD/tree/head/cgca_m2pfem.f90
+  cgca_pfem_nels_pp = nels_pp
+cgca_pfem_iel_start = iel_start
+
+! allocate the tmp centroids array, which is an allocatable
+! component of a coarray variable of derived type 
+call cgca_pfem_cta( ndim, cgca_pfem_centroid_tmp )
+
+! set the centroids array component
 ! first dim - coord, 1,2,3
 ! second dim - element number
-!
 ! g_coord_pp is allocated as g_coord_pp( nod, ndim, nels_pp )
-allocate( cgca_el_centroid( ndim, nels_pp ), stat=cgca_errstat )
-if ( cgca_errstat .ne. 0 )                                             &
-  error stop "***** ERROR: allocate( cgca_el_centroid )"
-cgca_el_centroid = sum( g_coord_pp(:,:,:), dim=1 ) / nod
+cgca_pfem_centroid_tmp%i = sum( g_coord_pp(:,:,:), dim=1 ) / nod
+
+! sync all is required here because the allocatable arrays
+! are *not* coarrays, so no implicit sync is involved.
+! Need to sync here to wait for all images to set their data.
+sync all
 
 ! dump the centroid coord.
-
 do cgca_count1 = 1, nels_pp
   write (*,*) "MPI rank", numpe, "el. no.", iel_start+(cgca_count1-1), &
-              cgca_el_centroid( :, cgca_count1 ) 
+              cgca_pfem_centroid_tmp%i( :, cgca_count1 ) 
 end do
+
+! Second each image reads centroids coarrays from all images, including
+! itself, and sets up a local, *not* coarray array with centroids of
+! only those elements which map to cells within its own box.
+!
+! sync all after that.
+!
+! the centroids coarrays can be deallocated.
+
+! deallocate the temp centroids array
+call cgca_pfem_ctd( cgca_pfem_centroid_tmp )
+
+!allocate( cgca_el_centroid( ndim, nels_pp ), stat=cgca_errstat )
+!if ( cgca_errstat .ne. 0 )                                             &
+!  error stop "***** ERROR: allocate( cgca_el_centroid )"
+!cgca_el_centroid = sum( g_coord_pp(:,:,:), dim=1 ) / nod
+
 
 ! calculate coordinates of regions
 !do i = 1, num_images()
