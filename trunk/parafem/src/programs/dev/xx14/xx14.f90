@@ -274,10 +274,12 @@ sync all
 call cgca_pfem_ctd( cgca_pfem_centroid_tmp )
 
 ! dump the centroid coord.
-do cgca_count1 = 1, nels_pp
-  write (*,*) "MPI rank", cgca_pfem_centroid(i)%mpirank,               &
-   "el. no.", cgca_pfem_centroid(i)%elnum,                             &
-   "centr. in CA cs", cgca_pfem_centroid(i)%centr
+write (*,*) cgca_pfem_centroid
+
+do cgca_count1 = 1, size( cgca_pfem_centroid )
+  write (*,*) "MPI rank", cgca_pfem_centroid(cgca_count1)%mpirank,     &
+              "el. no.",  cgca_pfem_centroid(cgca_count1)%elnum,       &
+       "centr. in CA cs", cgca_pfem_centroid(cgca_count1)%centr
 end do
 
 !allocate( cgca_el_centroid( ndim, nels_pp ), stat=cgca_errstat )
