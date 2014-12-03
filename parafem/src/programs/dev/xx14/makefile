@@ -68,4 +68,3 @@ install:
 
 test:
 	./test.sh xx14
-	

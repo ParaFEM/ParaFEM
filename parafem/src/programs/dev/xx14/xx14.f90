@@ -180,11 +180,19 @@ ALLOCATE( points(nip,ndim), dee(nst,nst), jac(ndim,ndim),              &
 ! CGPACK commands
 
 ! *** CGPACK first executable statement ***
-! physical dimensions of the box, assume mm
+! physical dimensions of the box, must be the same
+! as in the ParaFEM.
+! Must be fully within the FE model, which for xx14
+! is a cube with lower bound at (0,0,-10, and the
+! upper bound at (10,10,0)
 cgca_bsz = (/ 1.0, 2.0, 3.0 /)
 
-! origin of the box cs, assume mm
-cgca_origin = (/ 10.0, 11.0, 12.0 /)
+! origin of the box cs, in the same units. 
+cgca_origin = (/ 5.0, 5.0, -5.0 /)
+
+! This gives the upper extremes of the box
+! at 5+1=6, 5+2=7, -5+3=-2: (6,7,-2), still
+! within the FE model.
 
 ! rotation tensor *from* FE cs *to* CA cs.
 ! The box cs is aligned with the box.
@@ -252,35 +260,46 @@ cgca_pfem_iel_start = iel_start
 ! component of a coarray variable of derived type 
 call cgca_pfem_cta( ndim, cgca_pfem_centroid_tmp )
 
-! set the centroids array component
+! set the centroids array component on this image, no remote calls.
 ! first dim - coord, 1,2,3
 ! second dim - element number
 ! g_coord_pp is allocated as g_coord_pp( nod, ndim, nels_pp )
 cgca_pfem_centroid_tmp%r = sum( g_coord_pp(:,:,:), dim=1 ) / nod
 
-! sync all is required here because the allocatable arrays
-! are *not* coarrays, so no implicit sync is involved.
-! Need to sync here to wait for all images to set their data.
+! Need to sync here to wait for all images to set their
+!
+!   cgca_pfem_centroid_tmp%r
+!
+! arrays. Since this is *not* a coarray, there is no implicit sync.  
 sync all
 
 !subroutine cgca_pfem_cenc( origin, rot, bcol, bcou )
 call cgca_pfem_cenc( cgca_origin, cgca_rot, cgca_bcol, cgca_bcou )
 
-! need to sync before deallocating temp coarrays,
-! to make sure all images finished processing data
+! need to sync before deallocating temp centroids arrays
+!
+!   cgca_pfem_centroid_tmp%r
+!
+! to make sure all images finished processing data.
+! Temp centroids arrays are *not* coarrays so there is no implicit sync.
 sync all
-
-! deallocate the temp centroids array
 call cgca_pfem_ctd( cgca_pfem_centroid_tmp )
 
-! dump the centroid coord.
-write (*,*) cgca_pfem_centroid
+! dump the size of the centroid coord. array
+! if the size is zero, there are no FE linked to this
+! image
+write (*,*) "img", this_image(), &
+  "size( cgca_pfem_centroid )", size( cgca_pfem_centroid )
 
-do cgca_count1 = 1, size( cgca_pfem_centroid )
-  write (*,*) "MPI rank", cgca_pfem_centroid(cgca_count1)%mpirank,     &
-              "el. no.",  cgca_pfem_centroid(cgca_count1)%elnum,       &
-       "centr. in CA cs", cgca_pfem_centroid(cgca_count1)%centr
-end do
+! dump the FE centroids in CA cs to stdout
+! Obviously, this is an optional step, just for debug
+call cgca_pfem_cendmp
+
+!do cgca_count1 = 1, size( cgca_pfem_centroid )
+!  write (*,*) "MPI rank", cgca_pfem_centroid(cgca_count1)%mpirank,     &
+!              "el. no.",  cgca_pfem_centroid(cgca_count1)%elnum,       &
+!       "centr. in CA cs", cgca_pfem_centroid(cgca_count1)%centr
+!end do
 
 !allocate( cgca_el_centroid( ndim, nels_pp ), stat=cgca_errstat )
 !if ( cgca_errstat .ne. 0 )                                             &
