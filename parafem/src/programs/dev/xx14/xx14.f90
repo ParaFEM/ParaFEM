@@ -180,15 +180,33 @@ ALLOCATE( points(nip,ndim), dee(nst,nst), jac(ndim,ndim),              &
 ! CGPACK commands
 
 ! *** CGPACK first executable statement ***
+! In this test set the number of images via the env var,
+! or simply as an argument to aprun.
+! the code must be able to cope with any value >= 1.
+  cgca_img = this_image()
+cgca_nimgs = num_images()
+
+! dump CGPACK parameters
+if ( cgca_img .eq. 1 ) call cgca_pdmp
+
+! sync here to separate the output, hopefully...
+! The Fortran processor is allowed to play with
+! stdout streams from different images, including
+! buffering, etc. so it is not guaranteed that
+! the above output from image 1 will appear *prior*
+! to all other output from that and other images to
+! stdout.
+sync all
+
 ! physical dimensions of the box, must be the same
 ! as in the ParaFEM.
 ! Must be fully within the FE model, which for xx14
-! is a cube with lower bound at (0,0,-10, and the
+! is a cube with lower bound at (0,0,-10), and the
 ! upper bound at (10,10,0)
-cgca_bsz = (/ 1.0, 2.0, 3.0 /)
+cgca_bsz = (/ 10.0, 10.0, 10.0 /)
 
 ! origin of the box cs, in the same units. 
-cgca_origin = (/ 5.0, 5.0, -5.0 /)
+cgca_origin = (/ 0.0, 0.0, -10.0 /)
 
 ! This gives the upper extremes of the box
 ! at 5+1=6, 5+2=7, -5+3=-2: (6,7,-2), still
@@ -202,16 +220,10 @@ cgca_rot(2,2) = cgca_one
 cgca_rot(3,3) = cgca_one
 
 ! mean grain size, also mm
-cgca_dm = 1.0e-1
+cgca_dm = 1.0e0
 
 ! resolution
 cgca_res = 1.0e5
-
-! In this test set the number of images via the env var,
-! or simply as an argument to aprun.
-! the code must be able to cope with any value >= 1.
-  cgca_img = this_image()
-cgca_nimgs = num_images()
 
 ! each image calculates the coarray grid dimensions
 call cgca_gdim( cgca_nimgs, cgca_ir, cgca_qual )
@@ -250,11 +262,14 @@ write ( *,"(a,i0,2(a,3(g0,tr1)),a)" ) "img: ", cgca_img,               &
 
 ! Creating mapping FE <-> CA
 
-! copy nels_pp and iel_start into coarray variables
+! copy some ParaFEM vars into *coarray* variables
 ! The coarray vars are defined in:
 ! https://sourceforge.net/p/cgpack/code/HEAD/tree/head/cgca_m2pfem.f90
   cgca_pfem_nels_pp = nels_pp
 cgca_pfem_iel_start = iel_start
+
+write (*,*) "cgca_pfem_iel_start", cgca_pfem_iel_start, &
+            "img", cgca_img, "MPI process", numpe
 
 ! allocate the tmp centroids array, which is an allocatable
 ! component of a coarray variable of derived type 
@@ -283,6 +298,8 @@ call cgca_pfem_cenc( cgca_origin, cgca_rot, cgca_bcol, cgca_bcou )
 ! to make sure all images finished processing data.
 ! Temp centroids arrays are *not* coarrays so there is no implicit sync.
 sync all
+
+! Now can deallocate the temp arrays
 call cgca_pfem_ctd( cgca_pfem_centroid_tmp )
 
 ! dump the size of the centroid coord. array
