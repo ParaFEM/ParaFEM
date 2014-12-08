@@ -266,8 +266,9 @@ write ( *,"(a,i0,2(a,3(g0,tr1)),a)" ) "img: ", cgca_img,               &
 ! copy some ParaFEM vars into *coarray* variables
 ! The coarray vars are defined in:
 ! https://sourceforge.net/p/cgpack/code/HEAD/tree/head/cgca_m2pfem.f90
-  cgca_pfem_nels_pp = nels_pp
 cgca_pfem_iel_start = iel_start
+cgca_pfem_nels_pp   = nels_pp
+cgca_pfem_numpe     = numpe
 
 write (*,*) "cgca_pfem_iel_start", cgca_pfem_iel_start, &
             "img", cgca_img, "MPI process", numpe
@@ -312,29 +313,6 @@ write (*,*) "img", this_image(), &
 ! dump the FE centroids in CA cs to stdout
 ! Obviously, this is an optional step, just for debug
 call cgca_pfem_cendmp
-
-!do cgca_count1 = 1, size( cgca_pfem_centroid )
-!  write (*,*) "MPI rank", cgca_pfem_centroid(cgca_count1)%mpirank,     &
-!              "el. no.",  cgca_pfem_centroid(cgca_count1)%elnum,       &
-!       "centr. in CA cs", cgca_pfem_centroid(cgca_count1)%centr
-!end do
-
-!allocate( cgca_el_centroid( ndim, nels_pp ), stat=cgca_errstat )
-!if ( cgca_errstat .ne. 0 )                                             &
-!  error stop "***** ERROR: allocate( cgca_el_centroid )"
-!cgca_el_centroid = sum( g_coord_pp(:,:,:), dim=1 ) / nod
-
-
-! calculate coordinates of regions
-!do i = 1, num_images()
-!  cgca_grid_position(:) = this_image(cgca_space)
-!  cgca_coord_region_low( i,:) = ( cgca_grid_position(:) - col(:) ) * cgca_calen(:)
-!  cgca_coord_region_high(i,:) = ( cgca_grid_position(:) - col(:) + 1 ) * cgca_calen(:)
-!
-!end do
-
-  ! calculate coordinate 
-  ! see if the centroid is within a CA region
 
 ! deallocate space
 call cgca_ds( cgca_space )
