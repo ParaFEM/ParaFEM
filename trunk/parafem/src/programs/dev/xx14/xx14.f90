@@ -80,6 +80,9 @@ real( kind=rdef ) ::    &
  cgca_res,              & ! resolutions, cells per grain
  cgca_bcol(3),          & ! lower phys. coords of the coarray on image
  cgca_bcou(3)             ! upper phys. coords of the coarray on image
+real( kind=rdef ), allocatable :: cgca_grt(:,:,:)[:,:,:]
+
+logical( kind=ldef ) :: cgca_solid
 
 ! iwp is defined in
 ! http://parafem.googlecode.com/svn/trunk/parafem/src/modules/shared/precision.f90
@@ -243,9 +246,12 @@ write ( *, "(9(a,i0),tr1,g0,tr1,i0,3(a,g0),a)" )                       &
     cgca_qual, cgca_lres,                                              &
     " (", cgca_bsz(1), ",", cgca_bsz(2), ",", cgca_bsz(3), ")"
 
-! allocate space coarray with a single layer
+! allocate space coarray with 2 layers
+!subroutine cgca_as( l1, u1, l2, u2, l3, u3, col1, cou1, col2, cou2,   &
+! col3, props, coarray )
+
 call cgca_as( 1, cgca_c(1),  1, cgca_c(2),  1, cgca_c(3),              &
-              1, cgca_ir(1), 1, cgca_ir(2), 1, 1, cgca_space )
+              1, cgca_ir(1), 1, cgca_ir(2), 1, 2, cgca_space )
 
 ! calculate the phys. dim. of the coarray on each image
 !subroutine cgca_imco( space, lres, bcol, bcou )
@@ -313,6 +319,64 @@ write (*,*) "img", this_image(), &
 ! dump the FE centroids in CA cs to stdout
 ! Obviously, this is an optional step, just for debug
 call cgca_pfem_cendmp
+
+! Generate microstructure
+
+! initialise random number seed
+! argument:
+! .false. - no debug output
+!  .true. - with debug output
+call cgca_irs( .false. )
+
+! allocate rotation tensors
+call cgca_art( 1, cgca_ng, 1, cgca_ir(1), 1, cgca_ir(2), 1, cgca_grt )
+
+! initialise space
+cgca_space( :, :, :, cgca_state_type_grain ) = cgca_liquid_state
+cgca_space( :, :, :, cgca_state_type_frac  ) = cgca_intact_state
+
+! nuclei, sync all inside
+! last argument:
+! .false. - no debug output
+!  .true. - with debug output
+call cgca_nr( cgca_space, cgca_ng, .false. )
+
+! assign rotation tensors, sync all inside
+call cgca_rt( cgca_grt )
+
+! solidify, implicit sync all inside
+! second argument:
+!  .true. - periodic BC
+! .false. - no periodic BC
+call cgca_sld( cgca_space, .false., 0, 10, cgca_solid )
+
+! initiate grain boundaries
+call cgca_igb( cgca_space )
+
+! smoothen the GB, several iterations,
+! halo exchange,
+! sync needed following smoothing
+call cgca_gbs( cgca_space )
+call cgca_hxi( cgca_space )
+call cgca_gbs( cgca_space )
+call cgca_hxi( cgca_space )
+sync all
+
+! update grain connectivity, local routine, no sync needed
+call cgca_gcu( cgca_space )
+
+! set a single crack nucleus in the centre of the x3=max(x3) face
+cgca_space( cgca_c(1)/2, cgca_c(2)/2, cgca_c(3), cgca_state_type_frac )&
+          [ cgca_ir(1)/2, cgca_ir(2)/2, cgca_ir(3) ] =                 &
+                                      cgca_clvg_state_100_edge
+
+! dump space arrays to files, only image 1 does it,
+! all others wait at sync all
+if ( cgca_img .eq. 1 ) write (*,*) "dumping model to files"
+ call cgca_swci( cgca_space, cgca_state_type_grain, 10, "zg0.raw" )
+ call cgca_swci( cgca_space, cgca_state_type_frac,  10, "zf0.raw" )
+if ( cgca_img .eq. 1 ) write (*,*) "finished dumping model to files"
+sync all
 
 ! deallocate space
 call cgca_ds( cgca_space )
