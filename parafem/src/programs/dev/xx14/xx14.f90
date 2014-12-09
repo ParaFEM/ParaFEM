@@ -396,11 +396,11 @@ sync all
 ! map equations to elements
 ! http://parafem.googlecode.com/svn/trunk/parafem/src/modules/shared/new_library.f90
 elements_0: DO iel=1,nels_pp
-             CALL find_g3(g_num_pp(:,iel),g_g_pp(:,iel),rest)
+  CALL find_g3( g_num_pp(:,iel), g_g_pp(:,iel), rest )
 END DO elements_0
 
-neq=MAXVAL(g_g_pp)
-neq=max_p(neq)
+neq = MAXVAL(g_g_pp)
+neq = max_p(neq)
 CALL calc_neq_pp
 CALL calc_npes_pp( npes, npes_pp )
 CALL make_ggl( npes_pp, npes, g_g_pp )
@@ -425,12 +425,12 @@ storkm_pp = zero
 
 elements_1: DO iel=1,nels_pp
 gauss_pts_1: DO i=1,nip
- CALL shape_der(der,points,i)
- jac = MATMUL(der,g_coord_pp(:,:,iel))
+ CALL shape_der( der, points, i )
+ jac = MATMUL( der, g_coord_pp(:,:,iel) )
  det = determinant(jac)
  CALL invert(jac)
- deriv = MATMUL(jac,der)
- CALL beemat(bee,deriv)
+ deriv = MATMUL( jac, der )
+ CALL beemat( bee, deriv )
  storkm_pp(:,:,iel) = storkm_pp(:,:,iel) +                             &
      MATMUL( MATMUL( TRANSPOSE(bee), dee ), bee ) * det * weights(i)
 END DO gauss_pts_1
@@ -536,7 +536,15 @@ DEALLOCATE(xnew_pp)
 
 IF ( numpe==1 ) write(11,'(A)')                                        &
  "The Centroid point stresses for element 1 are"
+!*** end of ParaFEM part *********************************************72
 
+
+!*** CGPACK part *****************************************************72
+if ( cgca_img .eq. 1 ) write (*,*) 'no. Gauss points', nip
+!*** end CGPACK part *************************************************72
+
+
+!*** ParaFEM part ****************************************************72
 gauss_pts_2: DO i=1,nip
  CALL shape_der(der,points,i)
         jac = MATMUL(der,g_coord_pp(:,:,iel))
@@ -568,7 +576,6 @@ END IF
 
 ALLOCATE( disp_pp(nodes_pp*ndim), source=zero )
 allocate( temp(nodes_pp), source=zero )
-! disp_pp=zero; temp=zero
 CALL scatter_nodes( npes, nn, nels_pp, g_num_pp, nod, ndim, nodes_pp,  &
                     node_start, node_end, eld_pp, disp_pp, 1 )
 DO i=1,ndim
