@@ -171,12 +171,19 @@ CALL read_rest( argv, numpe, rest )
 
 timest(2) = elap_time()
 
-ALLOCATE( points(nip,ndim), dee(nst,nst), jac(ndim,ndim),              &
-   der(ndim,nod),                                                      &
-   deriv( ndim, nod ), bee( nst, ntot ), weights( nip ), eps( nst ),   &
-   sigma(nst), storkm_pp( ntot, ntot, nels_pp ),                       &
-   pmul_pp( ntot, nels_pp ), utemp_pp(ntot,nels_pp),                   &
-   g_g_pp(ntot,nels_pp) )
+ALLOCATE( points(nip,ndim) )
+allocate( dee(nst,nst) )
+allocate( jac(ndim,ndim) )
+allocate( der(ndim,nod) )
+allocate( deriv( ndim, nod ) )
+allocate( bee( nst, ntot ) )
+allocate( weights( nip ) )
+allocate( eps( nst ) )
+allocate( sigma(nst) )
+allocate( storkm_pp( ntot, ntot, nels_pp ) )
+allocate( pmul_pp( ntot, nels_pp ) )
+allocate( utemp_pp(ntot,nels_pp) )
+allocate( g_g_pp(ntot,nels_pp) )
 !*** end of ParaFEM input and initialisation *************************72
 
 
@@ -378,9 +385,6 @@ if ( cgca_img .eq. 1 ) write (*,*) "dumping model to files"
 if ( cgca_img .eq. 1 ) write (*,*) "finished dumping model to files"
 sync all
 
-! deallocate space
-call cgca_ds( cgca_space )
-
 !*** end CGPACK part *************************************************72
 
 
@@ -391,138 +395,203 @@ call cgca_ds( cgca_space )
 
 ! map equations to elements
 ! http://parafem.googlecode.com/svn/trunk/parafem/src/modules/shared/new_library.f90
- elements_0: DO iel=1,nels_pp
-               CALL find_g3(g_num_pp(:,iel),g_g_pp(:,iel),rest)
-             END DO elements_0
+elements_0: DO iel=1,nels_pp
+             CALL find_g3(g_num_pp(:,iel),g_g_pp(:,iel),rest)
+END DO elements_0
 
- neq=MAXVAL(g_g_pp)
- neq=max_p(neq)
- CALL calc_neq_pp
- CALL calc_npes_pp( npes, npes_pp )
- CALL make_ggl( npes_pp, npes, g_g_pp )
+neq=MAXVAL(g_g_pp)
+neq=max_p(neq)
+CALL calc_neq_pp
+CALL calc_npes_pp( npes, npes_pp )
+CALL make_ggl( npes_pp, npes, g_g_pp )
 
- ALLOCATE( p_pp(neq_pp), source=zero )
- allocate( r_pp(neq_pp), source=zero )
- allocate( x_pp(neq_pp), source=zero )
- allocate( xnew_pp(neq_pp), source=zero )
- allocate( u_pp(neq_pp), source=zero )
- allocate( d_pp(neq_pp), source=zero )
- allocate( diag_precon_pp(neq_pp), source=zero )
-
-! diag_precon_pp = zero
-!           p_pp = zero
-!           r_pp = zero
-!           x_pp = zero
-!        xnew_pp = zero
-!           u_pp = zero
-!           d_pp = zero
+ALLOCATE( p_pp(neq_pp), source=zero )
+allocate( r_pp(neq_pp), source=zero )
+allocate( x_pp(neq_pp), source=zero )
+allocate( xnew_pp(neq_pp), source=zero )
+allocate( u_pp(neq_pp), source=zero )
+allocate( d_pp(neq_pp), source=zero )
+allocate( diag_precon_pp(neq_pp), source=zero )
 
 !------ element stiffness integration and build the preconditioner -------
 
 ! deemat needs to go into a loop elements_1
 ! need an element array of E
 
- dee=zero; CALL deemat(dee,e,v); CALL sample(element,points,weights)
- storkm_pp=zero
- elements_1: DO iel=1,nels_pp
-   gauss_pts_1: DO i=1,nip
-     CALL shape_der(der,points,i); jac=MATMUL(der,g_coord_pp(:,:,iel))
-     det=determinant(jac); CALL invert(jac); deriv=MATMUL(jac,der)
-     CALL beemat(bee,deriv)
-     storkm_pp(:,:,iel)=storkm_pp(:,:,iel) +                             &
-                    MATMUL(MATMUL(TRANSPOSE(bee),dee),bee)*det*weights(i)   
-   END DO gauss_pts_1
- END DO elements_1
- ALLOCATE(diag_precon_tmp(ntot,nels_pp)); diag_precon_tmp=zero
- elements_2: DO iel=1,nels_pp ; DO i=1,ndof
-   diag_precon_tmp(i,iel) = diag_precon_tmp(i,iel)+storkm_pp(i,i,iel)
- END DO;  END DO elements_2
- CALL scatter(diag_precon_pp,diag_precon_tmp); DEALLOCATE(diag_precon_tmp)
- IF(numpe==1)THEN
-   OPEN(11,FILE=argv(1:nlen)//".res",STATUS='REPLACE',ACTION='write')
-   write(11,'(A,I7,A)') "This job ran on ",npes," processes"
-   write(11,'(A,3(I12,A))') "There are ",nn," nodes", nr, &
+dee = zero
+CALL deemat( dee, e, v )
+CALL sample( element, points, weights )
+storkm_pp = zero
+
+elements_1: DO iel=1,nels_pp
+gauss_pts_1: DO i=1,nip
+ CALL shape_der(der,points,i)
+ jac = MATMUL(der,g_coord_pp(:,:,iel))
+ det = determinant(jac)
+ CALL invert(jac)
+ deriv = MATMUL(jac,der)
+ CALL beemat(bee,deriv)
+ storkm_pp(:,:,iel) = storkm_pp(:,:,iel) +                             &
+     MATMUL( MATMUL( TRANSPOSE(bee), dee ), bee ) * det * weights(i)
+END DO gauss_pts_1
+END DO elements_1
+
+ALLOCATE( diag_precon_tmp( ntot, nels_pp ), source=zero )
+
+elements_2: DO iel=1,nels_pp
+DO i=1,ndof
+  diag_precon_tmp(i,iel) = diag_precon_tmp(i,iel) + storkm_pp(i,i,iel)
+END DO
+END DO elements_2
+
+CALL scatter(diag_precon_pp,diag_precon_tmp)
+DEALLOCATE(diag_precon_tmp)
+
+IF(numpe==1)THEN
+  OPEN(  11,FILE=argv(1:nlen)//".res",STATUS='REPLACE',ACTION='write' )
+  write( 11,'(A,I7,A)') "This job ran on ",npes," processes"
+  write( 11,'(A,3(I12,A))') "There are ",nn," nodes", nr, &
                            " restrained and ",neq," equations"
-   write(11,'(A,F10.4)') "Time to read input is:",timest(2)-timest(1)
-   write(11,'(A,F10.4)') "Time after setup is:",elap_time()-timest(1)
- END IF
+  write( 11,'(A,F10.4)') "Time to read input is:",timest(2)-timest(1)
+  write( 11,'(A,F10.4)') "Time after setup is:",elap_time()-timest(1)
+END IF
+
 !----------------------------- get starting r ----------------------------
- IF(loaded_nodes>0) THEN
-   ALLOCATE(node(loaded_nodes),val(ndim,loaded_nodes)); node=0; val=zero
-   CALL read_loads(argv,numpe,node,val)
-   CALL load(g_g_pp,g_num_pp,node,val,r_pp(1:)); q=SUM_P(r_pp(1:))
-   IF(numpe==1) write(11,'(A,E12.4)') "The total load is:",q
-   DEALLOCATE(node,val)
- END IF
- DEALLOCATE(g_g_pp); diag_precon_pp=1._iwp/diag_precon_pp
- d_pp=diag_precon_pp*r_pp; p_pp=d_pp; x_pp=zero
+IF(loaded_nodes>0) THEN
+  ALLOCATE( node(loaded_nodes), source=0 )
+  allocate( val(ndim,loaded_nodes), source=zero )
+  CALL read_loads(argv,numpe,node,val)
+  CALL load(g_g_pp,g_num_pp,node,val,r_pp(1:))
+  q=SUM_P(r_pp(1:))
+  IF(numpe==1) write(11,'(A,E12.4)') "The total load is:",q
+  DEALLOCATE( node )
+  deallocate( val )
+END IF
+
+DEALLOCATE(g_g_pp)
+diag_precon_pp=1._iwp/diag_precon_pp
+d_pp = diag_precon_pp*r_pp
+p_pp = d_pp
+x_pp = zero
+
 !--------------------- preconditioned cg iterations ----------------------
- iters=0; timest(3)=elap_time()
- iterations: DO 
-   iters=iters+1; u_pp=zero; pmul_pp=zero; utemp_pp=zero
-   CALL gather(p_pp,pmul_pp)
-   elements_3: DO iel=1,nels_pp
+iters=0
+timest(3) = elap_time()
+
+iterations: DO 
+    iters = iters + 1
+     u_pp = zero
+  pmul_pp = zero
+ utemp_pp = zero
+ CALL gather(p_pp,pmul_pp)
+
+ elements_3: DO iel=1,nels_pp
      utemp_pp(:,iel) = MATMUL(storkm_pp(:,:,iel),pmul_pp(:,iel))
 !    CALL dgemv('n',ntot,ntot,1.0_iwp,storkm_pp(:,:,iel),ntot,           &
 !               pmul_pp(:,iel),1,0.0_iwp,utemp_pp(:,iel),1)
-   END DO elements_3 ;CALL scatter(u_pp,utemp_pp)
+ END DO elements_3
+
+ CALL scatter(u_pp,utemp_pp)
+
 !-------------------------- pcg equation solution ------------------------
-   up=DOT_PRODUCT_P(r_pp,d_pp); alpha=up/DOT_PRODUCT_P(p_pp,u_pp)
-   xnew_pp=x_pp+p_pp*alpha; r_pp=r_pp-u_pp*alpha
-   d_pp=diag_precon_pp*r_pp; beta=DOT_PRODUCT_P(r_pp,d_pp)/up
-   p_pp=d_pp+p_pp*beta; CALL checon_par(xnew_pp,tol,converged,x_pp)    
-   IF(converged.OR.iters==limit)EXIT
- END DO iterations
- IF(numpe==1)THEN
-   write(11,'(A,I6)')"The number of iterations to convergence was ",iters
-   write(11,'(A,F10.4)')"Time to solve equations was  :",                &
+      up = DOT_PRODUCT_P(r_pp,d_pp)
+   alpha = up/DOT_PRODUCT_P(p_pp,u_pp)
+ xnew_pp = x_pp+p_pp*alpha
+    r_pp = r_pp-u_pp*alpha
+    d_pp = diag_precon_pp*r_pp
+    beta = DOT_PRODUCT_P(r_pp,d_pp)/up
+    p_pp = d_pp+p_pp*beta
+ CALL checon_par(xnew_pp,tol,converged,x_pp)    
+ IF ( converged .OR. iters == limit ) EXIT
+END DO iterations
+
+IF ( numpe==1 ) THEN
+ write(11,'(A,I6)')"The number of iterations to convergence was ",iters
+ write(11,'(A,F10.4)')"Time to solve equations was  :",                &
                          elap_time()-timest(3)  
-   write(11,'(A,E12.4)')"The central nodal displacement is :",xnew_pp(1)
- END IF
- DEALLOCATE(p_pp,r_pp,x_pp,u_pp,d_pp,diag_precon_pp,storkm_pp,pmul_pp) 
+ write(11,'(A,E12.4)')"The central nodal displacement is :",xnew_pp(1)
+END IF
+
+DEALLOCATE( p_pp )
+deallocate( r_pp )
+deallocate( x_pp )
+deallocate( u_pp )
+deallocate( d_pp )
+deallocate( diag_precon_pp )
+deallocate( storkm_pp )
+deallocate( pmul_pp ) 
+
 !--------------- recover stresses at centroidal gauss point --------------
 
 ! change to stresses in all elements 
 
- ALLOCATE(eld_pp(ntot,nels_pp))
- eld_pp = zero
- points = zero
-    nip = 1
-    iel = 1
- CALL gather(xnew_pp(1:),eld_pp); DEALLOCATE(xnew_pp)
- IF(numpe==1)write(11,'(A)')"The Centroid point stresses for element 1 are"
- gauss_pts_2: DO i=1,nip
-   CALL shape_der(der,points,i)
-       jac = MATMUL(der,g_coord_pp(:,:,iel))
-   CALL invert(jac)
-     deriv = MATMUL(jac,der)
-   CALL beemat(bee,deriv)
-       eps = MATMUL(bee,eld_pp(:,iel))
-     sigma = MATMUL(dee,eps)
-   IF(numpe==1.AND.i==1) THEN
-     write( 11, '(A,I5)'  ) "Point ", i
-     write( 11, '(6E12.4)') sigma
-   END IF
- END DO gauss_pts_2
- DEALLOCATE(g_coord_pp)
+ALLOCATE( eld_pp(ntot,nels_pp), source=zero )
+! eld_pp = zero
+points = zero
+   nip = 1
+   iel = 1
+
+CALL gather(xnew_pp(1:),eld_pp)
+DEALLOCATE(xnew_pp)
+
+IF ( numpe==1 ) write(11,'(A)')                                        &
+ "The Centroid point stresses for element 1 are"
+
+gauss_pts_2: DO i=1,nip
+ CALL shape_der(der,points,i)
+        jac = MATMUL(der,g_coord_pp(:,:,iel))
+ CALL invert(jac)
+      deriv = MATMUL(jac,der)
+ CALL beemat(bee,deriv)
+        eps = MATMUL(bee,eld_pp(:,iel))
+      sigma = MATMUL(dee,eps)
+ IF ( numpe==1 .AND. i==1 ) THEN
+   write( 11, '(A,I5)'  ) "Point ", i
+   write( 11, '(6E12.4)') sigma
+ END IF
+END DO gauss_pts_2
+
+DEALLOCATE( g_coord_pp )
+
 
 !------------------------ write out displacements ------------------------
 
- CALL calc_nodes_pp(nn,npes,numpe,node_end,node_start,nodes_pp)
- IF(numpe==1) THEN;  write(ch,'(I6.6)') numpe
-   OPEN(12,file=argv(1:nlen)//".ensi.DISPL-"//ch,status='replace',       &
-     action='write')
-   write(12,'(A)') "Alya Ensight Gold --- Vector per-node variable file"
-   write(12,'(A/A/A)') "part", "     1","coordinates"
- END IF
- ALLOCATE(disp_pp(nodes_pp*ndim),temp(nodes_pp)); disp_pp=zero; temp=zero
- CALL scatter_nodes(npes,nn,nels_pp,g_num_pp,nod,ndim,nodes_pp,          &
-                    node_start,node_end,eld_pp,disp_pp,1)
- DO i=1,ndim ; temp=zero
-   DO j=1,nodes_pp; k=i+(ndim*(j-1)); temp(j)=disp_pp(k); END DO
-   CALL dismsh_ensi_p(12,1,nodes_pp,npes,numpe,1,temp)
- END DO ; IF(numpe==1) CLOSE(12)
- IF(numpe==1) write(11,'(A,F10.4)')"This analysis took  :",              &
+CALL calc_nodes_pp(nn,npes,numpe,node_end,node_start,nodes_pp)
+
+IF(numpe==1) THEN
+  write(ch,'(I6.6)') numpe
+  OPEN( 12, file=argv(1:nlen)//".ensi.DISPL-"//ch,status='replace',    &
+        action='write')
+  write(12,'(A)') "Alya Ensight Gold --- Vector per-node variable file"
+  write(12,'(A/A/A)') "part", "     1","coordinates"
+END IF
+
+ALLOCATE( disp_pp(nodes_pp*ndim), source=zero )
+allocate( temp(nodes_pp), source=zero )
+! disp_pp=zero; temp=zero
+CALL scatter_nodes( npes, nn, nels_pp, g_num_pp, nod, ndim, nodes_pp,  &
+                    node_start, node_end, eld_pp, disp_pp, 1 )
+DO i=1,ndim
+ temp=zero
+ DO j=1,nodes_pp
+        k = i+(ndim*(j-1))
+  temp(j) = disp_pp(k)
+ END DO
+ CALL dismsh_ensi_p(12,1,nodes_pp,npes,numpe,1,temp)
+END DO
+
+IF ( numpe==1 ) CLOSE(12)
+IF ( numpe==1 ) write(11,'(A,F10.4)')"This analysis took  :",          &
    elap_time()-timest(1)  
+
+
+!*** CGPACK part *****************************************************72
+! deallocate all CGPACK arrays
+call cgca_ds(  cgca_space )
+call cgca_drt( cgca_grt )
+!*** end CGPACK part *************************************************72
+
+
+!*** ParaFEM part ****************************************************72
  CALL SHUTDOWN() 
 END PROGRAM xx14
