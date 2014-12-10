@@ -526,10 +526,7 @@ deallocate( pmul_pp )
 ! change to stresses in all elements 
 
 ALLOCATE( eld_pp(ntot,nels_pp), source=zero )
-! eld_pp = zero
 points = zero
-   nip = 1
-   iel = 1
 
 CALL gather(xnew_pp(1:),eld_pp)
 DEALLOCATE(xnew_pp)
@@ -545,19 +542,23 @@ if ( cgca_img .eq. 1 ) write (*,*) 'no. Gauss points', nip
 
 
 !*** ParaFEM part ****************************************************72
-gauss_pts_2: DO i=1,nip
- CALL shape_der(der,points,i)
-        jac = MATMUL(der,g_coord_pp(:,:,iel))
- CALL invert(jac)
-      deriv = MATMUL(jac,der)
- CALL beemat(bee,deriv)
-        eps = MATMUL(bee,eld_pp(:,iel))
-      sigma = MATMUL(dee,eps)
- IF ( numpe==1 .AND. i==1 ) THEN
-   write( 11, '(A,I5)'  ) "Point ", i
-   write( 11, '(6E12.4)') sigma
- END IF
-END DO gauss_pts_2
+elmnts: DO iel = 1, nels_pp
+intpts: DO i = 1, nip
+    CALL shape_der(der,points,i)
+    jac = MATMUL(der,g_coord_pp(:,:,iel))
+    CALL invert(jac)
+    deriv = MATMUL(jac,der)
+    CALL beemat(bee,deriv)
+    eps = MATMUL(bee,eld_pp(:,iel))
+    sigma = MATMUL(dee,eps)
+    ! IF ( numpe==1 .AND. i==1 ) THEN
+    !   write( 11, '(A,I5)'  ) "Point ", i
+    !   write( 11, '(6E12.4)') sigma
+    ! END IF
+    write (*,*) "MPI process", numpe, "el. no.", iel_start + iel - 1,  &
+                "int. point", i, "stress", sigma
+END DO intpts
+end do elmnts
 
 DEALLOCATE( g_coord_pp )
 
