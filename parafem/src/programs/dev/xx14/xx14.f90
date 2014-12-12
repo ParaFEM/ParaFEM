@@ -83,13 +83,6 @@ real( kind=rdef ) ::    &
 real( kind=rdef ), allocatable :: cgca_grt(:,:,:)[:,:,:]
 
 logical( kind=ldef ) :: cgca_solid
-
-! iwp is defined in
-! http://parafem.googlecode.com/svn/trunk/parafem/src/modules/shared/precision.f90
-! seems it is double precision:
-! INTEGER, PARAMETER :: iwp = SELECTED_REAL_KIND(15,300)
-!real( kind=iwp ), allocatable :: cgca_el_centroid(:,:)
-
 !*** end CGPACK part *************************************************72
 
 
@@ -188,8 +181,6 @@ allocate( g_g_pp(ntot,nels_pp) )
 
 
 !*** CGPACK part *****************************************************72
-! CGPACK commands
-
 ! *** CGPACK first executable statement ***
 ! In this test set the number of images via the env var,
 ! or simply as an argument to aprun.
@@ -220,21 +211,21 @@ cgca_bsz = (/ 10.0, 10.0, 10.0 /)
 cgca_origin = (/ 0.0, 0.0, -10.0 /)
 
 ! This gives the upper extremes of the box
-! at 5+1=6, 5+2=7, -5+3=-2: (6,7,-2), still
-! within the FE model.
+! at 0+10=10, 0+10=10, -10+10=0,
+! all within the FE model.
 
 ! rotation tensor *from* FE cs *to* CA cs.
 ! The box cs is aligned with the box.
-cgca_rot = cgca_zero
+cgca_rot      = cgca_zero
 cgca_rot(1,1) = cgca_one
 cgca_rot(2,2) = cgca_one
 cgca_rot(3,3) = cgca_one
 
 ! mean grain size, also mm
-cgca_dm = 1.0e0
+cgca_dm = 1.0e0_rdef
 
 ! resolution
-cgca_res = 1.0e5
+cgca_res = 1.0e5_rdef
 
 ! each image calculates the coarray grid dimensions
 call cgca_gdim( cgca_nimgs, cgca_ir, cgca_qual )
@@ -245,11 +236,12 @@ call cgca_gdim( cgca_nimgs, cgca_ir, cgca_qual )
 call cgca_cadim( cgca_bsz, cgca_res, cgca_dm, cgca_ir, cgca_c,         &
                  cgca_lres, cgca_ng )
 
-write ( *, "(9(a,i0),tr1,g0,tr1,i0,3(a,g0),a)" )                       &
-    "img: ", cgca_img, " nimgs: ", cgca_nimgs,                         &
-     " (", cgca_c(1), ",", cgca_c(2), ",", cgca_c(3),                  &
-     ")[", cgca_ir(1), ",", cgca_ir(2), ",", cgca_ir(3),               &
-     "] ", cgca_ng,                                                    &
+if (cgca_img .eq. 1 )                                                  &
+  write ( *, "(9(a,i0),tr1,g0,tr1,i0,3(a,g0),a)" )                     &
+    "img: ", cgca_img  , " nimgs: ", cgca_nimgs,                       &
+     " ("  , cgca_c (1), ","       , cgca_c (2), ",", cgca_c (3),      &
+     ")["  , cgca_ir(1), ","       , cgca_ir(2), ",", cgca_ir(3),      &
+     "] "  , cgca_ng   ,                                               &
     cgca_qual, cgca_lres,                                              &
     " (", cgca_bsz(1), ",", cgca_bsz(2), ",", cgca_bsz(3), ")"
 
@@ -267,6 +259,9 @@ call cgca_imco( cgca_space, cgca_lres, cgca_bcol, cgca_bcou )
 write ( *,"(a,i0,2(a,3(g0,tr1)),a)" ) "img: ", cgca_img,               &
   " bcol: (", cgca_bcol, ") bcou: (", cgca_bcou, ")"
 
+! try to separate the stdout
+sync all
+
 ! and now in FE cs:
 write ( *,"(a,i0,2(a,3(g0,tr1)),a)" ) "img: ", cgca_img,               &
    " FE bcol: (",                                                      &
@@ -274,21 +269,27 @@ write ( *,"(a,i0,2(a,3(g0,tr1)),a)" ) "img: ", cgca_img,               &
   ") FE bcou: (",                                                      &
     matmul( transpose( cgca_rot ),cgca_bcou ) + cgca_origin, ")"
 
+! try to separate the stdout
+sync all
+
 ! Creating mapping FE <-> CA
 
-! copy some ParaFEM vars into *coarray* variables
-! The coarray vars are defined in:
+! copy some ParaFEM vars into coarray and non-coarray variables
+! defined in:
 ! https://sourceforge.net/p/cgpack/code/HEAD/tree/head/cgca_m2pfem.f90
-cgca_pfem_iel_start = iel_start
-cgca_pfem_nels_pp   = nels_pp
-cgca_pfem_numpe     = numpe
+! coarray vars
+!cgca_pfem_iel_start = iel_start
+!cgca_pfem_nels_pp   = nels_pp
+!cgca_pfem_numpe     = numpe
 
-write (*,*) "cgca_pfem_iel_start", cgca_pfem_iel_start, &
-            "img", cgca_img, "MPI process", numpe
+! non-coarray vars
+!cgca_pfem_nip       = nip
+
+write (*,*) "img <-> MPI proc", cgca_img, numpe
 
 ! allocate the tmp centroids array, which is an allocatable
 ! component of a coarray variable of derived type 
-call cgca_pfem_cta( ndim, cgca_pfem_centroid_tmp )
+call cgca_pfem_cta( ndim, nels_pp, cgca_pfem_centroid_tmp )
 
 ! set the centroids array component on this image, no remote calls.
 ! first dim - coord, 1,2,3
@@ -316,12 +317,6 @@ sync all
 
 ! Now can deallocate the temp arrays
 call cgca_pfem_ctd( cgca_pfem_centroid_tmp )
-
-! dump the size of the centroid coord. array
-! if the size is zero, there are no FE linked to this
-! image
-write (*,*) "img", this_image(), &
-  "size( cgca_pfem_centroid )", size( cgca_pfem_centroid )
 
 ! dump the FE centroids in CA cs to stdout
 ! Obviously, this is an optional step, just for debug
@@ -523,27 +518,17 @@ deallocate( pmul_pp )
 
 !--------------- recover stresses at centroidal gauss point --------------
 
-! change to stresses in all elements 
-
 ALLOCATE( eld_pp(ntot,nels_pp), source=zero )
-points = zero
+!points = zero
 
 CALL gather(xnew_pp(1:),eld_pp)
 DEALLOCATE(xnew_pp)
 
-IF ( numpe==1 ) write(11,'(A)')                                        &
- "The Centroid point stresses for element 1 are"
-!*** end of ParaFEM part *********************************************72
-
-
-!*** CGPACK part *****************************************************72
-if ( cgca_img .eq. 1 ) write (*,*) 'no. Gauss points', nip
-!*** end CGPACK part *************************************************72
-
-
-!*** ParaFEM part ****************************************************72
 elmnts: DO iel = 1, nels_pp
 intpts: DO i = 1, nip
+
+    ! Compute the derivatives of the shape functions at a Gauss point.
+    ! http://parafem.googlecode.com/svn/trunk/parafem/src/modules/shared/new_library.f90
     CALL shape_der(der,points,i)
     jac = MATMUL(der,g_coord_pp(:,:,iel))
     CALL invert(jac)
@@ -551,11 +536,7 @@ intpts: DO i = 1, nip
     CALL beemat(bee,deriv)
     eps = MATMUL(bee,eld_pp(:,iel))
     sigma = MATMUL(dee,eps)
-    ! IF ( numpe==1 .AND. i==1 ) THEN
-    !   write( 11, '(A,I5)'  ) "Point ", i
-    !   write( 11, '(6E12.4)') sigma
-    ! END IF
-    write (*,*) "MPI process", numpe, "el. no.", iel_start + iel - 1,  &
+    write (*,*) "MPI rank", numpe, "el", iel,  &
                 "int. point", i, "stress", sigma
 END DO intpts
 end do elmnts
