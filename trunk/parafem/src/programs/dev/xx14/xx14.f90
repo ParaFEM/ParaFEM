@@ -516,10 +516,13 @@ deallocate( diag_precon_pp )
 deallocate( storkm_pp )
 deallocate( pmul_pp ) 
 
-!--------------- recover stresses at centroidal gauss point --------------
+!--------------- recover stresses at centroidal gauss point ------------
 
 ALLOCATE( eld_pp(ntot,nels_pp), source=zero )
-!points = zero
+
+! allocate the stress array component of cgca_pfem_stress coarray
+!subroutine cgca_pfem_salloc( nels_pp, intp, comp, coar )
+call cgca_pfem_salloc( nels_pp, nip, nst, cgca_pfem_stress )
 
 CALL gather(xnew_pp(1:),eld_pp)
 DEALLOCATE(xnew_pp)
@@ -536,13 +539,19 @@ intpts: DO i = 1, nip
     CALL beemat(bee,deriv)
     eps = MATMUL(bee,eld_pp(:,iel))
     sigma = MATMUL(dee,eps)
-    write (*,*) "MPI rank", numpe, "el", iel,  &
-                "int. point", i, "stress", sigma
+!    write (*,*) "MPI rank", numpe, "el", iel,  &
+!                "int. point", i, "stress", sigma
+
+    ! set the stress array on this image
+    cgca_pfem_stress%stress( iel, i, : ) = sigma
+
 END DO intpts
 end do elmnts
 
 DEALLOCATE( g_coord_pp )
 
+! dump stresses to stdout
+call cgca_pfem_sdmp
 
 !------------------------ write out displacements ------------------------
 
@@ -572,12 +581,14 @@ END DO
 IF ( numpe==1 ) CLOSE(12)
 IF ( numpe==1 ) write(11,'(A,F10.4)')"This analysis took  :",          &
    elap_time()-timest(1)  
+!*** end ParaFEM part ************************************************72
 
 
 !*** CGPACK part *****************************************************72
 ! deallocate all CGPACK arrays
 call cgca_ds(  cgca_space )
 call cgca_drt( cgca_grt )
+call cgca_pfem_sdalloc( cgca_pfem_stress )
 !*** end CGPACK part *************************************************72
 
 
