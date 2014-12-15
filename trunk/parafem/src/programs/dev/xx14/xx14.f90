@@ -551,9 +551,17 @@ end do elmnts
 DEALLOCATE( g_coord_pp )
 
 ! dump stresses to stdout
-call cgca_pfem_sdmp
+!call cgca_pfem_sdmp
+! dump stresses from last image for element 1
+if ( cgca_img .eq. 1 ) then
+  do i = 1, nip 
+    write (*,*) "img", cgca_nimgs, "FE 1 int. p.", i, "stress",        &
+                cgca_pfem_stress[ cgca_nimgs ] % stress( 1 , i , : )
+  end do
+end if
+sync all
 
-!------------------------ write out displacements ------------------------
+!------------------------ write out displacements ----------------------
 
 CALL calc_nodes_pp(nn,npes,numpe,node_end,node_start,nodes_pp)
 
@@ -588,7 +596,7 @@ IF ( numpe==1 ) write(11,'(A,F10.4)')"This analysis took  :",          &
 ! deallocate all CGPACK arrays
 call cgca_ds(  cgca_space )
 call cgca_drt( cgca_grt )
-call cgca_pfem_sdalloc( cgca_pfem_stress )
+call cgca_pfem_sdalloc
 !*** end CGPACK part *************************************************72
 
 
