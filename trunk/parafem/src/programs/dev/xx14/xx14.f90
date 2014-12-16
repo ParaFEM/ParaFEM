@@ -82,6 +82,8 @@ real( kind=rdef ) ::    &
  cgca_bcou(3)             ! upper phys. coords of the coarray on image
 real( kind=rdef ), allocatable :: cgca_grt(:,:,:)[:,:,:]
 
+real( kind=iwp ) :: cgca_stress(3,3) ! stress tensor, ParaFEM kind
+
 logical( kind=ldef ) :: cgca_solid
 !*** end CGPACK part *************************************************72
 
@@ -560,10 +562,21 @@ if ( cgca_img .eq. 1 ) then
             cgca_pfem_stress[ cgca_nimgs ] % stress( 1 , i , : )
   end do
 end if
+
+! all images sync here
 sync all
 
 !*** CGPACK part *****************************************************72
 ! propagate cleavage
+! calculate the mean stress tensor per image
+call cgca_pfem_simg( cgca_stress )
+write (*,"(a0,i0,a0,9es9.1)") "img ", cgca_img,                        &
+ " mean s tens. ", cgca_stress
+
+! all images wait for each other, to make sure the stress arrays
+! are not modified until all images calculate their mean values
+sync all
+
 !*** end CGPACK part *************************************************72
 
 
