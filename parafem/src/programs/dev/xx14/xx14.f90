@@ -521,8 +521,8 @@ deallocate( pmul_pp )
 ALLOCATE( eld_pp(ntot,nels_pp), source=zero )
 
 ! allocate the stress array component of cgca_pfem_stress coarray
-!subroutine cgca_pfem_salloc( nels_pp, intp, comp, coar )
-call cgca_pfem_salloc( nels_pp, nip, nst, cgca_pfem_stress )
+!subroutine cgca_pfem_salloc( nels_pp, intp, comp )
+call cgca_pfem_salloc( nels_pp, nip, nst )
 
 CALL gather(xnew_pp(1:),eld_pp)
 DEALLOCATE(xnew_pp)
@@ -555,12 +555,19 @@ DEALLOCATE( g_coord_pp )
 ! dump stresses from last image for element 1
 if ( cgca_img .eq. 1 ) then
   do i = 1, nip 
-    write (*,*) "img", cgca_nimgs, "FE 1 int. p.", i, "stress",        &
-                cgca_pfem_stress[ cgca_nimgs ] % stress( 1 , i , : )
+    write (*,"(2(a0,i0),a0,6es10.2)") "img ", cgca_nimgs,              &
+            " FE 1 int. p. ", i, " stress ",                           &
+            cgca_pfem_stress[ cgca_nimgs ] % stress( 1 , i , : )
   end do
 end if
 sync all
 
+!*** CGPACK part *****************************************************72
+! propagate cleavage
+!*** end CGPACK part *************************************************72
+
+
+!*** ParaFEM part ****************************************************72
 !------------------------ write out displacements ----------------------
 
 CALL calc_nodes_pp(nn,npes,numpe,node_end,node_start,nodes_pp)
