@@ -287,9 +287,9 @@ sync all
 
 write (*,*) "img <-> MPI proc", cgca_img, numpe
 
-! allocate the tmp centroids array, which is an allocatable
-! component of a coarray variable of derived type 
-call cgca_pfem_cta( ndim, nels_pp, cgca_pfem_centroid_tmp )
+! allocate the tmp centroids array: cgca_pfem_centroid_tmp%r ,
+! an allocatable array component of a coarray variable of derived type
+call cgca_pfem_ctalloc( ndim, nels_pp )
 
 ! set the centroids array component on this image, no remote calls.
 ! first dim - coord, 1,2,3
@@ -315,8 +315,8 @@ call cgca_pfem_cenc( cgca_origin, cgca_rot, cgca_bcol, cgca_bcou )
 ! Temp centroids arrays are *not* coarrays so there is no implicit sync.
 sync all
 
-! Now can deallocate the temp arrays
-call cgca_pfem_ctd( cgca_pfem_centroid_tmp )
+! Now can deallocate the temp arrays cgca_pfem_centroid_tmp%r
+call cgca_pfem_ctdalloc
 
 ! dump the FE centroids in CA cs to stdout
 ! Obviously, this is an optional step, just for debug
