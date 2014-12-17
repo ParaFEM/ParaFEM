@@ -65,12 +65,18 @@ integer( kind=idef ) :: &
  cgca_nimgs,            &
  cgca_lres,             &
  cgca_ng,               & ! number of grains in the whole model
- cgca_count1              ! a counter
+ cgca_count1,           & ! a counter
+ cgca_clvg_iter           ! number of cleavage iterations
 integer( kind=iarr ) :: cgca_c(3) ! coarray dimensions
 integer( kind=iarr ), allocatable :: cgca_space(:,:,:,:) [:,:,:]
 integer :: cgca_errstat
 
-real( kind=rdef ), parameter :: cgca_zero = 0.0_rdef, cgca_one = 1.0_rdef
+real( kind=rdef ), parameter :: cgca_zero = 0.0_rdef,                  &
+ cgca_one = 1.0_rdef,                                                  &
+! cleavage stress on 100, 110, 111 planes for BCC,
+! see the manual for derivation.
+ cgca_scrit(3) = (/ 1.05e4_rdef, 1.25e4_rdef, 4.90e4_rdef /)
+
 real( kind=rdef ) ::    &
  cgca_qual,             & ! quality
  cgca_bsz(3),           & ! the given and the updated "box" size
@@ -79,10 +85,11 @@ real( kind=rdef ) ::    &
  cgca_dm,               & ! mean grain size, linear dim, phys units
  cgca_res,              & ! resolutions, cells per grain
  cgca_bcol(3),          & ! lower phys. coords of the coarray on image
- cgca_bcou(3)             ! upper phys. coords of the coarray on image
+ cgca_bcou(3),          & ! upper phys. coords of the coarray on image
+ cgca_stress(3,3),      & ! stress tensor
+ cgca_length,           & ! fracture length scale
+ cgca_time_inc            ! time increment
 real( kind=rdef ), allocatable :: cgca_grt(:,:,:)[:,:,:]
-
-real( kind=iwp ) :: cgca_stress(3,3) ! stress tensor, ParaFEM kind
 
 logical( kind=ldef ) :: cgca_solid
 !*** end CGPACK part *************************************************72
@@ -228,6 +235,9 @@ cgca_dm = 1.0e0_rdef
 
 ! resolution
 cgca_res = 1.0e5_rdef
+
+! cgpack length scale, also in mm
+cgca_length = 1.0_rdef
 
 ! each image calculates the coarray grid dimensions
 call cgca_gdim( cgca_nimgs, cgca_ir, cgca_qual )
@@ -576,6 +586,19 @@ write (*,"(a0,i0,a0,9es9.1)") "img ", cgca_img,                        &
 ! all images wait for each other, to make sure the stress arrays
 ! are not modified until all images calculate their mean values
 sync all
+
+! no real time increments in this problem, so use 1 sec.
+cgca_time_inc = 1.0_rdef
+
+! run cleavage for a correct number of iterations, which is a function
+! of the characteristic length and the time increment
+cgca_clvg_iter = nint( cgca_length * cgca_lres / cgca_time_inc )
+
+! subroutine cgca_clvgp( coarray, rt, t, scrit, sub, periodicbc,    &
+!                        iter, heartbeat, debug )
+! sync all inside
+call cgca_clvgp( cgca_space, cgca_grt, cgca_stress, cgca_scrit,        &
+                 cgca_clvgsd, .false., cgca_clvg_iter, 10, .true. )
 
 !*** end CGPACK part *************************************************72
 
