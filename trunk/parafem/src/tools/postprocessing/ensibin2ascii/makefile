@@ -1,4 +1,4 @@
-# MAKEFILE src/tools/postprocessing/ndttrget/makefile
+# MAKEFILE src/tools/postprocessing/ensibin2ascii/makefile
 # Author: Louise M. Lever
 # -----------------------------------------------------------------------
 # Compiles ttbttr program executable as RELEASE or DEBUG
@@ -30,33 +30,33 @@ all:	release
 
 release:
 	@echo
-	@echo "Building ndttrget RELEASE"
-	$(MAKE) ndttrget \
-	FFLAGS="-c -I$(MODULE) $(NDTTRGET_MPI_REL_FFLAGS)" \
-	LDFLAGS="-L$(LIB) -lParaFEM_mpi.$(VERSION) $(NDTTRGET_MPI_REL_LDFLAGS)"
-	@echo "Done ndttrget RELEASE"
+	@echo "Building ensibin2ascii RELEASE"
+	$(MAKE) ensibin2ascii \
+	FFLAGS="-c -I$(MODULE) $(ENSIBIN2ASCII_MPI_REL_FFLAGS)" \
+	LDFLAGS="-L$(LIB) -lParaFEM_mpi.$(VERSION) $(ENSIBIN2ASCII_MPI_REL_LDFLAGS)"
+	@echo "Done ensibin2ascii RELEASE"
 
 debug:
 	@echo
-	@echo "Building ndttrget DEBUG"
-	$(MAKE) ndttrget \
-	FFLAGS="-c -I$(MODULE) $(NDTTRGET_MPI_DBG_FFLAGS)" \
-	LDFLAGS="-L$(LIB) -lParaFEM_mpi_D.$(VERSION) $(NDTTRGET_MPI_DBG_LDFLAGS)"
-	@echo "Done ndttrget DEBUG"
+	@echo "Building ensibin2ascii DEBUG"
+	$(MAKE) ensibin2ascii \
+	FFLAGS="-c -I$(MODULE) $(ENSIBIN2ASCII_MPI_DBG_FFLAGS)" \
+	LDFLAGS="-L$(LIB) -lParaFEM_mpi_D.$(VERSION) $(ENSIBIN2ASCII_MPI_DBG_LDFLAGS)"
+	@echo "Done ensibin2ascii DEBUG"
 
-ndttrget: ndttrget.o
-	$(FC) ndttrget.o -o ndttrget $(LDFLAGS)
+ensibin2ascii: ensibin2ascii.o
+	$(FC) ensibin2ascii.o -o ensibin2ascii $(LDFLAGS)
 
-ndttrget.o: ndttrget.f90
-	$(FC) ndttrget.f90 $(FFLAGS)
+ensibin2ascii.o: ensibin2ascii.f90
+	$(FC) ensibin2ascii.f90 $(FFLAGS)
 
 clean:
 	rm -f *.o
 
 execlean:
-	rm -f ndttrget ../../../../bin/ndttrget
+	rm -f ensibin2ascii ../../../../bin/ensibin2ascii
 
-relink: ndttrget
+relink: ensibin2ascii
 
 install:
-	cp ndttrget ../../../../bin
+	cp ensibin2ascii ../../../../bin
