@@ -9,7 +9,7 @@ PROGRAM p1210_4
   USE input         ; USE output           ; USE loading
   USE timing        ; USE maths            ; USE gather_scatter
   USE partition     ; USE elements         ; USE steering
-  USE pcg           ; USE plasticity 
+  USE pcg           ; USE plasticity       ; USE new_library
  
   IMPLICIT NONE
 
@@ -62,8 +62,10 @@ PROGRAM p1210_4
   IF (argc /= 1) CALL job_name_error(numpe,program_name)
   CALL GETARG(1, job_name) 
 
+  PRINT *, "Need to add variable NRES to dat file for 5th ed compatibility"
+
   CALL read_p1210(job_name,numpe,dtim,e,element,loaded_nodes,meshgen,nels,    &
-                  nip,nn,nod,npri,nr,nstep,partitioner,pload,rho,sbary,v)
+                  nip,nn,nod,npri,nr,nres,nstep,partitioner,pload,rho,sbary,v)
  
   CALL calc_nels_pp(job_name,nels,npes,numpe,partitioner,nels_pp)
 
@@ -245,7 +247,7 @@ PROGRAM p1210_4
 
       gauss_pts_2: DO i=1,nip
         dee     = zero
-        CALL deemat(e,v,dee)
+        CALL deemat(dee,e,v)
         CALL shape_der(der,points,i)
         jac     = MATMUL(der,g_coord_pp(:,:,iel))
         det     = determinant(jac)
