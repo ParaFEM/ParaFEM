@@ -10,7 +10,7 @@ PROGRAM xx11
   USE input      ; USE output           ; USE loading
   USE timing     ; USE maths            ; USE gather_scatter
   USE partition  ; USE elements         ; USE steering       
-  USE geometry   ; USE pcg
+  USE geometry   ; USE pcg              ; USE new_library
 
   IMPLICIT NONE
 
@@ -30,6 +30,7 @@ PROGRAM xx11
   INTEGER               :: loaded_freedoms_pp,loaded_freedoms_start
   INTEGER               :: nels,ndof,ielpe,npes_pp
   INTEGER               :: argc,iargc,meshgen,partitioner
+  INTEGER               :: nres
   REAL(iwp)             :: kx,ky,kz,det,tol,up,alpha,beta,q
   REAL(iwp),PARAMETER   :: zero = 0.0_iwp,penalty=1.e20_iwp
   CHARACTER(LEN=15)     :: element
@@ -72,8 +73,10 @@ PROGRAM xx11
   IF(argc /= 1) CALL job_name_error(numpe,program_name)
   CALL GETARG(1,job_name)
 
+  PRINT *, "Add value for NRES in the dat file"
+
   CALL read_p123(job_name,numpe,element,fixed_freedoms,kx,ky,kz,limit,        &
-                 loaded_nodes,meshgen,nels,nip,nn,nod,nr,partitioner,tol)
+                 loaded_nodes,meshgen,nels,nip,nn,nod,nr,nres,partitioner,tol)
 
   CALL calc_nels_pp(job_name,nels,npes,numpe,partitioner,nels_pp)
 
@@ -252,12 +255,12 @@ PROGRAM xx11
     val_f = zero
 
     CALL read_fixed(job_name,numpe,node,sense,val_f)
-    CALL find_no2(g_g_pp,g_num_pp,node,sense,fixed_freedoms_pp,               &
-                  fixed_freedoms_start,no)
+    CALL find_no2(g_g_pp,g_num_pp,node,sense,no)
+
     CALL MPI_ALLREDUCE(no,no_global,fixed_freedoms,MPI_INTEGER,MPI_MAX,       &
                        MPI_COMM_WORLD,ier)
-    CALL reindex_fixed_nodes(ieq_start,no_global,no_pp_temp,                  &
-                             fixed_freedoms_pp,fixed_freedoms_start,neq_pp)
+    CALL reindex(ieq_start,no_global,no_pp_temp,                              &
+                 fixed_freedoms_pp,fixed_freedoms_start,neq_pp)
 
     ALLOCATE(no_f_pp(fixed_freedoms_pp),store_pp(fixed_freedoms_pp))
 
@@ -292,8 +295,8 @@ PROGRAM xx11
     val = zero ; node = 0
 
     CALL read_loads(job_name,numpe,node,val)
-    CALL reindex_fixed_nodes(ieq_start,node,no_pp_temp,                       &
-                             loaded_freedoms_pp,loaded_freedoms_start,neq_pp)
+    CALL reindex(ieq_start,node,no_pp_temp,                                   &
+                 loaded_freedoms_pp,loaded_freedoms_start,neq_pp)
 
     ALLOCATE(no_pp(loaded_freedoms_pp))
 
