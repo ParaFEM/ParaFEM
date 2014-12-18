@@ -1,4 +1,4 @@
-﻿PROGRAM rfemsolve_te
+PROGRAM rfemsolve_te
 !------------------------------------------------------------------------------ 
 !      Program rfemsolve_te three dimensional analysis of an elastic solid
 !                        load control or displacement control; multiple
