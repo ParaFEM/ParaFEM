@@ -33,7 +33,7 @@ PROGRAM p126_4
   REAL(iwp),PARAMETER   :: zero = 0.0_iwp
   REAL(iwp),PARAMETER   :: one  = 1.0_iwp
   LOGICAL               :: converged,cj_converged
-  CHARACTER(LEN=15)     :: element='hexahedron',io_type
+  CHARACTER(LEN=15)     :: element='hexahedron'
   CHARACTER(LEN=50)     :: program_name='p126',job_name,label
   CHARACTER(LEN=50)     :: fname
   
@@ -69,7 +69,7 @@ PROGRAM p126_4
   IF (argc /= 1) CALL job_name_error(numpe,program_name)
   CALL GETARG(1, job_name) 
 
-  CALL read_p126(job_name,numpe,cjits,cjtol,ell,fixed_equations,io_type,      &
+  CALL read_p126(job_name,numpe,cjits,cjtol,ell,fixed_equations,              &
                  kappa,limit,meshgen,nels,nip,nn,nr,nres,partitioner,penalty, &
                  rho,tol,x0,visc)
 
@@ -189,8 +189,7 @@ PROGRAM p126_4
  PRINT*, "Organize fixed equations"
 
  CALL read_loads_ns(job_name,numpe,no,val)
- CALL reindex_fixed_nodes(ieq_start,no,no_local_temp,num_no,no_index_start, &
-                          neq_pp)          
+ CALL reindex(ieq_start,no,no_local_temp,num_no,no_index_start,neq_pp)
 
  ALLOCATE(no_local(1:num_no))
  no_local = no_local_temp(1:num_no)
