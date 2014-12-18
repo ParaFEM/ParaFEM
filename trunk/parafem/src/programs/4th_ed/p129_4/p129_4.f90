@@ -10,7 +10,7 @@ PROGRAM p129_4
   USE input         ; USE output           ; USE loading
   USE timing        ; USE maths            ; USE gather_scatter
   USE partition     ; USE elements         ; USE steering
-  USE pcg
+  USE pcg           ; USE new_library
 
   IMPLICIT NONE
  
@@ -27,6 +27,7 @@ PROGRAM p129_4
  INTEGER               :: argc,iargc ! command line arguments 
  INTEGER               :: meshgen    ! mesh type 1 = S&G ; 2 = Abaqus
  INTEGER               :: partitioner! type 1 = S&G ; type 2 = external
+ INTEGER               :: nres       ! not used
  REAL(iwp)             :: e,v,det,rho,alpha1,beta1,omega,theta,period
  REAL(iwp)             :: pi,dtim,volume,c1,c2,c3,c4,real_time,tol,big,up
  REAL(iwp)             :: alpha,beta,tload     
@@ -70,8 +71,10 @@ PROGRAM p129_4
   IF (argc /= 1) CALL job_name_error(numpe,program_name)
   CALL GETARG(1, job_name)
 
+  PRINT *, "<job_name>.dat file needs value for variable nres used in 5th ed."
+
   CALL read_p129(job_name,numpe,alpha1,beta1,e,element,limit,loaded_nodes,    &
-                 meshgen,nels,nip,nn,nod,npri,nr,nstep,omega,partitioner,     &
+                 meshgen,nels,nip,nn,nod,npri,nr,nres,nstep,omega,partitioner,&
                  rho,theta,tol,v)
    
   CALL calc_nels_pp(job_name,nels,npes,numpe,partitioner,nels_pp)
@@ -161,7 +164,7 @@ PROGRAM p129_4
 ! 8. Element stiffness integration and storage
 !------------------------------------------------------------------------------ 
  
- CALL deemat(e,v,dee)
+ CALL deemat(dee,e,v)
  CALL sample(element,points,weights)
  
  store_km_pp     = zero
