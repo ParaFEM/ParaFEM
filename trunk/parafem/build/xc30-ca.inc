@@ -1,7 +1,8 @@
-# BUILD INCLUDE build/xe6.inc
+# BUILD INCLUDE build/xc30-ca.inc
 # Author: Louise M. Lever
 # ------------------------------------------------------------------------------
-# Include file for the xe6 (HECToR) architecture.
+# Include file for the xc30 (ARCHER) architecture with modifications to 
+# build and link with CGPACK.
 # ------------------------------------------------------------------------------
 
 # ------------------------------------------------------------------------------
@@ -14,8 +15,12 @@ INSTALL_CMD=mv
 # FLAGS for EXTERNAL LIBRARY compliation
 # ------------------------------------------------------------------------------
 EXT_LIB_ARPACK_FC=ftn
-EXT_LIB_ARPACK_FFLAGS=-V -O3 -em -s real64
+EXT_LIB_ARPACK_FFLAGS=-O3 -em -s real64
 EXT_LIB_ARPACK_LDFLAGS=
+
+EXT_LIB_GAF77_FC=ftn
+EXT_LIB_GAF77_FFLAGS=-O3 -em -s real64
+EXT_LIB_GAF77_LDFLAGS=
 
 EXT_LIB_METIS_CC=cc
 EXT_LIB_METIS_OPTFLAGS=-O2
@@ -64,15 +69,15 @@ DEFAULT_P12_MPI_REL_LDFLAGS=
 DEFAULT_P12_MPI_DBG_LDFLAGS=
 
 # generic 5ED group FFLAGS and LDFLAGS
-DEFAULT_5ED_MPI_REL_FFLAGS=	-V -O3 -em -s real64 -m 0 
-DEFAULT_5ED_MPI_DBG_FFLAGS=	-V -g -em -s real64
+DEFAULT_5ED_MPI_REL_FFLAGS=-V -O3 -em -s real64 -m 0 
+DEFAULT_5ED_MPI_DBG_FFLAGS=-V -g -em -s real64
 DEFAULT_5ED_MPI_REL_LDFLAGS=
 DEFAULT_5ED_MPI_DBG_LDFLAGS=
 
 # generic XX group FFLAGS and LDFLAGS
 DEFAULT_XX_MPI_REL_FFLAGS=	-V -O3 -em -s real64 -I$(HOME)/lib
 DEFAULT_XX_MPI_DBG_FFLAGS=	-V -g -em -s real64
-DEFAULT_XX_MPI_REL_LDFLAGS=	-L$(HOME)/lib -lcgcapack
+DEFAULT_XX_MPI_REL_LDFLAGS=	-V -O3 -em -s real64 -L$(HOME)/lib -lcgcapack
 DEFAULT_XX_MPI_DBG_LDFLAGS=
 
 # generic PROG8 group FFLAGS and LDFLAGS
