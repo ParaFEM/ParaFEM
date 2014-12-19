@@ -1,16 +1,16 @@
 !$Id$
 PROGRAM xx14       
-!------------------------------------------------------------------------- 
+!-----------------------------------------------------------------------
 ! Anton Shterenlikht, 9-SEP-2014:
-
-!      Program xx14 - linking ParaFEM with CGPACK, specifically modifying
-!      p121 from 5th edition to link with the cgca module.
+!
+!      Program xx14 - linking ParaFEM with CGPACK, specifically
+!      modifying p121 from 5th edition to link with the cgca module.
 !
 !      12.1 is a three dimensional analysis of an elastic solid
 !      using 20-node brick elements, preconditioned conjugate gradient
 !      solver; diagonal preconditioner diag_precon; parallel version
 !      loaded_nodes only
-!------------------------------------------------------------------------- 
+!-----------------------------------------------------------------------
 !USE mpi_wrapper  !remove comment for serial compilation
 
 !*** CGPACK part *****************************************************72
@@ -35,8 +35,8 @@ IMPLICIT NONE
 ! neq, ntot are now global variables - must not be declared
 
 INTEGER, PARAMETER :: nodof = 3, ndim = 3, nst = 6
-INTEGER :: loaded_nodes, iel, i, j, k, iters, limit, nn, nr, nip, nod,   &
-   nels, ndof, npes_pp, node_end, node_start, nodes_pp, meshgen,         &
+INTEGER :: loaded_nodes, iel, i, j, k, iters, limit, nn, nr, nip, nod, &
+   nels, ndof, npes_pp, node_end, node_start, nodes_pp, meshgen,       &
    partitioner, nlen
 
 REAL( iwp ), PARAMETER :: zero=0.0_iwp
@@ -48,13 +48,13 @@ CHARACTER( LEN=50 ) :: argv
 CHARACTER( LEN=15 ) :: element
 CHARACTER( LEN=6 ) :: ch 
 
-!---------------------------- dynamic arrays -----------------------------
-REAL( iwp ), ALLOCATABLE :: points(:,:), dee(:,:), weights(:),val(:,:),  &
-   disp_pp(:), g_coord_pp(:,:,:), jac(:,:), der(:,:), deriv(:,:),        &
-   bee(:,:), storkm_pp(:,:,:), eps(:), sigma(:), diag_precon_pp(:),      &
-   p_pp(:), r_pp(:), x_pp(:), xnew_pp(:), u_pp(:), pmul_pp(:,:),         &
-   utemp_pp(:,:), d_pp(:), timest(:), diag_precon_tmp(:,:), eld_pp(:,:), &
-   temp(:)
+!---------------------------- dynamic arrays ---------------------------
+REAL( iwp ), ALLOCATABLE :: points(:,:), dee(:,:), weights(:),val(:,:),&
+   disp_pp(:), g_coord_pp(:,:,:), jac(:,:), der(:,:), deriv(:,:),      &
+   bee(:,:), storkm_pp(:,:,:), eps(:), sigma(:), diag_precon_pp(:),    &
+   p_pp(:), r_pp(:), x_pp(:), xnew_pp(:), u_pp(:), pmul_pp(:,:),       &
+   utemp_pp(:,:), d_pp(:), timest(:), diag_precon_tmp(:,:),            &
+   eld_pp(:,:), temp(:)
 INTEGER, ALLOCATABLE :: rest(:,:), g_num_pp(:,:), g_g_pp(:,:), node(:)
 
 !*** CGPACK part *****************************************************72
@@ -132,12 +132,13 @@ CALL getname( argv, nlen )
 CALL read_p121( argv, numpe, e, element, limit, loaded_nodes, meshgen, &
                 nels, nip, nn, nod, nr, partitioner, tol, v )
 
-!*    Calculates the number of elements, NELS_PP, assigned to each processor.
-!*    It is effectively a very naive method of mesh partitioning. The 
-!*    subroutine also computes, IEL_START, the first element number on each 
-!*    processor. IEL_START and NELS_PP are the external variables modified by
-!*    this subroutine. Note that they are global variables that are not
-!*    passed through the list of arguments.
+! Calculates the number of elements, NELS_PP, assigned to each
+! processor.
+! It is effectively a very naive method of mesh partitioning. The 
+! subroutine also computes, IEL_START, the first element number on each 
+! processor. IEL_START and NELS_PP are the external variables modified
+! by this subroutine. Note that they are global variables that are not
+! passed through the list of arguments.
 !
 ! http://parafem.googlecode.com/svn/trunk/parafem/src/modules/mpi/gather_scatter.f90
 !
@@ -157,12 +158,13 @@ ntot = ndof
 ! g_num_pp(nod,nels_pp) - integer, elements connectivity
 ! g_coord_pp - global coord?
 ! http://parafem.googlecode.com/svn/trunk/parafem/src/modules/mpi/input.f90
-ALLOCATE(   g_num_pp( nod, nels_pp ),        &
-          g_coord_pp( nod, ndim, nels_pp ),  &
-                rest( nr,nodof+1)     )
-g_num_pp = 0
+ALLOCATE( g_num_pp( nod, nels_pp ) )
+allocate( g_coord_pp( nod, ndim, nels_pp ) )
+allocate( rest( nr,nodof+1) )
+
+  g_num_pp = 0
 g_coord_pp = zero
-rest = 0
+      rest = 0
 
 ! http://parafem.googlecode.com/svn/trunk/parafem/src/modules/mpi/input.f90
 CALL read_g_num_pp( argv, iel_start, nn, npes, numpe, g_num_pp )
@@ -396,9 +398,9 @@ sync all
 
 
 !----------  find the steering array and equations per process ---------
- CALL rearrange(rest)
- g_g_pp = 0
-    neq = 0
+CALL rearrange(rest)
+g_g_pp = 0
+   neq = 0
 
 ! map equations to elements
 ! http://parafem.googlecode.com/svn/trunk/parafem/src/modules/shared/new_library.f90
@@ -451,8 +453,8 @@ DO i=1,ndof
 END DO
 END DO elements_2
 
-CALL scatter(diag_precon_pp,diag_precon_tmp)
-DEALLOCATE(diag_precon_tmp)
+CALL scatter( diag_precon_pp, diag_precon_tmp )
+DEALLOCATE( diag_precon_tmp )
 
 IF(numpe==1)THEN
   OPEN(  11,FILE=argv(1:nlen)//".res",STATUS='REPLACE',ACTION='write' )
@@ -463,7 +465,7 @@ IF(numpe==1)THEN
   write( 11,'(A,F10.4)') "Time after setup is:",elap_time()-timest(1)
 END IF
 
-!----------------------------- get starting r ----------------------------
+!----------------------------- get starting r --------------------------
 IF(loaded_nodes>0) THEN
   ALLOCATE( node(loaded_nodes), source=0 )
   allocate( val(ndim,loaded_nodes), source=zero )
@@ -481,7 +483,7 @@ d_pp = diag_precon_pp*r_pp
 p_pp = d_pp
 x_pp = zero
 
-!--------------------- preconditioned cg iterations ----------------------
+!--------------------- preconditioned cg iterations --------------------
 iters=0
 timest(3) = elap_time()
 
@@ -494,13 +496,13 @@ iterations: DO
 
  elements_3: DO iel=1,nels_pp
      utemp_pp(:,iel) = MATMUL(storkm_pp(:,:,iel),pmul_pp(:,iel))
-!    CALL dgemv('n',ntot,ntot,1.0_iwp,storkm_pp(:,:,iel),ntot,           &
+!    CALL dgemv('n',ntot,ntot,1.0_iwp,storkm_pp(:,:,iel),ntot,         &
 !               pmul_pp(:,iel),1,0.0_iwp,utemp_pp(:,iel),1)
  END DO elements_3
 
  CALL scatter(u_pp,utemp_pp)
 
-!-------------------------- pcg equation solution ------------------------
+!-------------------------- pcg equation solution ----------------------
       up = DOT_PRODUCT_P(r_pp,d_pp)
    alpha = up/DOT_PRODUCT_P(p_pp,u_pp)
  xnew_pp = x_pp+p_pp*alpha
