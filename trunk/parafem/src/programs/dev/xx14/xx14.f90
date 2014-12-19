@@ -600,6 +600,11 @@ cgca_clvg_iter = nint( cgca_length * cgca_lres / cgca_time_inc )
 call cgca_clvgp( cgca_space, cgca_grt, cgca_stress, cgca_scrit,        &
                  cgca_clvgsd, .false., cgca_clvg_iter, 10, .true. )
 
+if ( cgca_img .eq. 1 ) write (*,*) "dumping model to file"
+ call cgca_swci( cgca_space, cgca_state_type_frac,  10, "zf1.raw" )
+if ( cgca_img .eq. 1 ) write (*,*) "finished dumping model to file"
+sync all
+
 !*** end CGPACK part *************************************************72
 
 
