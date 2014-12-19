@@ -74,8 +74,8 @@ integer :: cgca_errstat
 real( kind=rdef ), parameter :: cgca_zero = 0.0_rdef,                  &
  cgca_one = 1.0_rdef,                                                  &
 ! cleavage stress on 100, 110, 111 planes for BCC,
-! see the manual for derivation.
- cgca_scrit(3) = (/ 1.05e4_rdef, 1.25e4_rdef, 4.90e4_rdef /)
+! see the manual for derivation, GPa.
+ cgca_scrit(3) = (/ 1.05e1_rdef, 1.25e1_rdef, 4.90e1_rdef /)
 
 real( kind=rdef ) ::    &
  cgca_qual,             & ! quality
@@ -469,10 +469,10 @@ END IF
 IF(loaded_nodes>0) THEN
   ALLOCATE( node(loaded_nodes), source=0 )
   allocate( val(ndim,loaded_nodes), source=zero )
-  CALL read_loads(argv,numpe,node,val)
-  CALL load(g_g_pp,g_num_pp,node,val,r_pp(1:))
-  q=SUM_P(r_pp(1:))
-  IF(numpe==1) write(11,'(A,E12.4)') "The total load is:",q
+  CALL read_loads( argv, numpe, node, val )
+  CALL load( g_g_pp, g_num_pp, node, val, r_pp(1:) )
+  q = SUM_P( r_pp(1:) )
+  IF ( numpe==1 ) write(11,'(A,E12.4)') "The total load is:", q
   DEALLOCATE( node )
   deallocate( val )
 END IF
@@ -598,8 +598,10 @@ cgca_clvg_iter = nint( cgca_length * cgca_lres / cgca_time_inc )
 
 ! subroutine cgca_clvgp( coarray, rt, t, scrit, sub, periodicbc,    &
 !                        iter, heartbeat, debug )
+! lower the crit stresses by a factor of 10.
 ! sync all inside
-call cgca_clvgp( cgca_space, cgca_grt, cgca_stress, cgca_scrit,        &
+call cgca_clvgp( cgca_space, cgca_grt, cgca_stress,                    &
+                 0.1_rdef * cgca_scrit,                                &
                  cgca_clvgsd, .false., cgca_clvg_iter, 10, .true. )
 
 if ( cgca_img .eq. 1 ) write (*,*) "dumping model to file"
