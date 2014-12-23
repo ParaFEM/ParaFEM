@@ -250,7 +250,7 @@ call cgca_gdim( cgca_nimgs, cgca_ir, cgca_qual )
 call cgca_cadim( cgca_bsz, cgca_res, cgca_dm, cgca_ir, cgca_c,         &
                  cgca_lres, cgca_ng )
 
-if (cgca_img .eq. 1 )                                                  &
+if (cgca_img .eq. 1 ) then
   write ( *, "(9(a,i0),tr1,g0,tr1,i0,3(a,g0),a)" )                     &
     "img: ", cgca_img  , " nimgs: ", cgca_nimgs,                       &
      " ("  , cgca_c (1), ","       , cgca_c (2), ",", cgca_c (3),      &
@@ -258,6 +258,8 @@ if (cgca_img .eq. 1 )                                                  &
      "] "  , cgca_ng   ,                                               &
     cgca_qual, cgca_lres,                                              &
     " (", cgca_bsz(1), ",", cgca_bsz(2), ",", cgca_bsz(3), ")"
+  write (*,*) "dataset sizes for ParaView", cgca_c*cgca_ir
+end if
 
 ! allocate space coarray with 2 layers
 !subroutine cgca_as( l1, u1, l2, u2, l3, u3, col1, cou1, col2, cou2,   &
@@ -381,10 +383,9 @@ sync all
 ! update grain connectivity, local routine, no sync needed
 call cgca_gcu( cgca_space )
 
-! set a single crack nucleus in the centre of the x3=max(x3) face
-cgca_space( cgca_c(1)/2, cgca_c(2)/2, cgca_c(3), cgca_state_type_frac )&
-          [ cgca_ir(1)/2, cgca_ir(2)/2, cgca_ir(3) ] =                 &
-                                      cgca_clvg_state_100_edge
+! set a single crack nucleus in the centre of the x1=x2=0 edge
+cgca_space( 1, 1, cgca_c(3) /2, cgca_state_type_frac )                 &
+          [ 1, 1, cgca_ir(3)/2 ] = cgca_clvg_state_100_edge
 
 ! dump space arrays to files, only image 1 does it,
 ! all others wait at sync all
@@ -601,7 +602,7 @@ cgca_clvg_iter = nint( cgca_length * cgca_lres / cgca_time_inc )
 ! lower the crit stresses by a factor of 10.
 ! sync all inside
 call cgca_clvgp( cgca_space, cgca_grt, cgca_stress,                    &
-                 0.1_rdef * cgca_scrit,                                &
+                 0.01_rdef * cgca_scrit,                               &
                  cgca_clvgsd, .false., cgca_clvg_iter, 10, .true. )
 
 if ( cgca_img .eq. 1 ) write (*,*) "dumping model to file"
