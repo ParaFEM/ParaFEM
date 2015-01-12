@@ -66,7 +66,8 @@ integer( kind=idef ) :: &
  cgca_lres,             &
  cgca_ng,               & ! number of grains in the whole model
  cgca_count1,           & ! a counter
- cgca_clvg_iter           ! number of cleavage iterations
+ cgca_clvg_iter,        & ! number of cleavage iterations
+ cgca_load_iter           ! number of loading iterations/steps
 integer( kind=iarr ) :: cgca_c(3) ! coarray dimensions
 integer( kind=iarr ), allocatable :: cgca_space(:,:,:,:) [:,:,:]
 integer :: cgca_errstat
@@ -115,19 +116,19 @@ CALL getname( argv, nlen )
 !*    Master processor reads the general data for the problem
 !     and broadcasts it to the slave processors.
 !  in:
-!      argv - character, file name to read from
-!     numpe - MPI rank
-!         e - Young's modulus
-!   element - character, element type 
-!     limit - max number of iterations
-! loaded_nodes - number of nodes with applied forces
-!   meshgen - mesh numbering scheme
-!      nels - total number of elements
-!       nip - number of Gauss points
-!        nn - total number of nodes in the mesh
-!       nod - number of nodes per element
-!       tol - tolerance
-!         v - Poisson's ratio
+!        argv - character, file name to read from
+!       numpe - MPI rank
+!           e - Young's modulus
+!     element - character, element type 
+!       limit - max number of iterations
+!loaded_nodes - number of nodes with applied forces
+!     meshgen - mesh numbering scheme
+!        nels - total number of elements
+!         nip - number of Gauss points
+!          nn - total number of nodes in the mesh
+!         nod - number of nodes per element
+!         tol - tolerance
+!           v - Poisson's ratio
 ! http://parafem.googlecode.com/svn/trunk/parafem/src/modules/mpi/input.f90
 CALL read_p121( argv, numpe, e, element, limit, loaded_nodes, meshgen, &
                 nels, nip, nn, nod, nr, partitioner, tol, v )
@@ -199,8 +200,11 @@ allocate( g_g_pp(ntot,nels_pp) )
   cgca_img = this_image()
 cgca_nimgs = num_images()
 
-! dump CGPACK parameters
-if ( cgca_img .eq. 1 ) call cgca_pdmp
+! dump CGPACK parameters and some ParaFEM settings
+if ( cgca_img .eq. 1 ) then
+ call cgca_pdmp
+ write (*,*) "Young's mod:", e, "Poisson's ratio", v
+end if
 
 ! sync here to separate the output, hopefully...
 ! The Fortran processor is allowed to play with
@@ -467,9 +471,9 @@ IF(numpe==1)THEN
 END IF
 
 !----------------------------- get starting r --------------------------
-IF(loaded_nodes>0) THEN
+IF ( loaded_nodes > 0 ) THEN
   ALLOCATE( node(loaded_nodes), source=0 )
-  allocate( val(ndim,loaded_nodes), source=zero )
+  allocate( val(ndim, loaded_nodes), source=zero )
   CALL read_loads( argv, numpe, node, val )
   CALL load( g_g_pp, g_num_pp, node, val, r_pp(1:) )
   q = SUM_P( r_pp(1:) )
@@ -603,7 +607,7 @@ cgca_clvg_iter = nint( cgca_length * cgca_lres / cgca_time_inc )
 ! sync all inside
 call cgca_clvgp( cgca_space, cgca_grt, cgca_stress,                    &
                  0.01_rdef * cgca_scrit,                               &
-                 cgca_clvgsd, .false., cgca_clvg_iter, 10, .true. )
+                 cgca_clvgsd, .false., cgca_clvg_iter, 10, .false. )
 
 if ( cgca_img .eq. 1 ) write (*,*) "dumping model to file"
  call cgca_swci( cgca_space, cgca_state_type_frac,  10, "zf1.raw" )
