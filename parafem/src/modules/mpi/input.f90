@@ -1573,14 +1573,16 @@ MODULE INPUT
     ELSE
       bufsize = readCount(i)
       IF(numpe == 1) THEN
+        etype = 0.0_iwp
         READ(10) etype(1:readCount(i))
-        etype_pp(1:readCount(i))=int(etype(1:readCount(i)))
-        CALL MPI_SEND(etype_pp(1:readCount(i)),bufsize,MPI_INTEGER,i-1,i,      &
+!       etype_pp(1:readCount(i))=int(etype(1:readCount(i)))
+        CALL MPI_SEND(etype(1:readCount(i)),bufsize,MPI_REAL4,i-1,i,           &
                       MPI_COMM_WORLD,status,ier)
       END IF
       IF(numpe == i) THEN
-        CALL MPI_RECV(etype_pp,bufsize,MPI_INTEGER,0,i,MPI_COMM_WORLD,status,  &
-                      ier)
+        CALL MPI_RECV(etype(1:readCount(i)),bufsize,MPI_REAL4,0,i,             &
+                      MPI_COMM_WORLD,status,ier)
+        etype_pp(1:readCount(i))=int(etype(1:readCount(i)))
       END IF
     END IF
   END DO
