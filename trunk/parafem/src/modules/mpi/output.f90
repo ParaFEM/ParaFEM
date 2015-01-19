@@ -85,7 +85,7 @@ MODULE OUTPUT
   !*  CREATION DATE
   !*    02.03.2010
   !*  COPYRIGHT
-  !*    (c) University of Manchester 2010
+  !*    (c) University of Manchester 2010-2015
   !******
   !*  Place remarks that should not be included in the documentation here.
   !*
@@ -882,15 +882,16 @@ MODULE OUTPUT
 !------------------------------------------------------------------------------
 !------------------------------------------------------------------------------
 
-  SUBROUTINE WRITE_XX1(fixed_freedoms,iters,job_name,loaded_nodes,neq,nn,    &
-                        npes,nr,numpe,timest,tload)
+  SUBROUTINE WRITE_XX1(ewt,fixed_freedoms,iters,job_name,loaded_nodes,neq,nn, &
+                       npes,nr,numpe,timest,tload)
 
   !/****f* output/write_xx1
   !*  NAME
   !*    SUBROUTINE: write_xx1
   !*  SYNOPSIS
-  !*    Usage:      CALL write_xx1(fixed_freedoms,iters,job_name,loaded_nodes,&
-  !*                               neq,nn,npes,nr,numpe,timest,tload)
+  !*    Usage:      CALL write_xx1(ewt,fixed_freedoms,iters,job_name,         &
+  !*                               loaded_nodes,neq,nn,npes,nr,numpe,timest,  &
+  !*                               tload)
   !*  FUNCTION
   !*    Master processor writes out brief details about the problem and 
   !*    some performance data
@@ -909,6 +910,7 @@ MODULE OUTPUT
   !*    The following scalar real has the INTENT(IN) attribute:
   !*
   !*    tload                  : Total applied load
+  !*    ewt                    : Total strain energy
   !*
   !*    The following scalar character has the INTENT(IN) attribute:
   !*
@@ -925,7 +927,7 @@ MODULE OUTPUT
   !*  CREATION DATE
   !*    24.07.2014
   !*  COPYRIGHT
-  !*    (c) University of Manchester 2014
+  !*    (c) University of Manchester 2014-2015
   !******
   !*  Place remarks that should not be included in the documentation here.
   !*
@@ -936,7 +938,7 @@ MODULE OUTPUT
   CHARACTER(LEN=50), INTENT(IN)  :: job_name
   INTEGER, INTENT(IN)            :: numpe,npes,nn,nr,neq,iters
   INTEGER, INTENT(IN)            :: fixed_freedoms,loaded_nodes
-  REAL(iwp), INTENT(IN)          :: timest(:),tload
+  REAL(iwp), INTENT(IN)          :: timest(:),tload,ewt
 
 !------------------------------------------------------------------------------
 ! 1. Local variables
@@ -971,6 +973,7 @@ MODULE OUTPUT
       WRITE(11,'(A,I12)')    "Number of fixed displacements               ",   &
                               fixed_freedoms 
     END IF
+    WRITE(11,'(A,E12.4)')  "Total strain energy                         ",ewt
 
 !------------------------------------------------------------------------------
 ! 3. Output timing data
@@ -1026,8 +1029,11 @@ MODULE OUTPUT
     WRITE(11,'(A,F12.6,F8.2)') "Output displacements                        ",&
                            timest(17)-timest(16),                             &
                           ((timest(17)-timest(16))/(timest(17)-timest(1)))*100  
+    WRITE(11,'(A,F12.6,F8.2)') "Compute strain energy                       ",&
+                           timest(19)-timest(18),                             &
+                          ((timest(19)-timest(18))/(timest(19)-timest(1)))*100  
     WRITE(11,'(A,F12.6,A/)')   "Total execution time                        ",&
-                          timest(17)-timest(1),"  100.00"
+                          timest(19)-timest(1),"  100.00"
     CLOSE(11)
     
 ! END IF
