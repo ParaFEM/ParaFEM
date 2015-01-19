@@ -7,6 +7,7 @@ PROGRAM xx1
 !              Some binary I/O. 
 !              Support for multiple material types.
 !              Vector storage for symmetric element stiffness matrix.
+!              Global strain energy computation.
 !------------------------------------------------------------------------------ 
                                  
   USE precision     ; USE global_variables ; USE mp_interface
