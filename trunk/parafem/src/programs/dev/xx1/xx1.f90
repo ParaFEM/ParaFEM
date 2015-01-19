@@ -33,6 +33,9 @@ PROGRAM xx1
   INTEGER               :: fixed_freedoms_pp,fixed_freedoms_start
   INTEGER               :: nprops,np_types
   REAL(iwp)             :: e,v,det,tol,up,alpha,beta,tload
+  REAL(iwp)             :: ewt_pp ! total strain energy on local core
+  REAL(iwp)             :: ewt    ! total strain energy for whole domain
+  REAL(iwp)             :: ewe    ! strain energy for element
   REAL(iwp),PARAMETER   :: zero=0.0_iwp
   REAL(iwp),PARAMETER   :: penalty=1.0e20_iwp
   CHARACTER(LEN=15)     :: element
@@ -65,7 +68,7 @@ PROGRAM xx1
 
   REAL(iwp),ALLOCATABLE :: points(:,:),dee(:,:),weights(:),val(:,:),disp_pp(:)
   REAL(iwp),ALLOCATABLE :: g_coord_pp(:,:,:),jac(:,:),der(:,:),deriv(:,:)
-  REAL(iwp),ALLOCATABLE :: bee(:,:),storkm_pp(:,:,:),eld(:),eps(:),sigma(:)
+  REAL(iwp),ALLOCATABLE :: bee(:,:),storkm_pp(:,:,:),eld(:,:),eps(:),sigma(:)
   REAL(iwp),ALLOCATABLE :: vstorkm_pp(:,:),km(:,:) ! dsymmv form
   REAL(iwp),ALLOCATABLE :: diag_precon_pp(:),p_pp(:),r_pp(:),x_pp(:),xnew_pp(:)
   REAL(iwp),ALLOCATABLE :: u_pp(:),pmul_pp(:,:),utemp_pp(:,:),d_pp(:),timest(:)
@@ -75,7 +78,7 @@ PROGRAM xx1
   REAL(iwp),ALLOCATABLE :: stress_integral_pp(:,:),stressnodes_pp(:)
   REAL(iwp),ALLOCATABLE :: principal_integral_pp(:,:),princinodes_pp(:)
   REAL(iwp),ALLOCATABLE :: principal(:),reacnodes_pp(:)
-  REAL(iwp),ALLOCATABLE :: tempres(:),prop(:,:) 
+  REAL(iwp),ALLOCATABLE :: tempres(:),prop(:,:),ewea(:,:)
   INTEGER,  ALLOCATABLE :: rest(:,:),g_num_pp(:,:),g_g_pp(:,:),node(:)
   INTEGER,  ALLOCATABLE :: no(:),no_pp(:),no_pp_temp(:),sense(:)
   INTEGER,  ALLOCATABLE :: etype_pp(:)
@@ -111,7 +114,7 @@ PROGRAM xx1
                  meshgen,nels,nip,nn,nod,nr,partitioner,tol,v)
  
   nprops   = 2   ! needs to go in .dat file and be read using READ_XX1
-  np_types = 1   ! needs to go in .dat file and be read using READ_XX1
+  np_types = 2   ! needs to go in .dat file and be read using READ_XX1
  
   CALL calc_nels_pp(job_name,nels,npes,numpe,partitioner,nels_pp)
 
@@ -166,14 +169,16 @@ PROGRAM xx1
   END IF
 
   timest(7) = elap_time()
-    
+   
+  PRINT *, "Read job data on process ", numpe
+ 
 !------------------------------------------------------------------------------
 ! 4. Allocate dynamic arrays used in main program
 !------------------------------------------------------------------------------
 
   ALLOCATE(points(nip,ndim),dee(nst,nst),jac(ndim,ndim),principal(ndim),      &
            der(ndim,nod),deriv(ndim,nod),bee(nst,ntot),                       &
-           eld(ntot),eps(nst),sigma(nst),                                     &
+           eld(ntot,1),eps(nst),sigma(nst),                                   &
            pmul_pp(ntot,nels_pp),utemp_pp(ntot,nels_pp),                      &
            weights(nip),g_g_pp(ntot,nels_pp),fun(nod))
 
@@ -187,6 +192,8 @@ PROGRAM xx1
   ELSE
     ALLOCATE(storkm_pp(ntot,ntot,nels_pp)); storkm_pp=zero
   END IF
+
+  PRINT *, "Allocated dynamic arrays on process ", numpe
 
 !------------------------------------------------------------------------------
 ! 4a. Allocate dynamic arrays used in the UMAT
@@ -216,6 +223,8 @@ PROGRAM xx1
  
   timest(8) = elap_time()
 
+  PRINT *, "Looped the elements to find the steering array on process ", numpe
+
 !------------------------------------------------------------------------------
 ! 6. Create interprocessor communication tables
 !------------------------------------------------------------------------------
@@ -228,6 +237,8 @@ PROGRAM xx1
 
   CALL MPI_BARRIER(MPI_COMM_WORLD,ier)
 
+  PRINT *, "Created interprocessor communication tables on process ", numpe
+
 !------------------------------------------------------------------------------
 ! 7. Allocate arrays dimensioned by neq_pp 
 !------------------------------------------------------------------------------
@@ -239,6 +250,8 @@ PROGRAM xx1
   xnew_pp = zero  ;  u_pp = zero  ;  d_pp = zero  ; diag_precon_pp = zero
 
   timest(10) = elap_time()
+
+  PRINT *, "Allocated arrays dimensioned by neq_pp on process ", numpe
 
 !------------------------------------------------------------------------------
 ! 8. Element stiffness integration and storage
@@ -285,11 +298,12 @@ PROGRAM xx1
     END DO elements_3
   ELSE
     storkm_pp        = zero
-    e  = prop(1,etype_pp(iel))  ! if each element has own properties
-    v  = prop(2,etype_pp(iel))
-    dee = zero
-    CALL deemat(dee,e,v)
     elements_3a: DO iel=1,nels_pp
+      PRINT *, "etype_pp for iel ", iel+iel_start-1, " = ",etype_pp(iel)
+      e  = prop(1,etype_pp(iel))  ! if each element has own properties
+      v  = prop(2,etype_pp(iel))
+      dee = zero
+      CALL deemat(dee,e,v)
       gauss_pts_1a: DO i=1,nip
         CALL shape_der(der,points,i)
         jac   = MATMUL(der,g_coord_pp(:,:,iel))
@@ -472,12 +486,16 @@ PROGRAM xx1
   END DO iterations
 
   DEALLOCATE(p_pp,r_pp,x_pp,u_pp,d_pp,diag_precon_pp,pmul_pp) 
- 
-  IF(sym_storkm) THEN
-    DEALLOCATE(vstorkm_pp)
-  ELSE
-    DEALLOCATE(storkm_pp)
-  END IF
+
+!
+! reduce memory usage, but needed for strain energy calculation
+! 
+! IF(sym_storkm) THEN
+!   DEALLOCATE(vstorkm_pp)
+! ELSE
+!   DEALLOCATE(storkm_pp)
+! END IF
+!
  
   timest(14) = elap_time()
 
@@ -696,13 +714,60 @@ PROGRAM xx1
 
 !  IF(numpe==1) CLOSE(28)
 
+  timest(18) = elap_time()
+
+!------------------------------------------------------------------------------
+! 16g. Strain energy
+!
+!      http://solidmechanics.org/text/Chapter7_2/Chapter7_2.htm
+!
+!      Element strain energy W = 1/2 * uT * Ke * u
+!
+!      Where Ke = element stiffness, uT = Transpose of element displacements 
+!      and u = element displacements
+!
+!      If this section turns out to be slow, it can be optimised
+!------------------------------------------------------------------------------
+
+  ewt_pp     = zero
+  ewt        = zero
+  utemp_pp   = zero
+  eld        = zero
+
+  ALLOCATE(ewea(1,1))
+
+  DO iel = 1,nels_pp
+    IF(sym_storkm) THEN ! rebuild km
+      j  = 1
+      km = zero
+      DO i = 1,ntot
+         k = j+ntot-i
+         km(i:,i) = vstorkm_pp(j:k,iel)
+         km(i,i:) = vstorkm_pp(j:k,iel)
+         j = k+1
+      END DO
+    ELSE
+      km = storkm_pp(:,:,iel)
+    END IF 
+    ewea     = zero
+    eld(:,1) = eld_pp(:,iel)
+    ewea     = MATMUL(MATMUL(TRANSPOSE(eld),km),eld)*0.5_iwp 
+    ewt_pp = ewt_pp + ewea(1,1)
+  END DO
+
+  CALL MPI_ALLREDUCE(ewt_pp,ewt,1,MPI_REAL8,MPI_SUM,MPI_COMM_WORLD,ier)
+
+  DEALLOCATE(ewea)
+
+  timest(19) = elap_time()
+
 !------------------------------------------------------------------------------
 ! 17. Output performance data
 !------------------------------------------------------------------------------
 
   IF(numpe==1) THEN
-    CALL WRITE_XX1(fixed_freedoms,iters,job_name,loaded_nodes,neq,nn,npes,nr, &
-                   numpe,timest,tload)
+    CALL WRITE_XX1(ewt,fixed_freedoms,iters,job_name,loaded_nodes,neq,nn,     &
+                   npes,nr,numpe,timest,tload)
   END IF
  
   CALL MPI_BARRIER(mpi_comm_world,ier)
