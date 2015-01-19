@@ -54,11 +54,12 @@ REAL( iwp ), ALLOCATABLE :: points(:,:), dee(:,:), weights(:),val(:,:),&
    bee(:,:), storkm_pp(:,:,:), eps(:), sigma(:), diag_precon_pp(:),    &
    p_pp(:), r_pp(:), x_pp(:), xnew_pp(:), u_pp(:), pmul_pp(:,:),       &
    utemp_pp(:,:), d_pp(:), timest(:), diag_precon_tmp(:,:),            &
-   eld_pp(:,:), temp(:)
+   eld_pp(:,:), temp(:), tot_r_pp(:)
 INTEGER, ALLOCATABLE :: rest(:,:), g_num_pp(:,:), g_g_pp(:,:), node(:)
 
 !*** CGPACK part *****************************************************72
 ! CGPACK variables and parameters
+integer, parameter :: cgca_linum=5 ! number of loading iterations
 integer( kind=idef ) :: &
  cgca_ir(3),            &
  cgca_img,              &
@@ -67,7 +68,7 @@ integer( kind=idef ) :: &
  cgca_ng,               & ! number of grains in the whole model
  cgca_count1,           & ! a counter
  cgca_clvg_iter,        & ! number of cleavage iterations
- cgca_load_iter           ! number of loading iterations/steps
+ cgca_liter               ! load iteration number
 integer( kind=iarr ) :: cgca_c(3) ! coarray dimensions
 integer( kind=iarr ), allocatable :: cgca_space(:,:,:,:) [:,:,:]
 integer :: cgca_errstat
@@ -93,6 +94,8 @@ real( kind=rdef ) ::    &
 real( kind=rdef ), allocatable :: cgca_grt(:,:,:)[:,:,:]
 
 logical( kind=ldef ) :: cgca_solid
+
+character( len=6) :: cgca_citer
 !*** end CGPACK part *************************************************72
 
 
@@ -189,6 +192,15 @@ allocate( storkm_pp( ntot, ntot, nels_pp ) )
 allocate( pmul_pp( ntot, nels_pp ) )
 allocate( utemp_pp(ntot,nels_pp) )
 allocate( g_g_pp(ntot,nels_pp) )
+
+IF ( numpe==1 ) THEN
+  open(  11,FILE=argv(1:nlen)//".res",STATUS='REPLACE',ACTION='write' )
+  write( 11,'(A,I7,A)') "This job ran on ",npes," processes"
+  write( 11,'(A,3(I12,A))') "There are ",nn," nodes", nr, &
+                           " restrained and ",neq," equations"
+  write( 11,'(A,F10.4)') "Time to read input is:", timest(2)-timest(1)
+  write( 11,'(A,F10.4)') "Time after setup is:", elap_time()-timest(1)
+END IF
 !*** end of ParaFEM input and initialisation *************************72
 
 
@@ -243,7 +255,9 @@ cgca_dm = 1.0e0_rdef
 cgca_res = 1.0e5_rdef
 
 ! cgpack length scale, also in mm
-cgca_length = 1.0_rdef
+! Equivalent to crack propagation distance per unit of time,
+! i.e. per second. Let's say 1 km/s. 
+cgca_length = 1.0e5_rdef
 
 ! each image calculates the coarray grid dimensions
 call cgca_gdim( cgca_nimgs, cgca_ir, cgca_qual )
@@ -397,8 +411,12 @@ if ( cgca_img .eq. 1 ) write (*,*) "dumping model to files"
  call cgca_swci( cgca_space, cgca_state_type_grain, 10, "zg0.raw" )
  call cgca_swci( cgca_space, cgca_state_type_frac,  10, "zf0.raw" )
 if ( cgca_img .eq. 1 ) write (*,*) "finished dumping model to files"
-sync all
 
+! allocate the stress array component of cgca_pfem_stress coarray
+!subroutine cgca_pfem_salloc( nels_pp, intp, comp )
+call cgca_pfem_salloc( nels_pp, nip, nst )
+
+sync all
 !*** end CGPACK part *************************************************72
 
 
@@ -420,19 +438,46 @@ CALL calc_npes_pp( npes, npes_pp )
 CALL make_ggl( npes_pp, npes, g_g_pp )
 
 ALLOCATE( p_pp(neq_pp), source=zero )
+! loads in the current increment, a fraction of tot_r_pp
 allocate( r_pp(neq_pp), source=zero )
+! total loads
+allocate( tot_r_pp(neq_pp), source=zero )
 allocate( x_pp(neq_pp), source=zero )
 allocate( xnew_pp(neq_pp), source=zero )
 allocate( u_pp(neq_pp), source=zero )
 allocate( d_pp(neq_pp), source=zero )
 allocate( diag_precon_pp(neq_pp), source=zero )
 
-!------ element stiffness integration and build the preconditioner -------
+! do this only once per program
+IF ( loaded_nodes > 0 ) THEN
+  ALLOCATE( node(loaded_nodes), source=0 )
+  allocate( val(ndim, loaded_nodes), source=zero )
+  CALL read_loads( argv, numpe, node, val )
+  CALL load( g_g_pp, g_num_pp, node, val, tot_r_pp(1:) )
+  DEALLOCATE( node )
+  deallocate( val )
+end if
+DEALLOCATE(g_g_pp)
+
+! allocate arrays outside of the loop
+ALLOCATE( eld_pp(ntot,nels_pp), source=zero )
+
+! Since the Young's modulus can be updated,
+! all below must be inside the loading iterations!
+! Make sure not to allocate/deallocate arrays within the loop
+load_iter: do cgca_liter=1, cgca_linum
+
+!------ element stiffness integration and build the preconditioner ---72
 
 ! deemat needs to go into a loop elements_1
 ! need an element array of E
 
 dee = zero
+
+! inputs: e - Young's modulus
+!         v - Poisson's ratio
+! output: dee(nst,nst) - Material matrix for linear elasticity
+! https://code.google.com/p/parafem/source/browse/trunk/parafem/src/modules/shared/new_library.f90
 CALL deemat( dee, e, v )
 CALL sample( element, points, weights )
 storkm_pp = zero
@@ -453,37 +498,29 @@ END DO elements_1
 ALLOCATE( diag_precon_tmp( ntot, nels_pp ), source=zero )
 
 elements_2: DO iel=1,nels_pp
-DO i=1,ndof
+ DO i=1,ndof
   diag_precon_tmp(i,iel) = diag_precon_tmp(i,iel) + storkm_pp(i,i,iel)
-END DO
+ END DO
 END DO elements_2
 
 CALL scatter( diag_precon_pp, diag_precon_tmp )
 DEALLOCATE( diag_precon_tmp )
 
-IF(numpe==1)THEN
-  OPEN(  11,FILE=argv(1:nlen)//".res",STATUS='REPLACE',ACTION='write' )
-  write( 11,'(A,I7,A)') "This job ran on ",npes," processes"
-  write( 11,'(A,3(I12,A))') "There are ",nn," nodes", nr, &
-                           " restrained and ",neq," equations"
-  write( 11,'(A,F10.4)') "Time to read input is:",timest(2)-timest(1)
-  write( 11,'(A,F10.4)') "Time after setup is:",elap_time()-timest(1)
-END IF
-
 !----------------------------- get starting r --------------------------
+
+! loading increases from 1/cgca_linum of tot_r_pp
+! to tot_r_pp
+r_pp(1:) = tot_r_pp(1:) * cgca_liter/cgca_linum
+
 IF ( loaded_nodes > 0 ) THEN
-  ALLOCATE( node(loaded_nodes), source=0 )
-  allocate( val(ndim, loaded_nodes), source=zero )
-  CALL read_loads( argv, numpe, node, val )
-  CALL load( g_g_pp, g_num_pp, node, val, r_pp(1:) )
   q = SUM_P( r_pp(1:) )
-  IF ( numpe==1 ) write(11,'(A,E12.4)') "The total load is:", q
-  DEALLOCATE( node )
-  deallocate( val )
+  IF ( numpe==1 ) then
+    write (11, *) "Load iter:", cgca_liter
+    write (11,'(A,E12.4)') "The total load is:", q
+  end if
 END IF
 
-DEALLOCATE(g_g_pp)
-diag_precon_pp=1._iwp/diag_precon_pp
+diag_precon_pp = 1._iwp/diag_precon_pp
 d_pp = diag_precon_pp*r_pp
 p_pp = d_pp
 x_pp = zero
@@ -526,25 +563,9 @@ IF ( numpe==1 ) THEN
  write(11,'(A,E12.4)')"The central nodal displacement is :",xnew_pp(1)
 END IF
 
-DEALLOCATE( p_pp )
-deallocate( r_pp )
-deallocate( x_pp )
-deallocate( u_pp )
-deallocate( d_pp )
-deallocate( diag_precon_pp )
-deallocate( storkm_pp )
-deallocate( pmul_pp ) 
-
 !--------------- recover stresses at centroidal gauss point ------------
 
-ALLOCATE( eld_pp(ntot,nels_pp), source=zero )
-
-! allocate the stress array component of cgca_pfem_stress coarray
-!subroutine cgca_pfem_salloc( nels_pp, intp, comp )
-call cgca_pfem_salloc( nels_pp, nip, nst )
-
 CALL gather(xnew_pp(1:),eld_pp)
-DEALLOCATE(xnew_pp)
 
 elmnts: DO iel = 1, nels_pp
 intpts: DO i = 1, nip
@@ -567,8 +588,7 @@ intpts: DO i = 1, nip
 END DO intpts
 end do elmnts
 
-DEALLOCATE( g_coord_pp )
-
+!*** CGPACK part *****************************************************72
 ! dump stresses to stdout
 !call cgca_pfem_sdmp
 ! dump stresses from last image for element 1
@@ -583,7 +603,6 @@ end if
 ! all images sync here
 sync all
 
-!*** CGPACK part *****************************************************72
 ! propagate cleavage
 ! calculate the mean stress tensor per image
 call cgca_pfem_simg( cgca_stress )
@@ -594,37 +613,59 @@ write (*,"(a0,i0,a0,9es9.1)") "img ", cgca_img,                        &
 ! are not modified until all images calculate their mean values
 sync all
 
-! no real time increments in this problem, so use 1 sec.
-cgca_time_inc = 1.0_rdef
+! no real time increments in this problem, so use the inverse
+! of the number of load iterations.
+cgca_time_inc = 0.5 * 1.0 / cgca_linum * 1.0e-4
 
 ! run cleavage for a correct number of iterations, which is a function
 ! of the characteristic length and the time increment
-cgca_clvg_iter = nint( cgca_length * cgca_lres / cgca_time_inc )
+cgca_clvg_iter = nint( cgca_length * cgca_lres * cgca_time_inc )
+if ( cgca_img .eq. 1 ) write (*,*) "load inc:", cgca_liter,            &
+                                   "clvg iter:", cgca_clvg_iter
 
 ! subroutine cgca_clvgp( coarray, rt, t, scrit, sub, periodicbc,    &
 !                        iter, heartbeat, debug )
-! lower the crit stresses by a factor of 10.
+! lower the crit stresses by a factor of 100.
 ! sync all inside
 call cgca_clvgp( cgca_space, cgca_grt, cgca_stress,                    &
                  0.01_rdef * cgca_scrit,                               &
                  cgca_clvgsd, .false., cgca_clvg_iter, 10, .false. )
 
 if ( cgca_img .eq. 1 ) write (*,*) "dumping model to file"
- call cgca_swci( cgca_space, cgca_state_type_frac,  10, "zf1.raw" )
+write ( cgca_citer, "(i0)" ) cgca_liter
+call cgca_swci( cgca_space, cgca_state_type_frac,  10,                 &
+                "zf"//trim( cgca_citer )//".raw" )
 if ( cgca_img .eq. 1 ) write (*,*) "finished dumping model to file"
+
 sync all
 
 !*** end CGPACK part *************************************************72
 
 
 !*** ParaFEM part ****************************************************72
+
+! end loading iterations
+end do load_iter
+
+! deallocate all arrays, moved from inside the loop
+DEALLOCATE( p_pp )
+deallocate( r_pp )
+deallocate( x_pp )
+deallocate( u_pp )
+deallocate( d_pp )
+deallocate( diag_precon_pp )
+deallocate( storkm_pp )
+deallocate( pmul_pp ) 
+DEALLOCATE( xnew_pp )
+DEALLOCATE( g_coord_pp )
+
 !------------------------ write out displacements ----------------------
 
 CALL calc_nodes_pp(nn,npes,numpe,node_end,node_start,nodes_pp)
 
-IF(numpe==1) THEN
+IF ( numpe==1 ) THEN
   write(ch,'(I6.6)') numpe
-  OPEN( 12, file=argv(1:nlen)//".ensi.DISPL-"//ch,status='replace',    &
+  open( 12, file=argv(1:nlen)//".ensi.DISPL-"//ch,status='replace',    &
         action='write')
   write(12,'(A)') "Alya Ensight Gold --- Vector per-node variable file"
   write(12,'(A/A/A)') "part", "     1","coordinates"
@@ -643,9 +684,11 @@ DO i=1,ndim
  CALL dismsh_ensi_p(12,1,nodes_pp,npes,numpe,1,temp)
 END DO
 
-IF ( numpe==1 ) CLOSE(12)
-IF ( numpe==1 ) write(11,'(A,F10.4)')"This analysis took  :",          &
-   elap_time()-timest(1)  
+IF ( numpe==1 ) then
+  write( 11, '(A,F10.4)') "This analysis took: ", elap_time()-timest(1)
+  close( 11 )
+  close( 12 )
+end if
 !*** end ParaFEM part ************************************************72
 
 
