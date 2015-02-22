@@ -15,6 +15,7 @@ PROGRAM xx16
    npes_pp,node_end,node_start,nodes_pp,meshgen,partitioner,nlen
  REAL(iwp),PARAMETER::zero=0.0_iwp
  REAL(iwp)::e,v,det,tol,up,alpha,beta,q; LOGICAL::converged=.false.
+ REAL(iwp)::gigaflops,flop
  CHARACTER(LEN=50)::argv; CHARACTER(LEN=15)::element; CHARACTER(LEN=6)::ch 
 !---------------------------- dynamic arrays -----------------------------
  REAL(iwp),ALLOCATABLE::points(:,:),dee(:,:),weights(:),val(:,:),        &
@@ -102,11 +103,23 @@ PROGRAM xx16
    p_pp=d_pp+p_pp*beta; CALL checon_par(xnew_pp,tol,converged,x_pp)    
    IF(converged.OR.iters==limit)EXIT
  END DO iterations
+ timest(4)=elap_time()-timest(3)  
+!--------------------------- gigaflops in pcg ----------------------------------
+ flop=zero ; gigaflops=zero
+ flop=iters*((nels*(2._iwp*ntot*ntot))+(2._iwp*neq)+(2._iwp*neq)+              &
+                  (2._iwp*neq)+neq+(2._iwp*neq)+(2._iwp*neq)) 
+ gigaflops=real(flop)/(1000000000._iwp)
+!-------------------------------------------------------------------------------
  IF(numpe==1)THEN
-   WRITE(11,'(A,I6)')"The number of iterations to convergence was ",iters
-   WRITE(11,'(A,F10.4)')"Time to solve equations was  :",                &
-                         elap_time()-timest(3)  
-   WRITE(11,'(A,E12.4)')"The central nodal displacement is :",xnew_pp(1)
+   WRITE(11,'(A,I6)')    "Iterations to convergence was:          ",iters
+   WRITE(11,'(A,F10.4)') "Time to solve equations:                ",           &
+                          timest(4)  
+   WRITE(11,'(A,F10.4)') "Number of operations in solver (GFLOPS):",           &
+                          gigaflops  
+   WRITE(11,'(A,F10.4)') "Number of operations per second:        ",           &
+                          gigaflops/timest(4)  
+   WRITE(11,'(A,E12.4)') "The central nodal displacement is:     ",            &
+                          xnew_pp(1)
  END IF
  DEALLOCATE(p_pp,r_pp,x_pp,u_pp,d_pp,diag_precon_pp,storkm_pp,pmul_pp) 
 !--------------- recover stresses at centroidal gauss point --------------
