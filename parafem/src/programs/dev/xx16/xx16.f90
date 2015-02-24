@@ -14,6 +14,7 @@ PROGRAM xx16
  INTEGER::loaded_nodes,iel,i,j,k,iters,limit,nn,nr,nip,nod,nels,ndof,    &
    npes_pp,node_end,node_start,nodes_pp,meshgen,partitioner,nlen
  REAL(iwp),PARAMETER::zero=0.0_iwp
+ REAL(iwp)::dot_temp
  REAL(iwp)::e,v,det,tol,up,alpha,beta,q; LOGICAL::converged=.false.
  REAL(iwp)::gigaflops,flop
  CHARACTER(LEN=50)::argv; CHARACTER(LEN=15)::element; CHARACTER(LEN=6)::ch 
@@ -97,17 +98,23 @@ PROGRAM xx16
 !               pmul_pp(:,iel),1,0.0_iwp,utemp_pp(:,iel),1)
    END DO elements_3 ;CALL scatter(u_pp,utemp_pp)
 !-------------------------- pcg equation solution ------------------------
-   up=DOT_PRODUCT_P(r_pp,d_pp); alpha=up/DOT_PRODUCT_P(p_pp,u_pp)
-   xnew_pp=x_pp+p_pp*alpha; r_pp=r_pp-u_pp*alpha
-   d_pp=diag_precon_pp*r_pp; beta=DOT_PRODUCT_P(r_pp,d_pp)/up
-   p_pp=d_pp+p_pp*beta; CALL checon_par(xnew_pp,tol,converged,x_pp)    
+   up       = DOT_PRODUCT_P(r_pp,d_pp)
+   dot_temp = DOT_PRODUCT_P(p_pp,u_pp)
+   alpha    = up/dot_temp
+   xnew_pp  = x_pp+p_pp*alpha
+   r_pp     = r_pp-u_pp*alpha
+   d_pp     = diag_precon_pp*r_pp
+   dot_temp = DOT_PRODUCT_P(r_pp,d_pp)
+   beta     = dot_temp/up
+   p_pp     = d_pp+p_pp*beta
+   CALL checon_par(xnew_pp,tol,converged,x_pp)    
    IF(converged.OR.iters==limit)EXIT
  END DO iterations
  timest(4)=elap_time()-timest(3)  
 !--------------------------- gigaflops in pcg ----------------------------------
  flop=zero ; gigaflops=zero
  flop=iters*((nels*(2._iwp*ntot*ntot))+(2._iwp*neq)+(2._iwp*neq)+              &
-                  (2._iwp*neq)+neq+(2._iwp*neq)+(2._iwp*neq)) 
+                  (2._iwp*neq)+(2._iwp*neq)+neq+(2._iwp*neq)+(2._iwp*neq)) 
  gigaflops=real(flop)/(1000000000._iwp)
 !-------------------------------------------------------------------------------
  IF(numpe==1)THEN
@@ -116,9 +123,9 @@ PROGRAM xx16
                           timest(4)  
    WRITE(11,'(A,F10.4)') "Number of operations in solver (GFLOPS):",           &
                           gigaflops  
-   WRITE(11,'(A,F10.4)') "Number of operations per second:        ",           &
+   WRITE(11,'(A,F10.4)') "Number of GFLOPS per second:            ",           &
                           gigaflops/timest(4)  
-   WRITE(11,'(A,E12.4)') "The central nodal displacement is:     ",            &
+   WRITE(11,'(A,E12.4)') "The central nodal displacement is:      ",           &
                           xnew_pp(1)
  END IF
  DEALLOCATE(p_pp,r_pp,x_pp,u_pp,d_pp,diag_precon_pp,storkm_pp,pmul_pp) 
