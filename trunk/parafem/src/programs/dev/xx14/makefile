@@ -23,49 +23,52 @@
 include ../../../../build/mk_defs.inc
 include ../../../../build/$(MACHINE).inc
 
-MODULE	= ../../../../include/mpi
-LIB	= ../../../../lib
+MODULE=	../../../../include/mpi
+LIB=	../../../../lib
+BIN_DIR=../../../../bin
 
 CGPACK=	$(HOME)/lib/libcgcapack.a
 
-.SUFFIXES: .o .f90
+SRC=	xx14.f90 xx14noio.f90
+OBJ=	$(SRC:.f90=.o)
+EXE=	$(SRC:.f90=.x)
 
-all:	release
+.SUFFIXES: .o .f90 .x
+
+all: release
 
 release:
 	@echo
 	@echo "Building XX14 RELEASE"
-	$(MAKE) xx14 \
+	$(MAKE) $(EXE) \
 	FFLAGS="-c -I$(MODULE) $(XX14_MPI_REL_FFLAGS)" \
 	LDFLAGS="-L$(LIB) -lParaFEM_mpi.$(VERSION) $(XX14_MPI_REL_LDFLAGS)"
-	@echo "Done xx14 RELEASE"
+	@echo "Done" $(EXE) "RELEASE"
 
 debug:
 	@echo
 	@echo "Building xx14 DEBUG"
-	$(MAKE) xx14 \
+	$(MAKE) $(EXE) \
 	FFLAGS="-c -I$(MODULE) $(XX14_MPI_DBG_FFLAGS)" \
 	LDFLAGS="-L$(LIB) -lParaFEM_mpi_D.$(VERSION) $(XX14_MPI_DBG_LDFLAGS)"
-	@echo "Done xx14 DEBUG"
-
-
-xx14: xx14.o
-	$(FC) xx14.o -o xx14 $(LDFLAGS)
+	@echo "Done" $(EXE) "DEBUG"
 
 # always rebuild if the CGPACK module has updated
-xx14.o: xx14.f90 $(CGPACK)
-	$(FC) xx14.f90 $(FFLAGS)
+$(OBJ): $(CGPACK)
 
-clean:
-	rm -f *.o
+.f90.o:
+	$(FC) $< $(FFLAGS)
 
-execlean:
-	rm -f xx14 ../../../../bin/xx14
-
-relink: xx14
+.o.x:
+	$(FC) $< -o $@ $(LDFLAGS)
 
 install:
-	cp xx14 ../../../../bin
+	cp $(EXE) $(BIN_DIR)
 
-test:
-	./test.sh xx14
+clean:
+	rm -f $(OBJ)
+
+execlean:
+	rm -f $(BIN_DIR)/$(EXE)
+
+relink: $(EXE)
