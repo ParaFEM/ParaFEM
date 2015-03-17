@@ -100,7 +100,7 @@ PROGRAM xx14
 
   logical( kind=ldef ) :: cgca_solid
 
-  character( len=6) :: cgca_citer
+  character( len=6 ) :: cgca_citer
 
   !*** end CGPACK part *************************************************72
 
@@ -329,48 +329,25 @@ call cgca_as( 1, cgca_c(1),  1, cgca_c(2),  1, cgca_c(3),              &
   ! try to separate the stdout
   sync all
 
-  ! Creating mapping FE <-> CA
-
-  ! copy some ParaFEM vars into coarray and non-coarray variables
-  ! defined in:
-  ! https://sourceforge.net/p/cgpack/code/HEAD/tree/head/cgca_m2pfem.f90
-  ! coarray vars
-  !cgca_pfem_iel_start = iel_start
-  !cgca_pfem_nels_pp   = nels_pp
-  !cgca_pfem_numpe     = numpe
-
-  ! non-coarray vars
-  !cgca_pfem_nip       = nip
-
   write (*,*) "img",cgca_img," <-> MPI proc", numpe
 
   ! allocate the tmp centroids array: cgca_pfem_centroid_tmp%r ,
   ! an allocatable array component of a coarray variable of derived type
   call cgca_pfem_ctalloc( ndim, nels_pp )
 
-  write (*,*) "Reached here 1"
-
-  
   ! set the centroids array component on this image, no remote calls.
   ! first dim - coord, 1,2,3
   ! second dim - element number
   ! g_coord_pp is allocated as g_coord_pp( nod, ndim, nels_pp )
   cgca_pfem_centroid_tmp%r = sum( g_coord_pp(:,:,:), dim=1 ) / nod
 
-  write (*,*) "Reached here 1.5"
- 
   ! Need to sync here to wait for all images to set their
-  !
-  !   cgca_pfem_centroid_tmp%r
-  !
-  ! arrays. Since this is *not* a coarray, there is no implicit sync.
+  ! cgca_pfem_centroid_tmp%r
   sync all
 
   !subroutine cgca_pfem_cenc( origin, rot, bcol, bcou )
   call cgca_pfem_cenc( cgca_origin, cgca_rot, cgca_bcol, cgca_bcou )
 
-  write (*,*) "Reached here 2"
-  
   ! need to sync before deallocating temp centroids arrays
   !
   !   cgca_pfem_centroid_tmp%r
@@ -378,33 +355,20 @@ call cgca_as( 1, cgca_c(1),  1, cgca_c(2),  1, cgca_c(3),              &
   ! to make sure all images finished processing data.
   ! Temp centroids arrays are *not* coarrays so there is no implicit sync.
   sync all
-  
  
+  ! Now can deallocate the temp array cgca_pfem_centroid_tmp%r
+  call cgca_pfem_ctdalloc
+
   ! Call subroutine cgca_pfem_integalloc to allocate integrity
   ! once the size of cgca_pfem_centroid is known,i.e. after cgca_pfem_cenc()
   call cgca_pfem_integalloc
  
-  write (*,*) "Reached here 3"
-
-  ! Integrity array is *not* coarray so there is no implicit sync.
-  sync all
-
-  ! Call subroutine cgca_pfem_ealloc to allocate 2D array e
-  ! where the Young's modulus where be stored
+  ! Allocate the Young's modulus 2D array
   call cgca_pfem_ealloc( nip, nels_pp )
   
-  write (*,*) "Reached here 4"
-   
-  ! Now can deallocate the temp arrays cgca_pfem_centroid_tmp%r
-  call cgca_pfem_ctdalloc
-
-  write (*,*) "Reached here 5"
-
   ! dump the FE centroids in CA cs to stdout
   ! Obviously, this is an optional step, just for debug
   call cgca_pfem_cendmp
-
-  write (*,*) "Reached here 6"
 
   ! Generate microstructure
 
@@ -458,8 +422,8 @@ call cgca_as( 1, cgca_c(1),  1, cgca_c(2),  1, cgca_c(3),              &
   ! dump space arrays to files, only image 1 does it,
   ! all others wait at sync all
   if ( cgca_img .eq. 1 ) write (*,*) "dumping model to files"
-  call cgca_swci( cgca_space, cgca_state_type_grain, 10, "zg0.raw" )
-  call cgca_swci( cgca_space, cgca_state_type_frac,  10, "zf0.raw" )
+  call cgca_pswci( cgca_space, cgca_state_type_grain, "zg0.raw" )
+  call cgca_pswci( cgca_space, cgca_state_type_frac,  "zf0.raw" )
   if ( cgca_img .eq. 1 ) write (*,*) "finished dumping model to files"
 
   ! allocate the stress array component of cgca_pfem_stress coarray
@@ -516,6 +480,9 @@ call cgca_as( 1, cgca_c(1),  1, cgca_c(2),  1, cgca_c(3),              &
   !make integrity = 1 just for testing purposes
   cgca_pfem_integrity = 1.0
   
+! initially set the Young's modulus to "e" everywhere
+cgca_pfem_enew%e = e
+
   ! Since the Young's modulus can be updated,
   ! all below must be inside the loading iterations!
   ! Make sure not to allocate/deallocate arrays within the loop
@@ -528,19 +495,8 @@ call cgca_as( 1, cgca_c(1),  1, cgca_c(2),  1, cgca_c(3),              &
 
      dee = zero
 
-     ! inputs: e - Young's modulus
-     !         v - Poisson's ratio
-     ! output: dee(nst,nst) - Material matrix for linear elasticity
-     ! https://code.google.com/p/parafem/source/browse/trunk/parafem/src/modules/shared/new_library.f90
-
-     !LUIS
-     !CALL deemat( dee, e, v )
-     
      CALL sample( element, points, weights )
      storkm_pp = zero
-
-     !Luis-> e is now cgca_pfem_enew%e(:,:)
-     cgca_pfem_enew%e = e
 
      elements_1: DO iel=1,nels_pp
         gauss_pts_1: DO i=1,nip
@@ -635,7 +591,7 @@ call cgca_as( 1, cgca_c(1),  1, cgca_c(2),  1, cgca_c(3),              &
            !Luis-> need to calculate dee again
            call deemat(dee, cgca_pfem_enew%e( i, iel ), v)
            ! Compute the derivatives of the shape functions at a Gauss point.
-           ! http://parafem.googlecode.com/svn/trunk/parafem/src/modules/shared/new_library.f90
+! http://parafem.googlecode.com/svn/trunk/parafem/src/modules/shared/new_library.f90
            CALL shape_der(der,points,i)
            jac = MATMUL(der,g_coord_pp(:,:,iel))
            CALL invert(jac)
@@ -652,30 +608,28 @@ call cgca_as( 1, cgca_c(1),  1, cgca_c(2),  1, cgca_c(3),              &
         END DO intpts
      end do elmnts
 
-     !*** CGPACK part *****************************************************72
-     ! dump stresses to stdout
-     !call cgca_pfem_sdmp
-     ! dump stresses from last image for element 1
-     if ( cgca_img .eq. 1 ) then
-        do i = 1, nip
-           write (*,"(2(a0,i0),a0,6es10.2)") "img ", cgca_nimgs,              &
-                " FE 1 int. p. ", i, " stress ",                           &
+!*** CGPACK part *****************************************************72
+! debug: dump stresses to stdout
+!call cgca_pfem_sdmp
+! dump stresses from last image for element 1
+if ( cgca_img .eq. 1 ) then
+  do i = 1, nip
+    write (*,"(2(a0,i0),a0,6es10.2)") "img ", cgca_nimgs,              &
+            " FE 1 int. p. ", i, " stress ",                           &
                 cgca_pfem_stress[ cgca_nimgs ] % stress( 1 , i , : )
-        end do
-     end if
+  end do
+end if
 
-     ! all images sync here
-     sync all
+! all images sync here
+sync all
 
-     ! propagate cleavage
-     ! calculate the mean stress tensor per image
-     call cgca_pfem_simg( cgca_stress )
-     write (*,"(a0,i0,a0,9es9.1)") "img ", cgca_img,                        &
-          " mean s tens. ", cgca_stress
+! calculate the mean stress tensor per image
+call cgca_pfem_simg( cgca_stress )
+write (*,*) "img:", cgca_img, " mean s tensor:", cgca_stress
 
-     ! all images wait for each other, to make sure the stress arrays
-     ! are not modified until all images calculate their mean values
-     sync all
+! all images wait for each other, to make sure the stress arrays
+! are not modified until all images calculate their mean values
+sync all
 
 ! no real time increments in this problem
 ! I use the inverse of the length scale,
@@ -698,23 +652,29 @@ call cgca_clvgp( cgca_space, cgca_grt, cgca_stress,                    &
                  0.01_rdef * cgca_scrit,                               &
                  cgca_clvgsd, .false., cgca_clvg_iter, 10, .false. )
 
-     if ( cgca_img .eq. 1 ) write (*,*) "dumping model to file"
-     write ( cgca_citer, "(i0)" ) cgca_liter
-     call cgca_swci( cgca_space, cgca_state_type_frac,  10,                 &
-          "zf"//trim( cgca_citer )//".raw" )
-     if ( cgca_img .eq. 1 ) write (*,*) "finished dumping model to file"
+if ( cgca_img .eq. 1 ) write (*,*) "dumping model to file"
+
+write ( cgca_citer, "(i0)" ) cgca_liter
+call cgca_pswci( cgca_space, cgca_state_type_frac,                     &
+                 "zf"//trim( cgca_citer )//".raw" )
+if ( cgca_img .eq. 1 ) write (*,*) "finished dumping model to file"
      
-     !LUIS
-     ! Young's modulus need to be updated on each image
-     call cgca_pfem_uym
+! wait for image 1
+sync all
 
-     !LUIS     	  
-     call cgca_fv( cgca_space, cgca_fail_volume )
-     sync  all
-     call cgca_pfem_intcalc1( cgca_c, cgca_fail_volume )
+! calculate number (volume) of fractured cells on each image
+call cgca_fv( cgca_space, cgca_fail_volume )
 
-     ! sync all images
-     sync all
+sync all
+
+! calculate integrity, update local arrays only
+call cgca_pfem_intcalc1( cgca_c, cgca_fail_volume )
+
+! Young's modulus need to be updated on each image,
+! local arrays only
+call cgca_pfem_uym
+
+sync all
 
 !*** end CGPACK part *************************************************72
 
