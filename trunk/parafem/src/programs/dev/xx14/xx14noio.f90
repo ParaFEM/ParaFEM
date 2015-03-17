@@ -251,8 +251,8 @@ cgca_res = 1.0e5_rdef
 
 ! cgpack length scale, also in mm
 ! Equivalent to crack propagation distance per unit of time,
-! i.e. per second. Let's say 1 km/s. 
-cgca_length = 1.0e5_rdef
+! i.e. per second. Let's say 1 km/s = 1.0e3 m/s = 1.0e6 mm/s. 
+cgca_length = 1.0e6_rdef
 
 ! rotation tensor *from* FE cs *to* CA cs.
 ! The box cs is aligned with the box.
@@ -279,8 +279,8 @@ if (cgca_img .eq. 1 ) then
     cgca_qual, cgca_lres,                                              &
     " (", cgca_bsz(1), ",", cgca_bsz(2), ",", cgca_bsz(3), ")"
   write (*,*) "dataset sizes for ParaView", cgca_c*cgca_ir
-  write (*,("es10.1")) "Total cells in the model",                     &
-                       real(product(cgca_c*cgca_ir))
+  write (*,"(a,es10.2)") "Total cells in the model",                   &
+              product( real(cgca_c) * real(cgca_ir) )
 end if
 
 ! allocate space coarray with 2 layers

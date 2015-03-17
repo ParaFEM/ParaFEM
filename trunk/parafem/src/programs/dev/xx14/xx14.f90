@@ -1,17 +1,18 @@
 !$Id$
 PROGRAM xx14
-  !-----------------------------------------------------------------------
-  ! Anton Shterenlikht, 9-SEP-2014:
-  !
-  !      Program xx14 - linking ParaFEM with CGPACK, specifically
-  !      modifying p121 from 5th edition to link with the cgca module.
-  !
-  !      12.1 is a three dimensional analysis of an elastic solid
-  !      using 20-node brick elements, preconditioned conjugate gradient
-  !      solver; diagonal preconditioner diag_precon; parallel version
-  !      loaded_nodes only
-  !-----------------------------------------------------------------------
-  !USE mpi_wrapper  !remove comment for serial compilation
+!-----------------------------------------------------------------------
+! Anton Shterenlikht (University of Bristol)
+! Luis Cebamanos (EPCC, University of Edinburgh)
+!
+!      Program xx14 - linking ParaFEM with CGPACK, specifically
+!      modifying p121 from 5th edition to link with the cgca module.
+!
+!      12.1 is a three dimensional analysis of an elastic solid
+!      using 20-node brick elements, preconditioned conjugate gradient
+!      solver; diagonal preconditioner diag_precon; parallel version
+!      loaded_nodes only
+!-----------------------------------------------------------------------
+!USE mpi_wrapper  !remove comment for serial compilation
 
   !*** CGPACK part *****************************************************72
   ! The CGPACK module must be used
@@ -231,7 +232,7 @@ PROGRAM xx14
   ! In this test set the number of images via the env var,
   ! or simply as an argument to aprun.
   ! the code must be able to cope with any value >= 1.
-  cgca_img = this_image()
+    cgca_img = this_image()
   cgca_nimgs = num_images()
 
   ! dump CGPACK parameters and some ParaFEM settings
@@ -250,18 +251,16 @@ PROGRAM xx14
   sync all
 
   ! physical dimensions of the box, must be the same
-  ! as in the ParaFEM.
+  ! units as in the ParaFEM.
   ! Must be fully within the FE model, which for xx14
   ! is a cube with lower bound at (0,0,-10), and the
   ! upper bound at (10,10,0)
   cgca_bsz = (/ 10.0, 10.0, 10.0 /)
 
-  ! origin of the box cs, in the same units.
-  cgca_origin = (/ 0.0, 0.0, -10.0 /)
-
-  ! This gives the upper extremes of the box
-  ! at 0+10=10, 0+10=10, -10+10=0,
+  ! Origin of the box cs, in the same units.
+  ! This gives the upper limits of the box at 0+10=10, 0+10=10, -10+10=0
   ! all within the FE model.
+  cgca_origin = (/ 0.0, 0.0, -10.0 /)
 
   ! rotation tensor *from* FE cs *to* CA cs.
   ! The box cs is aligned with the box.
@@ -271,43 +270,44 @@ PROGRAM xx14
   cgca_rot(3,3) = cgca_one
 
   ! mean grain size, also mm
-  cgca_dm = (1.0e0_rdef)*2
+  cgca_dm = 1.0e0_rdef
 
   ! resolution
   cgca_res = 1.0e5_rdef
 
-  ! cgpack length scale, also in mm
-  ! Equivalent to crack propagation distance per unit of time,
-  ! i.e. per second. Let's say 1 km/s.
-  cgca_length = 1.0e5_rdef
+! cgpack length scale, also in mm
+! Equivalent to crack propagation distance per unit of time,
+! i.e. per second. Let's say 1 km/s = 1.0e3 m/s = 1.0e6 mm/s. 
+cgca_length = 1.0e6_rdef
 
   ! each image calculates the coarray grid dimensions
 
   call cgca_gdim( cgca_nimgs, cgca_ir, cgca_qual )
 
-  ! calculate the resolution and the actual phys dimensions
-  ! of the box
-  ! subroutine cgca_cadim( bsz, res, dm, ir, c, lres, ng )
-  call cgca_cadim( cgca_bsz, cgca_res, cgca_dm, cgca_ir, cgca_c,         &
-       cgca_lres, cgca_ng )
+! calculate the resolution and the actual phys dimensions of the box
+! subroutine cgca_cadim( bsz, res, dm, ir, c, lres, ng )
+call cgca_cadim( cgca_bsz, cgca_res, cgca_dm, cgca_ir, cgca_c,         &
+                 cgca_lres, cgca_ng )
 
-  if (cgca_img .eq. 1 ) then
-     write ( *, "(9(a,i0),tr1,g0,tr1,i0,3(a,g0),a)" )                     &
-          "img: ", cgca_img  , " nimgs: ", cgca_nimgs,                       &
-          " ("  , cgca_c (1), ","       , cgca_c (2), ",", cgca_c (3),      &
-          ")["  , cgca_ir(1), ","       , cgca_ir(2), ",", cgca_ir(3),      &
-          "] "  , cgca_ng   ,                                               &
-          cgca_qual, cgca_lres,                                              &
-          " (", cgca_bsz(1), ",", cgca_bsz(2), ",", cgca_bsz(3), ")"
-     write (*,*) "dataset sizes for ParaView", cgca_c*cgca_ir
-  end if
+if (cgca_img .eq. 1 ) then
+  write ( *, "(9(a,i0),tr1,g0,tr1,i0,3(a,g0),a)" )                     &
+    "img: ", cgca_img  , " nimgs: ", cgca_nimgs,                       &
+     " ("  , cgca_c (1), ","       , cgca_c (2), ",", cgca_c (3),      &
+     ")["  , cgca_ir(1), ","       , cgca_ir(2), ",", cgca_ir(3),      &
+     "] "  , cgca_ng   ,                                               &
+    cgca_qual, cgca_lres,                                              &
+         " (", cgca_bsz(1), ",", cgca_bsz(2), ",", cgca_bsz(3), ")"
+  write (*,*) "dataset sizes for ParaView", cgca_c*cgca_ir
+  write (*,"(a,es10.2)") "Total cells in the model",                   &
+              product( real(cgca_c) * real(cgca_ir) )
+end if
 
   ! allocate space coarray with 2 layers
   !subroutine cgca_as( l1, u1, l2, u2, l3, u3, col1, cou1, col2, cou2,   &
   ! col3, props, coarray )
 
-  call cgca_as( 1, cgca_c(1),  1, cgca_c(2),  1, cgca_c(3),              &
-       1, cgca_ir(1), 1, cgca_ir(2), 1, 2, cgca_space )
+call cgca_as( 1, cgca_c(1),  1, cgca_c(2),  1, cgca_c(3),              &
+              1, cgca_ir(1), 1, cgca_ir(2), 1, 2, cgca_space )
 
   ! calculate the phys. dim. of the coarray on each image
   !subroutine cgca_imco( space, lres, bcol, bcou )
@@ -545,7 +545,7 @@ PROGRAM xx14
      elements_1: DO iel=1,nels_pp
         gauss_pts_1: DO i=1,nip
            !LUIS
-           CALL deemat( dee,  cgca_pfem_enew%e(i,iel), v )
+           CALL deemat( dee, cgca_pfem_enew%e(i,iel), v )
            CALL shape_der( der, points, i )
            jac = MATMUL( der, g_coord_pp(:,:,iel) )
            det = determinant(jac)
@@ -677,23 +677,26 @@ PROGRAM xx14
      ! are not modified until all images calculate their mean values
      sync all
 
-     ! no real time increments in this problem, so use the inverse
-     ! of the number of load iterations.
-     cgca_time_inc = 0.5 * 1.0 / cgca_linum * 1.0e-4
+! no real time increments in this problem
+! I use the inverse of the length scale,
+! which gives 1mm of crack propagation per increment maximum.
+! I then multiply it by a factor, e.g. 3, so that I get
+! 3mm max ( 1/3 of the model ) per load increment.
+cgca_time_inc = 3.0_rdef / cgca_length
 
-     ! run cleavage for a correct number of iterations, which is a function
-     ! of the characteristic length and the time increment
-     cgca_clvg_iter = nint( cgca_length * cgca_lres * cgca_time_inc )
-     if ( cgca_img .eq. 1 ) write (*,*) "load inc:", cgca_liter,            &
-          "clvg iter:", cgca_clvg_iter
+! run cleavage for a correct number of iterations, which is a function
+! of the characteristic length and the time increment
+cgca_clvg_iter = nint( cgca_length * cgca_lres * cgca_time_inc )
+if ( cgca_img .eq. 1 ) write (*,*) "load inc:", cgca_liter,            &
+                                   "clvg iter:", cgca_clvg_iter
 
-     ! subroutine cgca_clvgp( coarray, rt, t, scrit, sub, periodicbc,    &
-     !                        iter, heartbeat, debug )
-     ! lower the crit stresses by a factor of 100.
-     ! sync all inside
-     call cgca_clvgp( cgca_space, cgca_grt, cgca_stress,                    &
-          0.01_rdef * cgca_scrit,                               &
-          cgca_clvgsd, .false., cgca_clvg_iter, 10, .false. )
+! subroutine cgca_clvgp( coarray, rt, t, scrit, sub, periodicbc,    &
+!                        iter, heartbeat, debug )
+! lower the crit stresses by a factor of 100.
+! sync all inside
+call cgca_clvgp( cgca_space, cgca_grt, cgca_stress,                    &
+                 0.01_rdef * cgca_scrit,                               &
+                 cgca_clvgsd, .false., cgca_clvg_iter, 10, .false. )
 
      if ( cgca_img .eq. 1 ) write (*,*) "dumping model to file"
      write ( cgca_citer, "(i0)" ) cgca_liter
@@ -713,12 +716,12 @@ PROGRAM xx14
      ! sync all images
      sync all
 
-     !*** end CGPACK part *************************************************72
+!*** end CGPACK part *************************************************72
 
 
-     !*** ParaFEM part ****************************************************72
+!*** ParaFEM part ****************************************************72
 
-     ! end loading iterations
+    ! end loading iterations
   end do load_iter
 
   ! deallocate all arrays, moved from inside the loop
@@ -771,7 +774,7 @@ PROGRAM xx14
   call cgca_ds(  cgca_space )
   call cgca_drt( cgca_grt )
   call cgca_pfem_sdalloc
-  call cgca_pfem_dealloc
+  call cgca_pfem_edalloc
   call cgca_pfem_integdalloc
   !*** end CGPACK part *************************************************72
 
