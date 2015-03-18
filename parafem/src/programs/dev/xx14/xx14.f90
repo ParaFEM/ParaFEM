@@ -262,33 +262,33 @@ PROGRAM xx14
   ! all within the FE model.
   cgca_origin = (/ 0.0, 0.0, -10.0 /)
 
-  ! rotation tensor *from* FE cs *to* CA cs.
-  ! The box cs is aligned with the box.
-  cgca_rot      = cgca_zero
-  cgca_rot(1,1) = cgca_one
-  cgca_rot(2,2) = cgca_one
-  cgca_rot(3,3) = cgca_one
+! rotation tensor *from* FE cs *to* CA cs.
+! The box cs is aligned with the box.
+cgca_rot      = cgca_zero
+cgca_rot(1,1) = cgca_one
+cgca_rot(2,2) = cgca_one
+cgca_rot(3,3) = cgca_one
 
-  ! mean grain size, also mm
-  cgca_dm = 1.0e0_rdef
+! mean grain size, also mm
+cgca_dm = 1.0e0_rdef
 
-  ! resolution
-  cgca_res = 1.0e5_rdef
+! resolution
+cgca_res = 1.0e5_rdef
 
 ! cgpack length scale, also in mm
 ! Equivalent to crack propagation distance per unit of time,
 ! i.e. per second. Let's say 1 km/s = 1.0e3 m/s = 1.0e6 mm/s. 
 cgca_length = 1.0e6_rdef
 
-  ! each image calculates the coarray grid dimensions
-
-  call cgca_gdim( cgca_nimgs, cgca_ir, cgca_qual )
+! each image calculates the coarray grid dimensions
+call cgca_gdim( cgca_nimgs, cgca_ir, cgca_qual )
 
 ! calculate the resolution and the actual phys dimensions of the box
 ! subroutine cgca_cadim( bsz, res, dm, ir, c, lres, ng )
 call cgca_cadim( cgca_bsz, cgca_res, cgca_dm, cgca_ir, cgca_c,         &
                  cgca_lres, cgca_ng )
 
+! dump some stats from img 1
 if (cgca_img .eq. 1 ) then
   write ( *, "(9(a,i0),tr1,g0,tr1,i0,3(a,g0),a)" )                     &
     "img: ", cgca_img  , " nimgs: ", cgca_nimgs,                       &
@@ -302,136 +302,145 @@ if (cgca_img .eq. 1 ) then
               product( real(cgca_c) * real(cgca_ir) )
 end if
 
-  ! allocate space coarray with 2 layers
-  !subroutine cgca_as( l1, u1, l2, u2, l3, u3, col1, cou1, col2, cou2,   &
-  ! col3, props, coarray )
-
+! allocate space coarray with 2 layers
+!subroutine cgca_as( l1, u1, l2, u2, l3, u3,                           &
+!             col1, cou1, col2, cou2, col3, props, coarray )
 call cgca_as( 1, cgca_c(1),  1, cgca_c(2),  1, cgca_c(3),              &
               1, cgca_ir(1), 1, cgca_ir(2), 1, 2, cgca_space )
 
-  ! calculate the phys. dim. of the coarray on each image
-  !subroutine cgca_imco( space, lres, bcol, bcou )
-  call cgca_imco( cgca_space, cgca_lres, cgca_bcol, cgca_bcou )
+! calculate the phys. dim. of the coarray on each image
+!subroutine cgca_imco( space, lres, bcol, bcou )
+call cgca_imco( cgca_space, cgca_lres, cgca_bcol, cgca_bcou )
 
-  write ( *,"(a,i0,2(a,3(g0,tr1)),a)" ) "img: ", cgca_img,               &
+! dump box lower and upper corners from every image
+write ( *,"(a,i0,2(a,3(g0,tr1)),a)" ) "img: ", cgca_img,               &
        " bcol: (", cgca_bcol, ") bcou: (", cgca_bcou, ")"
 
-  ! try to separate the stdout
-  sync all
+! try to separate the stdout
+sync all
 
-  ! and now in FE cs:
-  write ( *,"(a,i0,2(a,3(g0,tr1)),a)" ) "img: ", cgca_img,               &
-       " FE bcol: (",                                                      &
-       matmul( transpose( cgca_rot ),cgca_bcol ) + cgca_origin,           &
-       ") FE bcou: (",                                                      &
-       matmul( transpose( cgca_rot ),cgca_bcou ) + cgca_origin, ")"
+! and now in FE cs:
+write ( *,"(a,i0,2(a,3(g0,tr1)),a)" ) "img: ", cgca_img,               &
+   " FE bcol: (",                                                      &
+    matmul( transpose( cgca_rot ),cgca_bcol ) + cgca_origin,           &
+  ") FE bcou: (",                                                      &
+    matmul( transpose( cgca_rot ),cgca_bcou ) + cgca_origin, ")"
 
-  ! try to separate the stdout
-  sync all
+! try to separate the stdout
+sync all
 
-  write (*,*) "img",cgca_img," <-> MPI proc", numpe
+! confirm that image number .eq. MPI process number
+write (*,*) "img",cgca_img," <-> MPI proc", numpe
 
-  ! allocate the tmp centroids array: cgca_pfem_centroid_tmp%r ,
-  ! an allocatable array component of a coarray variable of derived type
-  call cgca_pfem_ctalloc( ndim, nels_pp )
+! allocate the tmp centroids array: cgca_pfem_centroid_tmp%r ,
+! an allocatable array component of a coarray variable of derived type
+call cgca_pfem_ctalloc( ndim, nels_pp )
 
-  ! set the centroids array component on this image, no remote calls.
-  ! first dim - coord, 1,2,3
-  ! second dim - element number
-  ! g_coord_pp is allocated as g_coord_pp( nod, ndim, nels_pp )
-  cgca_pfem_centroid_tmp%r = sum( g_coord_pp(:,:,:), dim=1 ) / nod
+! set the centroids array component on this image, no remote calls.
+! first dim - coord, 1,2,3
+! second dim - element number
+! g_coord_pp is allocated as g_coord_pp( nod, ndim, nels_pp )
+cgca_pfem_centroid_tmp%r = sum( g_coord_pp(:,:,:), dim=1 ) / nod
 
-  ! Need to sync here to wait for all images to set their
-  ! cgca_pfem_centroid_tmp%r
-  sync all
+! Need to sync here to wait for all images to set their
+! cgca_pfem_centroid_tmp%r
+sync all
 
-  !subroutine cgca_pfem_cenc( origin, rot, bcol, bcou )
-  call cgca_pfem_cenc( cgca_origin, cgca_rot, cgca_bcol, cgca_bcou )
+!subroutine cgca_pfem_cenc( origin, rot, bcol, bcou )
+call cgca_pfem_cenc( cgca_origin, cgca_rot, cgca_bcol, cgca_bcou )
 
-  ! need to sync before deallocating temp centroids arrays
-  !
-  !   cgca_pfem_centroid_tmp%r
-  !
-  ! to make sure all images finished processing data.
-  ! Temp centroids arrays are *not* coarrays so there is no implicit sync.
-  sync all
+! need to sync before deallocating temp centroids arrays
+!   cgca_pfem_centroid_tmp%r
+! to make sure all images finished processing data.
+! Temp centroids arrays are *local*, not coarrays,
+! so there is no implicit sync.
+sync all
  
-  ! Now can deallocate the temp array cgca_pfem_centroid_tmp%r
-  call cgca_pfem_ctdalloc
+! Now can deallocate the temp array cgca_pfem_centroid_tmp%r
+call cgca_pfem_ctdalloc
 
-  ! Call subroutine cgca_pfem_integalloc to allocate integrity
-  ! once the size of cgca_pfem_centroid is known,i.e. after cgca_pfem_cenc()
-  call cgca_pfem_integalloc
+! Call subroutine cgca_pfem_integalloc to allocate
+! cgca_pfem_integrity, a *local* array. Must call after
+! cgca_pfem_centroid has been calculated by cgca_pfem_cenc().
+call cgca_pfem_integalloc
  
-  ! Allocate the Young's modulus 2D array
-  call cgca_pfem_ealloc( nip, nels_pp )
+! initially integrity is 1
+cgca_pfem_integrity = 1.0
   
-  ! dump the FE centroids in CA cs to stdout
-  ! Obviously, this is an optional step, just for debug
-  call cgca_pfem_cendmp
+! Allocate the Young's modulus 2D array
+call cgca_pfem_ealloc( nip, nels_pp )
+  
+! initially set the Young's modulus to "e" everywhere
+cgca_pfem_enew%e = e
 
-  ! Generate microstructure
+! Dump the FE centroids in CA cs to stdout.
+! Obviously, this is an optional step, just for debug.
+! Can be called from any or all images.
+call cgca_pfem_cendmp
 
-  ! initialise random number seed
-  ! argument:
-  ! .false. - no debug output
-  !  .true. - with debug output
-  call cgca_irs( .false. )
+! Generate microstructure
 
-  ! allocate rotation tensors
-  call cgca_art( 1, cgca_ng, 1, cgca_ir(1), 1, cgca_ir(2), 1, cgca_grt )
+! initialise random number seed
+! argument:
+! .false. - no debug output
+!  .true. - with debug output
+call cgca_irs( .false. )
 
-  ! initialise space
-  cgca_space( :, :, :, cgca_state_type_grain ) = cgca_liquid_state
-  cgca_space( :, :, :, cgca_state_type_frac  ) = cgca_intact_state
+! allocate rotation tensors
+call cgca_art( 1, cgca_ng, 1, cgca_ir(1), 1, cgca_ir(2), 1, cgca_grt )
 
-  ! nuclei, sync all inside
-  ! last argument:
-  ! .false. - no debug output
-  !  .true. - with debug output
-  call cgca_nr( cgca_space, cgca_ng, .false. )
+! initialise space
+cgca_space( :, :, :, cgca_state_type_grain ) = cgca_liquid_state
+cgca_space( :, :, :, cgca_state_type_frac  ) = cgca_intact_state
 
-  ! assign rotation tensors, sync all inside
-  call cgca_rt( cgca_grt )
+! nuclei, sync all inside
+! last argument:
+! .false. - no debug output
+!  .true. - with debug output
+call cgca_nr( cgca_space, cgca_ng, .false. )
 
-  ! solidify, implicit sync all inside
-  ! second argument:
-  !  .true. - periodic BC
-  ! .false. - no periodic BC
-  call cgca_sld( cgca_space, .false., 0, 10, cgca_solid )
+! assign rotation tensors, sync all inside
+call cgca_rt( cgca_grt )
 
-  ! initiate grain boundaries
-  call cgca_igb( cgca_space )
+! solidify, implicit sync all inside
+! second argument:
+!  .true. - periodic BC
+! .false. - no periodic BC
+call cgca_sld( cgca_space, .false., 0, 10, cgca_solid )
 
-  ! smoothen the GB, several iterations,
-  ! halo exchange,
-  ! sync needed following smoothing
-  call cgca_gbs( cgca_space )
-  call cgca_hxi( cgca_space )
-  call cgca_gbs( cgca_space )
-  call cgca_hxi( cgca_space )
-  sync all
+! initiate grain boundaries
+call cgca_igb( cgca_space )
 
-  ! update grain connectivity, local routine, no sync needed
-  call cgca_gcu( cgca_space )
+! smoothen the GB, several iterations,
+! halo exchange,
+! sync needed following halo exchange
+call cgca_gbs( cgca_space )
+call cgca_hxi( cgca_space )
+sync all
+call cgca_gbs( cgca_space )
+call cgca_hxi( cgca_space )
+sync all
 
-  ! set a single crack nucleus in the centre of the x1=x2=0 edge
-  cgca_space( 1, 1, cgca_c(3) /2, cgca_state_type_frac )                 &
-       [ 1, 1, cgca_ir(3)/2 ] = cgca_clvg_state_100_edge
+! update grain connectivity, local routine, no sync needed
+call cgca_gcu( cgca_space )
 
-  ! dump space arrays to files, only image 1 does it,
-  ! all others wait at sync all
-  if ( cgca_img .eq. 1 ) write (*,*) "dumping model to files"
-  call cgca_pswci( cgca_space, cgca_state_type_grain, "zg0.raw" )
-  call cgca_pswci( cgca_space, cgca_state_type_frac,  "zf0.raw" )
-  if ( cgca_img .eq. 1 ) write (*,*) "finished dumping model to files"
+! set a single crack nucleus in the centre of the x1=x2=0 edge
+cgca_space( 1, 1, cgca_c(3) /2, cgca_state_type_frac )                 &
+              [ 1, 1, cgca_ir(3)/2 ] = cgca_clvg_state_100_edge
 
-  ! allocate the stress array component of cgca_pfem_stress coarray
-  !subroutine cgca_pfem_salloc( nels_pp, intp, comp )
-  call cgca_pfem_salloc( nels_pp, nip, nst )
+! img 1 dumps space arrays to files
+if ( cgca_img .eq. 1 ) write (*,*) "dumping model to files"
+call cgca_pswci( cgca_space, cgca_state_type_grain, "zg0.raw" )
+call cgca_pswci( cgca_space, cgca_state_type_frac,  "zf0.raw" )
+if ( cgca_img .eq. 1 ) write (*,*) "finished dumping model to files"
 
-  sync all
-  !*** end CGPACK part *************************************************72
+! allocate the stress array component of cgca_pfem_stress coarray
+!subroutine cgca_pfem_salloc( nels_pp, intp, comp )
+call cgca_pfem_salloc( nels_pp, nip, nst )
+
+! just in case, not sure what is coming next...
+sync all
+!*** end CGPACK part *************************************************72
 
 
   !----------  find the steering array and equations per process ---------
@@ -475,13 +484,6 @@ call cgca_as( 1, cgca_c(1),  1, cgca_c(2),  1, cgca_c(3),              &
 
   ! allocate arrays outside of the loop
   ALLOCATE( eld_pp(ntot,nels_pp), source=zero )
-
-  !LUIS
-  !make integrity = 1 just for testing purposes
-  cgca_pfem_integrity = 1.0
-  
-! initially set the Young's modulus to "e" everywhere
-cgca_pfem_enew%e = e
 
   ! Since the Young's modulus can be updated,
   ! all below must be inside the loading iterations!
