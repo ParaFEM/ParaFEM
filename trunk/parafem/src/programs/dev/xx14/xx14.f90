@@ -14,10 +14,10 @@ PROGRAM xx14
 !-----------------------------------------------------------------------
 !USE mpi_wrapper  !remove comment for serial compilation
 
-  !*** CGPACK part *****************************************************72
-  ! The CGPACK module must be used
-  use cgca
-  !*** end CGPACK part *************************************************72
+!*** CGPACK part *****************************************************72
+! The CGPACK module must be used
+use cgca
+!*** end CGPACK part *************************************************72
 
   USE precision
   USE global_variables
@@ -51,19 +51,18 @@ PROGRAM xx14
   CHARACTER( LEN=15 ) :: element
   CHARACTER( LEN=6 ) :: ch
 
-  !---------------------------- dynamic arrays ---------------------------
-  REAL( iwp ), ALLOCATABLE :: points(:,:), dee(:,:),newdee(:,:), weights(:),val(:,:),&
-       disp_pp(:), g_coord_pp(:,:,:), jac(:,:), der(:,:), deriv(:,:),      &
-       bee(:,:), storkm_pp(:,:,:), eps(:), sigma(:), diag_precon_pp(:),    &
-       p_pp(:), r_pp(:), x_pp(:), xnew_pp(:), u_pp(:), pmul_pp(:,:),       &
-       utemp_pp(:,:), d_pp(:), timest(:), diag_precon_tmp(:,:),            &
-       eld_pp(:,:), temp(:), tot_r_pp(:)
-  INTEGER, ALLOCATABLE :: rest(:,:), g_num_pp(:,:), g_g_pp(:,:), node(:)
-  !LUIS
-  INTEGER( kind=ilrg ) :: cgca_fail_volume[*]
+!---------------------------- dynamic arrays -------------------------72
+REAL( iwp ), ALLOCATABLE :: points(:,:), dee(:,:),         &
+   weights(:), val(:,:),                                               &
+   disp_pp(:), g_coord_pp(:,:,:), jac(:,:), der(:,:), deriv(:,:),      &
+   bee(:,:), storkm_pp(:,:,:), eps(:), sigma(:), diag_precon_pp(:),    &
+   p_pp(:), r_pp(:), x_pp(:), xnew_pp(:), u_pp(:), pmul_pp(:,:),       &
+   utemp_pp(:,:), d_pp(:), timest(:), diag_precon_tmp(:,:),            &
+   eld_pp(:,:), temp(:), tot_r_pp(:)
+INTEGER, ALLOCATABLE :: rest(:,:), g_num_pp(:,:), g_g_pp(:,:), node(:)
 
-  !*** CGPACK part *****************************************************72
-  ! CGPACK variables and parameters
+!*** CGPACK part *****************************************************72
+! CGPACK variables and parameters
   integer, parameter :: cgca_linum=5 ! number of loading iterations
   integer( kind=idef ) :: &
        cgca_ir(3),            &
@@ -84,25 +83,23 @@ PROGRAM xx14
        ! see the manual for derivation, GPa.
        cgca_scrit(3) = (/ 1.05e1_rdef, 1.25e1_rdef, 4.90e1_rdef /)
 
-  real( kind=rdef ) ::    &
-       cgca_qual,             & ! quality
-       cgca_bsz(3),           & ! the given and the updated "box" size
-       cgca_origin(3),        & ! origin of the "box" cs, in FE cloads
-       cgca_rot(3,3),         & ! rotation tensor *from* FE cs *to* CA cs
-       cgca_dm,               & ! mean grain size, linear dim, phys units
-       cgca_res,              & ! resolutions, cells per grain
-       cgca_bcol(3),          & ! lower phys. coords of the coarray on image
-       cgca_bcou(3),          & ! upper phys. coords of the coarray on image
-       cgca_stress(3,3),      & ! stress tensor
-       cgca_length,           & ! fracture length scale
-       cgca_time_inc            ! time increment
-  real( kind=rdef ), allocatable :: cgca_grt(:,:,:)[:,:,:]
-
-  logical( kind=ldef ) :: cgca_solid
-
-  character( len=6 ) :: cgca_citer
-
-  !*** end CGPACK part *************************************************72
+real( kind=rdef ) ::                                                   &
+   cgca_qual,             & ! quality
+   cgca_bsz(3),           & ! the given and the updated "box" size
+   cgca_origin(3),        & ! origin of the "box" cs, in FE cloads
+   cgca_rot(3,3),         & ! rotation tensor *from* FE cs *to* CA cs
+   cgca_dm,               & ! mean grain size, linear dim, phys units
+   cgca_res,              & ! resolutions, cells per grain
+   cgca_bcol(3),          & ! lower phys. coords of the coarray on image
+   cgca_bcou(3),          & ! upper phys. coords of the coarray on image
+   cgca_stress(3,3),      & ! stress tensor
+   cgca_length,           & ! fracture length scale
+   cgca_time_inc            ! time increment
+real( kind=rdef ), allocatable :: cgca_grt(:,:,:)[:,:,:]
+real( kind=rdef) :: cgca_fail_volume[*]
+logical( kind=ldef ) :: cgca_solid
+character( len=6 ) :: cgca_citer
+!*** end CGPACK part *************************************************72
 
 
   !------------------------ input and initialisation ---------------------
@@ -227,40 +224,39 @@ PROGRAM xx14
   !*** end of ParaFEM input and initialisation *************************72
 
 
-  !*** CGPACK part *****************************************************72
-  ! *** CGPACK first executable statement ***
-  ! In this test set the number of images via the env var,
-  ! or simply as an argument to aprun.
-  ! the code must be able to cope with any value >= 1.
-    cgca_img = this_image()
-  cgca_nimgs = num_images()
+!*** CGPACK part *****************************************************72
+! *** CGPACK first executable statement ***
+! In this test set the number of images via the env var,
+! or simply as an argument to aprun.
+! the code must be able to cope with any value >= 1.
+  cgca_img = this_image()
+cgca_nimgs = num_images()
 
-  ! dump CGPACK parameters and some ParaFEM settings
-  if ( cgca_img .eq. 1 ) then
+! dump CGPACK parameters and some ParaFEM settings
+if ( cgca_img .eq. 1 ) then
      call cgca_pdmp
      write (*,*) "Young's mod:", e, "Poisson's ratio", v
-  end if
+end if
 
-  ! sync here to separate the output, hopefully...
-  ! The Fortran processor is allowed to play with
-  ! stdout streams from different images, including
-  ! buffering, etc. so it is not guaranteed that
-  ! the above output from image 1 will appear *prior*
-  ! to all other output from that and other images to
-  ! stdout.
-  sync all
+! sync here to separate the output, hopefully...
+! The Fortran processor is allowed to play with
+! stdout streams from different images, including
+! buffering, etc. so it is not guaranteed that
+! the above output from image 1 will appear *prior*
+! to all other output from that and other images to stdout.
+sync all
 
-  ! physical dimensions of the box, must be the same
-  ! units as in the ParaFEM.
-  ! Must be fully within the FE model, which for xx14
-  ! is a cube with lower bound at (0,0,-10), and the
-  ! upper bound at (10,10,0)
-  cgca_bsz = (/ 10.0, 10.0, 10.0 /)
+! physical dimensions of the box, must be the same
+! units as in the ParaFEM.
+! Must be fully within the FE model, which for xx14
+! is a cube with lower bound at (0,0,-10), and the
+! upper bound at (10,10,0)
+cgca_bsz = (/ 10.0, 10.0, 10.0 /)
 
-  ! Origin of the box cs, in the same units.
-  ! This gives the upper limits of the box at 0+10=10, 0+10=10, -10+10=0
-  ! all within the FE model.
-  cgca_origin = (/ 0.0, 0.0, -10.0 /)
+! Origin of the box cs, in the same units.
+! This gives the upper limits of the box at 0+10=10, 0+10=10, -10+10=0
+! all within the FE model.
+cgca_origin = (/ 0.0, 0.0, -10.0 /)
 
 ! rotation tensor *from* FE cs *to* CA cs.
 ! The box cs is aligned with the box.
@@ -342,9 +338,9 @@ call cgca_pfem_ctalloc( ndim, nels_pp )
 ! g_coord_pp is allocated as g_coord_pp( nod, ndim, nels_pp )
 cgca_pfem_centroid_tmp%r = sum( g_coord_pp(:,:,:), dim=1 ) / nod
 
-! Need to sync here to wait for all images to set their
-! cgca_pfem_centroid_tmp%r
-sync all
+! cgca_pfem_centroid_tmp[*]%r set
+sync all ! must separate execution segments
+! cgca_pfem_centroid_tmp[*]%r used
 
 !subroutine cgca_pfem_cenc( origin, rot, bcol, bcou )
 call cgca_pfem_cenc( cgca_origin, cgca_rot, cgca_bcol, cgca_bcou )
@@ -502,7 +498,8 @@ sync all
 
      elements_1: DO iel=1,nels_pp
         gauss_pts_1: DO i=1,nip
-           !LUIS
+! from cgca_m2pfem.f90:
+! allocate( cgca_pfem_enew%e( nip, nels_pp ), stat=errstat )
            CALL deemat( dee, cgca_pfem_enew%e(i,iel), v )
            CALL shape_der( der, points, i )
            jac = MATMUL( der, g_coord_pp(:,:,iel) )
@@ -589,10 +586,8 @@ sync all
 
      elmnts: DO iel = 1, nels_pp
         intpts: DO i = 1, nip
-
-           !Luis-> need to calculate dee again
            call deemat(dee, cgca_pfem_enew%e( i, iel ), v)
-           ! Compute the derivatives of the shape functions at a Gauss point.
+! Compute the derivatives of the shape functions at a Gauss point.
 ! http://parafem.googlecode.com/svn/trunk/parafem/src/modules/shared/new_library.f90
            CALL shape_der(der,points,i)
            jac = MATMUL(der,g_coord_pp(:,:,iel))
@@ -605,10 +600,13 @@ sync all
            !                "int. point", i, "stress", sigma
 
            ! set the stress array on this image
+! from cgca_m2pfem.f90:
+! allocate( cgca_pfem_stress%stress( nels_pp, intp, comp ),          &
            cgca_pfem_stress%stress( iel, i, : ) = sigma
 
         END DO intpts
      end do elmnts
+!*** end ParaFEM part ************************************************72
 
 !*** CGPACK part *****************************************************72
 ! debug: dump stresses to stdout
@@ -636,9 +634,9 @@ sync all
 ! no real time increments in this problem
 ! I use the inverse of the length scale,
 ! which gives 1mm of crack propagation per increment maximum.
-! I then multiply it by a factor, e.g. 3, so that I get
-! 3mm max ( 1/3 of the model ) per load increment.
-cgca_time_inc = 3.0_rdef / cgca_length
+! I then can multiply it by a factor, e.g. a factor of 3 will mean
+! that I get 3mm max ( 1/3 of the model ) per load increment.
+cgca_time_inc = 1.0_rdef / cgca_length
 
 ! run cleavage for a correct number of iterations, which is a function
 ! of the characteristic length and the time increment
@@ -667,14 +665,20 @@ sync all
 ! calculate number (volume) of fractured cells on each image
 call cgca_fv( cgca_space, cgca_fail_volume )
 
-sync all
+! cgca_fail_volume[*] set
+sync all ! create execution segments
+! cgca_fail_volume[*] used
 
 ! calculate integrity, update local arrays only
 call cgca_pfem_intcalc1( cgca_c, cgca_fail_volume )
 
+! dump integrity
+write (*,*) "img:", cgca_img, "integrity:", cgca_pfem_integrity
+
 ! Young's modulus need to be updated on each image,
-! local arrays only
-call cgca_pfem_uym
+! local arrays only. The original Young's modulus value must be given
+! as input.
+call cgca_pfem_uym( e )
 
 sync all
 
@@ -683,8 +687,8 @@ sync all
 
 !*** ParaFEM part ****************************************************72
 
-    ! end loading iterations
-  end do load_iter
+! end loading iterations
+end do load_iter
 
   ! deallocate all arrays, moved from inside the loop
   DEALLOCATE( p_pp )
@@ -728,19 +732,19 @@ sync all
      close( 11 )
      close( 12 )
   end if
-  !*** end ParaFEM part ************************************************72
+!*** end ParaFEM part ************************************************72
 
 
-  !*** CGPACK part *****************************************************72
-  ! deallocate all CGPACK arrays
-  call cgca_ds(  cgca_space )
-  call cgca_drt( cgca_grt )
-  call cgca_pfem_sdalloc
-  call cgca_pfem_edalloc
-  call cgca_pfem_integdalloc
-  !*** end CGPACK part *************************************************72
+!*** CGPACK part *****************************************************72
+! deallocate all CGPACK arrays
+call cgca_ds(  cgca_space )
+call cgca_drt( cgca_grt )
+call cgca_pfem_sdalloc
+call cgca_pfem_edalloc
+call cgca_pfem_integdalloc
+!*** end CGPACK part *************************************************72
 
 
-  !*** ParaFEM part ****************************************************72
-  CALL SHUTDOWN()
+!*** ParaFEM part ****************************************************72
+CALL SHUTDOWN()
 END PROGRAM xx14
