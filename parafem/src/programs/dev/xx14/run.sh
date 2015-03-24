@@ -2,12 +2,14 @@
 
 # inputs:
 # 1 - name of the executable file, xx14.x or xx14noio.x
+# 2 - queue, short or standard
 
 project=e347
 user=mexas
 bld_dir=/home/$project/$project/$user/parafem/parafem/bin
 work_dir=/work/$project/$project/$user
 prog=$1
+queue=$2
 
 if [ $prog = "xx14.x" ]
 then
@@ -36,5 +38,5 @@ then
 else
 	echo $differ
 	cd $work_dir
-	rsync -qca $bld_dir/$prog . &&  qsub -q short $job_script && qstat -u $USER
+	rsync -qca $bld_dir/$prog . &&  qsub -q $queue $job_script && qstat -u $USER
 fi
