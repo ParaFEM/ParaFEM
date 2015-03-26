@@ -19,41 +19,39 @@ PROGRAM xx14
 use cgca
 !*** end CGPACK part *************************************************72
 
-  USE precision
-  USE global_variables
-  USE mp_interface
-  USE input
-  USE output
-  USE loading
-  USE timing
-  USE maths
-  USE gather_scatter
-  USE steering
-  USE new_library
+USE precision
+USE global_variables
+USE mp_interface
+USE input
+USE output
+USE loading
+USE timing
+USE maths
+USE gather_scatter
+USE steering
+USE new_library
 
-  IMPLICIT NONE
+IMPLICIT NONE
 
-  ! neq, ntot are now global variables - must not be declared
+! neq, ntot are now global variables - must not be declared
 
-  INTEGER, PARAMETER :: nodof = 3, ndim = 3, nst = 6
-  INTEGER :: loaded_nodes, iel, i, j, k, iters, limit, nn, nr, nip, nod, &
-       nels, ndof, npes_pp, node_end, node_start, nodes_pp, meshgen,       &
-       partitioner, nlen
+INTEGER, PARAMETER :: nodof = 3, ndim = 3, nst = 6
+INTEGER :: loaded_nodes, iel, i, j, k, iters, limit, nn, nr, nip, nod, &
+   nels, ndof, npes_pp, node_end, node_start, nodes_pp, meshgen,       &
+   partitioner, nlen
 
-  REAL( iwp ), PARAMETER :: zero=0.0_iwp
-  REAL( iwp ) :: e, v, det, tol, up, alpha, beta, q
-  !luis
-  REAL( iwp ), ALLOCATABLE :: enew(:,:)
+REAL( iwp ), PARAMETER :: zero=0.0_iwp
+REAL( iwp ) :: e, v, det, tol, up, alpha, beta, q
 
-  LOGICAL :: converged=.false.
+LOGICAL :: converged=.false.
 
-  CHARACTER( LEN=50 ) :: argv
-  CHARACTER( LEN=15 ) :: element
-  CHARACTER( LEN=6 ) :: ch
+CHARACTER( LEN=50 ) :: argv
+CHARACTER( LEN=15 ) :: element
+CHARACTER( LEN=6 ) :: ch
 
 !---------------------------- dynamic arrays -------------------------72
-REAL( iwp ), ALLOCATABLE :: points(:,:), dee(:,:),         &
-   weights(:), val(:,:),                                               &
+REAL( iwp ), ALLOCATABLE :: points(:,:), dee(:,:), weights(:),         &
+   val(:,:),                                                           &
    disp_pp(:), g_coord_pp(:,:,:), jac(:,:), der(:,:), deriv(:,:),      &
    bee(:,:), storkm_pp(:,:,:), eps(:), sigma(:), diag_precon_pp(:),    &
    p_pp(:), r_pp(:), x_pp(:), xnew_pp(:), u_pp(:), pmul_pp(:,:),       &
@@ -64,7 +62,7 @@ INTEGER, ALLOCATABLE :: rest(:,:), g_num_pp(:,:), g_g_pp(:,:), node(:)
 !*** CGPACK part *****************************************************72
 ! CGPACK variables and parameters
   integer, parameter :: cgca_linum=5 ! number of loading iterations
-  integer( kind=idef ) :: &
+  integer( kind=idef ) ::                                              &
        cgca_ir(3),            &
        cgca_img,              &
        cgca_nimgs,            &
@@ -77,11 +75,11 @@ INTEGER, ALLOCATABLE :: rest(:,:), g_num_pp(:,:), g_g_pp(:,:), node(:)
   integer( kind=iarr ), allocatable :: cgca_space(:,:,:,:) [:,:,:]
   integer :: cgca_errstat
 
-  real( kind=rdef ), parameter :: cgca_zero = 0.0_rdef,                  &
-       cgca_one = 1.0_rdef,                                                  &
-       ! cleavage stress on 100, 110, 111 planes for BCC,
-       ! see the manual for derivation, GPa.
-       cgca_scrit(3) = (/ 1.05e1_rdef, 1.25e1_rdef, 4.90e1_rdef /)
+real( kind=rdef ), parameter :: cgca_zero = 0.0_rdef,                  &
+ cgca_one = 1.0_rdef,                                                  &
+ ! cleavage stress on 100, 110, 111 planes for BCC,
+ ! see the manual for derivation, GPa.
+ cgca_scrit(3) = (/ 1.05e1_rdef, 1.25e1_rdef, 4.90e1_rdef /)
 
 real( kind=rdef ) ::                                                   &
    cgca_qual,             & ! quality
@@ -94,9 +92,9 @@ real( kind=rdef ) ::                                                   &
    cgca_bcou(3),          & ! upper phys. coords of the coarray on image
    cgca_stress(3,3),      & ! stress tensor
    cgca_length,           & ! fracture length scale
-   cgca_time_inc            ! time increment
+   cgca_time_inc,         & ! time increment
+ cgca_fracvol               ! volume (number) of fractured cells per img
 real( kind=rdef ), allocatable :: cgca_grt(:,:,:)[:,:,:]
-real( kind=rdef) :: cgca_fail_volume[*]
 logical( kind=ldef ) :: cgca_solid
 character( len=6 ) :: cgca_citer
 !*** end CGPACK part *************************************************72
@@ -139,35 +137,18 @@ character( len=6 ) :: cgca_citer
   CALL read_p121( argv, numpe, e, element, limit, loaded_nodes, meshgen, &
        nels, nip, nn, nod, nr, partitioner, tol, v )
 
-  ! Calculates the number of elements, NELS_PP, assigned to each
+  ! Calculates the number of elements, nels_pp, assigned to each
   ! processor.
-  ! It is effectively a very naive method of mesh partitioning. The 
-  ! subroutine also computes, IEL_START, the first element number on each 
-  ! processor. IEL_START and NELS_PP are the external variables modified
-  ! by this subroutine. Note that they are global variables that are not
-  ! passed through the list of arguments.
+  ! It is effectively a very naive method of mesh partitioning.
+  ! The subroutine also computes, iel_start, the first element number
+  ! on each processor. iel_start and nels_pp are the external variables
+  ! modified by this subroutine. Note that they are global variables
+  ! that are not passed through the list of arguments.
   !
-  ! http://parafem.googlecode.com/svn/trunk/parafem/src/modules/mpi/gather_scatter.f90
   ! https://code.google.com/p/parafem/source/browse/trunk/parafem/src/modules/mpi/gather_scatter.f90
   !
   ! nels_pp is indeed a global var, defined in
-  ! http://parafem.googlecode.com/svn/trunk/parafem/src/modules/shared/global_variables.f90
   ! https://code.google.com/p/parafem/source/browse/trunk/parafem/src/modules/shared/global_variables.f90
-  CALL calc_nels_pp( argv, nels, npes, numpe, partitioner, nels_pp )
-
-
-  ! Calculates the number of elements, NELS_PP, assigned to each
-  ! processor.
-  ! It is effectively a very naive method of mesh partitioning. The
-  ! subroutine also computes, IEL_START, the first element number on each
-  ! processor. IEL_START and NELS_PP are the external variables modified
-  ! by this subroutine. Note that they are global variables that are not
-  ! passed through the list of arguments.
-  !
-  ! http://parafem.googlecode.com/svn/trunk/parafem/src/modules/mpi/gather_scatter.f90
-  !
-  ! nels_pp is indeed a global var, defined in
-  ! http://parafem.googlecode.com/svn/trunk/parafem/src/modules/shared/global_variables.f90
   CALL calc_nels_pp( argv, nels, npes, numpe, partitioner, nels_pp )
 
   !   nod - number of nodes per element
@@ -334,7 +315,7 @@ call cgca_pfem_ctalloc( ndim, nels_pp )
 
 ! set the centroids array component on this image, no remote calls.
 ! first dim - coord, 1,2,3
-! second dim - element number
+! second dim - element number, always starting from 1
 ! g_coord_pp is allocated as g_coord_pp( nod, ndim, nels_pp )
 cgca_pfem_centroid_tmp%r = sum( g_coord_pp(:,:,:), dim=1 ) / nod
 
@@ -345,29 +326,24 @@ sync all ! must separate execution segments
 !subroutine cgca_pfem_cenc( origin, rot, bcol, bcou )
 call cgca_pfem_cenc( cgca_origin, cgca_rot, cgca_bcol, cgca_bcou )
 
-! need to sync before deallocating temp centroids arrays
-!   cgca_pfem_centroid_tmp%r
-! to make sure all images finished processing data.
-! Temp centroids arrays are *local*, not coarrays,
-! so there is no implicit sync.
-sync all
- 
-! Now can deallocate the temp array cgca_pfem_centroid_tmp%r
-call cgca_pfem_ctdalloc
-
 ! Call subroutine cgca_pfem_integalloc to allocate
-! cgca_pfem_integrity, a *local* array. Must call after
-! cgca_pfem_centroid has been calculated by cgca_pfem_cenc().
-call cgca_pfem_integalloc
+! cgca_pfem_integrity array *coarray*.
+! Implicit sync.
+call cgca_pfem_integalloc( nels_pp )
  
 ! initially integrity is 1
 cgca_pfem_integrity = 1.0
   
+! Now can deallocate the temp array cgca_pfem_centroid_tmp%r.
+! Implicit sync in call cgca_pfem_integalloc removes the need
+! for an explicit sync.
+call cgca_pfem_ctdalloc
+
 ! Allocate the Young's modulus 2D array
 call cgca_pfem_ealloc( nip, nels_pp )
   
 ! initially set the Young's modulus to "e" everywhere
-cgca_pfem_enew%e = e
+cgca_pfem_enew = e
 
 ! Dump the FE centroids in CA cs to stdout.
 ! Obviously, this is an optional step, just for debug.
@@ -500,7 +476,7 @@ sync all
         gauss_pts_1: DO i=1,nip
 ! from cgca_m2pfem.f90:
 ! allocate( cgca_pfem_enew%e( nip, nels_pp ), stat=errstat )
-           CALL deemat( dee, cgca_pfem_enew%e(i,iel), v )
+           CALL deemat( dee, cgca_pfem_enew(i,iel), v )
            CALL shape_der( der, points, i )
            jac = MATMUL( der, g_coord_pp(:,:,iel) )
            det = determinant(jac)
@@ -586,7 +562,7 @@ sync all
 
      elmnts: DO iel = 1, nels_pp
         intpts: DO i = 1, nip
-           call deemat(dee, cgca_pfem_enew%e( i, iel ), v)
+           call deemat(dee, cgca_pfem_enew( i, iel ), v)
 ! Compute the derivatives of the shape functions at a Gauss point.
 ! http://parafem.googlecode.com/svn/trunk/parafem/src/modules/shared/new_library.f90
            CALL shape_der(der,points,i)
@@ -659,26 +635,28 @@ call cgca_pswci( cgca_space, cgca_state_type_frac,                     &
                  "zf"//trim( cgca_citer )//".raw" )
 if ( cgca_img .eq. 1 ) write (*,*) "finished dumping model to file"
      
-! wait for image 1
-sync all
+! Calculate number (volume) of fractured cells on each image.
+! cgca_fracvol is a local, non-coarray, array, so no sync needed.
+call cgca_fv( cgca_space, cgca_fracvol)
 
-! calculate number (volume) of fractured cells on each image
-call cgca_fv( cgca_space, cgca_fail_volume )
+write (*,*) "img:", cgca_img, "fracvol:", cgca_fracvol
 
-! cgca_fail_volume[*] set
-sync all ! create execution segments
-! cgca_fail_volume[*] used
-
-! calculate integrity, update local arrays only
-call cgca_pfem_intcalc1( cgca_c, cgca_fail_volume )
+! calculate integrity, remote write
+call cgca_pfem_intcalc1( cgca_c, cgca_fracvol )
 
 ! dump integrity
 write (*,*) "img:", cgca_img, "integrity:", cgca_pfem_integrity
 
-! Young's modulus need to be updated on each image,
-! local arrays only. The original Young's modulus value must be given
-! as input.
-call cgca_pfem_uym( e )
+! wait for integrity on all images to be calculated
+sync all
+
+! Young's modulus need to be updated on each image, local arrays only.
+! The original Young's modulus value must be given as input.
+call cgca_pfem_uym( e, nels_pp )
+
+! dump updated Young's modulus
+write (*,*) "img:", cgca_img, "*min* Young's mod:",                    &
+            minval( cgca_pfem_enew )
 
 sync all
 
