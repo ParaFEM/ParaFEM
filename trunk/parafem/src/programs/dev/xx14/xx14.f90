@@ -319,43 +319,32 @@ call cgca_pfem_ctalloc( ndim, nels_pp )
 ! g_coord_pp is allocated as g_coord_pp( nod, ndim, nels_pp )
 cgca_pfem_centroid_tmp%r = sum( g_coord_pp(:,:,:), dim=1 ) / nod
 
-! cgca_pfem_centroid_tmp[*]%r set
+         ! set cgca_pfem_centroid_tmp[*]%r
 sync all ! must separate execution segments
-! cgca_pfem_centroid_tmp[*]%r used
+         ! use cgca_pfem_centroid_tmp[*]%r
 
 !subroutine cgca_pfem_cenc( origin, rot, bcol, bcou )
 call cgca_pfem_cenc( cgca_origin, cgca_rot, cgca_bcol, cgca_bcou )
 
-write (*,*) "fuck4"
-
-! Call subroutine cgca_pfem_integalloc to allocate
-! cgca_pfem_integrity array *coarray*.
-! Implicit sync.
-call cgca_pfem_integalloc( nels_pp )
- 
-write (*,*) "fuck5"
-
-! initially integrity is 1
-cgca_pfem_integrity%i = 1.0
-  
-write (*,*) "fuck6"
+         ! use cgca_pfem_centroid_tmp[*]%r
+sync all ! must separate execution segments
+         ! deallocate cgca_pfem_centroid_tmp[*]%r
 
 ! Now can deallocate the temp array cgca_pfem_centroid_tmp%r.
-! Implicit sync in call cgca_pfem_integalloc removes the need
-! for an explicit sync.
 call cgca_pfem_ctdalloc
 
-write (*,*) "fuck7"
+! Allocate cgca_pfem_integrity%i, array component of a coarray of
+! derived type. Allocating *local* array.
+call cgca_pfem_integalloc( nels_pp )
+ 
+! initially integrity is 1
+cgca_pfem_integrity%i = 1.0
 
 ! Allocate the Young's modulus 2D array
 call cgca_pfem_ealloc( nip, nels_pp )
   
-write (*,*) "fuck8"
-
 ! initially set the Young's modulus to "e" everywhere
 cgca_pfem_enew = e
-
-write (*,*) "fuck9"
 
 ! Dump the FE centroids in CA cs to stdout.
 ! Obviously, this is an optional step, just for debug.
