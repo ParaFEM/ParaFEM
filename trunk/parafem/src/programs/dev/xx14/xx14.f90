@@ -326,24 +326,36 @@ sync all ! must separate execution segments
 !subroutine cgca_pfem_cenc( origin, rot, bcol, bcou )
 call cgca_pfem_cenc( cgca_origin, cgca_rot, cgca_bcol, cgca_bcou )
 
+write (*,*) "fuck4"
+
 ! Call subroutine cgca_pfem_integalloc to allocate
 ! cgca_pfem_integrity array *coarray*.
 ! Implicit sync.
 call cgca_pfem_integalloc( nels_pp )
  
+write (*,*) "fuck5"
+
 ! initially integrity is 1
-cgca_pfem_integrity = 1.0
+cgca_pfem_integrity%i = 1.0
   
+write (*,*) "fuck6"
+
 ! Now can deallocate the temp array cgca_pfem_centroid_tmp%r.
 ! Implicit sync in call cgca_pfem_integalloc removes the need
 ! for an explicit sync.
 call cgca_pfem_ctdalloc
 
+write (*,*) "fuck7"
+
 ! Allocate the Young's modulus 2D array
 call cgca_pfem_ealloc( nip, nels_pp )
   
+write (*,*) "fuck8"
+
 ! initially set the Young's modulus to "e" everywhere
 cgca_pfem_enew = e
+
+write (*,*) "fuck9"
 
 ! Dump the FE centroids in CA cs to stdout.
 ! Obviously, this is an optional step, just for debug.
@@ -645,7 +657,7 @@ write (*,*) "img:", cgca_img, "fracvol:", cgca_fracvol
 call cgca_pfem_intcalc1( cgca_c, cgca_fracvol )
 
 ! dump integrity
-write (*,*) "img:", cgca_img, "integrity:", cgca_pfem_integrity
+write (*,*) "img:", cgca_img, "integrity:", cgca_pfem_integrity%i
 
 ! wait for integrity on all images to be calculated
 sync all
