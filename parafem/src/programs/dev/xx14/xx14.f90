@@ -117,92 +117,92 @@ character( len=6 ) :: cgca_citer
   !*           nlen - integer, number of characters in data file base name
   CALL getname( argv, nlen )
 
-  !*    Master processor reads the general data for the problem
-  !     and broadcasts it to the slave processors.
-  !  in:
-  !        argv - character, file name to read from
-  !       numpe - MPI rank
-  !           e - Young's modulus
-  !     element - character, element type
-  !       limit - max number of iterations
-  !loaded_nodes - number of nodes with applied forces
-  !     meshgen - mesh numbering scheme
-  !        nels - total number of elements
-  !         nip - number of Gauss points
-  !          nn - total number of nodes in the mesh
-  !         nod - number of nodes per element
-  !         tol - tolerance
-  !           v - Poisson's ratio
-  ! http://parafem.googlecode.com/svn/trunk/parafem/src/modules/mpi/input.f90
-  CALL read_p121( argv, numpe, e, element, limit, loaded_nodes, meshgen, &
-       nels, nip, nn, nod, nr, partitioner, tol, v )
+!*    Master processor reads the general data for the problem
+!     and broadcasts it to the slave processors.
+!  in:
+!        argv - character, file name to read from
+!       numpe - MPI rank
+!           e - Young's modulus
+!     element - character, element type
+!       limit - max number of iterations
+!loaded_nodes - number of nodes with applied forces
+!     meshgen - mesh numbering scheme
+!        nels - total number of elements
+!         nip - number of Gauss points
+!          nn - total number of nodes in the mesh
+!         nod - number of nodes per element
+!         tol - tolerance
+!           v - Poisson's ratio
+!https://code.google.com/p/parafem/source/browse/trunk/parafem/src/modules/mpi/input.f90
+CALL read_p121( argv, numpe, e, element, limit, loaded_nodes, meshgen, &
+                nels, nip, nn, nod, nr, partitioner, tol, v )
 
-  ! Calculates the number of elements, nels_pp, assigned to each
-  ! processor.
-  ! It is effectively a very naive method of mesh partitioning.
-  ! The subroutine also computes, iel_start, the first element number
-  ! on each processor. iel_start and nels_pp are the external variables
-  ! modified by this subroutine. Note that they are global variables
-  ! that are not passed through the list of arguments.
-  !
-  ! https://code.google.com/p/parafem/source/browse/trunk/parafem/src/modules/mpi/gather_scatter.f90
-  !
-  ! nels_pp is indeed a global var, defined in
-  ! https://code.google.com/p/parafem/source/browse/trunk/parafem/src/modules/shared/global_variables.f90
+! Calculates the number of elements, nels_pp, assigned to each
+! processor.
+! It is effectively a very naive method of mesh partitioning.
+! The subroutine also computes, iel_start, the first element number
+! on each processor. iel_start and nels_pp are the external variables
+! modified by this subroutine. Note that they are global variables
+! that are not passed through the list of arguments.
+!
+! https://code.google.com/p/parafem/source/browse/trunk/parafem/src/modules/mpi/gather_scatter.f90
+!
+! nels_pp is indeed a global var, defined in
+! https://code.google.com/p/parafem/source/browse/trunk/parafem/src/modules/shared/global_variables.f90
   CALL calc_nels_pp( argv, nels, npes, numpe, partitioner, nels_pp )
 
-  !   nod - number of nodes per element
-  ! nodof = 3 (see the beginning of this file), probably
-  !           degrees of freedom per node.
-  ndof = nod * nodof
+!   nod - number of nodes per element
+! nodof = 3 (see the beginning of this file), probably
+!           degrees of freedom per node.
+ndof = nod * nodof
 
-  ! ntot - a global variable,
-  ! the total number of degrees of freedom per element
-  ntot = ndof
+! ntot - a global variable,
+! the total number of degrees of freedom per element
+ntot = ndof
 
-  ! g_num_pp(nod,nels_pp) - integer, elements connectivity
-  ! g_coord_pp - global coord?
-  ! http://parafem.googlecode.com/svn/trunk/parafem/src/modules/mpi/input.f90
-  ALLOCATE( g_num_pp( nod, nels_pp ) )
-  allocate( g_coord_pp( nod, ndim, nels_pp ) )
-  allocate( rest( nr,nodof+1) )
+! g_num_pp(nod,nels_pp) - integer, elements connectivity
+! g_coord_pp - global coord?
+!https://code.google.com/p/parafem/source/browse/trunk/parafem/src/modules/mpi/input.f90
+ALLOCATE( g_num_pp( nod, nels_pp ) )
+allocate( g_coord_pp( nod, ndim, nels_pp ) )
+allocate( rest( nr,nodof+1) )
 
-  g_num_pp = 0
-  g_coord_pp = zero
-  rest = 0
+g_num_pp = 0
+g_coord_pp = zero
+rest = 0
 
-  ! http://parafem.googlecode.com/svn/trunk/parafem/src/modules/mpi/input.f90
-  CALL read_g_num_pp( argv, iel_start, nn, npes, numpe, g_num_pp )
+!https://code.google.com/p/parafem/source/browse/trunk/parafem/src/modules/mpi/input.f90
+CALL read_g_num_pp( argv, iel_start, nn, npes, numpe, g_num_pp )
 
-  IF ( meshgen == 2 ) CALL abaqus2sg( element, g_num_pp )
-  CALL read_g_coord_pp( argv, g_num_pp, nn, npes, numpe, g_coord_pp )
-  CALL read_rest( argv, numpe, rest )
+IF ( meshgen == 2 ) CALL abaqus2sg( element, g_num_pp )
+CALL read_g_coord_pp( argv, g_num_pp, nn, npes, numpe, g_coord_pp )
+CALL read_rest( argv, numpe, rest )
 
-  timest(2) = elap_time()
+timest(2) = elap_time()
 
-  ALLOCATE( points(nip,ndim) )
-  allocate( dee(nst,nst) )
-  allocate( jac(ndim,ndim) )
-  allocate( der(ndim,nod) )
-  allocate( deriv( ndim, nod ) )
-  allocate( bee( nst, ntot ) )
-  allocate( weights( nip ) )
-  allocate( eps( nst ) )
-  allocate( sigma(nst) )
-  allocate( storkm_pp( ntot, ntot, nels_pp ) )
-  allocate( pmul_pp( ntot, nels_pp ) )
-  allocate( utemp_pp(ntot,nels_pp) )
-  allocate( g_g_pp(ntot,nels_pp) )
+ALLOCATE( points(nip,ndim) )
+allocate( dee(nst,nst) )
+allocate( jac(ndim,ndim) )
+allocate( der(ndim,nod) )
+allocate( deriv( ndim, nod ) )
+allocate( bee( nst, ntot ) )
+allocate( weights( nip ) )
+allocate( eps( nst ) )
+allocate( sigma(nst) )
+allocate( storkm_pp( ntot, ntot, nels_pp ) )
+allocate( pmul_pp( ntot, nels_pp ) )
+allocate( utemp_pp(ntot,nels_pp) )
+allocate( g_g_pp(ntot,nels_pp) )
 
-  IF ( numpe==1 ) THEN
-     open(  11,FILE=argv(1:nlen)//".res",STATUS='REPLACE',ACTION='write' )
-     write( 11,'(A,I7,A)') "This job ran on ",npes," processes"
-     write( 11,'(A,3(I12,A))') "There are ",nn," nodes", nr, &
-          " restrained and ",neq," equations"
-     write( 11,'(A,F10.4)') "Time to read input is:", timest(2)-timest(1)
-     write( 11,'(A,F10.4)') "Time after setup is:", elap_time()-timest(1)
-  END IF
-  !*** end of ParaFEM input and initialisation *************************72
+IF ( numpe==1 ) THEN
+   open(  11,FILE=argv(1:nlen)//".res",STATUS='REPLACE',ACTION='write' )
+   write( 11,'(A,I7,A)') "This job ran on ",npes," processes"
+   write( 11,'(A,3(I12,A))') "There are ",nn," nodes", nr, &
+        " restrained and ",neq," equations"
+   write( 11,'(A,F10.4)') "Time to read input is:", timest(2)-timest(1)
+   write( 11,'(A,F10.4)') "Time after setup is:", elap_time()-timest(1)
+END IF
+!*** end of ParaFEM input and initialisation *************************72
 
 
 !*** CGPACK part *****************************************************72
@@ -247,7 +247,7 @@ cgca_rot(2,2) = cgca_one
 cgca_rot(3,3) = cgca_one
 
 ! mean grain size, also mm
-cgca_dm = 1.0e0_rdef
+cgca_dm = 6.0e-1_rdef
 
 ! resolution
 cgca_res = 1.0e5_rdef
@@ -349,7 +349,7 @@ cgca_pfem_enew = e
 ! Dump the FE centroids in CA cs to stdout.
 ! Obviously, this is an optional step, just for debug.
 ! Can be called from any or all images.
-call cgca_pfem_cendmp
+! call cgca_pfem_cendmp ! NO DUMP IN THIS VERSION - TAKES TOO LONG!!!
 
 ! Generate microstructure
 
