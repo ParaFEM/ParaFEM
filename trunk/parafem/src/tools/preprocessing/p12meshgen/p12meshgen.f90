@@ -285,7 +285,7 @@ PROGRAM p12meshgen
           OPEN(12,FILE=argv(1:nlen)//'.bnd',STATUS='REPLACE',ACTION='WRITE')
           
           DO i = 1, nr
-            WRITE(12,'(I8,3I6)') rest(i,:) 
+            WRITE(12,'(I15,3I6)') rest(i,:) 
           END DO
           
           CLOSE(12)
