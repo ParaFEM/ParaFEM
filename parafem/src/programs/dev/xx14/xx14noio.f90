@@ -178,7 +178,7 @@ IF ( meshgen == 2 ) CALL abaqus2sg( element, g_num_pp )
 CALL read_g_coord_pp( argv, g_num_pp, nn, npes, numpe, g_coord_pp )
 CALL read_rest( argv, numpe, rest )
 
-write (*,*) "PE:", numpe, "4 routines called"
+!write (*,*) "PE:", numpe, "4 routines called"
 
 timest(2) = elap_time()
 
@@ -196,7 +196,7 @@ allocate( pmul_pp( ntot, nels_pp ) )
 allocate( utemp_pp(ntot,nels_pp) )
 allocate( g_g_pp(ntot,nels_pp) )
 
-write (*,*) "PE:", numpe, "lots of arrays allocated"
+!write (*,*) "PE:", numpe, "lots of arrays allocated"
 
 IF ( numpe==1 ) THEN
    open(  11,FILE=argv(1:nlen)//".res",STATUS='REPLACE',ACTION='write' )
@@ -207,7 +207,7 @@ IF ( numpe==1 ) THEN
    write( 11,'(A,F10.4)') "Time after setup is:", elap_time()-timest(1)
 END IF
 
-write (*,*) "PE:", numpe, "Finished ParaFEM init"
+!write (*,*) "PE:", numpe, "Finished ParaFEM init"
 !*** end of ParaFEM input and initialisation *************************72
 
 
@@ -253,7 +253,7 @@ cgca_rot(2,2) = cgca_one
 cgca_rot(3,3) = cgca_one
 
 ! mean grain size, also mm
-cgca_dm = 1.0e-1_rdef
+cgca_dm = 5.0e-1_rdef
 
 ! resolution
 cgca_res = 1.0e5_rdef
