@@ -27,7 +27,7 @@ MODULE=	../../../../include/mpi
 LIB=	../../../../lib
 BIN_DIR=../../../../bin
 
-CGPACK=	$(HOME)/lib/libcgcapack.a
+CGPACK=	$(HOME)/lib/libcgpack.a
 
 SRC=	xx14.f90 xx14noio.f90
 OBJ=	$(SRC:.f90=.o)
