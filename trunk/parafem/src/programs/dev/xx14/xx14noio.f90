@@ -253,7 +253,7 @@ cgca_rot(2,2) = cgca_one
 cgca_rot(3,3) = cgca_one
 
 ! mean grain size, also mm
-cgca_dm = 5.0e-1_rdef
+cgca_dm = 2.0e-1_rdef
 
 ! resolution
 cgca_res = 1.0e5_rdef
@@ -322,6 +322,11 @@ sync all
 ! allocate the tmp centroids array: cgca_pfem_centroid_tmp%r ,
 ! an allocatable array component of a coarray variable of derived type
 call cgca_pfem_ctalloc( ndim, nels_pp )
+if ( .not. allocated( cgca_pfem_centroid_tmp%r ) ) then
+  write (*,*) "ERROR: xx14noio: img:", cgca_img,                       &
+     "cgca_pfem_centroids_tmp%r not allocated"
+  error stop
+end if
 
 if (cgca_img .eq. 1 ) write (*,*) "cgca_pfem_ctalloc"
 
