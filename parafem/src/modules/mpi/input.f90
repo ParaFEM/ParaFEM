@@ -1276,7 +1276,8 @@ MODULE INPUT
 !------------------------------------------------------------------------------
 !------------------------------------------------------------------------------
     
-  SUBROUTINE READ_ETYPE_PP(job_name,iel_start,nn,npes,numpe,nod,etype_pp)
+!  SUBROUTINE READ_ETYPE_PP(job_name,iel_start,nn,npes,numpe,nod,etype_pp)
+  SUBROUTINE READ_ETYPE_PP(job_name,npes,numpe,etype_pp)
 
   !/****f* input/read_etype_pp
   !*  NAME
@@ -1320,22 +1321,38 @@ MODULE INPUT
   !*
   !*/
   
-  USE, INTRINSIC :: ISO_C_BINDING ! to output C binary file
+!  USE, INTRINSIC :: ISO_C_BINDING ! to output C binary file
 
   IMPLICIT NONE
 
-  CHARACTER(LEN=50), INTENT(IN) :: job_name
-  CHARACTER(LEN=50)             :: fname
-  CHARACTER(LEN=80,KIND=C_CHAR) :: cbuffer
-  INTEGER, INTENT(IN)           :: iel_start, nn, npes, numpe, nod
-  INTEGER, INTENT(INOUT)        :: etype_pp(:)
-  INTEGER(KIND=C_INT)           :: int_in,etype_int
-  INTEGER                       :: nels_pp, iel, i, k
-  INTEGER                       :: bufsize, ielpe, ier, ndim=3
-  INTEGER                       :: readSteps,max_nels_pp
-  INTEGER                       :: status(MPI_STATUS_SIZE)
-  REAL(KIND=C_FLOAT)            :: etype_float
-  INTEGER, ALLOCATABLE          :: g_num_pp(:),g_num(:),localCount(:),readCount(:),etype(:)
+!  CHARACTER(LEN=50), INTENT(IN) :: job_name
+!  CHARACTER(LEN=50)             :: fname
+!  CHARACTER(LEN=80,KIND=C_CHAR) :: cbuffer
+!  INTEGER, INTENT(IN)           :: iel_start, nn, npes, numpe, nod
+!  INTEGER, INTENT(INOUT)        :: etype_pp(:)
+!  INTEGER(KIND=C_INT)           :: int_in,etype_int
+!  INTEGER                       :: nels_pp, iel, i, k
+!  INTEGER                       :: bufsize, ielpe, ier, ndim=3
+!  INTEGER                       :: readSteps,max_nels_pp
+!  INTEGER                       :: status(MPI_STATUS_SIZE)
+!  REAL(KIND=C_FLOAT)            :: etype_float
+!  INTEGER, ALLOCATABLE          :: g_num_pp(:),g_num(:),localCount(:),readCount(:),etype(:)
+
+  CHARACTER(LEN=50), INTENT(IN)     :: job_name
+  CHARACTER(LEN=50)                 :: fname
+  CHARACTER(LEN=80)                 :: cbuffer
+!  CHARACTER(LEN=80,KIND=C_CHAR)     :: cbuffer
+  INTEGER, INTENT(IN)               :: npes, numpe
+  INTEGER, INTENT(INOUT)            :: etype_pp(:)
+  INTEGER                           :: nels_pp,i,ier,bufsize
+!  INTEGER(KIND=C_INT)               :: int_in
+  INTEGER                           :: int_in,etype_int,iel
+  INTEGER                           :: readSteps,max_nels_pp
+  INTEGER                           :: status(MPI_STATUS_SIZE)
+  INTEGER, ALLOCATABLE              :: localCount(:),readCount(:)
+!  REAL(KIND=C_FLOAT), ALLOCATABLE   :: etype(:)
+  REAL(iwp), ALLOCATABLE            :: etype(:)
+  REAL(iwp)                         :: etype_r
 
 !------------------------------------------------------------------------------
 ! 1. Initiallize variables
@@ -1367,11 +1384,16 @@ MODULE INPUT
 
   max_nels_pp = MAXVAL(readCount,1)
   
-  ALLOCATE(g_num(nod),g_num_pp(nod))
   ALLOCATE(etype(max_nels_pp))
   
-  g_num = 0             ! different value for each processor
-  etype = 0
+  etype    = 0.0_iwp
+  etype_pp = 0
+  
+!  ALLOCATE(g_num(nod),g_num_pp(nod))
+!  ALLOCATE(etype(max_nels_pp))
+!  
+!  g_num = 0             ! different value for each processor
+!  etype = 0
 
 !------------------------------------------------------------------------------
 ! 4. Master processor opens the data file and advances to the start of the 
@@ -1390,50 +1412,70 @@ MODULE INPUT
 !  END IF
 
   IF (numpe==1) THEN
-    fname     = job_name(1:INDEX(job_name, " ")-1) // ".bin.ensi.MATID"
-    OPEN(10,FILE=fname,STATUS='OLD',FORM='UNFORMATTED',ACTION='READ',         &
-                       ACCESS='STREAM')
-    READ(10)   cbuffer !header
-    READ(10)   cbuffer !header
-    READ(10)   int_in  !header
-    READ(10)   cbuffer !header
+    fname     = job_name(1:INDEX(job_name, " ")-1) // ".ensi.MATID"
+    OPEN(10,FILE=fname,STATUS='OLD',ACTION='READ')
+    READ(10,*)!   cbuffer !header
+    READ(10,*)!   cbuffer !header
+    READ(10,*)!   int_in  !header
+    READ(10,*)!   cbuffer !header
   END IF
 
 !------------------------------------------------------------------------------
 ! 5. Go around READSTEPS loop, read data, and send to appropriate processor
 !------------------------------------------------------------------------------
 
+!  DO i=1,npes
+!    IF(i == 1) THEN  ! local data
+!      IF(numpe == 1) THEN
+!        DO iel = 1,readCount(i)
+!!-Read .d
+!!          READ(10,*)k,k,k,k,g_num_pp(:),etype_pp(iel)
+!!-Read .MATID float
+!!          READ(10)etype_float
+!!          etype_pp(iel) = int(etype_float)
+!!-Read .MATID int
+!          READ(10,*)etype_r
+!          etype_pp(iel) = int(etype_r)
+!        END DO
+!      END IF
+!    ELSE
+!      bufsize = readCount(i)
+!      IF(numpe == 1) THEN
+!        DO iel = 1,readCount(i)
+!!          READ(10,*)k,k,k,k,g_num(:),etype(iel)
+!!          READ(10)etype_float
+!!          etype(iel) = etype_float
+!          READ(10,*)etype_r
+!          etype(iel) = int(etype_r)
+!        END DO
+!        CALL MPI_SEND(etype(1:readCount(i)),bufsize,MPI_INTEGER,i-1,i,     &
+!                      MPI_COMM_WORLD,status,ier)
+!      END IF
+!      IF(numpe == i) THEN
+!        etype = 0
+!        CALL MPI_RECV(etype,bufsize,MPI_INTEGER,0,i,MPI_COMM_WORLD,status,ier)
+!        etype_pp = etype
+!      END IF
+!    END IF
+!  END DO
+  
   DO i=1,npes
     IF(i == 1) THEN  ! local data
-      IF(numpe == 1) THEN
-        DO iel = 1,readCount(i)
-!-Read .d
-!          READ(10,*)k,k,k,k,g_num_pp(:),etype_pp(iel)
-!-Read .MATID float
-!          READ(10)etype_float
-!          etype_pp(iel) = int(etype_float)
-!-Read .MATID int
-          READ(10)etype_int
-          etype_pp(iel) = etype_int
-        END DO
-      END IF
+      IF(numpe == 1) READ(10,*) etype(1:readCount(i))
+      etype_pp(1:readCount(i))=int(etype(1:readCount(i)))
     ELSE
       bufsize = readCount(i)
       IF(numpe == 1) THEN
-        DO iel = 1,readCount(i)
-!          READ(10,*)k,k,k,k,g_num(:),etype(iel)
-!          READ(10)etype_float
-!          etype(iel) = etype_float
-          READ(10)etype_int
-          etype(iel) = etype_int
-        END DO
-        CALL MPI_SEND(etype(1:readCount(i)),bufsize,MPI_INTEGER,i-1,i,     &
+        etype = 0.0_iwp
+        READ(10,*) etype(1:readCount(i))
+!       etype_pp(1:readCount(i))=int(etype(1:readCount(i)))
+        CALL MPI_SEND(etype(1:readCount(i)),bufsize,MPI_REAL8,i-1,i,           &
                       MPI_COMM_WORLD,status,ier)
       END IF
       IF(numpe == i) THEN
-        etype = 0
-        CALL MPI_RECV(etype,bufsize,MPI_INTEGER,0,i,MPI_COMM_WORLD,status,ier)
-        etype_pp = etype
+        CALL MPI_RECV(etype(1:readCount(i)),bufsize,MPI_REAL8,0,i,             &
+                      MPI_COMM_WORLD,status,ier)
+        etype_pp(1:readCount(i))=int(etype(1:readCount(i)))
       END IF
     END IF
   END DO
@@ -1444,7 +1486,8 @@ MODULE INPUT
 
   IF(numpe==1) CLOSE(10)
 
-  DEALLOCATE(g_num,readCount,localCount,etype)
+!  DEALLOCATE(g_num,readCount,localCount,etype)
+  DEALLOCATE(readCount,localCount,etype)
 
   RETURN
 
