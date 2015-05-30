@@ -144,8 +144,10 @@ PROGRAM xx12
   
 ! CALL read_g_num_pp2(job_name,iel_start,nn,npes,numpe,g_num_pp)
 !  CALL read_elements(job_name,iel_start,nn,npes,numpe,etype_pp,g_num_pp)
+  IF(numpe==1) PRINT *, "CALL read_g_num_pp_be"
   CALL read_g_num_pp_be(job_name,iel_start,nn,npes,numpe,g_num_pp)
-!  CALL read_etype_pp(job_name,iel_start,nn,npes,numpe,nod,etype_pp)
+  IF(numpe==1) PRINT *, "CALL read_etype_pp"
+!  CALL read_etype_pp(job_name,npes,numpe,etype_pp)
   CALL read_etype_pp_be(job_name,npes,numpe,etype_pp)
   timest(3) = elap_time()
   
