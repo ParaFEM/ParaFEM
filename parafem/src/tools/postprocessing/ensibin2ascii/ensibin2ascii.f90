@@ -68,6 +68,6 @@ PROGRAM ensibin2ascii
   CLOSE(11)
   PRINT *, "Conversion complete"
   
-  CALL shutdown()
+!  CALL shutdown()
   
 END PROGRAM ensibin2ascii
