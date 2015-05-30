@@ -1275,30 +1275,24 @@ MODULE INPUT
 !------------------------------------------------------------------------------
 !------------------------------------------------------------------------------
 !------------------------------------------------------------------------------
-    
-!  SUBROUTINE READ_ETYPE_PP(job_name,iel_start,nn,npes,numpe,nod,etype_pp)
+  
   SUBROUTINE READ_ETYPE_PP(job_name,npes,numpe,etype_pp)
-
+  
   !/****f* input/read_etype_pp
   !*  NAME
   !*    SUBROUTINE: read_etype_pp
   !*  SYNOPSIS
-  !*    Usage:      CALL read_etype_pp(job_name,iel_start,nn,npes,numpe,nod,etype_pp)
+  !*    Usage:      CALL read_etype_pp(job_name,npes,numpe,etype_pp)
   !*  FUNCTION
-  !*    Master process reads the global array of elements IDs and broadcasts
-  !*    to slave processes.
-  !*    Processes record only its local part of elements.
+  !*    The master process reads the element property type for each element 
+  !*    and broadcasts that data to the slave processes. Each process only 
+  !*    records its local data.
   !*  INPUTS
-  !*    The following arguments have the INTENT(IN) attribute:
+  !*    The following character argument has the INTENT(IN) attribute:
   !*
-  !*    job_name              : Character
-  !*                          : Used to create file name to read
+  !*    job_name              : Used to create file name to read
   !*
-  !*    iel_start             : Integer
-  !*                          : First element number in a process
-  !*
-  !*    nn                    : Integer
-  !*                          : Total number of nodes 
+  !*    The following scalar integer arguments have the INTENT(IN) attribute:
   !*
   !*    npes                  : Integer
   !*                          : Total number of processors
@@ -1306,51 +1300,37 @@ MODULE INPUT
   !*    numpe                 : Integer
   !*                          : Process number
   !*
-  !*    The following scalar array arguments have the INTENT(OUT) attribute:
+  !*    The following scalar array argument has the INTENT(INOUT) attribute:
   !*
-  !*    etype_pp(nels_pp)     : Element property type vector     
+  !*    etype_pp(nels_pp)     : Element property type vector
   !*
   !*  AUTHOR
   !*    L. Margetts
   !*    Ll.M. Evans
   !*  COPYRIGHT
-  !*    (c) University of Manchester 2007-2011
+  !*    (c) University of Manchester 2007-2015
   !******
   !*  Place remarks that should not be included in the documentation here.
   !*
-  !*
+  !*  ParaView includes a bug which prevents the 'Material' section of the 
+  !*  ENSIGHT Gold to be read and therefore integer MATID values
+  !*  http://www.paraview.org/Bug/view.php?id=15151
+  !*  http://www3.ensight.com/EnSight10_Docs/UserManual.pdf pp.713
+  !*  Workaround - use MATIDs as reals and convert into int for ParaFEM
   !*/
   
-!  USE, INTRINSIC :: ISO_C_BINDING ! to output C binary file
-
   IMPLICIT NONE
-
-!  CHARACTER(LEN=50), INTENT(IN) :: job_name
-!  CHARACTER(LEN=50)             :: fname
-!  CHARACTER(LEN=80,KIND=C_CHAR) :: cbuffer
-!  INTEGER, INTENT(IN)           :: iel_start, nn, npes, numpe, nod
-!  INTEGER, INTENT(INOUT)        :: etype_pp(:)
-!  INTEGER(KIND=C_INT)           :: int_in,etype_int
-!  INTEGER                       :: nels_pp, iel, i, k
-!  INTEGER                       :: bufsize, ielpe, ier, ndim=3
-!  INTEGER                       :: readSteps,max_nels_pp
-!  INTEGER                       :: status(MPI_STATUS_SIZE)
-!  REAL(KIND=C_FLOAT)            :: etype_float
-!  INTEGER, ALLOCATABLE          :: g_num_pp(:),g_num(:),localCount(:),readCount(:),etype(:)
 
   CHARACTER(LEN=50), INTENT(IN)     :: job_name
   CHARACTER(LEN=50)                 :: fname
   CHARACTER(LEN=80)                 :: cbuffer
-!  CHARACTER(LEN=80,KIND=C_CHAR)     :: cbuffer
   INTEGER, INTENT(IN)               :: npes, numpe
   INTEGER, INTENT(INOUT)            :: etype_pp(:)
   INTEGER                           :: nels_pp,i,ier,bufsize
-!  INTEGER(KIND=C_INT)               :: int_in
   INTEGER                           :: int_in,etype_int,iel
   INTEGER                           :: readSteps,max_nels_pp
   INTEGER                           :: status(MPI_STATUS_SIZE)
   INTEGER, ALLOCATABLE              :: localCount(:),readCount(:)
-!  REAL(KIND=C_FLOAT), ALLOCATABLE   :: etype(:)
   REAL(iwp), ALLOCATABLE            :: etype(:)
   REAL(iwp)                         :: etype_r
 
@@ -1358,7 +1338,6 @@ MODULE INPUT
 ! 1. Initiallize variables
 !------------------------------------------------------------------------------
 
-!  nod       = UBOUND(g_num_pp,1)
   nels_pp   = UBOUND(etype_pp,1)
 
 !------------------------------------------------------------------------------
@@ -1389,28 +1368,11 @@ MODULE INPUT
   etype    = 0.0_iwp
   etype_pp = 0
   
-!  ALLOCATE(g_num(nod),g_num_pp(nod))
-!  ALLOCATE(etype(max_nels_pp))
-!  
-!  g_num = 0             ! different value for each processor
-!  etype = 0
-
 !------------------------------------------------------------------------------
 ! 4. Master processor opens the data file and advances to the start of the 
 !    element steering array
 !------------------------------------------------------------------------------
-
-!  IF (numpe==1) THEN
-!    fname     = job_name(1:INDEX(job_name, " ")-1) // ".d"
-!    OPEN(10,FILE=fname,STATUS='OLD',ACTION='READ')
-!    READ(10,*)   !header
-!    READ(10,*)   !header
-!    DO i = 1,nn  
-!      READ(10,*) !skip nodes until reaching the elements
-!    END DO
-!    READ(10,*)   !header
-!  END IF
-
+  
   IF (numpe==1) THEN
     fname     = job_name(1:INDEX(job_name, " ")-1) // ".ensi.MATID"
     OPEN(10,FILE=fname,STATUS='OLD',ACTION='READ')
@@ -1419,45 +1381,10 @@ MODULE INPUT
     READ(10,*)!   int_in  !header
     READ(10,*)!   cbuffer !header
   END IF
-
+  
 !------------------------------------------------------------------------------
 ! 5. Go around READSTEPS loop, read data, and send to appropriate processor
 !------------------------------------------------------------------------------
-
-!  DO i=1,npes
-!    IF(i == 1) THEN  ! local data
-!      IF(numpe == 1) THEN
-!        DO iel = 1,readCount(i)
-!!-Read .d
-!!          READ(10,*)k,k,k,k,g_num_pp(:),etype_pp(iel)
-!!-Read .MATID float
-!!          READ(10)etype_float
-!!          etype_pp(iel) = int(etype_float)
-!!-Read .MATID int
-!          READ(10,*)etype_r
-!          etype_pp(iel) = int(etype_r)
-!        END DO
-!      END IF
-!    ELSE
-!      bufsize = readCount(i)
-!      IF(numpe == 1) THEN
-!        DO iel = 1,readCount(i)
-!!          READ(10,*)k,k,k,k,g_num(:),etype(iel)
-!!          READ(10)etype_float
-!!          etype(iel) = etype_float
-!          READ(10,*)etype_r
-!          etype(iel) = int(etype_r)
-!        END DO
-!        CALL MPI_SEND(etype(1:readCount(i)),bufsize,MPI_INTEGER,i-1,i,     &
-!                      MPI_COMM_WORLD,status,ier)
-!      END IF
-!      IF(numpe == i) THEN
-!        etype = 0
-!        CALL MPI_RECV(etype,bufsize,MPI_INTEGER,0,i,MPI_COMM_WORLD,status,ier)
-!        etype_pp = etype
-!      END IF
-!    END IF
-!  END DO
   
   DO i=1,npes
     IF(i == 1) THEN  ! local data
@@ -1486,7 +1413,6 @@ MODULE INPUT
 
   IF(numpe==1) CLOSE(10)
 
-!  DEALLOCATE(g_num,readCount,localCount,etype)
   DEALLOCATE(readCount,localCount,etype)
 
   RETURN
