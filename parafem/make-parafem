@@ -86,7 +86,7 @@ BUILD_GROUP_RFEM= # "rfemsolve rfemsolve_te"
 # TOOLS build options
 BUILD_TOOLS_OPT=
 BUILD_GROUP_PREPROC="inp2pf mg2d partitioner dinomesher fearfy KUBCgen rfemfield rfembc rfemcube p12meshgen"
-BUILD_GROUP_POSTPROC="d2off bnd2dis mat2numpe upvw2dis pf2ensi pf2ensibin pf2ensi_case ensibin2ascii TTR_ensibin2ascii ttrb2ttr ndttrget"
+BUILD_GROUP_POSTPROC="d2off bnd2dis mat2numpe upvw2dis pf2ensi pf2ensibin pf2ensi_case ensibin2ascii TTR_ensibin2ascii ttrb2ttr ndttrget endian_convert"
 
 # DEFAULT build options for LIBRARIES, MODULES, PROGRAMS and TOOLS
 BUILD_LIBRARIES_DEFAULTS="arpack gaf77" # + metis
