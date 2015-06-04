@@ -29,7 +29,11 @@ BIN_DIR=../../../../bin
 
 CGPACK=	$(HOME)/lib/libcgpack.a
 
-SRC=	xx14.f90 xx14noio.f90
+SRC:=	xx14std.f90
+ifeq ($(FC),ftn)
+  SRC:=	$(SRC) xx14.f90 xx14noio.f90
+endif
+
 OBJ=	$(SRC:.f90=.o)
 EXE=	$(SRC:.f90=.x)
 
