@@ -1,0 +1,23 @@
+#!/bin/sh
+#$Id$
+#PBS -l walltime=01:00:00,nodes=4:ppn=16
+#PBS -j oe
+
+cd $HOME/parafem/parafem/src/programs/dev/xx14
+export OUTFILE=zout
+echo > $OUTFILE
+
+echo "LD_LIBRARY_PATH: " $LD_LIBRARY_PATH >> $OUTFILE
+echo "which mpirun: " `which mpirun` >> $OUTFILE
+export I_MPI_DAPL_PROVIDER=ofa-v2-ib0 >> $OUTFILE
+
+mpdboot --file=$PBS_NODEFILE -n 1 >> $OUTFILE
+mpdtrace -l >> $OUTFILE
+
+echo "START TIME:" `date` >> $OUTFILE
+
+mpirun -n 64 xx14std.x p121_medium
+
+mpdallexit >> $OUTFILE
+
+echo "END TIME:  " `date` >> $OUTFILE
