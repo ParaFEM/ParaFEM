@@ -11,6 +11,9 @@ PROGRAM xx14
 !      using 20-node brick elements, preconditioned conjugate gradient
 !      solver; diagonal preconditioner diag_precon; parallel version
 !      loaded_nodes only
+!
+! This version must conform to F2008 standard.
+! This mainly means none of the routines using Cray extensions can be used.
 !-----------------------------------------------------------------------
 !USE mpi_wrapper  !remove comment for serial compilation
 
@@ -94,26 +97,26 @@ real( kind=rdef ) ::                                                   &
  cgca_fracvol               ! volume (number) of fractured cells per img
 real( kind=rdef ), allocatable :: cgca_grt(:,:,:)[:,:,:]
 logical( kind=ldef ) :: cgca_solid
-!character( len=6 ) :: cgca_citer
+character( len=6 ) :: cgca_citer
 !*** end CGPACK part *************************************************72
 
 
-!------------------------ input and initialisation ---------------------
-ALLOCATE( timest( 20 ) )
-timest = zero
-timest( 1 ) = elap_time()
+  !------------------------ input and initialisation ---------------------
+  ALLOCATE( timest( 20 ) )
+  timest = zero
+  timest( 1 ) = elap_time()
 
-!*    Get the rank of the processes and the total number of processes
-!* intent( out ):
-!*          numpe - integer, process number (rank)
-!*           npes - integer, total number of processes (size)
-CALL find_pe_procs( numpe, npes )
+  !*    Get the rank of the processes and the total number of processes
+  !* intent( out ):
+  !*          numpe - integer, process number (rank)
+  !*           npes - integer, total number of processes (size)
+  CALL find_pe_procs( numpe, npes )
 
-!*    Returns the base name of the data file.
-!* intent( out ):
-!*           argv - character(*), data file base name
-!*           nlen - integer, number of characters in data file base name
-CALL getname( argv, nlen )
+  !*    Returns the base name of the data file.
+  !* intent( out ):
+  !*           argv - character(*), data file base name
+  !*           nlen - integer, number of characters in data file base name
+  CALL getname( argv, nlen )
 
 !*    Master processor reads the general data for the problem
 !     and broadcasts it to the slave processors.
@@ -143,11 +146,11 @@ CALL read_p121( argv, numpe, e, element, limit, loaded_nodes, meshgen, &
 ! modified by this subroutine. Note that they are global variables
 ! that are not passed through the list of arguments.
 !
+! https://code.google.com/p/parafem/source/browse/trunk/parafem/src/modules/mpi/gather_scatter.f90
+!
 ! nels_pp is indeed a global var, defined in
 ! https://code.google.com/p/parafem/source/browse/trunk/parafem/src/modules/shared/global_variables.f90
-!
-! https://code.google.com/p/parafem/source/browse/trunk/parafem/src/modules/mpi/gather_scatter.f90
-CALL calc_nels_pp( argv, nels, npes, numpe, partitioner, nels_pp )
+  CALL calc_nels_pp( argv, nels, npes, numpe, partitioner, nels_pp )
 
 !   nod - number of nodes per element
 ! nodof = 3 (see the beginning of this file), probably
@@ -176,8 +179,6 @@ IF ( meshgen == 2 ) CALL abaqus2sg( element, g_num_pp )
 CALL read_g_coord_pp( argv, g_num_pp, nn, npes, numpe, g_coord_pp )
 CALL read_rest( argv, numpe, rest )
 
-!write (*,*) "PE:", numpe, "4 routines called"
-
 timest(2) = elap_time()
 
 ALLOCATE( points(nip,ndim) )
@@ -194,8 +195,6 @@ allocate( pmul_pp( ntot, nels_pp ) )
 allocate( utemp_pp(ntot,nels_pp) )
 allocate( g_g_pp(ntot,nels_pp) )
 
-!write (*,*) "PE:", numpe, "lots of arrays allocated"
-
 IF ( numpe==1 ) THEN
    open(  11,FILE=argv(1:nlen)//".res",STATUS='REPLACE',ACTION='write' )
    write( 11,'(A,I7,A)') "This job ran on ",npes," processes"
@@ -204,8 +203,6 @@ IF ( numpe==1 ) THEN
    write( 11,'(A,F10.4)') "Time to read input is:", timest(2)-timest(1)
    write( 11,'(A,F10.4)') "Time after setup is:", elap_time()-timest(1)
 END IF
-
-!write (*,*) "PE:", numpe, "Finished ParaFEM init"
 !*** end of ParaFEM input and initialisation *************************72
 
 
@@ -251,7 +248,7 @@ cgca_rot(2,2) = cgca_one
 cgca_rot(3,3) = cgca_one
 
 ! mean grain size, also mm
-cgca_dm = 5.0e-1_rdef
+cgca_dm = 6.0e-1_rdef
 
 ! resolution
 cgca_res = 1.0e5_rdef
@@ -289,44 +286,33 @@ end if
 call cgca_as( 1, cgca_c(1),  1, cgca_c(2),  1, cgca_c(3),              &
               1, cgca_ir(1), 1, cgca_ir(2), 1, 2, cgca_space )
 
-if (cgca_img .eq. 1 ) write (*,*) "cgca_as"
-
 ! calculate the phys. dim. of the coarray on each image
 !subroutine cgca_imco( space, lres, bcol, bcou )
 call cgca_imco( cgca_space, cgca_lres, cgca_bcol, cgca_bcou )
 
-if (cgca_img .eq. 1 ) write (*,*) "cgca_imco"
-
 ! dump box lower and upper corners from every image
-!write ( *,"(a,i0,2(a,3(g0,tr1)),a)" ) "img: ", cgca_img,               &
-!       " bcol: (", cgca_bcol, ") bcou: (", cgca_bcou, ")"
+write ( *,"(a,i0,2(a,3(g0,tr1)),a)" ) "img: ", cgca_img,               &
+       " bcol: (", cgca_bcol, ") bcou: (", cgca_bcou, ")"
 
 ! try to separate the stdout
 sync all
 
 ! and now in FE cs:
-!write ( *,"(a,i0,2(a,3(g0,tr1)),a)" ) "img: ", cgca_img,               &
-!   " FE bcol: (",                                                      &
-!    matmul( transpose( cgca_rot ),cgca_bcol ) + cgca_origin,           &
-!  ") FE bcou: (",                                                      &
-!    matmul( transpose( cgca_rot ),cgca_bcou ) + cgca_origin, ")"
+write ( *,"(a,i0,2(a,3(g0,tr1)),a)" ) "img: ", cgca_img,               &
+   " FE bcol: (",                                                      &
+    matmul( transpose( cgca_rot ),cgca_bcol ) + cgca_origin,           &
+  ") FE bcou: (",                                                      &
+    matmul( transpose( cgca_rot ),cgca_bcou ) + cgca_origin, ")"
 
 ! try to separate the stdout
 sync all
 
 ! confirm that image number .eq. MPI process number
-!write (*,*) "img",cgca_img," <-> MPI proc", numpe
+write (*,*) "img",cgca_img," <-> MPI proc", numpe
 
 ! allocate the tmp centroids array: cgca_pfem_centroid_tmp%r ,
 ! an allocatable array component of a coarray variable of derived type
 call cgca_pfem_ctalloc( ndim, nels_pp )
-if ( .not. allocated( cgca_pfem_centroid_tmp%r ) ) then
-  write (*,*) "ERROR: xx14noio: img:", cgca_img,                       &
-     "cgca_pfem_centroids_tmp%r not allocated"
-  error stop
-end if
-
-if (cgca_img .eq. 1 ) write (*,*) "cgca_pfem_ctalloc"
 
 ! set the centroids array component on this image, no remote calls.
 ! first dim - coord, 1,2,3
@@ -341,8 +327,6 @@ sync all ! must separate execution segments
 !subroutine cgca_pfem_cenc( origin, rot, bcol, bcou )
 call cgca_pfem_cenc( cgca_origin, cgca_rot, cgca_bcol, cgca_bcou )
 
-if ( cgca_img .eq. 1 ) write (*,*) "cgca_pfem_cenc"
-
          ! use cgca_pfem_centroid_tmp[*]%r
 sync all ! must separate execution segments
          ! deallocate cgca_pfem_centroid_tmp[*]%r
@@ -350,24 +334,16 @@ sync all ! must separate execution segments
 ! Now can deallocate the temp array cgca_pfem_centroid_tmp%r.
 call cgca_pfem_ctdalloc
 
-!write (*,*) "img: ", cgca_img, "passed cgca_pfem_ctdalloc"
-
-if (cgca_img .eq. 1 ) write (*,*) "cgca_pfem_ctdalloc"
-
 ! Allocate cgca_pfem_integrity%i, array component of a coarray of
 ! derived type. Allocating *local* array.
 call cgca_pfem_integalloc( nels_pp )
  
-if (cgca_img .eq. 1 ) write (*,*) "cgca_pfem_integalloc"
-
 ! initially integrity is 1
 cgca_pfem_integrity%i = 1.0
 
 ! Allocate the Young's modulus 2D array
 call cgca_pfem_ealloc( nip, nels_pp )
   
-if (cgca_img .eq. 1 ) write (*,*) "cgca_pfem_ealloc"
-
 ! initially set the Young's modulus to "e" everywhere
 cgca_pfem_enew = e
 
@@ -386,8 +362,6 @@ call cgca_irs( .false. )
 
 ! allocate rotation tensors
 call cgca_art( 1, cgca_ng, 1, cgca_ir(1), 1, cgca_ir(2), 1, cgca_grt )
-
-if (cgca_img .eq. 1 ) write (*,*) "cgca_art"
 
 ! initialise space
 cgca_space( :, :, :, cgca_state_type_grain ) = cgca_liquid_state
@@ -428,11 +402,11 @@ call cgca_gcu( cgca_space )
 cgca_space( 1, 1, cgca_c(3) /2, cgca_state_type_frac )                 &
               [ 1, 1, cgca_ir(3)/2 ] = cgca_clvg_state_100_edge
 
-! img 1 dumps space arrays to files. NO IO IN THIS MODEL!!!
-!if ( cgca_img .eq. 1 ) write (*,*) "dumping model to files"
-!call cgca_pswci( cgca_space, cgca_state_type_grain, "zg0.raw" )
-!call cgca_pswci( cgca_space, cgca_state_type_frac,  "zf0.raw" )
-!if ( cgca_img .eq. 1 ) write (*,*) "finished dumping model to files"
+! img 1 dumps space arrays to files
+if ( cgca_img .eq. 1 ) write (*,*) "dumping model to files"
+call cgca_pswci( cgca_space, cgca_state_type_grain, "zg0.raw" )
+call cgca_pswci( cgca_space, cgca_state_type_frac,  "zf0.raw" )
+if ( cgca_img .eq. 1 ) write (*,*) "finished dumping model to files"
 
 ! allocate the stress array component of cgca_pfem_stress coarray
 !subroutine cgca_pfem_salloc( nels_pp, intp, comp )
@@ -629,7 +603,7 @@ sync all
 
 ! calculate the mean stress tensor per image
 call cgca_pfem_simg( cgca_stress )
-!write (*,*) "img:", cgca_img, " mean s tensor:", cgca_stress
+write (*,*) "img:", cgca_img, " mean s tensor:", cgca_stress
 
 ! all images wait for each other, to make sure the stress arrays
 ! are not modified until all images calculate their mean values
@@ -640,7 +614,7 @@ sync all
 ! which gives 1mm of crack propagation per increment maximum.
 ! I then can multiply it by a factor, e.g. a factor of 3 will mean
 ! that I get 3mm max ( 1/3 of the model ) per load increment.
-cgca_time_inc = 2 * 1.0_rdef / cgca_length
+cgca_time_inc = 1.0_rdef / cgca_length
 
 ! run cleavage for a correct number of iterations, which is a function
 ! of the characteristic length and the time increment
@@ -648,32 +622,34 @@ cgca_clvg_iter = nint( cgca_length * cgca_lres * cgca_time_inc )
 if ( cgca_img .eq. 1 ) write (*,*) "load inc:", cgca_liter,            &
                                    "clvg iter:", cgca_clvg_iter
 
-! subroutine cgca_clvgp( coarray, rt, t, scrit, sub, periodicbc,    &
-!                        iter, heartbeat, debug )
-! lower the crit stresses by a factor of 100.
+! ifort 15 doesn't support CO_SUM yet, so use a version with no CO_SUM,
+! i.e. "nocosum".
+!subroutine cgca_clvgp_nocosum( coarray, rt, t, scrit, sub, periodicbc, &
+!                               iter, heartbeat, debug )
 ! sync all inside
-call cgca_clvgp( cgca_space, cgca_grt, cgca_stress,                    &
+! lower the crit stresses by a factor of 100.
+call cgca_clvgp_nocosum( cgca_space, cgca_grt, cgca_stress,            &
                  0.01_rdef * cgca_scrit,                               &
                  cgca_clvgsd, .false., cgca_clvg_iter, 10, .false. )
 
-!if ( cgca_img .eq. 1 ) write (*,*) "dumping model to file"
-! NO IO IN THIS MODEL!!!
-!write ( cgca_citer, "(i0)" ) cgca_liter
-!call cgca_pswci( cgca_space, cgca_state_type_frac,                     &
-!                 "zf"//trim( cgca_citer )//".raw" )
-!if ( cgca_img .eq. 1 ) write (*,*) "finished dumping model to file"
+if ( cgca_img .eq. 1 ) write (*,*) "dumping model to file"
+
+write ( cgca_citer, "(i0)" ) cgca_liter
+call cgca_pswci( cgca_space, cgca_state_type_frac,                     &
+                 "zf"//trim( cgca_citer )//".raw" )
+if ( cgca_img .eq. 1 ) write (*,*) "finished dumping model to file"
      
 ! Calculate number (volume) of fractured cells on each image.
 ! cgca_fracvol is a local, non-coarray, array, so no sync needed.
 call cgca_fv( cgca_space, cgca_fracvol)
 
-!write (*,*) "img:", cgca_img, "fracvol:", cgca_fracvol
+write (*,*) "img:", cgca_img, "fracvol:", cgca_fracvol
 
 ! calculate integrity, remote write
 call cgca_pfem_intcalc1( cgca_c, cgca_fracvol )
 
 ! dump integrity
-!write (*,*) "img:", cgca_img, "integrity:", cgca_pfem_integrity%i
+write (*,*) "img:", cgca_img, "integrity:", cgca_pfem_integrity%i
 
 ! wait for integrity on all images to be calculated
 sync all

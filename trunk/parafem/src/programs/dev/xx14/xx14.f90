@@ -68,12 +68,10 @@ INTEGER, ALLOCATABLE :: rest(:,:), g_num_pp(:,:), g_g_pp(:,:), node(:)
        cgca_nimgs,            &
        cgca_lres,             &
        cgca_ng,               & ! number of grains in the whole model
-       cgca_count1,           & ! a counter
        cgca_clvg_iter,        & ! number of cleavage iterations
        cgca_liter               ! load iteration number
   integer( kind=iarr ) :: cgca_c(3) ! coarray dimensions
   integer( kind=iarr ), allocatable :: cgca_space(:,:,:,:) [:,:,:]
-  integer :: cgca_errstat
 
 real( kind=rdef ), parameter :: cgca_zero = 0.0_rdef,                  &
  cgca_one = 1.0_rdef,                                                  &
@@ -591,7 +589,7 @@ sync all
 ! dump stresses from last image for element 1
 if ( cgca_img .eq. 1 ) then
   do i = 1, nip
-    write (*,"(2(a0,i0),a0,6es10.2)") "img ", cgca_nimgs,              &
+    write (*,"(2(a,i0),a,6es10.2)") "img ", cgca_nimgs,              &
             " FE 1 int. p. ", i, " stress ",                           &
                 cgca_pfem_stress[ cgca_nimgs ] % stress( 1 , i , : )
   end do
