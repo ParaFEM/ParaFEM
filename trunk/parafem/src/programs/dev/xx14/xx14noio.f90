@@ -253,7 +253,7 @@ cgca_rot(2,2) = cgca_one
 cgca_rot(3,3) = cgca_one
 
 ! mean grain size, also mm
-cgca_dm = 2.0e-1_rdef
+cgca_dm = 5.0e-1_rdef
 
 ! resolution
 cgca_res = 1.0e5_rdef
@@ -343,14 +343,12 @@ sync all ! must separate execution segments
 !subroutine cgca_pfem_cenc( origin, rot, bcol, bcou )
 call cgca_pfem_cenc( cgca_origin, cgca_rot, cgca_bcol, cgca_bcou )
 
-write (*,*) "img:", cgca_img, "cgca_pfem_cenc"
+if ( cgca_img .eq. 1 ) write (*,*) "cgca_pfem_cenc"
 
          ! use cgca_pfem_centroid_tmp[*]%r
 sync all ! must separate execution segments
          ! deallocate cgca_pfem_centroid_tmp[*]%r
 
-write (*,*) "img: ", cgca_img, "passed sync all 1"
- 
 ! Now can deallocate the temp array cgca_pfem_centroid_tmp%r.
 call cgca_pfem_ctdalloc
 
