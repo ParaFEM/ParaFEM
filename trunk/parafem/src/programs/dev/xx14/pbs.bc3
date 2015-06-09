@@ -1,10 +1,15 @@
 #!/bin/sh
 #$Id$
-#PBS -l walltime=01:00:00,nodes=4:ppn=16
+#
+# PBS submission script for BlueCrystal phase 3 computer (bc3).
+# Only Intel compiler is supported on this system so far, so
+# only xx14std program can be submitted.
+#
+#PBS -l walltime=01:00:00,nodes=2:ppn=16
 #PBS -j oe
 
 cd $HOME/parafem/parafem/src/programs/dev/xx14
-export OUTFILE=zout
+export OUTFILE=xx14std.out
 echo > $OUTFILE
 
 echo "LD_LIBRARY_PATH: " $LD_LIBRARY_PATH >> $OUTFILE
@@ -16,7 +21,9 @@ mpdtrace -l >> $OUTFILE
 
 echo "START TIME:" `date` >> $OUTFILE
 
-mpirun -n 64 xx14std.x p121_medium
+#mpirun -n 64 xx14std.x p121_medium >> $OUTFILE
+#xx14std.x
+xx14std.x >> $OUTFILE
 
 mpdallexit >> $OUTFILE
 

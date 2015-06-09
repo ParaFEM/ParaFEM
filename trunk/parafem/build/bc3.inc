@@ -214,12 +214,18 @@ XX9_MPI_REL_LDFLAGS=$(DEFAULT_XX_MPI_REL_LDFLAGS)
 XX9_MPI_DBG_FFLAGS=$(DEFAULT_XX_MPI_DBG_FFLAGS)
 XX9_MPI_DBG_LDFLAGS=$(DEFAULT_XX_MPI_DBG_LDFLAGS)
 
-# ca.conf path should be relative to the directory
-# from where you launch the xx14 executable.
-# I assume it is in the same directory.
-XX14_MPI_REL_FFLAGS=	$(DEFAULT_XX_MPI_REL_FFLAGS) -I$(HOME)/mod -coarray=distributed
+# The use of a coarray config file is required for
+# execution across node boundaries, i.e. always!
+# The file name should be relative to the directory
+# from where xx14 is launched.
+# Here I assume it is the same directory where it is built.
+# The file name *must* be the same as used for building
+# CGPACK. 
+XX14_MPI_REL_FFLAGS=	$(DEFAULT_XX_MPI_REL_FFLAGS) -I$(HOME)/mod \
+			-coarray=distributed -coarray-config-file=xx14.conf
 XX14_MPI_REL_LDFLAGS=	$(DEFAULT_XX_MPI_REL_LDFLAGS) -mt_mpi -I$(HOME)/mod -L$(HOME)/lib -lcgpack \
-			-coarray=distributed -coarray-config-file=zca.conf
+			-coarray=distributed -coarray-config-file=xx14.conf
+#			-coarray=single
 XX14_MPI_DBG_FFLAGS=	$(DEFAULT_XX_MPI_DBG_FFLAGS)
 XX14_MPI_DBG_LDFLAGS=	$(DEFAULT_XX_MPI_DBG_LDFLAGS)
 

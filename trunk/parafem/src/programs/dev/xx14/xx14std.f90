@@ -106,17 +106,29 @@ character( len=6 ) :: cgca_citer
   timest = zero
   timest( 1 ) = elap_time()
 
-  !*    Get the rank of the processes and the total number of processes
-  !* intent( out ):
-  !*          numpe - integer, process number (rank)
-  !*           npes - integer, total number of processes (size)
-  CALL find_pe_procs( numpe, npes )
+!*    Get the rank of the processes and the total number of processes
+!* intent( out ):
+!*          numpe - integer, process number (rank)
+!*           npes - integer, total number of processes (size)
+!CALL find_pe_procs( numpe, npes )
+! CAnnot use MPI_INIT in a coarray program with ifort 15!
+    CALL MPI_COMM_RANK(MPI_COMM_WORLD, numpe, ier)
+    IF (ier /= MPI_SUCCESS) THEN
+      WRITE(*,'(A,A,I5)')'Error in MPI_COMM_RANK: errcode = ',ier
+    END IF
 
-  !*    Returns the base name of the data file.
-  !* intent( out ):
-  !*           argv - character(*), data file base name
-  !*           nlen - integer, number of characters in data file base name
-  CALL getname( argv, nlen )
+    CALL MPI_COMM_SIZE(MPI_COMM_WORLD, npes, ier)
+    IF (ier /= MPI_SUCCESS) THEN
+      WRITE(*,'(A,A,I5)')'Error in MPI_COMM_SIZE: errcode = ',ier
+    END IF
+
+    numpe = numpe + 1
+
+!*    Returns the base name of the data file.
+!* intent( out ):
+!*           argv - character(*), data file base name
+!*           nlen - integer, number of characters in data file base name
+CALL getname( argv, nlen )
 
 !*    Master processor reads the general data for the problem
 !     and broadcasts it to the slave processors.
@@ -248,10 +260,10 @@ cgca_rot(2,2) = cgca_one
 cgca_rot(3,3) = cgca_one
 
 ! mean grain size, also mm
-cgca_dm = 6.0e-1_rdef
+cgca_dm = 1.0e0_rdef
 
 ! resolution
-cgca_res = 1.0e5_rdef
+cgca_res = 1.0e4_rdef
 
 ! cgpack length scale, also in mm
 ! Equivalent to crack propagation distance per unit of time,
@@ -324,12 +336,24 @@ cgca_pfem_centroid_tmp%r = sum( g_coord_pp(:,:,:), dim=1 ) / nod
 sync all ! must separate execution segments
          ! use cgca_pfem_centroid_tmp[*]%r
 
+! Initialise random number seed.
+! Need to do this before cgca_pfem_cenc, where there order of comms
+! is chosen at *random* to even the remote access pattern.
+!
+! Argument:
+! .false. - no debug output
+!  .true. - with debug output
+call cgca_irs( .false. )
+
 !subroutine cgca_pfem_cenc( origin, rot, bcol, bcou )
 call cgca_pfem_cenc( cgca_origin, cgca_rot, cgca_bcol, cgca_bcou )
 
          ! use cgca_pfem_centroid_tmp[*]%r
 sync all ! must separate execution segments
          ! deallocate cgca_pfem_centroid_tmp[*]%r
+
+! debug, then STOP!!!!
+!call cgca_pfem_cendmp
 
 ! Now can deallocate the temp array cgca_pfem_centroid_tmp%r.
 call cgca_pfem_ctdalloc
@@ -354,12 +378,6 @@ cgca_pfem_enew = e
 
 ! Generate microstructure
 
-! initialise random number seed
-! argument:
-! .false. - no debug output
-!  .true. - with debug output
-call cgca_irs( .false. )
-
 ! allocate rotation tensors
 call cgca_art( 1, cgca_ng, 1, cgca_ir(1), 1, cgca_ir(2), 1, cgca_grt )
 
@@ -377,6 +395,7 @@ call cgca_nr( cgca_space, cgca_ng, .false. )
 call cgca_rt( cgca_grt )
 
 ! solidify, implicit sync all inside
+!subroutine cgca_sld( coarray, periodicbc, iter, heartbeat, solid )
 ! second argument:
 !  .true. - periodic BC
 ! .false. - no periodic BC
@@ -601,7 +620,9 @@ end if
 ! all images sync here
 sync all
 
-! calculate the mean stress tensor per image
+! Calculate the mean stress tensor per image
+!   subroutine cgca_pfem_simg( simg )
+!   real( kind=rdef ), intent(out) :: simg(3,3)
 call cgca_pfem_simg( cgca_stress )
 write (*,*) "img:", cgca_img, " mean s tensor:", cgca_stress
 
@@ -641,7 +662,7 @@ if ( cgca_img .eq. 1 ) write (*,*) "finished dumping model to file"
      
 ! Calculate number (volume) of fractured cells on each image.
 ! cgca_fracvol is a local, non-coarray, array, so no sync needed.
-call cgca_fv( cgca_space, cgca_fracvol)
+call cgca_fv( cgca_space, cgca_fracvol )
 
 write (*,*) "img:", cgca_img, "fracvol:", cgca_fracvol
 
@@ -649,7 +670,7 @@ write (*,*) "img:", cgca_img, "fracvol:", cgca_fracvol
 call cgca_pfem_intcalc1( cgca_c, cgca_fracvol )
 
 ! dump integrity
-write (*,*) "img:", cgca_img, "integrity:", cgca_pfem_integrity%i
+!write (*,*) "img:", cgca_img, "integrity:", cgca_pfem_integrity%i
 
 ! wait for integrity on all images to be calculated
 sync all
@@ -672,19 +693,19 @@ sync all
 ! end loading iterations
 end do load_iter
 
-  ! deallocate all arrays, moved from inside the loop
-  DEALLOCATE( p_pp )
-  deallocate( r_pp )
-  deallocate( x_pp )
-  deallocate( u_pp )
-  deallocate( d_pp )
-  deallocate( diag_precon_pp )
-  deallocate( storkm_pp )
-  deallocate( pmul_pp )
-  DEALLOCATE( xnew_pp )
-  DEALLOCATE( g_coord_pp )
+! deallocate all arrays, moved from inside the loop
+DEALLOCATE( p_pp )
+deallocate( r_pp )
+deallocate( x_pp )
+deallocate( u_pp )
+deallocate( d_pp )
+deallocate( diag_precon_pp )
+deallocate( storkm_pp )
+deallocate( pmul_pp )
+DEALLOCATE( xnew_pp )
+DEALLOCATE( g_coord_pp )
 
-  !------------------------ write out displacements ----------------------
+!------------------------ write out displacements ----------------------
 
   CALL calc_nodes_pp(nn,npes,numpe,node_end,node_start,nodes_pp)
 
@@ -728,5 +749,7 @@ call cgca_pfem_integdalloc
 
 
 !*** ParaFEM part ****************************************************72
-CALL SHUTDOWN()
+! cannot call MPI_FINALIZE in a coarray program with Intel 15.
+!CALL SHUTDOWN()
+
 END PROGRAM xx14
