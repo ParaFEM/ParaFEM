@@ -263,7 +263,7 @@ cgca_rot(3,3) = cgca_one
 cgca_dm = 1.0e0_rdef
 
 ! resolution
-cgca_res = 1.0e4_rdef
+cgca_res = 1.0e5_rdef
 
 ! cgpack length scale, also in mm
 ! Equivalent to crack propagation distance per unit of time,
