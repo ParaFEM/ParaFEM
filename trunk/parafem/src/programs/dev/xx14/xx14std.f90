@@ -260,9 +260,9 @@ cgca_rot(2,2) = cgca_one
 cgca_rot(3,3) = cgca_one
 
 ! mean grain size, also mm
-cgca_dm = 1.0e0_rdef
+cgca_dm = 2.0e0_rdef
 
-! resolution
+! resolution, cells per grain
 cgca_res = 1.0e5_rdef
 
 ! cgpack length scale, also in mm
@@ -651,7 +651,7 @@ if ( cgca_img .eq. 1 ) write (*,*) "load inc:", cgca_liter,            &
 ! lower the crit stresses by a factor of 100.
 call cgca_clvgp_nocosum( cgca_space, cgca_grt, cgca_stress,            &
                  0.01_rdef * cgca_scrit,                               &
-                 cgca_clvgsd, .false., cgca_clvg_iter, 10, .false. )
+                 cgca_clvgsd, .false., cgca_clvg_iter, 10, .true. )
 
 if ( cgca_img .eq. 1 ) write (*,*) "dumping model to file"
 
