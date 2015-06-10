@@ -5,7 +5,7 @@
 # Only Intel compiler is supported on this system so far, so
 # only xx14std program can be submitted.
 #
-#PBS -l walltime=05:00:00,nodes=10:ppn=16
+#PBS -l walltime=01:00:00,nodes=10:ppn=16
 #PBS -j oe
 
 cd $HOME/parafem/parafem/src/programs/dev/xx14
