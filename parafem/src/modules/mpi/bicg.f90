@@ -57,10 +57,11 @@ REAL(iwp), INTENT(INOUT) :: pmul_pp(:,:),x_pp(:)
 
  INTEGER                :: i,j,k,l,iel
  INTEGER                :: fixed_freedoms_pp
- INTEGER                :: neq_pp,nels_pp,ntot ! any global?
+ INTEGER                :: ntot
  REAL(iwp),PARAMETER    :: zero = 0.0_iwp
  REAL(iwp),PARAMETER    :: one  = 1.0_iwp
  REAL(iwp)              :: gama,omega,norm_r,r0_norm,error,rho1,beta
+ REAL(iwp)              :: alpha,kappa
  REAL(iwp),ALLOCATABLE  :: y_pp(:),y1_pp(:),rt_pp(:),r_pp(:,:),u_pp(:,:)
  REAL(iwp),ALLOCATABLE  :: utemp_pp(:,:),GG(:,:),s(:),Gamma(:)
  
