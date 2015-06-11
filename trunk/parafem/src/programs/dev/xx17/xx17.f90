@@ -15,7 +15,7 @@ PROGRAM xx17
  INTEGER::nn,nip,cj_tot,i,j,k,l,iel,ell,limit,fixed_freedoms,iters,      &
    cjits,nr,n_t,fixed_freedoms_pp,nres,is,it,nlen,nels,ndof,     &
    npes_pp,meshgen,partitioner,node_end,node_start,nodes_pp,             &
-   fixed_freedoms_start  
+   fixed_freedoms_start,cjiters=0  
  REAL(iwp):: visc,rho,det,ubar,vbar,wbar,tol,cjtol,alpha,      &
    penalty,x0,pp,kappa
  REAL(iwp),PARAMETER::zero=0.0_iwp,one=1.0_iwp
@@ -28,7 +28,7 @@ PROGRAM xx17
    wvel(:),c23(:,:),c32(:,:),x_pp(:),b_pp(:),temp(:),                    &
    funny(:,:),row1(:,:),row2(:,:),uvel(:),vvel(:),funnyf(:,:),rowf(:,:), &
    storke_pp(:,:,:),diag_pp(:),utemp_pp(:,:),xold_pp(:),c24(:,:),        &
-   c42(:,:),row3(:,:),s(:),Gamma(:),                                     &
+   c42(:,:),row3(:,:),                                                   &
    diag_tmp(:,:),pmul_pp(:,:),timest(:),upvw_pp(:)
  INTEGER,ALLOCATABLE::rest(:,:),g_num_pp(:,:),g_g_pp(:,:),no(:),g_t(:),  &
    no_pp(:),no_pp_temp(:)
@@ -53,7 +53,7 @@ PROGRAM xx17
    c23(nodf,nod),uvel(nod),vvel(nod),row1(1,nod),funnyf(nodf,1),         &
    rowf(1,nodf),no_pp_temp(fixed_freedoms),wvel(nod),row3(1,nod),        &
    storke_pp(ntot,ntot,nels_pp),g_t(n_t),                                &
-   Gamma(ell+1),no(fixed_freedoms),val(fixed_freedoms),weights(nip),     &
+   no(fixed_freedoms),val(fixed_freedoms),weights(nip),                  &
    diag_tmp(ntot,nels_pp),utemp_pp(ntot,nels_pp))
 !----------  find the steering array and equations per process -----------
  CALL rearrange(rest); g_g_pp=0; neq=0
@@ -144,10 +144,10 @@ PROGRAM xx17
    store_pp(k)=diag_pp(k)
  END DO   
 !---------- solve the equations element-by-element using BiCGSTAB --------
- x_pp = x0
+ IF(iters==1) x_pp = x0
 
- CALL bicgstabl(b_pp,cjits,cjtol,ell,ieq_start,no_pp,pmul_pp,store_pp,        &
-                storke_pp,x_pp)
+ CALL bicgstabl_p(b_pp,cjiters,cjits,cjtol,ell,ieq_start,no_pp,pmul_pp,  &
+                  store_pp,storke_pp,x_pp)
 
  b_pp=x_pp-xold_pp; pp=norm_p(b_pp); cj_tot=cj_tot+cjiters
 
@@ -194,8 +194,8 @@ PROGRAM xx17
 
 CONTAINS
 
-SUBROUTINE BICGSTABL(b_pp,cjits,cjtol,ell,ieq_start,no_pp,pmul_pp,store_pp,   &
-                     storke_pp,x_pp)
+SUBROUTINE BICGSTABL_P(b_pp,cjiters,cjits,cjtol,ell,ieq_start,no_pp,pmul_pp,  &
+                       store_pp,storke_pp,x_pp)
 
 USE precision
 USE global_variables
@@ -203,28 +203,28 @@ USE maths
 
 IMPLICIT NONE
 
-INTEGER, INTENT=IN      :: cjits,ell,ieq_start,no_pp,store_pp
-REAL(iwp), INTENT=IN    :: b_pp,cjtol,storke_pp
-REAL(iwp), INTENT=INOUT :: pmul_pp,x_pp
+INTEGER, INTENT(IN)      :: cjits,ell,ieq_start,no_pp(:)
+INTEGER, INTENT(OUT)     :: cjiters
+REAL(iwp), INTENT(IN)    :: b_pp(:),cjtol,store_pp(:),storke_pp(:,:,:)
+REAL(iwp), INTENT(INOUT) :: pmul_pp(:,:),x_pp(:)
 
 !------------------------------------------------------------------------------
-! 2. Local variables
+! 1. Local variables
 !------------------------------------------------------------------------------
 
  INTEGER                :: i,j,k,l,iel
  INTEGER                :: fixed_freedoms_pp
- INTEGER                :: cjiters
  INTEGER                :: neq_pp,nels_pp,ntot ! any global?
  REAL(iwp),PARAMETER    :: zero = 0.0_iwp
  REAL(iwp),PARAMETER    :: one  = 1.0_iwp
  REAL(iwp)              :: gama,omega,norm_r,r0_norm,error,rho1,beta
  REAL(iwp),ALLOCATABLE  :: y_pp(:),y1_pp(:),rt_pp(:),r_pp(:,:),u_pp(:,:)
- REAL(iwp),ALLOCATABLE  :: utemp_pp(:,:),GG(:,:),s(:)
+ REAL(iwp),ALLOCATABLE  :: utemp_pp(:,:),GG(:,:),s(:),Gamma(:)
  
  LOGICAL                :: cj_converged = .false.
 
 !------------------------------------------------------------------------------
-! 3. Allocate local arrays
+! 2. Allocate local arrays
 !------------------------------------------------------------------------------
 
  neq_pp            = UBOUND(x_pp,1)
@@ -240,9 +240,10 @@ REAL(iwp), INTENT=INOUT :: pmul_pp,x_pp
  ALLOCATE(utemp_pp(ntot,nels_pp)) ; utemp_pp = zero
  ALLOCATE(GG(ell+1,ell+1))        ; GG       = zero
  ALLOCATE(s(ell+1))               ; s        = zero
+ ALLOCATE(Gamma(ell+1))           ; Gamma    = zero
  
 !------------------------------------------------------------------------------
-! 4. Initialise BiCGSTAB(l)
+! 3. Initialise BiCGSTAB(l)
 !------------------------------------------------------------------------------
 
 !IF(iters==1) x_pp=x0; pmul_pp=zero; y1_ppn=zero; y_pp=x_pp
@@ -306,10 +307,10 @@ REAL(iwp), INTENT=INOUT :: pmul_pp,x_pp
 ! 5. Clean up
 !------------------------------------------------------------------------------
 
- DEALLOCATE(y_pp,y1_pp,rt_pp,r_pp,u_pp,utemp_pp,GG,s)
+ DEALLOCATE(y_pp,y1_pp,rt_pp,r_pp,u_pp,utemp_pp,GG,s,Gamma)
  
  RETURN
 
-END SUBROUTINE BICGSTABL
+END SUBROUTINE BICGSTABL_P
 
 END PROGRAM xx17
