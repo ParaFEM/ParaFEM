@@ -13,23 +13,23 @@ PROGRAM xx17
 !neq,ntot are now global variables - not declared
  INTEGER,PARAMETER::nodof=4,nod=20,nodf=8,ndim=3
  INTEGER::nn,nip,cj_tot,i,j,k,l,iel,ell,limit,fixed_freedoms,iters,      &
-   cjiters,cjits,nr,n_t,fixed_freedoms_pp,nres,is,it,nlen,nels,ndof,     &
+   cjits,nr,n_t,fixed_freedoms_pp,nres,is,it,nlen,nels,ndof,     &
    npes_pp,meshgen,partitioner,node_end,node_start,nodes_pp,             &
    fixed_freedoms_start  
- REAL(iwp):: visc,rho,rho1,det,ubar,vbar,wbar,tol,cjtol,alpha,beta,      &
-   penalty,x0,pp,kappa,gama,omega,norm_r,r0_norm,error
+ REAL(iwp):: visc,rho,det,ubar,vbar,wbar,tol,cjtol,alpha,      &
+   penalty,x0,pp,kappa
  REAL(iwp),PARAMETER::zero=0.0_iwp,one=1.0_iwp
- LOGICAL::converged,cj_converged
+ LOGICAL::converged
  CHARACTER(LEN=15)::element='hexahedron'; CHARACTER(LEN=50)::argv
 !--------------------------- dynamic arrays ------------------------------
  REAL(iwp),ALLOCATABLE::points(:,:),derivf(:,:),fun(:),store_pp(:),      &
    jac(:,:),kay(:,:),der(:,:),deriv(:,:),weights(:),derf(:,:),funf(:),   &
    coordf(:,:),g_coord_pp(:,:,:),c11(:,:),c21(:,:),c12(:,:),val(:),      &
-   wvel(:),c23(:,:),c32(:,:),x_pp(:),b_pp(:),r_pp(:,:),temp(:),          &
+   wvel(:),c23(:,:),c32(:,:),x_pp(:),b_pp(:),temp(:),                    &
    funny(:,:),row1(:,:),row2(:,:),uvel(:),vvel(:),funnyf(:,:),rowf(:,:), &
    storke_pp(:,:,:),diag_pp(:),utemp_pp(:,:),xold_pp(:),c24(:,:),        &
-   c42(:,:),row3(:,:),u_pp(:,:),rt_pp(:),y_pp(:),y1_pp(:),s(:),Gamma(:), &
-   GG(:,:),diag_tmp(:,:),pmul_pp(:,:),timest(:),upvw_pp(:)
+   c42(:,:),row3(:,:),s(:),Gamma(:),                                     &
+   diag_tmp(:,:),pmul_pp(:,:),timest(:),upvw_pp(:)
  INTEGER,ALLOCATABLE::rest(:,:),g_num_pp(:,:),g_g_pp(:,:),no(:),g_t(:),  &
    no_pp(:),no_pp_temp(:)
 !---------------------- input and initialisation -------------------------
@@ -47,12 +47,12 @@ PROGRAM xx17
  CALL read_rest(argv,numpe,rest); timest(2)=elap_time()
  ALLOCATE(points(nip,ndim),derivf(ndim,nodf),pmul_pp(ntot,nels_pp),      &
    jac(ndim,ndim),kay(ndim,ndim),der(ndim,nod),deriv(ndim,nod),          &
-   derf(ndim,nodf),funf(nodf),coordf(nodf,ndim),funny(nod,1),s(ell+1),   &
+   derf(ndim,nodf),funf(nodf),coordf(nodf,ndim),funny(nod,1),            &
    g_g_pp(ntot,nels_pp),c11(nod,nod),c12(nod,nodf),c21(nodf,nod),        &
    c24(nodf,nod),c42(nod,nodf),c32(nod,nodf),fun(nod),row2(1,nod),       &
    c23(nodf,nod),uvel(nod),vvel(nod),row1(1,nod),funnyf(nodf,1),         &
    rowf(1,nodf),no_pp_temp(fixed_freedoms),wvel(nod),row3(1,nod),        &
-   storke_pp(ntot,ntot,nels_pp),g_t(n_t),GG(ell+1,ell+1),                &
+   storke_pp(ntot,ntot,nels_pp),g_t(n_t),                                &
    Gamma(ell+1),no(fixed_freedoms),val(fixed_freedoms),weights(nip),     &
    diag_tmp(ntot,nels_pp),utemp_pp(ntot,nels_pp))
 !----------  find the steering array and equations per process -----------
@@ -73,11 +73,11 @@ PROGRAM xx17
    WRITE(11,'(A,F10.4)') "Time to read input was:",timest(2)-timest(1)
    WRITE(11,'(A,F10.4)') "Time after setup was:",elap_time()-timest(1)
  END IF
- ALLOCATE(x_pp(neq_pp),rt_pp(neq_pp),r_pp(neq_pp,ell+1),b_pp(neq_pp),    &
-   u_pp(neq_pp,ell+1),diag_pp(neq_pp),xold_pp(neq_pp),y_pp(neq_pp),      &
-   y1_pp(neq_pp),store_pp(neq_pp))
- x_pp=zero; rt_pp=zero; r_pp=zero; u_pp=zero; b_pp=zero; diag_pp=zero
- xold_pp=zero; y_pp=zero; y1_pp=zero; store_pp=zero
+ ALLOCATE(x_pp(neq_pp),b_pp(neq_pp),                                     &
+   diag_pp(neq_pp),xold_pp(neq_pp),                                      &
+   store_pp(neq_pp))
+ x_pp=zero; b_pp=zero; diag_pp=zero
+ xold_pp=zero; store_pp=zero
 !-------------------------- organise fixed equations ---------------------
  CALL read_loads_ns(argv,numpe,no,val)
  CALL reindex(ieq_start,no,no_pp_temp,fixed_freedoms_pp,                &
@@ -144,18 +144,131 @@ PROGRAM xx17
    store_pp(k)=diag_pp(k)
  END DO   
 !---------- solve the equations element-by-element using BiCGSTAB --------
-!-------------------------- initialisation phase -------------------------
- IF(iters==1) x_pp=x0; pmul_pp=zero; y1_pp=zero; y_pp=x_pp
+ x_pp = x0
+
+ CALL bicgstabl(b_pp,cjits,cjtol,ell,ieq_start,no_pp,pmul_pp,store_pp,        &
+                storke_pp,x_pp)
+
+ b_pp=x_pp-xold_pp; pp=norm_p(b_pp); cj_tot=cj_tot+cjiters
+
+ IF(numpe==it) THEN
+   WRITE(11,'(A,E12.4)') "Norm of the error is:", pp
+   WRITE(11,'(A,I6,A)') "It took BiCGSTAB(L) ", cjiters,               &
+      " iterations to converge"; END IF
+ CALL checon_par(x_pp,tol,converged,xold_pp)
+ IF(converged.OR.iters==limit)EXIT
+
+ END DO iterations
+
+ timest(4)=elap_time()
+ DEALLOCATE(b_pp,diag_pp,xold_pp,store_pp)
+ DEALLOCATE(storke_pp,pmul_pp)
+!------------------------- output results --------------------------------
+ IF(numpe==it) THEN
+   WRITE(11,'(A)') "The pressure at the corner of the box is: "
+   WRITE(11,'(A)') "Freedom  Pressure "
+   WRITE(11,'(I6,E12.4)') nres, x_pp(is)
+   WRITE(11,'(A,I6)')"The total number of BiCGSTAB iterations was:",cj_tot
+   WRITE(11,'(A,I5,A)')"The solution took",iters," iterations to converge"
+   WRITE(11,'(A,F10.4)')"Time spent in solver was:",timest(4)-timest(3)
+ END IF
+ IF(numpe==1) THEN
+   OPEN(12,file=argv(1:nlen)//".ensi.VEL",status='replace',              &
+     action='write')
+   WRITE(12,'(A)') "Alya Ensight Gold --- Vector per-node variable file"
+   WRITE(12,'(A/A/A)') "part", "     1","coordinates"
+ END IF
+ CALL calc_nodes_pp(nn,npes,numpe,node_end,node_start,nodes_pp)
+ ALLOCATE(upvw_pp(nodes_pp*nodof),temp(nodes_pp)); upvw_pp=zero          
+ temp=zero; utemp_pp=zero; CALL gather(x_pp(1:),utemp_pp)
+ CALL scatter_nodes_ns(npes,nn,nels_pp,g_num_pp,nod,nodof,nodes_pp,      &
+   node_start,node_end,utemp_pp,upvw_pp,1)
+ DO i=1,nodof ; temp=zero
+   IF(i/=2) THEN
+     DO j=1,nodes_pp; k=i+(nodof*(j-1)); temp(j)=upvw_pp(k); END DO
+     CALL dismsh_ensi_p(12,1,nodes_pp,npes,numpe,1,temp); END IF
+ END DO ; IF(numpe==1) CLOSE(12)
+ IF(numpe==it) THEN 
+   WRITE(11,'(A,F10.4)') "This analysis took :", elap_time()-timest(1)
+   CLOSE(11); END IF; CALL SHUTDOWN() 
+
+CONTAINS
+
+SUBROUTINE BICGSTABL(b_pp,cjits,cjtol,ell,ieq_start,no_pp,pmul_pp,store_pp,   &
+                     storke_pp,x_pp)
+
+USE precision
+USE global_variables
+USE maths
+
+IMPLICIT NONE
+
+INTEGER, INTENT=IN      :: cjits,ell,ieq_start,no_pp,store_pp
+REAL(iwp), INTENT=IN    :: b_pp,cjtol,storke_pp
+REAL(iwp), INTENT=INOUT :: pmul_pp,x_pp
+
+!------------------------------------------------------------------------------
+! 2. Local variables
+!------------------------------------------------------------------------------
+
+ INTEGER                :: i,j,k,l,iel
+ INTEGER                :: fixed_freedoms_pp
+ INTEGER                :: cjiters
+ INTEGER                :: neq_pp,nels_pp,ntot ! any global?
+ REAL(iwp),PARAMETER    :: zero = 0.0_iwp
+ REAL(iwp),PARAMETER    :: one  = 1.0_iwp
+ REAL(iwp)              :: gama,omega,norm_r,r0_norm,error,rho1,beta
+ REAL(iwp),ALLOCATABLE  :: y_pp(:),y1_pp(:),rt_pp(:),r_pp(:,:),u_pp(:,:)
+ REAL(iwp),ALLOCATABLE  :: utemp_pp(:,:),GG(:,:),s(:)
+ 
+ LOGICAL                :: cj_converged = .false.
+
+!------------------------------------------------------------------------------
+! 3. Allocate local arrays
+!------------------------------------------------------------------------------
+
+ neq_pp            = UBOUND(x_pp,1)
+ nels_pp           = UBOUND(storke_pp,3)
+ fixed_freedoms_pp = UBOUND(no_pp,1)
+ ntot              = UBOUND(storke_pp,1)
+ 
+ ALLOCATE(y_pp(neq_pp))           ; y_pp     = zero
+ ALLOCATE(y1_pp(neq_pp))          ; y1_pp    = zero
+ ALLOCATE(rt_pp(neq_pp))          ; rt_pp    = zero
+ ALLOCATE(r_pp(neq_pp,ell+1))     ; r_pp     = zero
+ ALLOCATE(u_pp(neq_pp,ell+1))     ; u_pp     = zero
+ ALLOCATE(utemp_pp(ntot,nels_pp)) ; utemp_pp = zero
+ ALLOCATE(GG(ell+1,ell+1))        ; GG       = zero
+ ALLOCATE(s(ell+1))               ; s        = zero
+ 
+!------------------------------------------------------------------------------
+! 4. Initialise BiCGSTAB(l)
+!------------------------------------------------------------------------------
+
+!IF(iters==1) x_pp=x0; pmul_pp=zero; y1_ppn=zero; y_pp=x_pp
+!This works in context of p126, but not sure if it is general
+
+!  x_pp=x0 - now an input value
+   
+   pmul_pp=zero; y1_pp=zero; y_pp=x_pp
+
    CALL gather(y_pp,pmul_pp)
    elements_3: DO iel=1,nels_pp  
      utemp_pp(:,iel)=MATMUL(storke_pp(:,:,iel),pmul_pp(:,iel))
-   END DO elements_3; CALL scatter(y1_pp,utemp_pp)
+   END DO elements_3
+   CALL scatter(y1_pp,utemp_pp)
+  
    DO i=1,fixed_freedoms_pp; k=no_pp(i)-ieq_start+1
      y1_pp(k)=y_pp(k)*store_pp(k)
    END DO; y_pp=y1_pp; rt_pp=b_pp-y_pp; r_pp=zero; r_pp(:,1)=rt_pp
+   
    u_pp=zero; gama=one; omega=one; k=0; norm_r=norm_p(rt_pp)
    r0_norm=norm_r; error=one; cjiters=0
-!----------------------- BiCGSTAB(ell) iterations ------------------------
+   
+!------------------------------------------------------------------------------
+! 4. BiCGSTAB(ell) iterations 
+!------------------------------------------------------------------------------
+
    bicg_iterations: DO; cjiters=cjiters+1   
      cj_converged=error<cjtol; IF(cjiters==cjits.OR.cj_converged) EXIT
      gama=-omega*gama; y_pp=r_pp(:,1)
@@ -188,42 +301,15 @@ PROGRAM xx17
      u_pp(:,1)=MATMUL(u_pp,Gamma); norm_r=norm_p(r_pp(:,1))
      error=norm_r/r0_norm; k=k+1
    END DO bicg_iterations            
-   b_pp=x_pp-xold_pp; pp=norm_p(b_pp); cj_tot=cj_tot+cjiters
-   IF(numpe==it) THEN
-     WRITE(11,'(A,E12.4)') "Norm of the error is:", pp
-     WRITE(11,'(A,I6,A)') "It took BiCGSTAB(L) ", cjiters,               &
-       " iterations to converge"; END IF
-   CALL checon_par(x_pp,tol,converged,xold_pp)
-   IF(converged.OR.iters==limit)EXIT
- END DO iterations; timest(4)=elap_time()
- DEALLOCATE(rt_pp,r_pp,u_pp,b_pp,diag_pp,xold_pp,y_pp,y1_pp,store_pp)
- DEALLOCATE(storke_pp,pmul_pp)
-!------------------------- output results --------------------------------
- IF(numpe==it) THEN
-   WRITE(11,'(A)') "The pressure at the corner of the box is: "
-   WRITE(11,'(A)') "Freedom  Pressure "
-   WRITE(11,'(I6,E12.4)') nres, x_pp(is)
-   WRITE(11,'(A,I6)')"The total number of BiCGSTAB iterations was:",cj_tot
-   WRITE(11,'(A,I5,A)')"The solution took",iters," iterations to converge"
-   WRITE(11,'(A,F10.4)')"Time spent in solver was:",timest(4)-timest(3)
- END IF
- IF(numpe==1) THEN
-   OPEN(12,file=argv(1:nlen)//".ensi.VEL",status='replace',              &
-     action='write')
-   WRITE(12,'(A)') "Alya Ensight Gold --- Vector per-node variable file"
-   WRITE(12,'(A/A/A)') "part", "     1","coordinates"
- END IF
- CALL calc_nodes_pp(nn,npes,numpe,node_end,node_start,nodes_pp)
- ALLOCATE(upvw_pp(nodes_pp*nodof),temp(nodes_pp)); upvw_pp=zero          
- temp=zero; utemp_pp=zero; CALL gather(x_pp(1:),utemp_pp)
- CALL scatter_nodes_ns(npes,nn,nels_pp,g_num_pp,nod,nodof,nodes_pp,      &
-   node_start,node_end,utemp_pp,upvw_pp,1)
- DO i=1,nodof ; temp=zero
-   IF(i/=2) THEN
-     DO j=1,nodes_pp; k=i+(nodof*(j-1)); temp(j)=upvw_pp(k); END DO
-     CALL dismsh_ensi_p(12,1,nodes_pp,npes,numpe,1,temp); END IF
- END DO ; IF(numpe==1) CLOSE(12)
- IF(numpe==it) THEN 
-   WRITE(11,'(A,F10.4)') "This analysis took :", elap_time()-timest(1)
-   CLOSE(11); END IF; CALL SHUTDOWN()    
+  
+!------------------------------------------------------------------------------
+! 5. Clean up
+!------------------------------------------------------------------------------
+
+ DEALLOCATE(y_pp,y1_pp,rt_pp,r_pp,u_pp,utemp_pp,GG,s)
+ 
+ RETURN
+
+END SUBROUTINE BICGSTABL
+
 END PROGRAM xx17
