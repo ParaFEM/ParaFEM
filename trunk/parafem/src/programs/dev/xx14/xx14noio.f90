@@ -326,8 +326,6 @@ if ( .not. allocated( cgca_pfem_centroid_tmp%r ) ) then
   error stop
 end if
 
-if (cgca_img .eq. 1 ) write (*,*) "cgca_pfem_ctalloc"
-
 ! set the centroids array component on this image, no remote calls.
 ! first dim - coord, 1,2,3
 ! second dim - element number, always starting from 1
@@ -337,6 +335,15 @@ cgca_pfem_centroid_tmp%r = sum( g_coord_pp(:,:,:), dim=1 ) / nod
          ! set cgca_pfem_centroid_tmp[*]%r
 sync all ! must separate execution segments
          ! use cgca_pfem_centroid_tmp[*]%r
+
+! Initialise random number seed.
+! Need to do this *before* cgca_pfem_cenc, because that routine
+! uses random comms patterns to even the comms load.
+!
+! Argument:
+! .false. - no debug output
+!  .true. - with debug output
+call cgca_irs( .false. )
 
 !subroutine cgca_pfem_cenc( origin, rot, bcol, bcou )
 call cgca_pfem_cenc( cgca_origin, cgca_rot, cgca_bcol, cgca_bcou )
@@ -350,24 +357,16 @@ sync all ! must separate execution segments
 ! Now can deallocate the temp array cgca_pfem_centroid_tmp%r.
 call cgca_pfem_ctdalloc
 
-!write (*,*) "img: ", cgca_img, "passed cgca_pfem_ctdalloc"
-
-if (cgca_img .eq. 1 ) write (*,*) "cgca_pfem_ctdalloc"
-
 ! Allocate cgca_pfem_integrity%i, array component of a coarray of
 ! derived type. Allocating *local* array.
 call cgca_pfem_integalloc( nels_pp )
  
-if (cgca_img .eq. 1 ) write (*,*) "cgca_pfem_integalloc"
-
 ! initially integrity is 1
 cgca_pfem_integrity%i = 1.0
 
 ! Allocate the Young's modulus 2D array
 call cgca_pfem_ealloc( nip, nels_pp )
   
-if (cgca_img .eq. 1 ) write (*,*) "cgca_pfem_ealloc"
-
 ! initially set the Young's modulus to "e" everywhere
 cgca_pfem_enew = e
 
@@ -377,12 +376,6 @@ cgca_pfem_enew = e
 ! call cgca_pfem_cendmp ! NO DUMP IN THIS VERSION - TAKES TOO LONG!!!
 
 ! Generate microstructure
-
-! initialise random number seed
-! argument:
-! .false. - no debug output
-!  .true. - with debug output
-call cgca_irs( .false. )
 
 ! allocate rotation tensors
 call cgca_art( 1, cgca_ng, 1, cgca_ir(1), 1, cgca_ir(2), 1, cgca_grt )

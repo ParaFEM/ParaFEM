@@ -211,19 +211,20 @@ END IF
   cgca_img = this_image()
 cgca_nimgs = num_images()
 
+! Initialise random number seed early to make sure all routines can
+! have access to different random numbers on different images.
+!
+! Argument:
+! .false. - no debug output
+!  .true. - with debug output
+call cgca_irs( .false. )
+
 ! dump CGPACK parameters and some ParaFEM settings
 if ( cgca_img .eq. 1 ) then
-     call cgca_pdmp
-     write (*,*) "Young's mod:", e, "Poisson's ratio", v
+  call cgca_pdmp
+  write (*,*) "Young's mod:", e, "Poisson's ratio", v
+  flush( unit = output_unit )
 end if
-
-! sync here to separate the output, hopefully...
-! The Fortran processor is allowed to play with
-! stdout streams from different images, including
-! buffering, etc. so it is not guaranteed that
-! the above output from image 1 will appear *prior*
-! to all other output from that and other images to stdout.
-sync all
 
 ! physical dimensions of the box, must be the same
 ! units as in the ParaFEM.
@@ -245,7 +246,7 @@ cgca_rot(2,2) = cgca_one
 cgca_rot(3,3) = cgca_one
 
 ! mean grain size, also mm
-cgca_dm = 6.0e-1_rdef
+cgca_dm = 5.0e-1_rdef
 
 ! resolution
 cgca_res = 1.0e5_rdef
@@ -350,12 +351,6 @@ cgca_pfem_enew = e
 ! call cgca_pfem_cendmp ! NO DUMP IN THIS VERSION - TAKES TOO LONG!!!
 
 ! Generate microstructure
-
-! initialise random number seed
-! argument:
-! .false. - no debug output
-!  .true. - with debug output
-call cgca_irs( .false. )
 
 ! allocate rotation tensors
 call cgca_art( 1, cgca_ng, 1, cgca_ir(1), 1, cgca_ir(2), 1, cgca_grt )
