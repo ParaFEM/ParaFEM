@@ -260,7 +260,7 @@ cgca_rot(2,2) = cgca_one
 cgca_rot(3,3) = cgca_one
 
 ! mean grain size, also mm
-cgca_dm = 2.0e0_rdef
+cgca_dm = 1.5e0_rdef
 
 ! resolution, cells per grain
 cgca_res = 1.0e5_rdef
