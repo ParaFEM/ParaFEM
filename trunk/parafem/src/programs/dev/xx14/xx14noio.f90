@@ -144,9 +144,9 @@ CALL read_p121( argv, numpe, e, element, limit, loaded_nodes, meshgen, &
 ! that are not passed through the list of arguments.
 !
 ! nels_pp is indeed a global var, defined in
-! https://code.google.com/p/parafem/source/browse/trunk/parafem/src/modules/shared/global_variables.f90
+!https://code.google.com/p/parafem/source/browse/trunk/parafem/src/modules/shared/global_variables.f90
 !
-! https://code.google.com/p/parafem/source/browse/trunk/parafem/src/modules/mpi/gather_scatter.f90
+!https://code.google.com/p/parafem/source/browse/trunk/parafem/src/modules/mpi/gather_scatter.f90
 CALL calc_nels_pp( argv, nels, npes, numpe, partitioner, nels_pp )
 
 !   nod - number of nodes per element
@@ -176,8 +176,6 @@ IF ( meshgen == 2 ) CALL abaqus2sg( element, g_num_pp )
 CALL read_g_coord_pp( argv, g_num_pp, nn, npes, numpe, g_coord_pp )
 CALL read_rest( argv, numpe, rest )
 
-!write (*,*) "PE:", numpe, "4 routines called"
-
 timest(2) = elap_time()
 
 ALLOCATE( points(nip,ndim) )
@@ -194,8 +192,6 @@ allocate( pmul_pp( ntot, nels_pp ) )
 allocate( utemp_pp(ntot,nels_pp) )
 allocate( g_g_pp(ntot,nels_pp) )
 
-!write (*,*) "PE:", numpe, "lots of arrays allocated"
-
 IF ( numpe==1 ) THEN
    open(  11,FILE=argv(1:nlen)//".res",STATUS='REPLACE',ACTION='write' )
    write( 11,'(A,I7,A)') "This job ran on ",npes," processes"
@@ -204,8 +200,6 @@ IF ( numpe==1 ) THEN
    write( 11,'(A,F10.4)') "Time to read input is:", timest(2)-timest(1)
    write( 11,'(A,F10.4)') "Time after setup is:", elap_time()-timest(1)
 END IF
-
-!write (*,*) "PE:", numpe, "Finished ParaFEM init"
 !*** end of ParaFEM input and initialisation *************************72
 
 
@@ -217,19 +211,20 @@ END IF
   cgca_img = this_image()
 cgca_nimgs = num_images()
 
+! Initialise random number seed early to make sure all routines can
+! have access to different random numbers on different images.
+!
+! Argument:
+! .false. - no debug output
+!  .true. - with debug output
+call cgca_irs( .false. )
+
 ! dump CGPACK parameters and some ParaFEM settings
 if ( cgca_img .eq. 1 ) then
-     call cgca_pdmp
-     write (*,*) "Young's mod:", e, "Poisson's ratio", v
+  call cgca_pdmp
+  write (*,*) "Young's mod:", e, "Poisson's ratio", v
+  ! flush( unit = output_unit )
 end if
-
-! sync here to separate the output, hopefully...
-! The Fortran processor is allowed to play with
-! stdout streams from different images, including
-! buffering, etc. so it is not guaranteed that
-! the above output from image 1 will appear *prior*
-! to all other output from that and other images to stdout.
-sync all
 
 ! physical dimensions of the box, must be the same
 ! units as in the ParaFEM.
@@ -289,20 +284,13 @@ end if
 call cgca_as( 1, cgca_c(1),  1, cgca_c(2),  1, cgca_c(3),              &
               1, cgca_ir(1), 1, cgca_ir(2), 1, 2, cgca_space )
 
-if (cgca_img .eq. 1 ) write (*,*) "cgca_as"
-
 ! calculate the phys. dim. of the coarray on each image
 !subroutine cgca_imco( space, lres, bcol, bcou )
 call cgca_imco( cgca_space, cgca_lres, cgca_bcol, cgca_bcou )
 
-if (cgca_img .eq. 1 ) write (*,*) "cgca_imco"
-
 ! dump box lower and upper corners from every image
 !write ( *,"(a,i0,2(a,3(g0,tr1)),a)" ) "img: ", cgca_img,               &
 !       " bcol: (", cgca_bcol, ") bcou: (", cgca_bcou, ")"
-
-! try to separate the stdout
-sync all
 
 ! and now in FE cs:
 !write ( *,"(a,i0,2(a,3(g0,tr1)),a)" ) "img: ", cgca_img,               &
@@ -311,20 +299,12 @@ sync all
 !  ") FE bcou: (",                                                      &
 !    matmul( transpose( cgca_rot ),cgca_bcou ) + cgca_origin, ")"
 
-! try to separate the stdout
-sync all
-
 ! confirm that image number .eq. MPI process number
 !write (*,*) "img",cgca_img," <-> MPI proc", numpe
 
 ! allocate the tmp centroids array: cgca_pfem_centroid_tmp%r ,
 ! an allocatable array component of a coarray variable of derived type
 call cgca_pfem_ctalloc( ndim, nels_pp )
-if ( .not. allocated( cgca_pfem_centroid_tmp%r ) ) then
-  write (*,*) "ERROR: xx14noio: img:", cgca_img,                       &
-     "cgca_pfem_centroids_tmp%r not allocated"
-  error stop
-end if
 
 ! set the centroids array component on this image, no remote calls.
 ! first dim - coord, 1,2,3
@@ -336,19 +316,8 @@ cgca_pfem_centroid_tmp%r = sum( g_coord_pp(:,:,:), dim=1 ) / nod
 sync all ! must separate execution segments
          ! use cgca_pfem_centroid_tmp[*]%r
 
-! Initialise random number seed.
-! Need to do this *before* cgca_pfem_cenc, because that routine
-! uses random comms patterns to even the comms load.
-!
-! Argument:
-! .false. - no debug output
-!  .true. - with debug output
-call cgca_irs( .false. )
-
 !subroutine cgca_pfem_cenc( origin, rot, bcol, bcou )
 call cgca_pfem_cenc( cgca_origin, cgca_rot, cgca_bcol, cgca_bcou )
-
-if ( cgca_img .eq. 1 ) write (*,*) "cgca_pfem_cenc"
 
          ! use cgca_pfem_centroid_tmp[*]%r
 sync all ! must separate execution segments
@@ -379,8 +348,6 @@ cgca_pfem_enew = e
 
 ! allocate rotation tensors
 call cgca_art( 1, cgca_ng, 1, cgca_ir(1), 1, cgca_ir(2), 1, cgca_grt )
-
-if (cgca_img .eq. 1 ) write (*,*) "cgca_art"
 
 ! initialise space
 cgca_space( :, :, :, cgca_state_type_grain ) = cgca_liquid_state
@@ -649,8 +616,8 @@ call cgca_clvgp( cgca_space, cgca_grt, cgca_stress,                    &
                  0.01_rdef * cgca_scrit,                               &
                  cgca_clvgsd, .false., cgca_clvg_iter, 10, .false. )
 
+! dump model to file. NO IO IN THIS MODEL!!!
 !if ( cgca_img .eq. 1 ) write (*,*) "dumping model to file"
-! NO IO IN THIS MODEL!!!
 !write ( cgca_citer, "(i0)" ) cgca_liter
 !call cgca_pswci( cgca_space, cgca_state_type_frac,                     &
 !                 "zf"//trim( cgca_citer )//".raw" )

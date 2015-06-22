@@ -98,22 +98,22 @@ character( len=6 ) :: cgca_citer
 !*** end CGPACK part *************************************************72
 
 
-  !------------------------ input and initialisation ---------------------
-  ALLOCATE( timest( 20 ) )
-  timest = zero
-  timest( 1 ) = elap_time()
+!------------------------ input and initialisation ---------------------
+ALLOCATE( timest( 20 ) )
+timest = zero
+timest( 1 ) = elap_time()
 
-  !*    Get the rank of the processes and the total number of processes
-  !* intent( out ):
-  !*          numpe - integer, process number (rank)
-  !*           npes - integer, total number of processes (size)
-  CALL find_pe_procs( numpe, npes )
+!*    Get the rank of the processes and the total number of processes
+!* intent( out ):
+!*          numpe - integer, process number (rank)
+!*           npes - integer, total number of processes (size)
+CALL find_pe_procs( numpe, npes )
 
-  !*    Returns the base name of the data file.
-  !* intent( out ):
-  !*           argv - character(*), data file base name
-  !*           nlen - integer, number of characters in data file base name
-  CALL getname( argv, nlen )
+!*    Returns the base name of the data file.
+!* intent( out ):
+!*           argv - character(*), data file base name
+!*           nlen - integer, number of characters in data file base name
+CALL getname( argv, nlen )
 
 !*    Master processor reads the general data for the problem
 !     and broadcasts it to the slave processors.
@@ -143,11 +143,11 @@ CALL read_p121( argv, numpe, e, element, limit, loaded_nodes, meshgen, &
 ! modified by this subroutine. Note that they are global variables
 ! that are not passed through the list of arguments.
 !
-! https://code.google.com/p/parafem/source/browse/trunk/parafem/src/modules/mpi/gather_scatter.f90
-!
 ! nels_pp is indeed a global var, defined in
-! https://code.google.com/p/parafem/source/browse/trunk/parafem/src/modules/shared/global_variables.f90
-  CALL calc_nels_pp( argv, nels, npes, numpe, partitioner, nels_pp )
+!https://code.google.com/p/parafem/source/browse/trunk/parafem/src/modules/shared/global_variables.f90
+!
+!https://code.google.com/p/parafem/source/browse/trunk/parafem/src/modules/mpi/gather_scatter.f90
+CALL calc_nels_pp( argv, nels, npes, numpe, partitioner, nels_pp )
 
 !   nod - number of nodes per element
 ! nodof = 3 (see the beginning of this file), probably
@@ -223,7 +223,7 @@ call cgca_irs( .false. )
 if ( cgca_img .eq. 1 ) then
   call cgca_pdmp
   write (*,*) "Young's mod:", e, "Poisson's ratio", v
-  flush( unit = output_unit )
+  ! flush( unit = output_unit )
 end if
 
 ! physical dimensions of the box, must be the same
@@ -292,18 +292,12 @@ call cgca_imco( cgca_space, cgca_lres, cgca_bcol, cgca_bcou )
 write ( *,"(a,i0,2(a,3(g0,tr1)),a)" ) "img: ", cgca_img,               &
        " bcol: (", cgca_bcol, ") bcou: (", cgca_bcou, ")"
 
-! try to separate the stdout
-sync all
-
 ! and now in FE cs:
 write ( *,"(a,i0,2(a,3(g0,tr1)),a)" ) "img: ", cgca_img,               &
    " FE bcol: (",                                                      &
     matmul( transpose( cgca_rot ),cgca_bcol ) + cgca_origin,           &
   ") FE bcou: (",                                                      &
     matmul( transpose( cgca_rot ),cgca_bcou ) + cgca_origin, ")"
-
-! try to separate the stdout
-sync all
 
 ! confirm that image number .eq. MPI process number
 write (*,*) "img",cgca_img," <-> MPI proc", numpe
@@ -606,7 +600,7 @@ sync all
 ! which gives 1mm of crack propagation per increment maximum.
 ! I then can multiply it by a factor, e.g. a factor of 3 will mean
 ! that I get 3mm max ( 1/3 of the model ) per load increment.
-cgca_time_inc = 1.0_rdef / cgca_length
+cgca_time_inc = 2 * 1.0_rdef / cgca_length
 
 ! run cleavage for a correct number of iterations, which is a function
 ! of the characteristic length and the time increment
@@ -620,10 +614,10 @@ if ( cgca_img .eq. 1 ) write (*,*) "load inc:", cgca_liter,            &
 ! sync all inside
 call cgca_clvgp( cgca_space, cgca_grt, cgca_stress,                    &
                  0.01_rdef * cgca_scrit,                               &
-                 cgca_clvgsd, .false., cgca_clvg_iter, 10, .false. )
+                 cgca_clvgsd, .false., cgca_clvg_iter, 10, .true. )
 
+! dump model to file
 if ( cgca_img .eq. 1 ) write (*,*) "dumping model to file"
-
 write ( cgca_citer, "(i0)" ) cgca_liter
 call cgca_pswci( cgca_space, cgca_state_type_frac,                     &
                  "zf"//trim( cgca_citer )//".raw" )
