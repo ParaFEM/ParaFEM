@@ -624,7 +624,7 @@ if ( cgca_img .eq. 1 ) write (*,*) "finished dumping model to file"
      
 ! Calculate number (volume) of fractured cells on each image.
 ! cgca_fracvol is a local, non-coarray, array, so no sync needed.
-call cgca_fv( cgca_space, cgca_fracvol)
+call cgca_fv( cgca_space, cgca_fracvol )
 
 write (*,*) "img:", cgca_img, "fracvol:", cgca_fracvol
 
