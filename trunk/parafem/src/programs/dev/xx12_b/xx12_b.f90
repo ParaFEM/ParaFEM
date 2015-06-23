@@ -273,11 +273,13 @@ PROGRAM xx12
   red_blk=1
   SELECT CASE (chk)
     CASE('start')
+      IF(numpe==1) PRINT*, "Initialising new run"
       j_chk   = 0
       j_glob  = 1
       j_step2 = 1
       j_chk2  = 0
     CASE('restart')
+      IF(numpe==1) PRINT*, "Restarting from checkpoint"
       j_chk2  = 1
       CALL read_x_pp(job_name,npes,numpe,j_chk,x_pp)
       j_glob = j_chk+1
@@ -289,8 +291,8 @@ PROGRAM xx12
       END DO
       IF(j_step2>1) j_chk = (j_glob-1) - (j_temp-timesteps_int(j_step2,1))
     CASE default
-      PRINT*, "Invalid checkpoint flag in .dat"
-      PRINT*, "Program aborting"
+      IF(numpe==1) PRINT*, "Invalid checkpoint flag in .dat"
+      IF(numpe==1) PRINT*, "Program aborting"
   END SELECT
   
 !------------------------------------------------------------------------------
@@ -368,6 +370,7 @@ PROGRAM xx12
     
     ALLOCATE(diag_precon_tmp(ntot,nels_pp))
     diag_precon_tmp = zero
+    diag_precon_pp  = zero
     
     elements_4: DO iel = 1,nels_pp 
       DO k=1,ntot
@@ -387,7 +390,7 @@ PROGRAM xx12
 !------------------------------------------------------------------------------
     
     IF(j_step==1 .OR. j_chk2==1)THEN
-      IF(numpe==it)THEN !---Open file for temperature outputs of specified node  
+      IF(numpe==it)THEN !---Open file-temp outputs-specified node  
         fname = job_name(1:INDEX(job_name, " ")-1) // ".ttr2"
         OPEN(11,FILE=fname,STATUS='REPLACE',ACTION='WRITE')
       END IF
@@ -414,7 +417,7 @@ PROGRAM xx12
         !-Unchecked
         WRITE(26,*) npp
         WRITE(26,*) npes
-        IF(i_o==3)THEN !---Open file-temp outputs-binary ENSIGHT GOLD
+        IF(i_o==3.AND.j_glob==1)THEN!---Open file-temp out-binary ENSIGHT GOLD
           fname = job_name(1:INDEX(job_name, " ")-1)//".bin.ensi.NDTTR-000001"
           OPEN(27,file=fname,status='replace',action='write',                 &
           form='unformatted',access='stream')
@@ -537,6 +540,7 @@ PROGRAM xx12
       j_npri = j_npri + j_loc/npri + 1
       
       timest(15) = elap_time()
+      IF(numpe==1) PRINT *, "End of 14"
       
 !------------------------------------------------------------------------------
 ! 15. Apply loads (sources and/or sinks) supplied as a boundary value
@@ -557,6 +561,8 @@ PROGRAM xx12
       END IF
       
       q = q + SUM_P(loads_pp)
+
+      IF(numpe==1) PRINT *, "End of 15"
       
 !------------------------------------------------------------------------------
 ! 16. Compute RHS of time stepping equation, using storkb_pp, then add 
@@ -591,7 +597,9 @@ PROGRAM xx12
           END DO
         END IF
         
-        loads_pp = loads_pp+u_pp
+        loads_pp = loads_pp + u_pp
+        
+        IF(numpe==1) PRINT *, "End of 16"
         
       ELSE
         
@@ -614,8 +622,21 @@ PROGRAM xx12
           utemp_pp(:,iel)=MATMUL(storka_pp(:,:,iel),pmul_pp(:,iel))
         END DO elements_2c
         CALL scatter(u_pp,utemp_pp)
+
+! Added lines - seems to fix error at fixed nodes when t=dt
+! However, only works when simulation also contains loaded nodes
+! If fixed nodes only, PCG iterates until iterlimit
+!        IF(fixed_freedoms_pp > 0) THEN
+!          DO i = 1, fixed_freedoms_pp
+!            l       = no_f_pp(i) - ieq_start + 1
+!            k       = fixed_freedoms_start + i - 1
+!            u_pp(l) = store_pp(i)*val_f(k)
+!          END DO
+!        END IF
         
         loads_pp = loads_pp + u_pp
+        
+        IF(numpe==1) PRINT *, "End of 17"
         
 !------------------------------------------------------------------------------
 ! 18. Output "results" at t=0
@@ -630,7 +651,7 @@ PROGRAM xx12
                            node_start,node_end,eld_pp,disp_pp,1)
         
         IF(numpe==it)THEN
-          !---Write temperature for specified node
+          !---Write file-temp outputs-specified node
           WRITE(11,'(E12.4,8E19.8)')t0,disp_pp(is)
         END IF
         
@@ -656,6 +677,8 @@ PROGRAM xx12
         END IF
         
       END IF ! From section 16
+      
+      IF(numpe==1) PRINT *, "End of 18"
       
 !------------------------------------------------------------------------------
 ! 19. Initialize PCG process
@@ -686,6 +709,7 @@ PROGRAM xx12
       d_pp = diag_precon_pp*r_pp
       p_pp = d_pp
       
+      IF(numpe==1) PRINT *, "End of 19"
 !------------------------------------------------------------------------------
 ! 20. Solve simultaneous equations by pcg
 !------------------------------------------------------------------------------
@@ -705,6 +729,8 @@ PROGRAM xx12
           utemp_pp(:,iel)=MATMUL(storka_pp(:,:,iel),pmul_pp(:,iel))
         END DO elements_6
         CALL scatter(u_pp,utemp_pp)
+        
+!        IF(numpe==1) PRINT *, "End of 20"
         
 !------------------------------------------------------------------------------
 ! 21. PCG equation solution
@@ -733,6 +759,8 @@ PROGRAM xx12
       timest(13) = timest(13) + (elap_time() - timest(15))
       timest(16) = elap_time()
       
+      IF(numpe==1) PRINT *, "End of 21"
+      
 !------------------------------------------------------------------------------
 ! 22. Output results and checkpoint
 !------------------------------------------------------------------------------
@@ -748,7 +776,7 @@ PROGRAM xx12
                            node_start,node_end,eld_pp,disp_pp,1)
         
         IF(numpe==it)THEN
-          !---Write temperature for specified node
+          !---Write file-temp outputs-specified node
           WRITE(11,'(E12.4,8E19.8)')real_time,disp_pp(is)
         END IF      
         
@@ -829,7 +857,7 @@ PROGRAM xx12
   timest(13) = timest(12) + timest(13)
   timest(14) = timest(13) + timest(14)
   
-  IF(numpe==1) PRINT *, "End of 14"
+  IF(numpe==1) PRINT *, "End of 22"
   
   IF(numpe==1)THEN
     CLOSE(11)
