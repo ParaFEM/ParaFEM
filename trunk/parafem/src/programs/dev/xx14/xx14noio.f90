@@ -223,7 +223,6 @@ call cgca_irs( .false. )
 if ( cgca_img .eq. 1 ) then
   call cgca_pdmp
   write (*,*) "Young's mod:", e, "Poisson's ratio", v
-  ! flush( unit = output_unit )
 end if
 
 ! physical dimensions of the box, must be the same
@@ -248,7 +247,7 @@ cgca_rot(3,3) = cgca_one
 ! mean grain size, also mm
 cgca_dm = 5.0e-1_rdef
 
-! resolution
+! resolution, cells per grain
 cgca_res = 1.0e5_rdef
 
 ! cgpack length scale, also in mm
@@ -656,19 +655,19 @@ sync all
 ! end loading iterations
 end do load_iter
 
-  ! deallocate all arrays, moved from inside the loop
-  DEALLOCATE( p_pp )
-  deallocate( r_pp )
-  deallocate( x_pp )
-  deallocate( u_pp )
-  deallocate( d_pp )
-  deallocate( diag_precon_pp )
-  deallocate( storkm_pp )
-  deallocate( pmul_pp )
-  DEALLOCATE( xnew_pp )
-  DEALLOCATE( g_coord_pp )
+! deallocate all arrays, moved from inside the loop
+DEALLOCATE( p_pp )
+deallocate( r_pp )
+deallocate( x_pp )
+deallocate( u_pp )
+deallocate( d_pp )
+deallocate( diag_precon_pp )
+deallocate( storkm_pp )
+deallocate( pmul_pp )
+DEALLOCATE( xnew_pp )
+DEALLOCATE( g_coord_pp )
 
-  !------------------------ write out displacements ----------------------
+!------------------------ write out displacements ----------------------
 
   CALL calc_nodes_pp(nn,npes,numpe,node_end,node_start,nodes_pp)
 

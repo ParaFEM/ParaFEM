@@ -101,10 +101,10 @@ character( len=6 ) :: cgca_citer
 !*** end CGPACK part *************************************************72
 
 
-  !------------------------ input and initialisation ---------------------
-  ALLOCATE( timest( 20 ) )
-  timest = zero
-  timest( 1 ) = elap_time()
+!------------------------ input and initialisation ---------------------
+ALLOCATE( timest( 20 ) )
+timest = zero
+timest( 1 ) = elap_time()
 
 !*    Get the rank of the processes and the total number of processes
 !* intent( out ):
@@ -226,19 +226,20 @@ END IF
   cgca_img = this_image()
 cgca_nimgs = num_images()
 
+! Initialise random number seed.
+! Need to do this before cgca_pfem_cenc, where there order of comms
+! is chosen at *random* to even the remote access pattern.
+!
+! Argument:
+! .false. - no debug output
+!  .true. - with debug output
+call cgca_irs( .false. )
+
 ! dump CGPACK parameters and some ParaFEM settings
 if ( cgca_img .eq. 1 ) then
-     call cgca_pdmp
-     write (*,*) "Young's mod:", e, "Poisson's ratio", v
+  call cgca_pdmp
+  write (*,*) "Young's mod:", e, "Poisson's ratio", v
 end if
-
-! sync here to separate the output, hopefully...
-! The Fortran processor is allowed to play with
-! stdout streams from different images, including
-! buffering, etc. so it is not guaranteed that
-! the above output from image 1 will appear *prior*
-! to all other output from that and other images to stdout.
-sync all
 
 ! physical dimensions of the box, must be the same
 ! units as in the ParaFEM.
@@ -306,18 +307,12 @@ call cgca_imco( cgca_space, cgca_lres, cgca_bcol, cgca_bcou )
 write ( *,"(a,i0,2(a,3(g0,tr1)),a)" ) "img: ", cgca_img,               &
        " bcol: (", cgca_bcol, ") bcou: (", cgca_bcou, ")"
 
-! try to separate the stdout
-sync all
-
 ! and now in FE cs:
 write ( *,"(a,i0,2(a,3(g0,tr1)),a)" ) "img: ", cgca_img,               &
    " FE bcol: (",                                                      &
     matmul( transpose( cgca_rot ),cgca_bcol ) + cgca_origin,           &
   ") FE bcou: (",                                                      &
     matmul( transpose( cgca_rot ),cgca_bcou ) + cgca_origin, ")"
-
-! try to separate the stdout
-sync all
 
 ! confirm that image number .eq. MPI process number
 write (*,*) "img",cgca_img," <-> MPI proc", numpe
@@ -336,24 +331,12 @@ cgca_pfem_centroid_tmp%r = sum( g_coord_pp(:,:,:), dim=1 ) / nod
 sync all ! must separate execution segments
          ! use cgca_pfem_centroid_tmp[*]%r
 
-! Initialise random number seed.
-! Need to do this before cgca_pfem_cenc, where there order of comms
-! is chosen at *random* to even the remote access pattern.
-!
-! Argument:
-! .false. - no debug output
-!  .true. - with debug output
-call cgca_irs( .false. )
-
 !subroutine cgca_pfem_cenc( origin, rot, bcol, bcou )
 call cgca_pfem_cenc( cgca_origin, cgca_rot, cgca_bcol, cgca_bcou )
 
          ! use cgca_pfem_centroid_tmp[*]%r
 sync all ! must separate execution segments
          ! deallocate cgca_pfem_centroid_tmp[*]%r
-
-! debug, then STOP!!!!
-!call cgca_pfem_cendmp
 
 ! Now can deallocate the temp array cgca_pfem_centroid_tmp%r.
 call cgca_pfem_ctdalloc
