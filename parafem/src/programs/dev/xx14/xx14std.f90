@@ -618,7 +618,7 @@ sync all
 ! which gives 1mm of crack propagation per increment maximum.
 ! I then can multiply it by a factor, e.g. a factor of 3 will mean
 ! that I get 3mm max ( 1/3 of the model ) per load increment.
-cgca_time_inc = 1.0_rdef / cgca_length
+cgca_time_inc = 2 * 1.0_rdef / cgca_length
 
 ! run cleavage for a correct number of iterations, which is a function
 ! of the characteristic length and the time increment
