@@ -3,9 +3,10 @@ PROGRAM ensibin2ascii
 !      Program ensibin2ascii  Tool to convert binary ensight gold formatted  
 !                             variable files into ascii. Under development,
 !                             currently for 4-node tetrahedra
-!------------------------------------------------------------------------------
-
+!
 ! Usage: ensibin2ascii <job_name> <file extension> <number of variables> <ndim>
+!
+!------------------------------------------------------------------------------
   
   USE, INTRINSIC :: ISO_C_BINDING ! to output C binary file
   
