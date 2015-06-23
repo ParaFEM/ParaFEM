@@ -1,6 +1,13 @@
 PROGRAM ndttrget
-
-!  USAGE: ndttrget <job_name> <nstep> <nres> <format>
+!------------------------------------------------------------------------------
+!      Program ndttrget    Tool to produce read temperature values from 
+!                          .ensi.NDTTR files (output from program xx12.f90)
+!                          for a specific node and writes to .ndttr
+!                          Under development, currently only for xx12 using 
+!                          4-node tetrahedra
+!
+!      USAGE: ndttrget <job_name> <nstep> <nres> <format>
+!------------------------------------------------------------------------------
   
   USE, INTRINSIC :: ISO_C_BINDING ! to output C binary file
   
@@ -62,7 +69,6 @@ PROGRAM ndttrget
         WRITE(10,'(E16.8)') ttr
         CLOSE(11)
 
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
       CASE('ascii')
         fname=job_name(1:INDEX(job_name, " ")-1) // ".ensi.NDTTR-"//stepnum
         OPEN(11,file=fname,status='old',action='read')
@@ -75,29 +81,12 @@ PROGRAM ndttrget
         
         WRITE(10,'(E16.8)') ttr
         CLOSE(11)
+        
       CASE default
         PRINT*, "Invalid format flag"
         PRINT*, "Program aborting"
     END SELECT
-
-!    WRITE(arg1,'(i10)')i !Convert integer to string
-!    arg1=ADJUSTL(arg1)   !Remove trailing spaces
-!    IF (i<10) fname=job_name(1:INDEX(job_name, " ")-1)//".ensi.NDTTR-00000"//arg1
-!    IF (i<100 .AND. i>9) fname=job_name(1:INDEX(job_name, " ")-1)//".ensi.NDTTR-0000"//arg1
-!    IF (i<1000 .AND. i>99) fname=job_name(1:INDEX(job_name, " ")-1)//".ensi.NDTTR-000"//arg1
-!    IF (i<10000 .AND. i>999) fname=job_name(1:INDEX(job_name, " ")-1)//".ensi.NDTTR-00"//arg1
-!    IF (i<100000 .AND. i>9999) fname=job_name(1:INDEX(job_name, " ")-1)//".ensi.NDTTR-0"//arg1
-!    IF (i<1000000 .AND. i>99999) fname=job_name(1:INDEX(job_name, " ")-1)//".ensi.NDTTR-"//arg1
-!    PRINT *, "read: ", fname
-!    OPEN(11,file=fname,status='old',action='read')
-!    
-!    DO j=1,4+nres-1      !Skip header and ttr values before nres
-!       READ (11,*)
-!    END DO
-!    READ (11,*)ttr
-!    WRITE(10,'(E16.8)')ttr
-!    CLOSE(11)
-
+    
   END DO
     
   CLOSE(10)
