@@ -343,6 +343,6 @@ PROGRAM pf2ensibin
   
   PRINT *, "Conversion complete"
   
-  CALL shutdown()
+! CALL shutdown() - shuts down MPI - not needed here
   
 END PROGRAM pf2ensibin
