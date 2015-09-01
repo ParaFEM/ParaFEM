@@ -112,6 +112,6 @@ PROGRAM TTR_ensibin2ascii
   
   PRINT *, "Conversion complete"
   
-  CALL shutdown()
+! CALL shutdown() - subroutine not required in sequential program
   
 END PROGRAM TTR_ensibin2ascii
