@@ -153,6 +153,6 @@ PROGRAM pf2ensi_case
   
   PRINT *, "ENSIGHT GOLD case file complete"
   
-  CALL shutdown()
+! CALL shutdown() - not needed unless the program uses MPI
   
 END PROGRAM pf2ensi_case
