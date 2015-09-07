@@ -19,4 +19,4 @@
     
   AUTHOR
 
-  louise.lever@manchester.ac.uk
+  Louise M. Lever <louise.lever@manchester.ac.uk>
