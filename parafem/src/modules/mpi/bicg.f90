@@ -57,7 +57,7 @@ REAL(iwp), INTENT(INOUT) :: pmul_pp(:,:),x_pp(:)
 
  INTEGER                :: i,j,k,l,iel
  INTEGER                :: fixed_freedoms_pp
- INTEGER                :: ntot
+!INTEGER                :: ntot  ! defined in module GLOBAL_VARIABLES
  REAL(iwp),PARAMETER    :: zero = 0.0_iwp
  REAL(iwp),PARAMETER    :: one  = 1.0_iwp
  REAL(iwp)              :: gama,omega,norm_r,r0_norm,error,rho1,beta
