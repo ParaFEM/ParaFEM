@@ -63,6 +63,8 @@ clean:
 execlean:
 	@rm -f ../../lib/libarpack*.a
 	@rm -f ../../lib/libmetis*.a
+	@rm -f gaf77/*.o
+	@rm -f gaf77/*.a
 #	@cd metis-4.0.3 && $(MAKE) realclean && cd ..
 
 #install:
