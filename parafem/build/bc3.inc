@@ -1,8 +1,6 @@
+#$Id$
 # BUILD INCLUDE build/template.inc
-# Author: Louise M. Lever
 #
-# MODIFIED: Anton Shterenlikht
-# DATE: 3-OCT-2014
 # SYSTEM: The University of Bristol Bluecrystal cluster
 # NOTES: I'm only interested in building XX14 project.
 #	There are lots of build errors for other projects,
