@@ -35,7 +35,7 @@ PROGRAM xx12
   INTEGER             :: loaded_freedoms_pp,loaded_freedoms_start
   INTEGER             :: nels,ndof,ielpe,npes_pp
   INTEGER             :: argc,iargc,meshgen,partitioner
-  INTEGER             :: np_types,ntime,el_print,i_o
+  INTEGER             :: np_types,ntime,el_print,xx12_input,xx12_output
   INTEGER             :: prog,tz
   REAL(iwp)           :: aa,bb,cc,kx,ky,kz,det,theta,dtim,real_time
   REAL(iwp)           :: tol,alpha,beta,up,big,q
@@ -92,7 +92,8 @@ PROGRAM xx12
   !*    npri_chk    : Frequency of checkpointing
   !*    ntime       : Number of time sections
   !*    el_print    : Element number output for quick verification of results
-  !*    i_o         : Output format (ParaFEM binary, ascii or ENSIGHT binary)
+  !*    xx12_input  : Input format (ascii or binary)
+  !*    xx12_output : Output format (ParaFEM binary, ascii or ENSIGHT binary)
   !*  
   !*  REALS
   !*    dtim        : Time step size
@@ -118,8 +119,8 @@ PROGRAM xx12
   CALL GETARG(1,job_name)
   
   CALL read_xx12(job_name,numpe,element,fixed_freedoms,limit,                 &
-                 loaded_nodes,meshgen,nels,nip,nn,nod,ntime,nr,               &
-                 partitioner,theta,tol,np_types,chk,val0,el_print,i_o)
+                 loaded_nodes,meshgen,nels,nip,nn,nod,ntime,nr,partitioner,   &
+                 theta,tol,np_types,chk,val0,el_print,xx12_input,xx12_output)
   
   CALL calc_nels_pp(job_name,nels,npes,numpe,partitioner,nels_pp)
   
@@ -144,11 +145,19 @@ PROGRAM xx12
   
 ! CALL read_g_num_pp2(job_name,iel_start,nn,npes,numpe,g_num_pp)
 !  CALL read_elements(job_name,iel_start,nn,npes,numpe,etype_pp,g_num_pp)
-  IF(numpe==1) PRINT *, "CALL read_g_num_pp_be"
-  CALL read_g_num_pp_be(job_name,iel_start,nn,npes,numpe,g_num_pp)
-  IF(numpe==1) PRINT *, "CALL read_etype_pp"
 !  CALL read_etype_pp(job_name,npes,numpe,etype_pp)
-  CALL read_etype_pp_be(job_name,npes,numpe,etype_pp)
+  IF(xx12_input==1)THEN!---Open binary ENSIGHT GOLD
+    IF(numpe==1) PRINT *, "CALL read_g_num_pp_be"
+    CALL read_g_num_pp_be(job_name,iel_start,nn,npes,numpe,g_num_pp)
+    IF(numpe==1) PRINT *, "CALL read_etype_pp_be"
+    CALL read_etype_pp_be(job_name,npes,numpe,etype_pp)
+  END IF
+  IF(xx12_input==2)THEN!---Open ascii ENSIGHT GOLD
+    IF(numpe==1) PRINT *, "CALL read_g_num_pp_e"
+    CALL read_g_num_pp_e(job_name,iel_start,nn,npes,numpe,g_num_pp)
+    IF(numpe==1) PRINT *, "CALL read_etype_pp"
+    CALL read_etype_pp(job_name,npes,numpe,etype_pp)
+  END IF
   timest(3) = elap_time()
   
   IF(meshgen == 2)THEN
@@ -158,7 +167,14 @@ PROGRAM xx12
   timest(4) = elap_time()
   
 !  CALL read_g_coord_pp(job_name,g_num_pp,nn,npes,numpe,g_coord_pp)
-  CALL read_g_coord_pp_be(job_name,g_num_pp,nn,npes,numpe,g_coord_pp)
+  IF(xx12_input==1)THEN!---Open binary ENSIGHT GOLD
+    IF(numpe==1) PRINT *, "CALL read_g_coord_pp_be"
+    CALL read_g_coord_pp_be(job_name,g_num_pp,nn,npes,numpe,g_coord_pp)
+  END IF
+  IF(xx12_input==2)THEN!---Open ascii ENSIGHT GOLD
+    IF(numpe==1) PRINT *, "CALL read_g_coord_pp_e"
+    CALL read_g_coord_pp_e(job_name,g_num_pp,nn,npes,numpe,g_coord_pp)
+  END IF
   timest(5) = elap_time()
   
   IF (nr>0) CALL read_rest(job_name,numpe,rest)
@@ -400,11 +416,11 @@ PROGRAM xx12
       ALLOCATE(eld_pp(ntot,nels_pp))
       
       IF(numpe==1) THEN
-        IF(i_o==2)THEN !---Open file-temp outputs-ascii ParaFEM
+        IF(xx12_output==2)THEN !---Open file-temp outputs-ascii ParaFEM
           fname   = job_name(1:INDEX(job_name, " ")-1)//".ttr"
           OPEN(24, file=fname, status='replace', action='write')
         END IF
-        IF(i_o==1)THEN !---Open file-tempoutputs-binary ParaFEM
+        IF(xx12_output==1)THEN !---Open file-tempoutputs-binary ParaFEM
           fname   = job_name(1:INDEX(job_name, " ")-1)//".ttrb"
           OPEN(25, file=fname, status='replace', action='write',              &
                access='sequential', form='unformatted')
@@ -417,7 +433,7 @@ PROGRAM xx12
         !-Unchecked
         WRITE(26,*) npp
         WRITE(26,*) npes
-        IF(i_o==3.AND.j_glob==1)THEN!---Open file-temp out-binary ENSIGHT GOLD
+        IF(xx12_output==3.AND.j_glob==1)THEN!---Open file-temp out-binary ENSIGHT GOLD
           fname = job_name(1:INDEX(job_name, " ")-1)//".bin.ensi.NDTTR-000001"
           OPEN(27,file=fname,status='replace',action='write',                 &
           form='unformatted',access='stream')
@@ -427,6 +443,15 @@ PROGRAM xx12
           cbuffer="part"        ; WRITE(27) cbuffer
           WRITE(27) int(1,kind=c_int)
           cbuffer="coordinates" ; WRITE(27) cbuffer 
+        END IF
+        IF(xx12_output==4.AND.j_glob==1)THEN!---Open file-temp out-ENSIGHT GOLD
+          fname = job_name(1:INDEX(job_name, " ")-1)//".ensi.NDTTR-000001"
+          OPEN(28,file=fname,status='replace',action='write')
+           
+          WRITE(28,'(/A)') "Alya Ensight Gold --- Scalar per-node variable file"
+		  WRITE(28,'(/A)') "part"
+          WRITE(28,'(I1)') 1
+		  WRITE(28,'(/A)') "coordinates"
         END IF
       END IF
     END IF
@@ -655,16 +680,16 @@ PROGRAM xx12
           WRITE(11,'(E12.4,8E19.8)')t0,disp_pp(is)
         END IF
         
-        IF(i_o==1)THEN !---Write file-temp outputs-binary ParaFEM
+        IF(xx12_output==1)THEN !---Write file-temp outputs-binary ParaFEM
           CALL write_nodal_variable_binary(label,25,tz,nodes_pp,npes,         &
                                            numpe,nodof,disp_pp)
         END IF
-        IF(i_o==2)THEN !---Write file-temp outputs-ascii ParaFEM
+        IF(xx12_output==2)THEN !---Write file-temp outputs-ascii ParaFEM
           CALL write_nodal_variable2(label,24,tz,nodes_pp,npes,               &
                                      numpe,nodof,disp_pp)
         END IF
         
-        IF(i_o==3)THEN !---Write file-temp outputs-binary ENSIGHT GOLD
+        IF(xx12_output==3)THEN !---Write file-temp outputs-binary ENSIGHT GOLD
           ALLOCATE(tempres(nodes_pp))
           tempres = zero
           DO l=1,nodes_pp
@@ -676,6 +701,18 @@ PROGRAM xx12
           IF(numpe==1) CLOSE (27)  
         END IF
         
+        IF(xx12_output==4)THEN !---Write file-temp outputs- ENSIGHT GOLD
+          ALLOCATE(tempres(nodes_pp))
+          tempres = zero
+          DO l=1,nodes_pp
+            tempres(l)=disp_pp(l)
+          END DO
+          CALL dismsh_ensi_p(28,j_glob,nodes_pp,npes,numpe,nodof,tempres)
+          
+          DEALLOCATE(tempres)
+          IF(numpe==1) CLOSE (28)
+        END IF
+		
       END IF ! From section 16
       
       IF(numpe==1) PRINT *, "End of 18"
@@ -780,16 +817,16 @@ PROGRAM xx12
           WRITE(11,'(E12.4,8E19.8)')real_time,disp_pp(is)
         END IF      
         
-        IF(i_o==1)THEN !---Write file-temp outputs-binary ParaFEM
+        IF(xx12_output==1)THEN !---Write file-temp outputs-binary ParaFEM
           CALL write_nodal_variable_binary(label,25,j_glob,nodes_pp,npes,     &
                                            numpe,nodof,disp_pp)
         END IF
-        IF(i_o==2)THEN !---Write file-temp outputs-ascii ParaFEM
+        IF(xx12_output==2)THEN !---Write file-temp outputs-ascii ParaFEM
           CALL write_nodal_variable2(label,24,j_glob,nodes_pp,npes,           &
                                      numpe,nodof,disp_pp)
         END IF
         
-        IF(i_o==3)THEN !---Write file-temp outputs-binary ENSIGHT GOLD
+        IF(xx12_output==3)THEN !---Write file-temp outputs-binary ENSIGHT GOLD
           IF(numpe==1)THEN
             WRITE(stepnum,'(I0.6)') j_npri
             fname=job_name(1:INDEX(job_name," ")-1)//".bin.ensi.NDTTR-"       &
@@ -813,6 +850,28 @@ PROGRAM xx12
           CALL dismsh_ensi_pb2(27,j_glob,nodes_pp,npes,numpe,nodof,tempres)
           DEALLOCATE(tempres)
           IF(numpe==1) CLOSE (27)
+        END IF
+		
+        IF(xx12_output==4)THEN !---Write file-temp outputs-ENSIGHT GOLD
+          IF(numpe==1)THEN
+            WRITE(stepnum,'(I0.6)') j_npri
+            fname=job_name(1:INDEX(job_name," ")-1)//".ensi.NDTTR-"//stepnum
+            OPEN(28,file=fname,status='replace',action='write')
+          
+            WRITE(28,'(/A)') "Alya Ensight Gold --- Scalar per-node variable file"
+		    WRITE(28,'(/A)') "part"
+            WRITE(28,'(I1)') 1
+		    WRITE(28,'(/A)') "coordinates"
+          END IF
+          
+          ALLOCATE(tempres(nodes_pp))
+          tempres = zero
+          DO l=1,nodes_pp
+            tempres(l)=disp_pp(l)
+          END DO
+          CALL dismsh_ensi_p(28,j_glob,nodes_pp,npes,numpe,nodof,tempres)
+          DEALLOCATE(tempres)
+          IF(numpe==1) CLOSE (28)
         END IF
         
         IF(numpe==1) PRINT *, "Time ", real_time, "Iters ", iters(j_step)
