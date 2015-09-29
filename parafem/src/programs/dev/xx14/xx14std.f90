@@ -261,7 +261,7 @@ cgca_rot(2,2) = cgca_one
 cgca_rot(3,3) = cgca_one
 
 ! mean grain size, also mm
-cgca_dm = 1.5e0_rdef
+cgca_dm = 3.0e0_rdef
 
 ! resolution, cells per grain
 cgca_res = 1.0e5_rdef
@@ -640,7 +640,10 @@ if ( cgca_img .eq. 1 ) write (*,*) "dumping model to file"
 
 write ( cgca_citer, "(i0)" ) cgca_liter
 call cgca_pswci( cgca_space, cgca_state_type_frac,                     &
-                 "zf"//trim( cgca_citer )//".raw" )
+                 "zf"//trim( cgca_citer )//"p.raw" )
+!subroutine cgca_swci( coarray, stype, iounit, fname )
+!call cgca_swci( cgca_space, cgca_state_type_frac,                     &
+!                 123, "zf"//trim( cgca_citer )//".raw" )
 if ( cgca_img .eq. 1 ) write (*,*) "finished dumping model to file"
      
 ! Calculate number (volume) of fractured cells on each image.

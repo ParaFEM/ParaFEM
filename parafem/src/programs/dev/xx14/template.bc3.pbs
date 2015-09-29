@@ -7,19 +7,27 @@
 #
 #PBS -l walltime=01:00:00,nodes=2:ppn=16
 #PBS -j oe
+#PBS -q testq
 
 cd $HOME/nobkp/parafem/parafem/src/programs/dev/xx14
 export OUTFILE=xx14std.out
-echo				>  $OUTFILE
+echo				 > $OUTFILE
 
-cat $PBS_NODEFILE               >> $OUTFILE
-export nodes=`cat $PBS_NODEFILE`
-export nnodes=`cat $PBS_NODEFILE | wc -l`
+cat $PBS_NODEFILE		>> $OUTFILE
 export confile=nodes
+cat $PBS_NODEFILE > $confile
+export nnodes=`cat $PBS_NODEFILE | wc -l`
 
-for i in $nodes; do
-   echo ${i} >>$confile
-done
+#export nodes=`cat $PBS_NODEFILE`
+#for i in $nodes; do
+#   echo ${i} >>$confile
+#done
+
+# Prepare conf file
+# see the template for options
+echo -genvall -genv I_MPI_FABRICS=shm:dapl \
+	-machinefile ./$confile \
+	-n $nnodes ./xx14std.x p121_medium > xx14.conf
 
 echo "START TIME:" `date`	>> $OUTFILE
 xx14std.x			>> $OUTFILE
