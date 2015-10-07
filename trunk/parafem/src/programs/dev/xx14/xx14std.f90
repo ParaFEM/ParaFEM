@@ -69,7 +69,6 @@ INTEGER, ALLOCATABLE :: rest(:,:), g_num_pp(:,:), g_g_pp(:,:), node(:)
        cgca_ir(3),            &
        cgca_img,              &
        cgca_nimgs,            &
-       cgca_lres,             &
        cgca_ng,               & ! number of grains in the whole model
        cgca_clvg_iter,        & ! number of cleavage iterations
        cgca_liter               ! load iteration number
@@ -94,7 +93,8 @@ real( kind=rdef ) ::                                                   &
    cgca_stress(3,3),      & ! stress tensor
    cgca_length,           & ! fracture length scale
    cgca_time_inc,         & ! time increment
- cgca_fracvol               ! volume (number) of fractured cells per img
+   cgca_lres,             & !
+   cgca_fracvol             ! volume (number) of fractured cells per img
 real( kind=rdef ), allocatable :: cgca_grt(:,:,:)[:,:,:]
 logical( kind=ldef ) :: cgca_solid
 character( len=6 ) :: cgca_citer
