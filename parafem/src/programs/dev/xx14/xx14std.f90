@@ -64,16 +64,17 @@ INTEGER, ALLOCATABLE :: rest(:,:), g_num_pp(:,:), g_g_pp(:,:), node(:)
 
 !*** CGPACK part *****************************************************72
 ! CGPACK variables and parameters
-  integer, parameter :: cgca_linum=5 ! number of loading iterations
-  integer( kind=idef ) ::                                              &
-       cgca_ir(3),            &
-       cgca_img,              &
-       cgca_nimgs,            &
-       cgca_ng,               & ! number of grains in the whole model
-       cgca_clvg_iter,        & ! number of cleavage iterations
-       cgca_liter               ! load iteration number
-  integer( kind=iarr ) :: cgca_c(3) ! coarray dimensions
-  integer( kind=iarr ), allocatable :: cgca_space(:,:,:,:) [:,:,:]
+integer, parameter :: cgca_linum=5 ! number of loading iterations
+integer( kind=idef ) ::                                                &
+   cgca_ir(3),            &
+   cgca_img,              &
+   cgca_nimgs,            &
+   cgca_ng,               & ! number of grains in the whole model
+   cgca_clvg_iter,        & ! number of cleavage iterations
+   cgca_lc(3),            & ! local coordinates of a cell with its image
+   cgca_liter               ! load iteration number
+integer( kind=iarr ) :: cgca_c(3) ! coarray dimensions
+integer( kind=iarr ), allocatable :: cgca_space(:,:,:,:) [:,:,:]
 
 real( kind=rdef ), parameter :: cgca_zero = 0.0_rdef,                  &
  cgca_one = 1.0_rdef,                                                  &
@@ -93,10 +94,11 @@ real( kind=rdef ) ::                                                   &
    cgca_stress(3,3),      & ! stress tensor
    cgca_length,           & ! fracture length scale
    cgca_time_inc,         & ! time increment
-   cgca_lres,             & !
+   cgca_lres,             & ! linear resolution, cells per unit of length
+   cgca_charlen,          & ! characteristic element length
    cgca_fracvol             ! volume (number) of fractured cells per img
 real( kind=rdef ), allocatable :: cgca_grt(:,:,:)[:,:,:]
-logical( kind=ldef ) :: cgca_solid
+logical( kind=ldef ) :: cgca_solid, cgca_flag
 character( len=6 ) :: cgca_citer
 !*** end CGPACK part *************************************************72
 
@@ -328,14 +330,25 @@ call cgca_pfem_ctalloc( ndim, nels_pp )
 cgca_pfem_centroid_tmp%r = sum( g_coord_pp(:,:,:), dim=1 ) / nod
 
          ! set cgca_pfem_centroid_tmp[*]%r
-sync all ! must separate execution segments
+sync all ! must add execution segment
          ! use cgca_pfem_centroid_tmp[*]%r
 
 !subroutine cgca_pfem_cenc( origin, rot, bcol, bcou )
 call cgca_pfem_cenc( cgca_origin, cgca_rot, cgca_bcol, cgca_bcou )
 
+sync all
+
+!subroutine cgca_pfem_cellin( lc, lres, bcol, rot, origin, charlen,    &
+! flag )
+! set some trial values for cell coordinates
+cgca_lc = (/ 1 , 1 , 1 /)
+cgca_charlen = 0.1
+call cgca_pfem_cellin( cgca_lc, cgca_lres, cgca_bcol, cgca_rot,        &
+  cgca_origin, cgca_charlen, cgca_flag )
+write (*,*) "img:", cgca_img, "flag:", cgca_flag
+
          ! use cgca_pfem_centroid_tmp[*]%r
-sync all ! must separate execution segments
+sync all ! must add execution segment
          ! deallocate cgca_pfem_centroid_tmp[*]%r
 
 ! Now can deallocate the temp array cgca_pfem_centroid_tmp%r.
