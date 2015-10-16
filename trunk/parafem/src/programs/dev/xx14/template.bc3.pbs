@@ -9,8 +9,13 @@
 #PBS -j oe
 #PBS -q testq
 
-cd $HOME/nobkp/parafem/parafem/src/programs/dev/xx14
-export OUTFILE=xx14std.out
+PROG=xx14
+cd $HOME/nobkp/parafem/parafem/src/programs/dev/$PROG
+OUTFILE="$PROG"std.out
+EXECUTABLE="$PROG"std.x
+CACONFILE="$PROG".conf
+MODEL=p121_medium
+
 echo				 > $OUTFILE
 
 cat $PBS_NODEFILE		>> $OUTFILE
@@ -27,8 +32,8 @@ export nnodes=`cat $PBS_NODEFILE | wc -l`
 # see the template for options
 echo -genvall -genv I_MPI_FABRICS=shm:dapl \
 	-machinefile ./$confile \
-	-n $nnodes ./xx14std.x p121_medium > xx14.conf
+	-n $nnodes ./$EXECUTABLE $MODEL > $CACONFILE
 
 echo "START TIME:" `date`	>> $OUTFILE
-xx14std.x			>> $OUTFILE
+$EXECUTABLE			>> $OUTFILE
 echo "END TIME:  " `date`	>> $OUTFILE
