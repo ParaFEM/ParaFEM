@@ -65,6 +65,8 @@ INTEGER, ALLOCATABLE :: rest(:,:), g_num_pp(:,:), g_g_pp(:,:), node(:)
 !*** CGPACK part *****************************************************72
 ! CGPACK variables and parameters
 integer, parameter :: cgca_linum=5 ! number of loading iterations
+logical( kind=ldef ), parameter :: cgca_yesdebug = .true.,             &
+   cgca_nodebug = .false.
 integer( kind=idef ) ::                                                &
    cgca_ir(3),            &
    cgca_img,              &
@@ -72,6 +74,9 @@ integer( kind=idef ) ::                                                &
    cgca_ng,               & ! number of grains in the whole model
    cgca_clvg_iter,        & ! number of cleavage iterations
    cgca_lc(3),            & ! local coordinates of a cell with its image
+   cgca_lowr(3),          & ! local coordinates of the lower box corner
+   cgca_uppr(3),          & ! local coordinates of the upper box corner
+   cgca_iflag,            & ! 1 box in, 2 box out, 3 neither 
    cgca_liter               ! load iteration number
 integer( kind=iarr ) :: cgca_c(3) ! coarray dimensions
 integer( kind=iarr ), allocatable :: cgca_space(:,:,:,:) [:,:,:]
@@ -248,7 +253,7 @@ end if
 ! Must be fully within the FE model, which for xx14
 ! is a cube with lower bound at (0,0,-10), and the
 ! upper bound at (10,10,0)
-cgca_bsz = (/ 10.0, 10.0, 10.0 /)
+cgca_bsz = (/ 20.0, 10.0, 10.0 /)
 
 ! Origin of the box cs, in the same units.
 ! This gives the upper limits of the box at 0+10=10, 0+10=10, -10+10=0
@@ -336,23 +341,9 @@ sync all ! must add execution segment
 !subroutine cgca_pfem_cenc( origin, rot, bcol, bcou )
 call cgca_pfem_cenc( cgca_origin, cgca_rot, cgca_bcol, cgca_bcou )
 
-sync all
-
-!subroutine cgca_pfem_cellin( lc, lres, bcol, rot, origin, charlen,    &
-! flag )
-! set some trial values for cell coordinates
-cgca_lc = (/ 1 , 1 , 1 /)
-cgca_charlen = 0.1
-call cgca_pfem_cellin( cgca_lc, cgca_lres, cgca_bcol, cgca_rot,        &
-  cgca_origin, cgca_charlen, cgca_flag )
-write (*,*) "img:", cgca_img, "flag:", cgca_flag
-
          ! use cgca_pfem_centroid_tmp[*]%r
 sync all ! must add execution segment
          ! deallocate cgca_pfem_centroid_tmp[*]%r
-
-! Now can deallocate the temp array cgca_pfem_centroid_tmp%r.
-call cgca_pfem_ctdalloc
 
 ! Allocate cgca_pfem_integrity%i, array component of a coarray of
 ! derived type. Allocating *local* array.
@@ -414,14 +405,54 @@ sync all
 call cgca_gcu( cgca_space )
 
 ! set a single crack nucleus in the centre of the x1=x2=0 edge
-cgca_space( 1, 1, cgca_c(3) /2, cgca_state_type_frac )                 &
+if ( cgca_img .eq. 1 ) then
+  cgca_space( 1, 1, cgca_c(3)/2, cgca_state_type_frac )                &
               [ 1, 1, cgca_ir(3)/2 ] = cgca_clvg_state_100_edge
+end if
+
+sync all
+
+!subroutine cgca_pfem_cellin( lc, lres, bcol, rot, origin, charlen,    &
+! flag )
+! set some trial values for cell coordinates
+!cgca_lc = (/ 1 , 1 , 1 /)
+!cgca_charlen = 0.1
+!call cgca_pfem_cellin( cgca_lc, cgca_lres, cgca_bcol, cgca_rot,        &
+!  cgca_origin, cgca_charlen, cgca_flag )
+!write (*,*) "img:", cgca_img, "flag:", cgca_flag
+
+!subroutine cgca_pfem_wholein( coarray )
+!call cgca_pfem_wholein( cgca_space )
+
+!subroutine cgca_pfem_boxin( lowr, uppr, lres, bcol, rot, origin, &
+!  charlen, iflag )
+! set some trial values for cell coordinates
+cgca_lowr = (/ 1 , 1 , 1 /)
+cgca_uppr = cgca_c/2
+
+! In p121_medium, each element is 0.25 x 0.25 x 0.25 mm, so
+! the charlen must be bigger than that.
+cgca_charlen = 0.3
+call cgca_pfem_boxin( cgca_lowr, cgca_uppr, cgca_lres,                 &
+ cgca_bcol, cgca_rot, cgca_origin, cgca_charlen, cgca_yesdebug,        &
+ cgca_iflag )
+write (*,*) "img:", cgca_img, "iflag:", cgca_iflag
+
+!subroutine cgca_pfem_wholein( coarray )
+sync all
+
+! Now can deallocate the temp array cgca_pfem_centroid_tmp%r.
+call cgca_pfem_ctdalloc
 
 ! img 1 dumps space arrays to files
 if ( cgca_img .eq. 1 ) write (*,*) "dumping model to files"
 call cgca_pswci( cgca_space, cgca_state_type_grain, "zg0.raw" )
 call cgca_pswci( cgca_space, cgca_state_type_frac,  "zf0.raw" )
 if ( cgca_img .eq. 1 ) write (*,*) "finished dumping model to files"
+
+! debug
+sync all
+stop
 
 ! allocate the stress array component of cgca_pfem_stress coarray
 !subroutine cgca_pfem_salloc( nels_pp, intp, comp )
@@ -646,8 +677,8 @@ if ( cgca_img .eq. 1 ) write (*,*) "load inc:", cgca_liter,            &
 ! sync all inside
 ! lower the crit stresses by a factor of 100.
 call cgca_clvgp_nocosum( cgca_space, cgca_grt, cgca_stress,            &
-                 0.01_rdef * cgca_scrit,                               &
-                 cgca_clvgsd, .false., cgca_clvg_iter, 10, .true. )
+     0.01_rdef * cgca_scrit, cgca_clvgsd, .false., cgca_clvg_iter,     &
+     10, cgca_yesdebug )
 
 if ( cgca_img .eq. 1 ) write (*,*) "dumping model to file"
 
