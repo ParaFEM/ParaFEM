@@ -68,7 +68,7 @@ integer, parameter :: cgca_linum=5 ! number of loading iterations
 logical( kind=ldef ), parameter :: cgca_yesdebug = .true.,             &
    cgca_nodebug = .false.
 integer( kind=idef ) ::                                                &
-   cgca_ir(3),            &
+   cgca_ir(3),            & ! coarray codimensions
    cgca_img,              &
    cgca_nimgs,            &
    cgca_ng,               & ! number of grains in the whole model
@@ -416,7 +416,6 @@ sync all
 ! flag )
 ! set some trial values for cell coordinates
 !cgca_lc = (/ 1 , 1 , 1 /)
-!cgca_charlen = 0.1
 !call cgca_pfem_cellin( cgca_lc, cgca_lres, cgca_bcol, cgca_rot,        &
 !  cgca_origin, cgca_charlen, cgca_flag )
 !write (*,*) "img:", cgca_img, "flag:", cgca_flag
@@ -427,18 +426,23 @@ sync all
 !subroutine cgca_pfem_boxin( lowr, uppr, lres, bcol, rot, origin, &
 !  charlen, iflag )
 ! set some trial values for cell coordinates
-cgca_lowr = (/ 1 , 1 , 1 /)
-cgca_uppr = cgca_c/2
+!cgca_lowr = (/ 1 , 1 , 1 /)
+!cgca_uppr = cgca_c/2
+
+!call cgca_pfem_boxin( cgca_lowr, cgca_uppr, cgca_lres,                 &
+! cgca_bcol, cgca_rot, cgca_origin, cgca_charlen, cgca_yesdebug,        &
+! cgca_iflag )
+!write (*,*) "img:", cgca_img, "iflag:", cgca_iflag
 
 ! In p121_medium, each element is 0.25 x 0.25 x 0.25 mm, so
 ! the charlen must be bigger than that.
 cgca_charlen = 0.3
-call cgca_pfem_boxin( cgca_lowr, cgca_uppr, cgca_lres,                 &
- cgca_bcol, cgca_rot, cgca_origin, cgca_charlen, cgca_yesdebug,        &
- cgca_iflag )
-write (*,*) "img:", cgca_img, "iflag:", cgca_iflag
 
-!subroutine cgca_pfem_wholein( coarray )
+!subroutine cgca_pfem_partin( coarray, cadim, lres, bcol, rot, origin, &
+!  charlen, debug )
+call cgca_pfem_partin( cgca_space, cgca_c, cgca_lres, cgca_bcol,       &
+  cgca_rot, cgca_origin, cgca_charlen, cgca_yesdebug )
+
 sync all
 
 ! Now can deallocate the temp array cgca_pfem_centroid_tmp%r.
