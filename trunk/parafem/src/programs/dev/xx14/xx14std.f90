@@ -63,10 +63,17 @@ REAL( iwp ), ALLOCATABLE :: points(:,:), dee(:,:), weights(:),         &
 INTEGER, ALLOCATABLE :: rest(:,:), g_num_pp(:,:), g_g_pp(:,:), node(:)
 
 !*** CGPACK part *****************************************************72
-! CGPACK variables and parameters
+! CGPACK parameters
 integer, parameter :: cgca_linum=5 ! number of loading iterations
 logical( kind=ldef ), parameter :: cgca_yesdebug = .true.,             &
    cgca_nodebug = .false.
+real( kind=rdef ), parameter :: cgca_zero = 0.0_rdef,                  &
+ cgca_one = 1.0_rdef,                                                  &
+ ! cleavage stress on 100, 110, 111 planes for BCC,
+ ! see the manual for derivation, GPa.
+ cgca_scrit(3) = (/ 1.05e1_rdef, 1.25e1_rdef, 4.90e1_rdef /)
+
+! CGPACK variables
 integer( kind=idef ) ::                                                &
    cgca_ir(3),            & ! coarray codimensions
    cgca_img,              &
@@ -80,12 +87,6 @@ integer( kind=idef ) ::                                                &
    cgca_liter               ! load iteration number
 integer( kind=iarr ) :: cgca_c(3) ! coarray dimensions
 integer( kind=iarr ), allocatable :: cgca_space(:,:,:,:) [:,:,:]
-
-real( kind=rdef ), parameter :: cgca_zero = 0.0_rdef,                  &
- cgca_one = 1.0_rdef,                                                  &
- ! cleavage stress on 100, 110, 111 planes for BCC,
- ! see the manual for derivation, GPa.
- cgca_scrit(3) = (/ 1.05e1_rdef, 1.25e1_rdef, 4.90e1_rdef /)
 
 real( kind=rdef ) ::                                                   &
    cgca_qual,             & ! quality
@@ -103,7 +104,7 @@ real( kind=rdef ) ::                                                   &
    cgca_charlen,          & ! characteristic element length
    cgca_fracvol             ! volume (number) of fractured cells per img
 real( kind=rdef ), allocatable :: cgca_grt(:,:,:)[:,:,:]
-logical( kind=ldef ) :: cgca_solid, cgca_flag
+logical( kind=ldef ) :: cgca_solid, cgca_lflag
 character( len=6 ) :: cgca_citer
 !*** end CGPACK part *************************************************72
 
@@ -262,10 +263,19 @@ cgca_origin = (/ 0.0, 0.0, -10.0 /)
 
 ! rotation tensor *from* FE cs *to* CA cs.
 ! The box cs is aligned with the box.
+! Set to unit tensor.
 cgca_rot      = cgca_zero
 cgca_rot(1,1) = cgca_one
 cgca_rot(2,2) = cgca_one
 cgca_rot(3,3) = cgca_one
+
+! Rotate by 30 deg about axis 3 counter clockwise
+cgca_rot         = cgca_zero
+cgca_rot( 1, 1 ) = cos( cgca_pi / 6.0 )
+cgca_rot( 1, 2 ) = sin( cgca_pi / 6.0 )
+cgca_rot( 2, 1 ) = - cgca_rot( 1, 2 )
+cgca_rot( 2, 2 ) = cgca_rot( 1, 1 )
+cgca_rot( 3, 3 ) = cgca_one
 
 ! mean grain size, also mm
 cgca_dm = 3.0e0_rdef
@@ -438,12 +448,15 @@ sync all
 ! the charlen must be bigger than that.
 cgca_charlen = 0.3
 
+! Each image will update its own cgca_space coarray.
 !subroutine cgca_pfem_partin( coarray, cadim, lres, bcol, rot, origin, &
 !  charlen, debug )
 call cgca_pfem_partin( cgca_space, cgca_c, cgca_lres, cgca_bcol,       &
   cgca_rot, cgca_origin, cgca_charlen, cgca_yesdebug )
 
-sync all
+         ! cgca_space changed locally on every image
+sync all !
+         ! cgca_space used
 
 ! Now can deallocate the temp array cgca_pfem_centroid_tmp%r.
 call cgca_pfem_ctdalloc
