@@ -63,7 +63,8 @@ BUILD_PROGRAMS_GIVEN=0
 BUILD_TOOLS_GIVEN=0
 
 # MODULE build options:
-# - p12 group: for programs p121,p123,p126,p129,p1210,p1211,p1212,p1213,(p121u)
+# - 5th_ed group: for programs p121,p122,p123,p124,p125,p126,p127,p128,p129
+#   and p1210
 #   options are: mpi(default), openmp, serial, gpu,
 # - prog8 group: for programs prog81, prog82, prog83
 #   options are: bem_lib, bem_lib_p
@@ -74,11 +75,10 @@ BUILD_MODULES_OPT=
 BUILD_LIBRARIES_OPT=
 
 # PROGRAM build options
-# options are: p12, 5ed, xx, prog8, gaitfem, rfem
+# options are: 5ed, xx, prog8, gaitfem, rfem
 BUILD_PROGRAMS_OPT=
-BUILD_GROUP_P12="p121_4 p123_4 p125_4 p126_4 p129_4 p1210_4"
 BUILD_GROUP_5ED="p121 p122 p123 p124 p125 p126 p127 p128 p129 p1210" # p1211
-BUILD_GROUP_XX="xx1 xx11 xx12 xx12_b xx7 xx8 xx14" # + xx1 xx2 xx3 xx4 xx5 xx6 xx9 xx10
+BUILD_GROUP_XX= # "xx1 xx11 xx12 xx12_b xx7 xx8 xx14" 
 BUILD_GROUP_PROG8="prog81 prog82 prog83"
 BUILD_GROUP_GAITFEM="gaitfem"
 BUILD_GROUP_RFEM= # "rfemsolve rfemsolve_te"
@@ -91,7 +91,7 @@ BUILD_GROUP_POSTPROC="d2off bnd2dis mat2numpe upvw2dis pf2ensi pf2ensibin pf2ens
 # DEFAULT build options for LIBRARIES, MODULES, PROGRAMS and TOOLS
 BUILD_LIBRARIES_DEFAULTS="arpack gaf77" # + metis
 BUILD_MODULES_DEFAULTS="mpi serial bem_lib bem_lib_p"
-BUILD_PROGRAMS_DEFAULTS="p12 5ed xx rfem" # + prog8 + gaitfem
+BUILD_PROGRAMS_DEFAULTS="5ed xx rfem" # + prog8 + gaitfem
 BUILD_TOOLS_DEFAULTS="preproc postproc"
 
 # ------------------------------------------------------------------------------
@@ -114,13 +114,12 @@ showusage() {
     echo "  * If no library option is specified then the default builds are: $BUILD_LIBRARIES_DEFAULTS"
     echo
     echo "Building the MODULES:"
-    echo "  -mpi will build the MPI library for programs in the p12, xx and rfem groups"
+    echo "  -mpi will build the MPI library for programs in the 5th_ed, xx and rfem groups"
     echo "  -bem_lib will build the BEM_LIB library for programs in the prog8 group"
     echo "  -bem_lib_p will build the BEM_LIB_P library for programs in the prog8 group"
     echo "  * If no module option is specified then the default builds are: $BUILD_MODULES_DEFAULTS"
     echo 
     echo "Building the PROGRAMS:"
-    echo "  -p12 will build the programs in the p12 group: $BUILD_GROUP_P12"
     echo "  -5ed will build the programs in the 5ed group: $BUILD_GROUP_5ED"
     echo "  -xx will build the programs in the xx group: $BUILD_GROUP_XX"
     echo "  -prog8 will build the programs in the prog8 group: $BUILD_GROUP_PROG8"
@@ -196,7 +195,7 @@ while [ $# -gt 0 ]; do
 	-metis) BUILD_LIBRARIES_OPT="$BUILD_LIBRARIES_OPT metis"; BUILD_LIBRARIES_GIVEN=1;;
 
 	# ----------------------------------------------------------------------
-	# p12, xx and rfem group module options
+	# 5th_ed, xx and rfem group module options
 	-mpi) BUILD_MODULES_OPT="$BUILD_MODULES_OPT mpi"; BUILD_MODULES_GIVEN=1;;
 	-serial) BUILD_MODULES_OPT="$BUILD_MODULES_OPT serial"; BUILD_MODULES_GIVEN=1;;
 	#-openmp) BUILD_MODULES_OPT="$BUILD_MODULES_OPT openmp"; BUILD_MODULES_GIVEN=1;;
@@ -209,7 +208,6 @@ while [ $# -gt 0 ]; do
 
 	# ----------------------------------------------------------------------
 	# program group options
-	-p12) BUILD_PROGRAMS_OPT="$BUILD_PROGRAMS_OPT p12"; BUILD_PROGRAMS_GIVEN=1;;
 	-5ed) BUILD_PROGRAMS_OPT="$BUILD_PROGRAMS_OPT 5ed"; BUILD_PROGRAMS_GIVEN=1;;
 	-xx) BUILD_PROGRAMS_OPT="$BUILD_PROGRAMS_OPT xx"; BUILD_PROGRAMS_GIVEN=1;;
 	-prog8) BUILD_PROGRAMS_OPT="$BUILD_PROGRAMS_OPT prog8"; BUILD_PROGRAMS_GIVEN=1;;
@@ -379,14 +377,6 @@ if [ $BUILD_PROGRAMS = 1 ]; then
 	echo "Building GROUP $GROUP"
 	echo "-----------------------------------------------------------------"
 	case $GROUP in
-	    p12)
-		echo "p12: $BUILD_GROUP_P12"
-		for PROG in $BUILD_GROUP_P12; do
-		    separator
-		    cd $PARAFEM_HOME
-		    cd src/programs/4th_ed/$PROG && make $TARGET && cd ../../../..
-		    if [ $? = 2 ]; then	error "BUILD_GROUP_P12/$PROG/$TARGET"; fi
-		done;;
 	    5ed)
 		echo "5ed: $BUILD_GROUP_5ED"
 		for PROG in $BUILD_GROUP_5ED; do
