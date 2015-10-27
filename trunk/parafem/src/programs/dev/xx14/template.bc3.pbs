@@ -23,13 +23,7 @@ export confile=nodes
 cat $PBS_NODEFILE > $confile
 export nnodes=`cat $PBS_NODEFILE | wc -l`
 
-#export nodes=`cat $PBS_NODEFILE`
-#for i in $nodes; do
-#   echo ${i} >>$confile
-#done
-
 # Prepare conf file
-# see the template for options
 echo -genvall -genv I_MPI_FABRICS=shm:dapl \
 	-machinefile ./$confile \
 	-n $nnodes ./$EXECUTABLE $MODEL > $CACONFILE
