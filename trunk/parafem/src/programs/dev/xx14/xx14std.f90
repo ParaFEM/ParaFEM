@@ -4,16 +4,17 @@ PROGRAM xx14
 ! Anton Shterenlikht (University of Bristol)
 ! Luis Cebamanos (EPCC, University of Edinburgh)
 !
-!      Program xx14 - linking ParaFEM with CGPACK, specifically
-!      modifying p121 from 5th edition to link with the cgca module.
+! Program xx14 - linking ParaFEM with CGPACK, specifically
+! modifying p121 from 5th edition to link with the cgca module.
 !
-!      12.1 is a three dimensional analysis of an elastic solid
-!      using 20-node brick elements, preconditioned conjugate gradient
-!      solver; diagonal preconditioner diag_precon; parallel version
-!      loaded_nodes only
+! 12.1 is a three dimensional analysis of an elastic solid
+! using 20-node brick elements, preconditioned conjugate gradient
+! solver; diagonal preconditioner diag_precon; parallel version
+! loaded_nodes only
 !
 ! This version must conform to F2008 standard.
-! This mainly means none of the routines using Cray extensions can be used.
+! This mainly means none of the routines using Cray extensions
+! can be used.
 !-----------------------------------------------------------------------
 !USE mpi_wrapper  !remove comment for serial compilation
 
@@ -66,7 +67,7 @@ INTEGER, ALLOCATABLE :: rest(:,:), g_num_pp(:,:), g_g_pp(:,:), node(:)
 ! CGPACK parameters
 integer, parameter :: cgca_linum=5 ! number of loading iterations
 logical( kind=ldef ), parameter :: cgca_yesdebug = .true.,             &
-   cgca_nodebug = .false.
+ cgca_nodebug = .false.
 real( kind=rdef ), parameter :: cgca_zero = 0.0_rdef,                  &
  cgca_one = 1.0_rdef,                                                  &
  ! cleavage stress on 100, 110, 111 planes for BCC,
@@ -170,7 +171,7 @@ CALL read_p121( argv, numpe, e, element, limit, loaded_nodes, meshgen, &
 !
 ! nels_pp is indeed a global var, defined in
 ! https://code.google.com/p/parafem/source/browse/trunk/parafem/src/modules/shared/global_variables.f90
-  CALL calc_nels_pp( argv, nels, npes, numpe, partitioner, nels_pp )
+CALL calc_nels_pp( argv, nels, npes, numpe, partitioner, nels_pp )
 
 !   nod - number of nodes per element
 ! nodof = 3 (see the beginning of this file), probably
@@ -292,7 +293,7 @@ call cgca_cadim( cgca_bsz, cgca_res, cgca_dm, cgca_ir, cgca_c,         &
 
 ! dump some stats from img 1
 if (cgca_img .eq. 1 ) then
-  write ( *, "(9(a,i0),tr1,g0,tr1,i0,3(a,g0),a)" )                     &
+  write ( *, "(9(a,i0),tr1,g0,tr1,g0,3(a,g0),a)" )                     &
     "img: ", cgca_img  , " nimgs: ", cgca_nimgs,                       &
      " ("  , cgca_c (1), ","       , cgca_c (2), ",", cgca_c (3),      &
      ")["  , cgca_ir(1), ","       , cgca_ir(2), ",", cgca_ir(3),      &
@@ -681,10 +682,9 @@ cgca_clvg_iter = nint( cgca_length * cgca_lres * cgca_time_inc )
 if ( cgca_img .eq. 1 ) write (*,*) "load inc:", cgca_liter,            &
                                    "clvg iter:", cgca_clvg_iter
 
-! ifort 15 doesn't support CO_SUM yet, so use a version with no CO_SUM,
-! i.e. "nocosum".
-!subroutine cgca_clvgp_nocosum( coarray, rt, t, scrit, sub, periodicbc, &
-!                               iter, heartbeat, debug )
+! ifort 15 doesn't support CO_SUM yet, so use _nocosum.
+! subroutine cgca_clvgp_nocosum( coarray, rt, t, scrit, sub, &
+!   periodicbc, iter, heartbeat, debug )
 ! sync all inside
 ! lower the crit stresses by a factor of 100.
 call cgca_clvgp_nocosum( cgca_space, cgca_grt, cgca_stress,            &
@@ -692,13 +692,9 @@ call cgca_clvgp_nocosum( cgca_space, cgca_grt, cgca_stress,            &
      10, cgca_yesdebug )
 
 if ( cgca_img .eq. 1 ) write (*,*) "dumping model to file"
-
 write ( cgca_citer, "(i0)" ) cgca_liter
 call cgca_pswci( cgca_space, cgca_state_type_frac,                     &
-                 "zf"//trim( cgca_citer )//"p.raw" )
-!subroutine cgca_swci( coarray, stype, iounit, fname )
-!call cgca_swci( cgca_space, cgca_state_type_frac,                     &
-!                 123, "zf"//trim( cgca_citer )//".raw" )
+                 "zf"//trim( cgca_citer )//".raw" )
 if ( cgca_img .eq. 1 ) write (*,*) "finished dumping model to file"
      
 ! Calculate number (volume) of fractured cells on each image.
@@ -711,7 +707,7 @@ write (*,*) "img:", cgca_img, "fracvol:", cgca_fracvol
 call cgca_pfem_intcalc1( cgca_c, cgca_fracvol )
 
 ! dump integrity
-!write (*,*) "img:", cgca_img, "integrity:", cgca_pfem_integrity%i
+write (*,*) "img:", cgca_img, "integrity:", cgca_pfem_integrity%i
 
 ! wait for integrity on all images to be calculated
 sync all
@@ -790,7 +786,5 @@ call cgca_pfem_integdalloc
 
 
 !*** ParaFEM part ****************************************************72
-! cannot call MPI_FINALIZE in a coarray program with Intel 15.
-!CALL SHUTDOWN()
-
+!CALL SHUTDOWN() ! cannot call MPI_FINALIZE with coarrays with Intel 15.
 END PROGRAM xx14

@@ -13,6 +13,6 @@ Special notes for Intel compiler
 
 For the distributed memory execution (MPI),
 config file xx14.conf must exist at the time of execution.
-The file name is specified in parafem build/bc3.inc.
-This file is created by the PBS job
-script, see the template:  template.bc3.pbs.
+The file name (xx14.conf) is specified in parafem build/bc3.inc.
+xx14.conf is created automatically by the PBS job 
+script, see the template: template.bc3.pbs.
