@@ -4,13 +4,17 @@ PROGRAM xx14
 ! Anton Shterenlikht (University of Bristol)
 ! Luis Cebamanos (EPCC, University of Edinburgh)
 !
-!      Program xx14 - linking ParaFEM with CGPACK, specifically
-!      modifying p121 from 5th edition to link with the cgca module.
+! Program xx14 - linking ParaFEM with CGPACK, specifically
+! modifying p121 from 5th edition to link with the cgca module.
 !
-!      12.1 is a three dimensional analysis of an elastic solid
-!      using 20-node brick elements, preconditioned conjugate gradient
-!      solver; diagonal preconditioner diag_precon; parallel version
-!      loaded_nodes only
+! 12.1 is a three dimensional analysis of an elastic solid
+! using 20-node brick elements, preconditioned conjugate gradient
+! solver; diagonal preconditioner diag_precon; parallel version
+! loaded_nodes only
+!
+! This version uses Cray extensions, which are all in TS 18508
+! "Additional Parallel Features in Fortran", WG5/N2074.
+! I think it's just CO_SUM.
 !-----------------------------------------------------------------------
 !USE mpi_wrapper  !remove comment for serial compilation
 
@@ -60,23 +64,30 @@ REAL( iwp ), ALLOCATABLE :: points(:,:), dee(:,:), weights(:),         &
 INTEGER, ALLOCATABLE :: rest(:,:), g_num_pp(:,:), g_g_pp(:,:), node(:)
 
 !*** CGPACK part *****************************************************72
-! CGPACK variables and parameters
-  integer, parameter :: cgca_linum=5 ! number of loading iterations
-  integer( kind=idef ) ::                                              &
-       cgca_ir(3),            &
-       cgca_img,              &
-       cgca_nimgs,            &
-       cgca_ng,               & ! number of grains in the whole model
-       cgca_clvg_iter,        & ! number of cleavage iterations
-       cgca_liter               ! load iteration number
-  integer( kind=iarr ) :: cgca_c(3) ! coarray dimensions
-  integer( kind=iarr ), allocatable :: cgca_space(:,:,:,:) [:,:,:]
-
+! CGPACK parameters
+integer, parameter :: cgca_linum=5 ! number of loading iterations
+logical( kind=ldef ), parameter :: cgca_yesdebug = .true.,             &
+ cgca_nodebug = .false.
 real( kind=rdef ), parameter :: cgca_zero = 0.0_rdef,                  &
  cgca_one = 1.0_rdef,                                                  &
  ! cleavage stress on 100, 110, 111 planes for BCC,
  ! see the manual for derivation, GPa.
  cgca_scrit(3) = (/ 1.05e1_rdef, 1.25e1_rdef, 4.90e1_rdef /)
+
+! CGPACK variables
+integer( kind=idef ) ::                                                &
+   cgca_ir(3),            & ! coarray codimensions
+   cgca_img,              &
+   cgca_nimgs,            &
+   cgca_ng,               & ! number of grains in the whole model
+   cgca_clvg_iter,        & ! number of cleavage iterations
+   cgca_lc(3),            & ! local coordinates of a cell with its image
+   cgca_lowr(3),          & ! local coordinates of the lower box corner
+   cgca_uppr(3),          & ! local coordinates of the upper box corner
+   cgca_iflag,            & ! 1 box in, 2 box out, 3 neither 
+   cgca_liter               ! load iteration number
+integer( kind=iarr ) :: cgca_c(3) ! coarray dimensions
+integer( kind=iarr ), allocatable :: cgca_space(:,:,:,:) [:,:,:]
 
 real( kind=rdef ) ::                                                   &
    cgca_qual,             & ! quality
@@ -90,10 +101,11 @@ real( kind=rdef ) ::                                                   &
    cgca_stress(3,3),      & ! stress tensor
    cgca_length,           & ! fracture length scale
    cgca_time_inc,         & ! time increment
-   cgca_lres,             &
- cgca_fracvol               ! volume (number) of fractured cells per img
+   cgca_lres,             & ! linear resolution, cells per unit of length
+   cgca_charlen,          & ! characteristic element length
+   cgca_fracvol             ! volume (number) of fractured cells per img
 real( kind=rdef ), allocatable :: cgca_grt(:,:,:)[:,:,:]
-logical( kind=ldef ) :: cgca_solid
+logical( kind=ldef ) :: cgca_solid, cgca_lflag
 character( len=6 ) :: cgca_citer
 !*** end CGPACK part *************************************************72
 
@@ -108,6 +120,18 @@ timest( 1 ) = elap_time()
 !*          numpe - integer, process number (rank)
 !*           npes - integer, total number of processes (size)
 CALL find_pe_procs( numpe, npes )
+!
+! dummy
+! lines
+! to make
+! the line numbers
+! match with
+! xx14std
+!
+!
+!
+!
+!
 
 !*    Returns the base name of the data file.
 !* intent( out ):
@@ -143,10 +167,10 @@ CALL read_p121( argv, numpe, e, element, limit, loaded_nodes, meshgen, &
 ! modified by this subroutine. Note that they are global variables
 ! that are not passed through the list of arguments.
 !
-! nels_pp is indeed a global var, defined in
-!https://code.google.com/p/parafem/source/browse/trunk/parafem/src/modules/shared/global_variables.f90
+! https://code.google.com/p/parafem/source/browse/trunk/parafem/src/modules/mpi/gather_scatter.f90
 !
-!https://code.google.com/p/parafem/source/browse/trunk/parafem/src/modules/mpi/gather_scatter.f90
+! nels_pp is indeed a global var, defined in
+! https://code.google.com/p/parafem/source/browse/trunk/parafem/src/modules/shared/global_variables.f90
 CALL calc_nels_pp( argv, nels, npes, numpe, partitioner, nels_pp )
 
 !   nod - number of nodes per element
@@ -211,8 +235,9 @@ END IF
   cgca_img = this_image()
 cgca_nimgs = num_images()
 
-! Initialise random number seed early to make sure all routines can
-! have access to different random numbers on different images.
+! Initialise random number seed.
+! Need to do this before cgca_pfem_cenc, where there order of comms
+! is chosen at *random* to even the remote access pattern.
 !
 ! Argument:
 ! .false. - no debug output
@@ -230,22 +255,25 @@ end if
 ! Must be fully within the FE model, which for xx14
 ! is a cube with lower bound at (0,0,-10), and the
 ! upper bound at (10,10,0)
-cgca_bsz = (/ 10.0, 10.0, 10.0 /)
+cgca_bsz = (/ 20.0, 10.0, 10.0 /)
 
 ! Origin of the box cs, in the same units.
 ! This gives the upper limits of the box at 0+10=10, 0+10=10, -10+10=0
 ! all within the FE model.
 cgca_origin = (/ 0.0, 0.0, -10.0 /)
 
-! rotation tensor *from* FE cs *to* CA cs.
+! Rotation tensor *from* FE cs *to* CA cs.
 ! The box cs is aligned with the box.
-cgca_rot      = cgca_zero
-cgca_rot(1,1) = cgca_one
-cgca_rot(2,2) = cgca_one
-cgca_rot(3,3) = cgca_one
+! Rotate by pi/10 about axis 2 counter clockwise
+cgca_rot         = cgca_zero
+cgca_rot( 1, 1 ) = cos( 0.1 * cgca_pi )
+cgca_rot( 3, 1 ) = sin( 0.1 * cgca_pi )
+cgca_rot( 2, 2 ) = cgca_one
+cgca_rot( 1, 3 ) = - cgca_rot( 3, 1 )
+cgca_rot( 3, 3 ) = cgca_rot( 1, 1 )
 
 ! mean grain size, also mm
-cgca_dm = 5.0e-1_rdef
+cgca_dm = 1.0e0_rdef
 
 ! resolution, cells per grain
 cgca_res = 1.0e5_rdef
@@ -265,7 +293,7 @@ call cgca_cadim( cgca_bsz, cgca_res, cgca_dm, cgca_ir, cgca_c,         &
 
 ! dump some stats from img 1
 if (cgca_img .eq. 1 ) then
-  write ( *, "(9(a,i0),tr1,g0,tr1,i0,3(a,g0),a)" )                     &
+  write ( *, "(9(a,i0),tr1,g0,tr1,g0,3(a,g0),a)" )                     &
     "img: ", cgca_img  , " nimgs: ", cgca_nimgs,                       &
      " ("  , cgca_c (1), ","       , cgca_c (2), ",", cgca_c (3),      &
      ")["  , cgca_ir(1), ","       , cgca_ir(2), ",", cgca_ir(3),      &
@@ -312,18 +340,15 @@ call cgca_pfem_ctalloc( ndim, nels_pp )
 cgca_pfem_centroid_tmp%r = sum( g_coord_pp(:,:,:), dim=1 ) / nod
 
          ! set cgca_pfem_centroid_tmp[*]%r
-sync all ! must separate execution segments
+sync all ! must add execution segment
          ! use cgca_pfem_centroid_tmp[*]%r
 
 !subroutine cgca_pfem_cenc( origin, rot, bcol, bcou )
 call cgca_pfem_cenc( cgca_origin, cgca_rot, cgca_bcol, cgca_bcou )
 
          ! use cgca_pfem_centroid_tmp[*]%r
-sync all ! must separate execution segments
+sync all ! must add execution segment
          ! deallocate cgca_pfem_centroid_tmp[*]%r
-
-! Now can deallocate the temp array cgca_pfem_centroid_tmp%r.
-call cgca_pfem_ctdalloc
 
 ! Allocate cgca_pfem_integrity%i, array component of a coarray of
 ! derived type. Allocating *local* array.
@@ -362,6 +387,7 @@ call cgca_nr( cgca_space, cgca_ng, .false. )
 call cgca_rt( cgca_grt )
 
 ! solidify, implicit sync all inside
+!subroutine cgca_sld( coarray, periodicbc, iter, heartbeat, solid )
 ! second argument:
 !  .true. - periodic BC
 ! .false. - no periodic BC
@@ -384,14 +410,61 @@ sync all
 call cgca_gcu( cgca_space )
 
 ! set a single crack nucleus in the centre of the x1=x2=0 edge
-cgca_space( 1, 1, cgca_c(3) /2, cgca_state_type_frac )                 &
+if ( cgca_img .eq. 1 ) then
+  cgca_space( 1, 1, cgca_c(3)/2, cgca_state_type_frac )                &
               [ 1, 1, cgca_ir(3)/2 ] = cgca_clvg_state_100_edge
+end if
+
+sync all
+
+!subroutine cgca_pfem_cellin( lc, lres, bcol, rot, origin, charlen,    &
+! flag )
+! set some trial values for cell coordinates
+!cgca_lc = (/ 1 , 1 , 1 /)
+!call cgca_pfem_cellin( cgca_lc, cgca_lres, cgca_bcol, cgca_rot,        &
+!  cgca_origin, cgca_charlen, cgca_flag )
+!write (*,*) "img:", cgca_img, "flag:", cgca_flag
+
+!subroutine cgca_pfem_wholein( coarray )
+!call cgca_pfem_wholein( cgca_space )
+
+!subroutine cgca_pfem_boxin( lowr, uppr, lres, bcol, rot, origin, &
+!  charlen, iflag )
+! set some trial values for cell coordinates
+!cgca_lowr = (/ 1 , 1 , 1 /)
+!cgca_uppr = cgca_c/2
+
+!call cgca_pfem_boxin( cgca_lowr, cgca_uppr, cgca_lres,                 &
+! cgca_bcol, cgca_rot, cgca_origin, cgca_charlen, cgca_yesdebug,        &
+! cgca_iflag )
+!write (*,*) "img:", cgca_img, "iflag:", cgca_iflag
+
+! In p121_medium, each element is 0.25 x 0.25 x 0.25 mm, so
+! the charlen must be bigger than that.
+cgca_charlen = 0.4
+
+! Each image will update its own cgca_space coarray.
+!subroutine cgca_pfem_partin( coarray, cadim, lres, bcol, rot, origin, &
+!  charlen, debug )
+call cgca_pfem_partin( cgca_space, cgca_c, cgca_lres, cgca_bcol,       &
+  cgca_rot, cgca_origin, cgca_charlen, cgca_yesdebug )
+
+         ! cgca_space changed locally on every image
+sync all !
+         ! cgca_space used
+
+! Now can deallocate the temp array cgca_pfem_centroid_tmp%r.
+call cgca_pfem_ctdalloc
 
 ! img 1 dumps space arrays to files
 if ( cgca_img .eq. 1 ) write (*,*) "dumping model to files"
 call cgca_pswci( cgca_space, cgca_state_type_grain, "zg0.raw" )
 call cgca_pswci( cgca_space, cgca_state_type_frac,  "zf0.raw" )
 if ( cgca_img .eq. 1 ) write (*,*) "finished dumping model to files"
+
+! debug
+!sync all
+!stop
 
 ! allocate the stress array component of cgca_pfem_stress coarray
 !subroutine cgca_pfem_salloc( nels_pp, intp, comp )
@@ -586,7 +659,9 @@ end if
 ! all images sync here
 sync all
 
-! calculate the mean stress tensor per image
+! Calculate the mean stress tensor per image
+!   subroutine cgca_pfem_simg( simg )
+!   real( kind=rdef ), intent(out) :: simg(3,3)
 call cgca_pfem_simg( cgca_stress )
 write (*,*) "img:", cgca_img, " mean s tensor:", cgca_stress
 
@@ -607,15 +682,15 @@ cgca_clvg_iter = nint( cgca_length * cgca_lres * cgca_time_inc )
 if ( cgca_img .eq. 1 ) write (*,*) "load inc:", cgca_liter,            &
                                    "clvg iter:", cgca_clvg_iter
 
-! subroutine cgca_clvgp( coarray, rt, t, scrit, sub, periodicbc,    &
-!                        iter, heartbeat, debug )
-! lower the crit stresses by a factor of 100.
+! Cray can use a version with CO_SUM.
+! subroutine cgca_clvgp( coarray, rt, t, scrit, sub, &
+!   periodicbc, iter, heartbeat, debug )
 ! sync all inside
+! lower the crit stresses by a factor of 100.
 call cgca_clvgp( cgca_space, cgca_grt, cgca_stress,                    &
-                 0.01_rdef * cgca_scrit,                               &
-                 cgca_clvgsd, .false., cgca_clvg_iter, 10, .true. )
+     0.01_rdef * cgca_scrit, cgca_clvgsd, .false., cgca_clvg_iter,     &
+     10, cgca_yesdebug )
 
-! dump model to file
 if ( cgca_img .eq. 1 ) write (*,*) "dumping model to file"
 write ( cgca_citer, "(i0)" ) cgca_liter
 call cgca_pswci( cgca_space, cgca_state_type_frac,                     &
