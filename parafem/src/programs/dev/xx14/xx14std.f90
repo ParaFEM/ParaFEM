@@ -261,21 +261,15 @@ cgca_bsz = (/ 20.0, 10.0, 10.0 /)
 ! all within the FE model.
 cgca_origin = (/ 0.0, 0.0, -10.0 /)
 
-! rotation tensor *from* FE cs *to* CA cs.
+! Rotation tensor *from* FE cs *to* CA cs.
 ! The box cs is aligned with the box.
-! Set to unit tensor.
-cgca_rot      = cgca_zero
-cgca_rot(1,1) = cgca_one
-cgca_rot(2,2) = cgca_one
-cgca_rot(3,3) = cgca_one
-
-! Rotate by 30 deg about axis 3 counter clockwise
+! Rotate by pi/10 about axis 2 counter clockwise
 cgca_rot         = cgca_zero
-cgca_rot( 1, 1 ) = cos( cgca_pi / 6.0 )
-cgca_rot( 1, 2 ) = sin( cgca_pi / 6.0 )
-cgca_rot( 2, 1 ) = - cgca_rot( 1, 2 )
-cgca_rot( 2, 2 ) = cgca_rot( 1, 1 )
-cgca_rot( 3, 3 ) = cgca_one
+cgca_rot( 1, 1 ) = cos( 0.1 * cgca_pi )
+cgca_rot( 3, 1 ) = sin( 0.1 * cgca_pi )
+cgca_rot( 2, 2 ) = cgca_one
+cgca_rot( 1, 3 ) = - cgca_rot( 3, 1 )
+cgca_rot( 3, 3 ) = cgca_rot( 1, 1 )
 
 ! mean grain size, also mm
 cgca_dm = 3.0e0_rdef
@@ -446,7 +440,7 @@ sync all
 
 ! In p121_medium, each element is 0.25 x 0.25 x 0.25 mm, so
 ! the charlen must be bigger than that.
-cgca_charlen = 0.3
+cgca_charlen = 0.4
 
 ! Each image will update its own cgca_space coarray.
 !subroutine cgca_pfem_partin( coarray, cadim, lres, bcol, rot, origin, &
@@ -468,8 +462,8 @@ call cgca_pswci( cgca_space, cgca_state_type_frac,  "zf0.raw" )
 if ( cgca_img .eq. 1 ) write (*,*) "finished dumping model to files"
 
 ! debug
-sync all
-stop
+!sync all
+!stop
 
 ! allocate the stress array component of cgca_pfem_stress coarray
 !subroutine cgca_pfem_salloc( nels_pp, intp, comp )
