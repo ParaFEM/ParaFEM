@@ -3,6 +3,7 @@
 # Use GNU make (gmake). Will not work with BSD make.
 # Some programs will not build with Intel 15 compiler,
 # so I use make conditionals based on the FC var.
+# Adjust the path to CGPACK library!
 #
 # Based on p121 by Louise M. Lever
 # -----------------------------------------------------------------------
