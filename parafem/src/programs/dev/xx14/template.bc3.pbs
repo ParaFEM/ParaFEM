@@ -1,5 +1,5 @@
 #!/bin/sh
-#$Id: pbs.bc3 1871 2015-06-10 15:43:04Z shterenlikht@gmail.com $
+#$Id$
 #
 # PBS submission script for BlueCrystal phase 3 computer (bc3).
 # Only Intel compiler is supported on this system so far, so
