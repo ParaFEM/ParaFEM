@@ -81,31 +81,32 @@ integer( kind=idef ) ::                                                &
    cgca_nimgs,            &
    cgca_ng,               & ! number of grains in the whole model
    cgca_clvg_iter,        & ! number of cleavage iterations
-   cgca_lc(3),            & ! local coordinates of a cell with its image
-   cgca_lowr(3),          & ! local coordinates of the lower box corner
-   cgca_uppr(3),          & ! local coordinates of the upper box corner
-   cgca_iflag,            & ! 1 box in, 2 box out, 3 neither 
+!   cgca_lc(3),            & ! local coordinates of a cell with its image
+!   cgca_lowr(3),          & ! local coordinates of the lower box corner
+!   cgca_uppr(3),          & ! local coordinates of the upper box corner
+!   cgca_iflag,            & ! 1 box in, 2 box out, 3 neither 
    cgca_liter               ! load iteration number
 integer( kind=iarr ) :: cgca_c(3) ! coarray dimensions
 integer( kind=iarr ), allocatable :: cgca_space(:,:,:,:) [:,:,:]
 
 real( kind=rdef ) ::                                                   &
-   cgca_qual,             & ! quality
-   cgca_bsz(3),           & ! the given and the updated "box" size
-   cgca_origin(3),        & ! origin of the "box" cs, in FE cloads
-   cgca_rot(3,3),         & ! rotation tensor *from* FE cs *to* CA cs
-   cgca_dm,               & ! mean grain size, linear dim, phys units
-   cgca_res,              & ! resolutions, cells per grain
-   cgca_bcol(3),          & ! lower phys. coords of the coarray on image
-   cgca_bcou(3),          & ! upper phys. coords of the coarray on image
-   cgca_stress(3,3),      & ! stress tensor
-   cgca_length,           & ! fracture length scale
-   cgca_time_inc,         & ! time increment
-   cgca_lres,             & ! linear resolution, cells per unit of length
-   cgca_charlen,          & ! characteristic element length
-   cgca_fracvol             ! volume (number) of fractured cells per img
+  cgca_qual,             & ! quality
+  cgca_bsz(3),           & ! the given and the updated "box" size
+  cgca_origin(3),        & ! origin of the "box" cs, in FE cloads
+  cgca_rot(3,3),         & ! rotation tensor *from* FE cs *to* CA cs
+  cgca_dm,               & ! mean grain size, linear dim, phys units
+  cgca_res,              & ! resolutions, cells per grain
+  cgca_bcol(3),          & ! lower phys. coords of the coarray on image
+  cgca_bcou(3),          & ! upper phys. coords of the coarray on image
+  cgca_stress(3,3),      & ! stress tensor
+  cgca_length,           & ! fracture length scale
+  cgca_time_inc,         & ! time increment
+  cgca_lres,             & ! linear resolution, cells per unit of length
+  cgca_charlen,          & ! characteristic element length
+  cgca_fracvol             ! volume (number) of fractured cells per img
 real( kind=rdef ), allocatable :: cgca_grt(:,:,:)[:,:,:]
-logical( kind=ldef ) :: cgca_solid, cgca_lflag
+logical( kind=ldef ) :: cgca_solid
+! logical( kind=ldef ) :: cgca_lflag
 character( len=6 ) :: cgca_citer
 !*** end CGPACK part *************************************************72
 
@@ -350,13 +351,11 @@ call cgca_pfem_cenc( cgca_origin, cgca_rot, cgca_bcol, cgca_bcou )
 sync all ! must add execution segment
          ! deallocate cgca_pfem_centroid_tmp[*]%r
 
-! Allocate cgca_pfem_integrity%i, array component of a coarray of
+! Allocate cgca_pfem_integrity%i(:), array component of a coarray of
 ! derived type. Allocating *local* array.
+! i is set to 1.0 on allocation.
 call cgca_pfem_integalloc( nels_pp )
  
-! initially integrity is 1
-cgca_pfem_integrity%i = 1.0
-
 ! Allocate the Young's modulus 2D array
 call cgca_pfem_ealloc( nip, nels_pp )
   
@@ -444,10 +443,10 @@ sync all
 cgca_charlen = 0.4
 
 ! Each image will update its own cgca_space coarray.
-!subroutine cgca_pfem_partin( coarray, cadim, lres, bcol, rot, origin, &
-!  charlen, debug )
+!subroutine cgca_pfem_partin( coarray, cadim, lres, bcol, charlen, &
+! debug )
 call cgca_pfem_partin( cgca_space, cgca_c, cgca_lres, cgca_bcol,       &
-  cgca_rot, cgca_origin, cgca_charlen, cgca_yesdebug )
+  cgca_charlen, cgca_yesdebug )
 
          ! cgca_space changed locally on every image
 sync all !
@@ -467,7 +466,7 @@ call cgca_pfem_ctdalloc
 !stop
 
 ! allocate the stress array component of cgca_pfem_stress coarray
-!subroutine cgca_pfem_salloc( nels_pp, intp, comp )
+! subroutine cgca_pfem_salloc( nels_pp, intp, comp )
 call cgca_pfem_salloc( nels_pp, nip, nst )
 
 ! just in case, not sure what is coming next...
@@ -534,8 +533,8 @@ sync all
 
      elements_1: DO iel=1,nels_pp
         gauss_pts_1: DO i=1,nip
-! from cgca_m2pfem.f90:
-! allocate( cgca_pfem_enew%e( nip, nels_pp ), stat=errstat )
+           ! from cgca_m3pfem.f90:
+           ! allocate( cgca_pfem_enew( nip, nels_pp ) )
            CALL deemat( dee, cgca_pfem_enew(i,iel), v )
            CALL shape_der( der, points, i )
            jac = MATMUL( der, g_coord_pp(:,:,iel) )
@@ -636,8 +635,8 @@ sync all
            !                "int. point", i, "stress", sigma
 
            ! set the stress array on this image
-! from cgca_m2pfem.f90:
-! allocate( cgca_pfem_stress%stress( nels_pp, intp, comp ),          &
+           ! from cgca_m3pfem.f90:
+           ! allocate( cgca_pfem_stress%stress( nels_pp, intp, comp ),
            cgca_pfem_stress%stress( iel, i, : ) = sigma
 
         END DO intpts
@@ -648,11 +647,11 @@ sync all
 ! debug: dump stresses to stdout
 !call cgca_pfem_sdmp
 ! dump stresses from last image for element 1
-if ( cgca_img .eq. 1 ) then
+if ( cgca_img .eq. cgca_nimgs ) then
   do i = 1, nip
-    write (*,"(2(a,i0),a,6es10.2)") "img ", cgca_nimgs,              &
-            " FE 1 int. p. ", i, " stress ",                           &
-                cgca_pfem_stress[ cgca_nimgs ] % stress( 1 , i , : )
+    write (*,"(2(a,i0),a,6es10.2)") "img: ", cgca_nimgs,               &
+          " FE 1 int. p. ", i, " stress: ",                            &
+          cgca_pfem_stress % stress( 1 , i , : )
   end do
 end if
 
@@ -706,14 +705,16 @@ write (*,*) "img:", cgca_img, "fracvol:", cgca_fracvol
 ! calculate integrity, remote write
 call cgca_pfem_intcalc1( cgca_c, cgca_fracvol )
 
-! dump integrity
-write (*,*) "img:", cgca_img, "integrity:", cgca_pfem_integrity%i
+! dump min integrity for all FE stored on this image
+write (*,*) "img:", cgca_img, "min. integrity:",                            &
+  minval( cgca_pfem_integrity % i )
 
 ! wait for integrity on all images to be calculated
 sync all
 
 ! Young's modulus need to be updated on each image, local arrays only.
 ! The original Young's modulus value must be given as input.
+! For each FE stored on this image.
 call cgca_pfem_uym( e, nels_pp )
 
 ! dump updated Young's modulus
