@@ -267,8 +267,8 @@ cgca_origin = (/ 0.0, 0.0, -10.0 /)
 ! The box cs is aligned with the box.
 ! Rotate by pi/10 about axis 2 counter clockwise
 cgca_rot         = cgca_zero
-cgca_rot( 1, 1 ) = cos( 0.1 * cgca_pi )
-cgca_rot( 3, 1 ) = sin( 0.1 * cgca_pi )
+cgca_rot( 1, 1 ) = cos( 0.25 * cgca_pi )
+cgca_rot( 3, 1 ) = sin( 0.25 * cgca_pi )
 cgca_rot( 2, 2 ) = cgca_one
 cgca_rot( 1, 3 ) = - cgca_rot( 3, 1 )
 cgca_rot( 3, 3 ) = cgca_rot( 1, 1 )
@@ -352,8 +352,8 @@ sync all ! must add execution segment
          ! deallocate cgca_pfem_centroid_tmp[*]%r
 
 ! Allocate cgca_pfem_integrity%i(:), array component of a coarray of
-! derived type. Allocating *local* array. i is set to 1.0 on
-! allocation
+! derived type. Allocating *local* array.
+! i is set to 1.0 on allocation.
 call cgca_pfem_integalloc( nels_pp )
  
 ! Allocate the Young's modulus 2D array
@@ -443,8 +443,8 @@ sync all
 cgca_charlen = 0.4
 
 ! Each image will update its own cgca_space coarray.
-!subroutine cgca_pfem_partin( coarray, cadim, lres, bcol, charlen,
-!   debug )
+!subroutine cgca_pfem_partin( coarray, cadim, lres, bcol, charlen, &
+! debug )
 call cgca_pfem_partin( cgca_space, cgca_c, cgca_lres, cgca_bcol,       &
   cgca_charlen, cgca_yesdebug )
 
@@ -636,7 +636,7 @@ sync all
 
            ! set the stress array on this image
            ! from cgca_m3pfem.f90:
-           ! allocate( cgca_pfem_stress%stress( nels_pp, intp, comp )
+           ! allocate( cgca_pfem_stress%stress( nels_pp, intp, comp ),
            cgca_pfem_stress%stress( iel, i, : ) = sigma
 
         END DO intpts
