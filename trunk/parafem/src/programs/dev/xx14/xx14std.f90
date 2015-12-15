@@ -256,7 +256,7 @@ end if
 ! Must be fully within the FE model, which for xx14
 ! is a cube with lower bound at (0,0,-10), and the
 ! upper bound at (10,10,0)
-cgca_bsz = (/ 20.0, 10.0, 10.0 /)
+cgca_bsz = (/ 10.0, 10.0, 10.0 /)
 
 ! Origin of the box cs, in the same units.
 ! This gives the upper limits of the box at 0+10=10, 0+10=10, -10+10=0
@@ -265,13 +265,10 @@ cgca_origin = (/ 0.0, 0.0, -10.0 /)
 
 ! Rotation tensor *from* FE cs *to* CA cs.
 ! The box cs is aligned with the box.
-! Rotate by pi/10 about axis 2 counter clockwise
 cgca_rot         = cgca_zero
-cgca_rot( 1, 1 ) = cos( 0.25 * cgca_pi )
-cgca_rot( 3, 1 ) = sin( 0.25 * cgca_pi )
-cgca_rot( 2, 2 ) = cgca_one
-cgca_rot( 1, 3 ) = - cgca_rot( 3, 1 )
-cgca_rot( 3, 3 ) = cgca_rot( 1, 1 )
+cgca_rot( 1, 1 ) = 1.0
+cgca_rot( 2, 2 ) = 1.0
+cgca_rot( 3, 3 ) = 1.0
 
 ! mean grain size, also mm
 cgca_dm = 3.0e0_rdef
@@ -416,37 +413,9 @@ end if
 
 sync all
 
-!subroutine cgca_pfem_cellin( lc, lres, bcol, rot, origin, charlen,    &
-! flag )
-! set some trial values for cell coordinates
-!cgca_lc = (/ 1 , 1 , 1 /)
-!call cgca_pfem_cellin( cgca_lc, cgca_lres, cgca_bcol, cgca_rot,        &
-!  cgca_origin, cgca_charlen, cgca_flag )
-!write (*,*) "img:", cgca_img, "flag:", cgca_flag
-
-!subroutine cgca_pfem_wholein( coarray )
-!call cgca_pfem_wholein( cgca_space )
-
-!subroutine cgca_pfem_boxin( lowr, uppr, lres, bcol, rot, origin, &
-!  charlen, iflag )
-! set some trial values for cell coordinates
-!cgca_lowr = (/ 1 , 1 , 1 /)
-!cgca_uppr = cgca_c/2
-
-!call cgca_pfem_boxin( cgca_lowr, cgca_uppr, cgca_lres,                 &
-! cgca_bcol, cgca_rot, cgca_origin, cgca_charlen, cgca_yesdebug,        &
-! cgca_iflag )
-!write (*,*) "img:", cgca_img, "iflag:", cgca_iflag
-
 ! In p121_medium, each element is 0.25 x 0.25 x 0.25 mm, so
 ! the charlen must be bigger than that.
 cgca_charlen = 0.4
-
-! Each image will update its own cgca_space coarray.
-!subroutine cgca_pfem_partin( coarray, cadim, lres, bcol, charlen, &
-! debug )
-call cgca_pfem_partin( cgca_space, cgca_c, cgca_lres, cgca_bcol,       &
-  cgca_charlen, cgca_yesdebug )
 
          ! cgca_space changed locally on every image
 sync all !
