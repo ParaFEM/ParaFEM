@@ -12,9 +12,9 @@ PROGRAM xx14
 ! solver; diagonal preconditioner diag_precon; parallel version
 ! loaded_nodes only
 !
-! This version uses Cray extensions, which are all in TS 18508
-! "Additional Parallel Features in Fortran", WG5/N2074.
-! I think it's just CO_SUM.
+! This version must conform to F2008 standard.
+! This mainly means none of the routines using Cray extensions
+! can be used.
 !-----------------------------------------------------------------------
 !USE mpi_wrapper  !remove comment for serial compilation
 
@@ -120,19 +120,19 @@ timest( 1 ) = elap_time()
 !* intent( out ):
 !*          numpe - integer, process number (rank)
 !*           npes - integer, total number of processes (size)
-CALL find_pe_procs( numpe, npes )
-!
-! dummy
-! lines
-! to make
-! the line numbers
-! match with
-! xx14std
-!
-!
-!
-!
-!
+!CALL find_pe_procs( numpe, npes )
+! CAnnot use MPI_INIT in a coarray program with ifort 15!
+    CALL MPI_COMM_RANK(MPI_COMM_WORLD, numpe, ier)
+    IF (ier /= MPI_SUCCESS) THEN
+      WRITE(*,'(A,A,I5)')'Error in MPI_COMM_RANK: errcode = ',ier
+    END IF
+
+    CALL MPI_COMM_SIZE(MPI_COMM_WORLD, npes, ier)
+    IF (ier /= MPI_SUCCESS) THEN
+      WRITE(*,'(A,A,I5)')'Error in MPI_COMM_SIZE: errcode = ',ier
+    END IF
+
+    numpe = numpe + 1
 
 !*    Returns the base name of the data file.
 !* intent( out ):
@@ -256,7 +256,7 @@ end if
 ! Must be fully within the FE model, which for xx14
 ! is a cube with lower bound at (0,0,-10), and the
 ! upper bound at (10,10,0)
-cgca_bsz = (/ 10.0, 10.0, 10.0 /)
+cgca_bsz = (/ 20.0, 10.0, 10.0 /)
 
 ! Origin of the box cs, in the same units.
 ! This gives the upper limits of the box at 0+10=10, 0+10=10, -10+10=0
@@ -265,13 +265,16 @@ cgca_origin = (/ 0.0, 0.0, -10.0 /)
 
 ! Rotation tensor *from* FE cs *to* CA cs.
 ! The box cs is aligned with the box.
+! Rotate by pi/10 about axis 2 counter clockwise
 cgca_rot         = cgca_zero
-cgca_rot( 1, 1 ) = 1.0
-cgca_rot( 2, 2 ) = 1.0
-cgca_rot( 3, 3 ) = 1.0
+cgca_rot( 1, 1 ) = cos( 0.25 * cgca_pi )
+cgca_rot( 3, 1 ) = sin( 0.25 * cgca_pi )
+cgca_rot( 2, 2 ) = cgca_one
+cgca_rot( 1, 3 ) = - cgca_rot( 3, 1 )
+cgca_rot( 3, 3 ) = cgca_rot( 1, 1 )
 
 ! mean grain size, also mm
-cgca_dm = 1.0e0_rdef
+cgca_dm = 3.0e0_rdef
 
 ! resolution, cells per grain
 cgca_res = 1.0e5_rdef
@@ -413,9 +416,37 @@ end if
 
 sync all
 
+!subroutine cgca_pfem_cellin( lc, lres, bcol, rot, origin, charlen,    &
+! flag )
+! set some trial values for cell coordinates
+!cgca_lc = (/ 1 , 1 , 1 /)
+!call cgca_pfem_cellin( cgca_lc, cgca_lres, cgca_bcol, cgca_rot,        &
+!  cgca_origin, cgca_charlen, cgca_flag )
+!write (*,*) "img:", cgca_img, "flag:", cgca_flag
+
+!subroutine cgca_pfem_wholein( coarray )
+!call cgca_pfem_wholein( cgca_space )
+
+!subroutine cgca_pfem_boxin( lowr, uppr, lres, bcol, rot, origin, &
+!  charlen, iflag )
+! set some trial values for cell coordinates
+!cgca_lowr = (/ 1 , 1 , 1 /)
+!cgca_uppr = cgca_c/2
+
+!call cgca_pfem_boxin( cgca_lowr, cgca_uppr, cgca_lres,                 &
+! cgca_bcol, cgca_rot, cgca_origin, cgca_charlen, cgca_yesdebug,        &
+! cgca_iflag )
+!write (*,*) "img:", cgca_img, "iflag:", cgca_iflag
+
 ! In p121_medium, each element is 0.25 x 0.25 x 0.25 mm, so
 ! the charlen must be bigger than that.
 cgca_charlen = 0.4
+
+! Each image will update its own cgca_space coarray.
+!subroutine cgca_pfem_partin( coarray, cadim, lres, bcol, charlen, &
+! debug )
+call cgca_pfem_partin( cgca_space, cgca_c, cgca_lres, cgca_bcol,       &
+  cgca_charlen, cgca_yesdebug )
 
          ! cgca_space changed locally on every image
 sync all !
@@ -650,12 +681,12 @@ cgca_clvg_iter = nint( cgca_length * cgca_lres * cgca_time_inc )
 if ( cgca_img .eq. 1 ) write (*,*) "load inc:", cgca_liter,            &
                                    "clvg iter:", cgca_clvg_iter
 
-! Cray can use a version with CO_SUM.
-! subroutine cgca_clvgp( coarray, rt, t, scrit, sub, &
+! ifort 15 doesn't support CO_SUM yet, so use _nocosum.
+! subroutine cgca_clvgp_nocosum( coarray, rt, t, scrit, sub, &
 !   periodicbc, iter, heartbeat, debug )
 ! sync all inside
 ! lower the crit stresses by a factor of 100.
-call cgca_clvgp( cgca_space, cgca_grt, cgca_stress,                    &
+call cgca_clvgp_nocosum( cgca_space, cgca_grt, cgca_stress,            &
      0.01_rdef * cgca_scrit, cgca_clvgsd, .false., cgca_clvg_iter,     &
      10, cgca_yesdebug )
 
@@ -756,5 +787,5 @@ call cgca_pfem_integdalloc
 
 
 !*** ParaFEM part ****************************************************72
-CALL SHUTDOWN()
+!CALL SHUTDOWN() ! cannot call MPI_FINALIZE with coarrays with Intel 15.
 END PROGRAM xx14
