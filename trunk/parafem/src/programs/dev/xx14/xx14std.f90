@@ -168,10 +168,10 @@ CALL read_p121( argv, numpe, e, element, limit, loaded_nodes, meshgen, &
 ! modified by this subroutine. Note that they are global variables
 ! that are not passed through the list of arguments.
 !
-! https://code.google.com/p/parafem/source/browse/trunk/parafem/src/modules/mpi/gather_scatter.f90
+! http://sourceforge.net/p/parafem/code/HEAD/tree/trunk/parafem/src/modules/mpi/gather_scatter.f90
 !
 ! nels_pp is indeed a global var, defined in
-! https://code.google.com/p/parafem/source/browse/trunk/parafem/src/modules/shared/global_variables.f90
+! http://sourceforge.net/p/parafem/code/HEAD/tree/trunk/parafem/src/modules/shared/global_variables.f90
 CALL calc_nels_pp( argv, nels, npes, numpe, partitioner, nels_pp )
 
 !   nod - number of nodes per element
