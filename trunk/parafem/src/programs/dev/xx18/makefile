@@ -3,7 +3,7 @@
 # -----------------------------------------------------------------------
 # Compiles xx18 program executable as RELEASE or DEBUG
 # Links with RELEASE STATIC library libParaFEM_mpi.$(VERSION).a
-#    or with RELEASE STATIC library libParaFEM_mpi_D.$(VERSION).a
+#    or with DEBUG STATIC library libParaFEM_mpi_D.$(VERSION).a
 # -----------------------------------------------------------------------
 # Available Rules:
 #   (default) : execute the release rule
@@ -23,7 +23,7 @@ include ../../../../build/$(MACHINE).inc
 
 MODULE	= ../../../../include/mpi
 LIB	= ../../../../lib
-.SUFFIXES: .o .f90
+.SUFFIXES: .o .F90
 
 all:	release
 
@@ -46,8 +46,8 @@ debug:
 xx18: xx18.o
 	$(FC) xx18.o -o xx18 $(LDFLAGS)
 
-xx18.o: xx18.f90
-	$(FC) xx18.f90 $(FFLAGS)
+xx18.o: xx18.F90
+	$(FC) xx18.F90 $(FFLAGS)
 
 clean:
 	rm -f *.o
@@ -62,4 +62,3 @@ install:
 
 test:
 	./test.sh xx18
-	

@@ -8,11 +8,24 @@ PROGRAM xx18
 !      See program p121
 !------------------------------------------------------------------------- 
 
-!USE mpi_wrapper  !remove comment for serial compilation
+! PETSc modules
+! Use system, vectors, matrices, solvers
+ USE petscsys; USE petscvec; USE petscmat; USE petscksp; USE petscpc
+
+! PETSc won't work without MPI
+!!USE mpi_wrapper  !remove comment for serial compilation
  USE precision; USE global_variables; USE mp_interface; USE input
  USE output; USE loading; USE timing; USE maths; USE gather_scatter
  USE steering; USE new_library; USE large_strain 
  IMPLICIT NONE
+
+! PETSc types
+! Use system, vectors, matrices, solvers, preconditioners
+#include <petsc/finclude/petscsysdef.h>
+#include <petsc/finclude/petscvecdef.h>
+#include <petsc/finclude/petscmatdef.h>
+#include <petsc/finclude/petsckspdef.h>
+#include <petsc/finclude/petscpcdef.h>
 
 ! neq,ntot are now global variables - must not be declared
 
@@ -30,6 +43,19 @@ PROGRAM xx18
  CHARACTER(LEN=15)   :: element
  CHARACTER(LEN=6)    :: ch 
 
+! PETSc variables
+ Vec p_x,p_b
+ Mat p_AA,p_BB
+ KSP p_ksp
+ PC p_pc
+ PetscReal p_r
+ PetscInt p_i
+ PetscErrorCode p_ierr
+ PetscMPIInt p_rank
+ PetscBool   p_flg
+ PetscScalar p_one
+ PetscScalar p_dots(3)
+
 !-------------------------------------------------------------------------
 ! 1. Dynamic arrays
 !-------------------------------------------------------------------------
@@ -42,7 +68,7 @@ PROGRAM xx18
  INTEGER,ALLOCATABLE::rest(:,:),g_num_pp(:,:),g_g_pp(:,:),node(:)
 
 !-------------------------------------------------------------------------
-! 2. Input and initialisation
+! 2a. Input and initialisation
 !-------------------------------------------------------------------------
 
  ALLOCATE(timest(20)); timest=zero; timest(1)=elap_time()
@@ -61,6 +87,12 @@ PROGRAM xx18
    deriv(ndim,nod),bee(nst,ntot),weights(nip),eps(nst),sigma(nst),       &
    storkm_pp(ntot,ntot,nels_pp),pmul_pp(ntot,nels_pp),                   &
    utemp_pp(ntot,nels_pp),g_g_pp(ntot,nels_pp))
+
+!-------------------------------------------------------------------------
+! 2b. Start up PETSc after MPI has been started
+!-------------------------------------------------------------------------
+
+ Call PetscInitialize(PETSC_NULL_CHARACTER,p_ierr)
 
 !-------------------------------------------------------------------------
 ! 3. Find the steering array and equations per process
@@ -203,6 +235,12 @@ PROGRAM xx18
  IF(numpe==1) WRITE(11,'(A,F10.4)')"This analysis took  :",              &
    elap_time()-timest(1)  
 
+
+!-------------------------------------------------------------------------
+! 10. Shut down PETSc and ParaEFM
+!-------------------------------------------------------------------------
+
+ CALL PetscFinalize(p_ierr)
  CALL SHUTDOWN() 
 
 END PROGRAM xx18
