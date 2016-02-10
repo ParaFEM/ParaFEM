@@ -45,7 +45,7 @@ PROGRAM xx18
 
 ! PETSc variables
  Vec p_x,p_b
- Mat p_AA,p_BB
+ Mat p_A
  KSP p_ksp
  PC p_pc
  PetscReal p_r
@@ -62,7 +62,7 @@ PROGRAM xx18
 
  REAL(iwp),ALLOCATABLE::points(:,:),dee(:,:),weights(:),val(:,:),        &
    disp_pp(:),g_coord_pp(:,:,:),jac(:,:),der(:,:),deriv(:,:),bee(:,:),   &
-   storkm_pp(:,:,:),eps(:),sigma(:),diag_precon_pp(:),p_pp(:),r_pp(:),   &
+   storkm_1(:,:),eps(:),sigma(:),diag_precon_pp(:),p_pp(:),r_pp(:),      &
    x_pp(:),xnew_pp(:),u_pp(:),pmul_pp(:,:),utemp_pp(:,:),d_pp(:),        &
    timest(:),diag_precon_tmp(:,:),eld_pp(:,:),temp(:)
  INTEGER,ALLOCATABLE::rest(:,:),g_num_pp(:,:),g_g_pp(:,:),node(:)
@@ -85,14 +85,14 @@ PROGRAM xx18
  CALL read_rest(argv,numpe,rest); timest(2)=elap_time()
  ALLOCATE(points(nip,ndim),dee(nst,nst),jac(ndim,ndim),der(ndim,nod),    &
    deriv(ndim,nod),bee(nst,ntot),weights(nip),eps(nst),sigma(nst),       &
-   storkm_pp(ntot,ntot,nels_pp),pmul_pp(ntot,nels_pp),                   &
+   storkm_1(ntot,ntot),pmul_pp(ntot,nels_pp),                            &
    utemp_pp(ntot,nels_pp),g_g_pp(ntot,nels_pp))
 
 !-------------------------------------------------------------------------
 ! 2b. Start up PETSc after MPI has been started
 !-------------------------------------------------------------------------
 
- Call PetscInitialize(PETSC_NULL_CHARACTER,p_ierr)
+ Call PetscInitialize("petsc_options",p_ierr)
 
 !-------------------------------------------------------------------------
 ! 3. Find the steering array and equations per process
@@ -109,30 +109,51 @@ PROGRAM xx18
  p_pp=zero;  r_pp=zero;  x_pp=zero; xnew_pp=zero; u_pp=zero; d_pp=zero
 
 !-------------------------------------------------------------------------
-! 4. Element stiffness integration
+! 4. Element stiffness integration and global stiffness matrix creation
 !-------------------------------------------------------------------------
 
+! PETSc 32-bit indices and 64-bit reals
+ CALL MatCreate(PETSC_COMM_WORLD,p_A,p_ierr)
+ Call MatSetSizes(p_A,neq_pp,neq_pp,PETSC_DETERMINE,PETSC_DETERMINE,     &
+                  p_ierr)
+ CALL MatSetType(p_A,MATAIJ,p_ierr)
+!- Block size fixed to 1 for just now - this cannot be set to nodof
+!- until the restraints are handled block-wise in ParaFEM.
+!- CALL MatSetBlockSize(p_A,nodof,p_ierr)
+
+! Hack for now: For 20-node hexahedra and 3 dofs per node, then will
+! be an (average) maximum of 81 * 3 = 243 entries per row
+ CALL MatSeqAIJSetPreallocation(p_A,243,PETSC_NULL_INTEGER,p_ierr);
+ CALL MatMPIAIJSetPreallocation(p_A,243,PETSC_NULL_INTEGER,              &
+                                243,PETSC_NULL_INTEGER,p_ierr);
+
  dee=zero; CALL deemat(dee,e,v); CALL sample(element,points,weights)
- storkm_pp=zero
+ storkm_1=zero
  elements_1: DO iel=1,nels_pp
    gauss_pts_1: DO i=1,nip
      CALL shape_der(der,points,i); jac=MATMUL(der,g_coord_pp(:,:,iel))
      det=determinant(jac); CALL invert(jac); deriv=MATMUL(jac,der)
      CALL beemat(bee,deriv)
-     storkm_pp(:,:,iel)=storkm_pp(:,:,iel) +                             &
-                    MATMUL(MATMUL(TRANSPOSE(bee),dee),bee)*det*weights(i)   
+     storkm_1=storkm_1 +                                                 &
+              MATMUL(MATMUL(TRANSPOSE(bee),dee),bee)*det*weights(i)   
    END DO gauss_pts_1
+   ! 1/ Use ubound(g_g_pp,1) instead of ntot? 2/ The following depends
+   ! on g_g_pp holding 0 for erased rows/columns, and MatSetValues
+   ! ignoring negative indices (PETSc always uses zero-based
+   ! indexing). 3/ PETSc uses C array order, so a transpose is needed.
+   CALL MatSetValues(p_A,ntot,g_g_pp(:,iel)-1,ntot,g_g_pp(:,iel)-1,      &
+                     transpose(storkm_1),ADD_VALUES,p_ierr)
  END DO elements_1
 
+ CALL MatAssemblyBegin(p_A,MAT_FINAL_ASSEMBLY,p_ierr)
+ CALL MatAssemblyEnd(p_A,MAT_FINAL_ASSEMBLY,p_ierr)
+
+ CALL MatDestroy(p_A,p_ierr)
+
 !-------------------------------------------------------------------------
-! 5. Build the preconditioner
+! 5. 
 !-------------------------------------------------------------------------
 
- ALLOCATE(diag_precon_tmp(ntot,nels_pp)); diag_precon_tmp=zero
- elements_2: DO iel=1,nels_pp ; DO i=1,ndof
-   diag_precon_tmp(i,iel) = diag_precon_tmp(i,iel)+storkm_pp(i,i,iel)
- END DO;  END DO elements_2
- CALL scatter(diag_precon_pp,diag_precon_tmp); DEALLOCATE(diag_precon_tmp)
  IF(numpe==1)THEN
    OPEN(11,FILE=argv(1:nlen)//".res",STATUS='REPLACE',ACTION='WRITE')
    WRITE(11,'(A,I7,A)') "This job ran on ",npes," processes"
@@ -153,7 +174,7 @@ PROGRAM xx18
    IF(numpe==1) WRITE(11,'(A,E12.4)') "The total load is:",q
    DEALLOCATE(node,val)
  END IF
- DEALLOCATE(g_g_pp); diag_precon_pp=1._iwp/diag_precon_pp
+ DEALLOCATE(g_g_pp)
 
 !-------------------------------------------------------------------------
 ! 7. Preconditioned conjugate gradient solver
@@ -167,8 +188,8 @@ PROGRAM xx18
  inewton   = 1    ! must be one in this program
  rn0       = zero ! note rn0 does not appear to be used in XX15
 
- CALL PCG_VER1(inewton,limit,tol,storkm_pp,r_pp(1:),diag_precon_pp(1:), &
-               rn0,x_pp,iters)
+! CALL PCG_VER1(inewton,limit,tol,storkm_pp,r_pp(1:),diag_precon_pp(1:), &
+!               rn0,x_pp,iters)
 
  xnew_pp   = x_pp
 
