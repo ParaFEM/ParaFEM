@@ -44,17 +44,13 @@ PROGRAM xx18
  CHARACTER(LEN=6)    :: ch 
 
 ! PETSc variables
- Vec p_x,p_b
+ PetscErrorCode p_ierr
+ Vec p_x,p_b,p_r
  Mat p_A
  KSP p_ksp
- PC p_pc
- PetscReal p_r
- PetscInt p_i
- PetscErrorCode p_ierr
- PetscMPIInt p_rank
- PetscBool   p_flg
- PetscScalar p_one
- PetscScalar p_dots(3)
+ PetscScalar p_pr_n2,p_r_n2,p_b_n2
+ PetscScalar,pointer::p_varray(:)
+ PetscInt p_its
 
 !-------------------------------------------------------------------------
 ! 1. Dynamic arrays
@@ -92,7 +88,7 @@ PROGRAM xx18
 ! 2b. Start up PETSc after MPI has been started
 !-------------------------------------------------------------------------
 
- Call PetscInitialize("petsc_options",p_ierr)
+ CALL PetscInitialize(trim(argv)//".petsc",p_ierr)
 
 !-------------------------------------------------------------------------
 ! 3. Find the steering array and equations per process
@@ -148,8 +144,6 @@ PROGRAM xx18
  CALL MatAssemblyBegin(p_A,MAT_FINAL_ASSEMBLY,p_ierr)
  CALL MatAssemblyEnd(p_A,MAT_FINAL_ASSEMBLY,p_ierr)
 
- CALL MatDestroy(p_A,p_ierr)
-
 !-------------------------------------------------------------------------
 ! 5. 
 !-------------------------------------------------------------------------
@@ -170,10 +164,23 @@ PROGRAM xx18
  IF(loaded_nodes>0) THEN
    ALLOCATE(node(loaded_nodes),val(ndim,loaded_nodes)); node=0; val=zero
    CALL read_loads(argv,numpe,node,val)
-   CALL load(g_g_pp,g_num_pp,node,val,r_pp(1:)); q=SUM_P(r_pp(1:))
+   CALL load(g_g_pp,g_num_pp,node,val,r_pp); q=SUM_P(r_pp)
    IF(numpe==1) WRITE(11,'(A,E12.4)') "The total load is:",q
    DEALLOCATE(node,val)
  END IF
+
+! Create a Vec.  For this particular order (create, set size, set type)
+! the allocation is done by set type.
+ CALL VecCreate(PETSC_COMM_WORLD,p_b,p_ierr)
+ CALL VecSetSizes(p_b,neq_pp,PETSC_DECIDE,p_ierr)
+ CALL VecSetType(p_b,VECSTANDARD,p_ierr)
+!- Block size fixed to 1 for just now - this cannot be set to nodof
+!- until the restraints are handled block-wise in ParaFEM.
+!- CALL VecSetBlockSize(p_b,nodof,p_ierr)
+ CALL VecGetArrayF90(p_b,p_varray,p_ierr)
+ p_varray = r_pp
+ CALL VecRestoreArrayF90(p_b,p_varray,p_ierr)
+
  DEALLOCATE(g_g_pp)
 
 !-------------------------------------------------------------------------
@@ -188,10 +195,54 @@ PROGRAM xx18
  inewton   = 1    ! must be one in this program
  rn0       = zero ! note rn0 does not appear to be used in XX15
 
-! CALL PCG_VER1(inewton,limit,tol,storkm_pp,r_pp(1:),diag_precon_pp(1:), &
-!               rn0,x_pp,iters)
+ CALL KSPCreate(PETSC_COMM_WORLD,p_ksp,p_ierr)
+ CALL KSPSetOperators(p_ksp,p_A,p_A,p_ierr)
+! KSP type, tolerances (rtol, abstol, dtol, maxits), KSP options, PC
+! type, PC options are set in the xx18*.ppetsc file.  Those options are
+! used to set up the preconditioned Krylov solver
+ CALL KSPSetFromOptions(p_ksp,p_ierr)
+! But the relative tolerance and maximum number of iterations are
+! overriden by the value in the ParaFEM control file.  Note that relative
+! tolerance for PETSc is for the preconditioned residual.
+ CALL KSPSetTolerances(p_ksp,tol,PETSC_DEFAULT_REAL,PETSC_DEFAULT_REAL,  &
+                       limit,p_ierr)
 
- xnew_pp   = x_pp
+! Solution vector
+ CALL VecDuplicate(p_b,p_x,p_ierr) 
+! For non-linear solves, the previous solution will be used as an initial
+! guess.  Set p_x to initial guess here.
+ CALL KSPSetInitialGuessNonzero(p_ksp,PETSC_FALSE,p_ierr)
+ CALL KSPSolve(p_ksp,p_b,p_x,p_ierr)
+
+! Preconditioned residual L2 norm
+ CALL KSPGetResidualNorm(p_ksp,p_pr_n2,p_ierr)
+! True residual L2 norm
+ CALL VecDuplicate(p_b,p_r,p_ierr)
+ CALL KSPBuildResidual(p_ksp,PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,p_r,    &
+                       p_ierr)
+ CALL VecNorm(p_r,NORM_2,p_r_n2,p_ierr)
+ CALL VecDestroy(p_r,p_ierr)
+! L2 norm of load
+ CALL VecNorm(p_b,NORM_2,p_b_n2,p_ierr)
+ CALL KSPGetIterationNumber(p_ksp,p_its,p_ierr)
+
+!!$  KSPConvergedReason reason;
+!!$  char description[MAX_STRING_LENGTH+1];
+!!$  KSPGetConvergedReason(ksp, &reason);
+!!$  describe_reason(reason, description);
+
+! Copy PETSc solution vector to ParaFEM
+ CALL VecGetArrayF90(p_x,p_varray,p_ierr)
+ xnew_pp = p_varray
+ CALL VecRestoreArrayF90(p_x,p_varray,p_ierr)
+
+ CALL VecDestroy(p_x,p_ierr)
+ CALL KSPDestroy(p_ksp,p_ierr)
+ CALL VecDestroy(p_b,p_ierr)
+ CALL MatDestroy(p_A,p_ierr)
+
+! CALL PCG_VER1(inewton,limit,tol,storkm_pp,r_pp,diag_precon_pp, &
+!               rn0,x_pp,iters)
 
 !--------------------- preconditioned cg iterations ----------------------
 ! iters=0; timest(3)=elap_time()
@@ -212,7 +263,10 @@ PROGRAM xx18
 ! END DO iterations
 
  IF(numpe==1)THEN
-   WRITE(11,'(A,I6)')"The number of iterations to convergence was ",iters
+   WRITE(11,'(A,I6)')"The number of iterations to convergence was ",p_its
+   WRITE(11,'(A,E17.7)')"The preconditioned residual L2 norm was ",p_pr_n2
+   WRITE(11,'(A,E17.7)')"The true residual L2 norm ||b-Ax|| was  ",p_r_n2
+   WRITE(11,'(A,E17.7)')"The relative error ||b-Ax||/||b|| was   ",p_r_n2/p_b_n2
    WRITE(11,'(A,F10.4)')"Time to solve equations was  :",                &
                          elap_time()-timest(3)  
    WRITE(11,'(A,E12.4)')"The central nodal displacement is :",xnew_pp(1)
@@ -224,7 +278,7 @@ PROGRAM xx18
 !-------------------------------------------------------------------------
 
  ALLOCATE(eld_pp(ntot,nels_pp)); eld_pp=zero; points=zero; nip=1; iel=1
- CALL gather(xnew_pp(1:),eld_pp); DEALLOCATE(xnew_pp)
+ CALL gather(xnew_pp,eld_pp); DEALLOCATE(xnew_pp)
  IF(numpe==1)WRITE(11,'(A)')"The Centroid point stresses for element 1 are"
  gauss_pts_2: DO i=1,nip
    CALL shape_der(der,points,i); jac=MATMUL(der,g_coord_pp(:,:,iel))
