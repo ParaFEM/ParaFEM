@@ -124,8 +124,8 @@ PROGRAM xx18
                                 243,PETSC_NULL_INTEGER,p_ierr);
 
  dee=zero; CALL deemat(dee,e,v); CALL sample(element,points,weights)
- storkm_1=zero
  elements_1: DO iel=1,nels_pp
+   storkm_1=zero
    gauss_pts_1: DO i=1,nip
      CALL shape_der(der,points,i); jac=MATMUL(der,g_coord_pp(:,:,iel))
      det=determinant(jac); CALL invert(jac); deriv=MATMUL(jac,der)
