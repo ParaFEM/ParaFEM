@@ -8,5 +8,7 @@
 export PBS_O_WORKDIR=$(readlink -f $PBS_O_WORKDIR)
 cd $PBS_O_WORKDIR
 
-export PATH=/home/z01/z01/mjf/ecse0604/parafem-code/parafem/bin:$PATH
+module use $HOME/modulefiles
+module load xx18
+
 aprun -n 4 xx18 xx18_small
