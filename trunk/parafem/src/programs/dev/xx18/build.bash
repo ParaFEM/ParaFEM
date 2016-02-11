@@ -28,6 +28,29 @@ module load cray-petsc
 	sleep 1 # TDS and /home are sleepy
 	./make-parafem-xx18 MACHINE=xc30 -debug --no-libs --no-tools -mpi -xx > $log 2>&1
 	sleep 1 # TDS and /home are sleepy
+	mkdir -p $HOME/modulefiles/xx18
+	cat > $HOME/modulefiles/xx18/0.1 <<EOF
+#%Module
+#
+# Module xx18
+#
+
+set PARAFEM_DIR $PARAFEM_HOME
+setenv PARAFEM_DIR \$PARAFEM_DIR
+
+proc ModulesHelp { } {
+    puts stderr "xx18: ParaFEM p121 with PETSc"
+    puts stderr {=======================
+
+Maintained by: Mark Filipiak, EPCC
+}
+}
+prepend-path PATH \$PARAFEM_DIR/bin
+
+module-whatis "xx18: ParaFEM p121 with PETSc"
+
+EOF
+	sleep 1 # TDS and /home are sleepy
     elif [[ $build == 'modules' ]]; then
 	./make-parafem-xx18 MACHINE=xc30 clean execlean &> clean.log
 	sleep 1 # TDS and /home are sleepy
