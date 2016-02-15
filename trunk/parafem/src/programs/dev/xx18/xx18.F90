@@ -9,7 +9,7 @@ PROGRAM xx18
 !------------------------------------------------------------------------- 
 
 ! PETSc modules
-! Use system, vectors, matrices, solvers
+! Use system, vectors, matrices, solvers, preconditioners
  USE petscsys; USE petscvec; USE petscmat; USE petscksp; USE petscpc
 
 ! PETSc won't work without MPI
@@ -44,13 +44,16 @@ PROGRAM xx18
  CHARACTER(LEN=6)    :: ch 
 
 ! PETSc variables
- PetscErrorCode p_ierr
- Vec p_x,p_b,p_r
- Mat p_A
- KSP p_ksp
- PetscScalar p_pr_n2,p_r_n2,p_b_n2
- PetscScalar,pointer::p_varray(:)
- PetscInt p_its
+ INTEGER,PARAMETER   :: p_max_string_length=1024
+ PetscErrorCode      :: p_ierr
+ Vec                 :: p_x,p_b,p_r
+ Mat                 :: p_A
+ KSP                 :: p_ksp
+ PetscScalar         :: p_pr_n2,p_r_n2,p_b_n2
+ PetscScalar,POINTER :: p_varray(:)
+ PetscInt            :: p_its
+ KSPConvergedReason  :: p_reason
+ CHARACTER(LEN=p_max_string_length) :: p_description
 
 !-------------------------------------------------------------------------
 ! 1. Dynamic arrays
@@ -58,7 +61,7 @@ PROGRAM xx18
 
  REAL(iwp),ALLOCATABLE::points(:,:),dee(:,:),weights(:),val(:,:),        &
    disp_pp(:),g_coord_pp(:,:,:),jac(:,:),der(:,:),deriv(:,:),bee(:,:),   &
-   storkm_1(:,:),eps(:),sigma(:),diag_precon_pp(:),p_pp(:),r_pp(:),      &
+   km(:,:),eps(:),sigma(:),diag_precon_pp(:),p_pp(:),r_pp(:),            &
    x_pp(:),xnew_pp(:),u_pp(:),pmul_pp(:,:),utemp_pp(:,:),d_pp(:),        &
    timest(:),diag_precon_tmp(:,:),eld_pp(:,:),temp(:)
  INTEGER,ALLOCATABLE::rest(:,:),g_num_pp(:,:),g_g_pp(:,:),node(:)
@@ -81,7 +84,7 @@ PROGRAM xx18
  CALL read_rest(argv,numpe,rest); timest(2)=elap_time()
  ALLOCATE(points(nip,ndim),dee(nst,nst),jac(ndim,ndim),der(ndim,nod),    &
    deriv(ndim,nod),bee(nst,ntot),weights(nip),eps(nst),sigma(nst),       &
-   storkm_1(ntot,ntot),pmul_pp(ntot,nels_pp),                            &
+   km(ntot,ntot),pmul_pp(ntot,nels_pp),                                  &
    utemp_pp(ntot,nels_pp),g_g_pp(ntot,nels_pp))
 
 !-------------------------------------------------------------------------
@@ -125,20 +128,19 @@ PROGRAM xx18
 
  dee=zero; CALL deemat(dee,e,v); CALL sample(element,points,weights)
  elements_1: DO iel=1,nels_pp
-   storkm_1=zero
+   km=zero
    gauss_pts_1: DO i=1,nip
      CALL shape_der(der,points,i); jac=MATMUL(der,g_coord_pp(:,:,iel))
      det=determinant(jac); CALL invert(jac); deriv=MATMUL(jac,der)
      CALL beemat(bee,deriv)
-     storkm_1=storkm_1 +                                                 &
-              MATMUL(MATMUL(TRANSPOSE(bee),dee),bee)*det*weights(i)   
+     km=km + MATMUL(MATMUL(TRANSPOSE(bee),dee),bee)*det*weights(i)
    END DO gauss_pts_1
    ! 1/ Use ubound(g_g_pp,1) instead of ntot? 2/ The following depends
    ! on g_g_pp holding 0 for erased rows/columns, and MatSetValues
    ! ignoring negative indices (PETSc always uses zero-based
    ! indexing). 3/ PETSc uses C array order, so a transpose is needed.
    CALL MatSetValues(p_A,ntot,g_g_pp(:,iel)-1,ntot,g_g_pp(:,iel)-1,      &
-                     transpose(storkm_1),ADD_VALUES,p_ierr)
+                     transpose(km),ADD_VALUES,p_ierr)
  END DO elements_1
 
  CALL MatAssemblyBegin(p_A,MAT_FINAL_ASSEMBLY,p_ierr)
@@ -226,10 +228,8 @@ PROGRAM xx18
  CALL VecNorm(p_b,NORM_2,p_b_n2,p_ierr)
  CALL KSPGetIterationNumber(p_ksp,p_its,p_ierr)
 
-!!$  KSPConvergedReason reason;
-!!$  char description[MAX_STRING_LENGTH+1];
-!!$  KSPGetConvergedReason(ksp, &reason);
-!!$  describe_reason(reason, description);
+ CALL KSPGetConvergedReason(p_ksp,p_reason,p_ierr)
+ CALL p_describe_reason(p_reason,p_description)
 
 ! Copy PETSc solution vector to ParaFEM
  CALL VecGetArrayF90(p_x,p_varray,p_ierr)
@@ -263,10 +263,13 @@ PROGRAM xx18
 ! END DO iterations
 
  IF(numpe==1)THEN
+   WRITE(11,'(A,I6,A)')"The reason for convergence was ",p_reason,       &
+                       " "//trim(p_description)
    WRITE(11,'(A,I6)')"The number of iterations to convergence was ",p_its
    WRITE(11,'(A,E17.7)')"The preconditioned residual L2 norm was ",p_pr_n2
    WRITE(11,'(A,E17.7)')"The true residual L2 norm ||b-Ax|| was  ",p_r_n2
-   WRITE(11,'(A,E17.7)')"The relative error ||b-Ax||/||b|| was   ",p_r_n2/p_b_n2
+   WRITE(11,'(A,E17.7)')"The relative error ||b-Ax||/||b|| was   ",      &
+                        p_r_n2/p_b_n2
    WRITE(11,'(A,F10.4)')"Time to solve equations was  :",                &
                          elap_time()-timest(3)  
    WRITE(11,'(A,E12.4)')"The central nodal displacement is :",xnew_pp(1)
@@ -317,5 +320,61 @@ PROGRAM xx18
 
  CALL PetscFinalize(p_ierr)
  CALL SHUTDOWN() 
-
+ 
+CONTAINS
+  SUBROUTINE p_describe_reason(p_reason,p_description)
+    KSPConvergedReason, INTENT(IN)  :: p_reason
+    CHARACTER(LEN=*), INTENT(OUT)   :: p_description
+    
+    ! The string constants in this routine have to be p_max_string_length or
+    ! shorter.
+    SELECT CASE (p_reason)
+    ! Converged.
+! not in PETSc Fortran    CASE (KSP_CONVERGED_RTOL_NORMAL)
+! not in PETSc Fortran       p_description = "KSP_CONVERGED_RTOL_NORMAL"
+! not in PETSc Fortran    CASE (KSP_CONVERGED_ATOL_NORMAL)
+! not in PETSc Fortran       p_description = "KSP_CONVERGED_ATOL_NORMAL"
+    CASE (KSP_CONVERGED_RTOL)
+       p_description = "KSP_CONVERGED_RTOL (residual 2-norm decreased by a factor of rtol, from 2-norm of right hand side)"
+    CASE (KSP_CONVERGED_ATOL)
+       p_description = "KSP_CONVERGED_ATOL (residual 2-norm less than abstol)"
+    CASE (KSP_CONVERGED_ITS)
+       p_description = "KSP_CONVERGED_ITS (used by the preonly preconditioner that always uses ONE iteration, or when the KSPConvergedSkip() convergence test routine is set)"
+    CASE (KSP_CONVERGED_CG_NEG_CURVE)
+       p_description = "KSP_CONVERGED_CG_NEG_CURVE"
+    CASE (KSP_CONVERGED_CG_CONSTRAINED)
+       p_description = "KSP_CONVERGED_CG_CONSTRAINED"
+    CASE (KSP_CONVERGED_STEP_LENGTH)
+       p_description = "KSP_CONVERGED_STEP_LENGTH"
+    CASE (KSP_CONVERGED_HAPPY_BREAKDOWN)
+       p_description = "KSP_CONVERGED_HAPPY_BREAKDOWN"
+    ! Diverged.
+    CASE (KSP_DIVERGED_NULL)
+       p_description = "KSP_DIVERGED_NULL"
+    CASE (KSP_DIVERGED_ITS)
+       p_description = "KSP_DIVERGED_ITS (required more than its to reach convergence)"
+    CASE (KSP_DIVERGED_DTOL)
+       p_description = "KSP_DIVERGED_DTOL (residual norm increased by a factor of divtol)"
+    CASE (KSP_DIVERGED_BREAKDOWN)
+       p_description = "KSP_DIVERGED_BREAKDOWN (generic breakdown in method)"
+    CASE (KSP_DIVERGED_BREAKDOWN_BICG)
+       p_description = "KSP_DIVERGED_BREAKDOWN_BICG (Initial residual is orthogonal to preconditioned initial residual. Try a different preconditioner, or a different initial level.)"
+    CASE (KSP_DIVERGED_NONSYMMETRIC)
+       p_description = "KSP_DIVERGED_NONSYMMETRIC"
+    CASE (KSP_DIVERGED_INDEFINITE_PC)
+       p_description = "KSP_DIVERGED_INDEFINITE_PC"
+    CASE (KSP_DIVERGED_NANORINF)
+       p_description = "KSP_DIVERGED_NANORINF (residual norm became NaN or Inf likely due to 0/0)"
+    CASE (KSP_DIVERGED_INDEFINITE_MAT)
+       p_description = "KSP_DIVERGED_INDEFINITE_MAT"
+! not yet in PETSc Fortran    CASE (KSP_DIVERGED_PCSETUP_FAILED)
+! not yet in PETSc Fortran       p_description = "KSP_DIVERGED_PCSETUP_FAILED"
+    ! Still iterating.
+    CASE (KSP_CONVERGED_ITERATING)
+       p_description = "KSP_CONVERGED_ITERATING"
+    ! Unknown  
+    CASE DEFAULT
+       p_description = "reason not known"
+    END SELECT
+  END SUBROUTINE p_describe_reason
 END PROGRAM xx18
