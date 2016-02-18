@@ -54,6 +54,8 @@ PROGRAM xx18
  Mat                 :: p_A
  KSP                 :: p_ksp
  PetscScalar         :: p_pr_n2,p_r_n2,p_b_n2
+ PetscInt,ALLOCATABLE    :: p_rows(:),p_cols(:)
+ PetscScalar,ALLOCATABLE :: p_values(:)
  PetscScalar,POINTER :: p_varray(:)
  PetscInt            :: p_its,p_nnz
  DOUBLE PRECISION    :: p_info(MAT_INFO_SIZE)
@@ -116,7 +118,13 @@ PROGRAM xx18
 ! 4. Element stiffness integration and global stiffness matrix creation
 !-------------------------------------------------------------------------
 
-! PETSc 32-bit indices and 64-bit reals
+! PETSc 64-bit indices and 64-bit reals.  In most (all?) places, passing a
+! 32-bit integer where an intent(in) 64-integer is required is safe,
+! because the PETSc Fortran-C interface de-references the pointer that is
+! actually passed, even though it does not specify any intent in the
+! Fortran interface.  This is not safe when passing arrays, they need to be
+! copied to PetscInt arrays.  And for safety the same should be done for
+! the PetscScalar arrays.
  CALL MatCreate(PETSC_COMM_WORLD,p_A,p_ierr)
  Call MatSetSizes(p_A,neq_pp,neq_pp,PETSC_DETERMINE,PETSC_DETERMINE,     &
                   p_ierr)
@@ -131,8 +139,14 @@ PROGRAM xx18
  CALL MatSeqAIJSetPreallocation(p_A,p_nnz,PETSC_NULL_INTEGER,p_ierr)
  CALL MatMPIAIJSetPreallocation(p_A,p_nnz,PETSC_NULL_INTEGER,            &
                                     p_nnz,PETSC_NULL_INTEGER,p_ierr)
+! If the allocation is too small, PETSc will produce reams of information
+! and not construct the matrix properly.  We output some information at
+! the end if p_over_allocation should be increased.
  CALL MatSetOption(p_A,MAT_NEW_NONZERO_ALLOCATION_ERR,PETSC_FALSE,p_ierr)
 
+! Arrays of PETSc types to be proof against changes in index and scalar
+! sizes.
+ ALLOCATE(p_rows(ntot),p_cols(ntot),p_values(ntot*ntot))
  dee=zero; CALL deemat(dee,e,v); CALL sample(element,points,weights)
  elements_1: DO iel=1,nels_pp
    km=zero
@@ -146,9 +160,13 @@ PROGRAM xx18
    ! on g_g_pp holding 0 for erased rows/columns, and MatSetValues
    ! ignoring negative indices (PETSc always uses zero-based
    ! indexing). 3/ PETSc uses C array order, so a transpose is needed.
-   CALL MatSetValues(p_A,ntot,g_g_pp(:,iel)-1,ntot,g_g_pp(:,iel)-1,      &
-                     transpose(km),ADD_VALUES,p_ierr)
+   p_rows = g_g_pp(:,iel)-1
+   p_cols = p_rows
+   p_values = reshape(transpose(km),(/ntot*ntot/))
+   CALL MatSetValues(p_A,ntot,p_rows,ntot,p_cols,                       &
+                     p_values,ADD_VALUES,p_ierr)
  END DO elements_1
+ DEALLOCATE(p_rows,p_cols,p_values)
 
  CALL MatAssemblyBegin(p_A,MAT_FINAL_ASSEMBLY,p_ierr)
  CALL MatAssemblyEnd(p_A,MAT_FINAL_ASSEMBLY,p_ierr)
@@ -196,6 +214,9 @@ PROGRAM xx18
 !- until the restraints are handled block-wise in ParaFEM.
 !- CALL VecSetBlockSize(p_b,nodof,p_ierr)
  CALL VecGetArrayF90(p_b,p_varray,p_ierr)
+! This is OK as long as PetscScalars not smaller than ParaFEM reals.  There
+! should be a test for sizes of PetscScalars (and PetscInts) and ParaFEM
+! reals (and indices).
  p_varray = r_pp
  CALL VecRestoreArrayF90(p_b,p_varray,p_ierr)
 
@@ -228,7 +249,7 @@ PROGRAM xx18
 ! Solution vector
  CALL VecDuplicate(p_b,p_x,p_ierr) 
 ! For non-linear solves, the previous solution will be used as an initial
-! guess.  Set p_x to initial guess here.
+! guess.  Set p_x to initial guess here in thta case..
  CALL KSPSetInitialGuessNonzero(p_ksp,PETSC_FALSE,p_ierr)
  CALL KSPSolve(p_ksp,p_b,p_x,p_ierr)
 
@@ -249,6 +270,9 @@ PROGRAM xx18
 
 ! Copy PETSc solution vector to ParaFEM
  CALL VecGetArrayF90(p_x,p_varray,p_ierr)
+! This is OK as long as ParaFEM reals not smaller than PetscScalars.  There
+! should be a test for sizes of PetscScalars (and PetscInts) and ParaFEM
+! reals (and indices).
  xnew_pp = p_varray
  CALL VecRestoreArrayF90(p_x,p_varray,p_ierr)
 
@@ -409,7 +433,7 @@ CONTAINS
     ! (Note that the average number of tetrahedra around a point is about
     ! 22, so the safety-factor will allow for that as well.)
     REAL, INTENT(IN)        :: over_allocation
-    INTEGER, INTENT(OUT)    :: nnz
+    PetscInt, INTENT(OUT)   :: nnz
 
     INTEGER                 :: v,e,f,i,el_per_v,el_per_e,el_per_f,el_per_i
     
