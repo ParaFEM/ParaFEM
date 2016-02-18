@@ -43,8 +43,8 @@ PROGRAM xx1
   CHARACTER(LEN=50)     :: program_name='xx1'
   CHARACTER(LEN=50)     :: job_name,label
   LOGICAL               :: converged=.false.
-  LOGICAL               :: sym_storkm=.true.
-! LOGICAL               :: sym_storkm=.false.
+! LOGICAL               :: sym_storkm=.true.
+  LOGICAL               :: sym_storkm=.false.
 ! LOGICAL               :: io_binary=.false.
   LOGICAL               :: io_binary=.true.
 
@@ -454,10 +454,15 @@ PROGRAM xx1
     CALL gather(p_pp,pmul_pp)
 
     IF(sym_storkm) THEN
-      elements_5: DO iel=1,nels_pp
-        CALL dspmv('L',ntot,1.0,vstorkm_pp(:,iel),pmul_pp(:,iel),1,0.0, &
-                   utemp_pp(:,iel),1)    
-      END DO elements_5
+!     elements_5: DO iel=1,nels_pp
+!       CALL dspmv('L',ntot,1.0,vstorkm_pp(:,iel),pmul_pp(:,iel),1,0.0, &
+!                  utemp_pp(:,iel),1)    
+!     END DO elements_5
+      PRINT *, "Fatal SYM_STORKM error"
+      PRINT *, "Uncomment elements_5 loop in main program"
+      PRINT *, "Recompile and link to BLAS library"
+      PRINT *, "Program will terminate"
+      CALL shutdown()
     ELSE
       elements_5a: DO iel=1,nels_pp
         utemp_pp(:,iel) = MATMUL(storkm_pp(:,:,iel),pmul_pp(:,iel))
