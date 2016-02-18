@@ -45,13 +45,18 @@ PROGRAM xx18
 
 ! PETSc variables
  INTEGER,PARAMETER   :: p_max_string_length=1024
+! p_over_allocation should be a run time setting with a default set in the
+! program.  Choosing too small a value (e.g. 0.99) slows MatSetValues to a
+! crawl.
+ REAL,PARAMETER      :: p_over_allocation=1.3
  PetscErrorCode      :: p_ierr
  Vec                 :: p_x,p_b,p_r
  Mat                 :: p_A
  KSP                 :: p_ksp
  PetscScalar         :: p_pr_n2,p_r_n2,p_b_n2
  PetscScalar,POINTER :: p_varray(:)
- PetscInt            :: p_its
+ PetscInt            :: p_its,p_nnz
+ DOUBLE PRECISION    :: p_info(MAT_INFO_SIZE)
  KSPConvergedReason  :: p_reason
  CHARACTER(LEN=p_max_string_length) :: p_description
 
@@ -120,11 +125,13 @@ PROGRAM xx18
 !- until the restraints are handled block-wise in ParaFEM.
 !- CALL MatSetBlockSize(p_A,nodof,p_ierr)
 
-! Hack for now: For 20-node hexahedra and 3 dofs per node, then will
-! be an (average) maximum of 81 * 3 = 243 entries per row
- CALL MatSeqAIJSetPreallocation(p_A,243,PETSC_NULL_INTEGER,p_ierr);
- CALL MatMPIAIJSetPreallocation(p_A,243,PETSC_NULL_INTEGER,              &
-                                243,PETSC_NULL_INTEGER,p_ierr);
+! Find an approximate number of zeroes per row for the matrix size
+! pre-allocation.
+ CALL p_row_nnz(nodof,ndim,nod,p_over_allocation,p_nnz)
+ CALL MatSeqAIJSetPreallocation(p_A,p_nnz,PETSC_NULL_INTEGER,p_ierr)
+ CALL MatMPIAIJSetPreallocation(p_A,p_nnz,PETSC_NULL_INTEGER,            &
+                                    p_nnz,PETSC_NULL_INTEGER,p_ierr)
+ CALL MatSetOption(p_A,MAT_NEW_NONZERO_ALLOCATION_ERR,PETSC_FALSE,p_ierr)
 
  dee=zero; CALL deemat(dee,e,v); CALL sample(element,points,weights)
  elements_1: DO iel=1,nels_pp
@@ -145,6 +152,15 @@ PROGRAM xx18
 
  CALL MatAssemblyBegin(p_A,MAT_FINAL_ASSEMBLY,p_ierr)
  CALL MatAssemblyEnd(p_A,MAT_FINAL_ASSEMBLY,p_ierr)
+
+ CALL MatGetInfo(p_A,MAT_GLOBAL_SUM,p_info,p_ierr)
+ IF(numpe==1)THEN
+   IF(p_info(MAT_INFO_MALLOCS)/=0.0)THEN
+     WRITE(*,'(A,I0,A)') "The matrix assembly required ",               &
+          NINT(p_info(MAT_INFO_MALLOCS)),                               &
+          " mallocs.  Increase p_over_allocation to speed up the assembly."
+   END IF
+ END IF
 
 !-------------------------------------------------------------------------
 ! 5. 
@@ -263,9 +279,9 @@ PROGRAM xx18
 ! END DO iterations
 
  IF(numpe==1)THEN
-   WRITE(11,'(A,I6,A)')"The reason for convergence was ",p_reason,       &
+   WRITE(11,'(A,I0,A)')"The reason for convergence was ",p_reason,       &
                        " "//trim(p_description)
-   WRITE(11,'(A,I6)')"The number of iterations to convergence was ",p_its
+   WRITE(11,'(A,I0)')"The number of iterations to convergence was ",p_its
    WRITE(11,'(A,E17.7)')"The preconditioned residual L2 norm was ",p_pr_n2
    WRITE(11,'(A,E17.7)')"The true residual L2 norm ||b-Ax|| was  ",p_r_n2
    WRITE(11,'(A,E17.7)')"The relative error ||b-Ax||/||b|| was   ",      &
@@ -323,6 +339,7 @@ PROGRAM xx18
  
 CONTAINS
   SUBROUTINE p_describe_reason(p_reason,p_description)
+    IMPLICIT NONE
     KSPConvergedReason, INTENT(IN)  :: p_reason
     CHARACTER(LEN=*), INTENT(OUT)   :: p_description
     
@@ -377,4 +394,205 @@ CONTAINS
        p_description = "reason not known"
     END SELECT
   END SUBROUTINE p_describe_reason
+  
+  SUBROUTINE p_row_nnz(nodof,ndim,nod,over_allocation,nnz)
+    ! The number of non-zeroes in a row is used to get an approximate
+    ! pre-allocation for the PETSc matrix assembly.  Too small a value will
+    ! slow down the assembly, too large a value will waste memory.
+    IMPLICIT NONE
+    INTEGER, INTENT(IN)     :: nodof
+    INTEGER, INTENT(IN)     :: ndim
+    INTEGER, INTENT(IN)     :: nod
+    ! over_allocation allows for distorted grids with more than the simple
+    ! number of elements around a point or edge.  Chose this to be larger
+    ! than 1.25, which would correspond to 5 hexahedra about an edge.
+    ! (Note that the average number of tetrahedra around a point is about
+    ! 22, so the safety-factor will allow for that as well.)
+    REAL, INTENT(IN)        :: over_allocation
+    INTEGER, INTENT(OUT)    :: nnz
+
+    INTEGER                 :: v,e,f,i,el_per_v,el_per_e,el_per_f,el_per_i
+    
+    SELECT CASE (ndim)
+       
+    CASE(1) ! one dimensional case
+       SELECT CASE (nod)
+       CASE(2)
+          el_per_v = 2; el_per_i = 1 ! line
+        ! two lines     line
+        ! two lines
+        !  1 interior vertices
+        !  2 exterior vertices
+        !  2 interior lines
+        ! line
+        !  0 interior vertices
+        !  2 exterior vertices
+        !  1 interior lines
+          v = 3; i = 0
+       CASE(3)
+          el_per_v = 2; el_per_i = 1
+          v = 5; i = 3
+       CASE(4)
+          el_per_v = 2; el_per_i = 1
+          v = 7; i = 4
+       CASE(5)
+          el_per_v = 2; el_per_i = 1
+          v = 9; i = 5
+       CASE DEFAULT
+          print*,"wrong number of nodes in p_row_nnz"        
+       END SELECT
+    CASE(2)      ! two dimensional elements
+       SELECT CASE (nod)
+       CASE(3)
+          el_per_v = 6; el_per_e = 2; el_per_i = 1 ! triangle
+        ! hexagon       rhombus       triangle
+        ! hexagon
+        !  1 interior vertices
+        !  6 exterior vertices
+        !  6 interior edges
+        !  6 exterior edges
+        !  6 interior triangles
+        ! rhombus
+        !  0 interior vertices
+        !  4 exterior vertices
+        !  1 interior edges
+        !  4 exterior edges
+        !  2 interior triangles
+        ! triangle
+        !  0 interior vertices
+        !  3 exterior vertices
+        !  0 interior edges
+        !  3 exterior edges
+        !  1 interior triangles
+          v = 7; e = 0; i = 0
+       CASE(6) 
+          el_per_v = 6; el_per_e = 2; el_per_i = 1 ! triangle
+          v = 19; e = 9; i = 0
+       CASE(10) 
+          el_per_v = 6; el_per_e = 2; el_per_i = 1 ! triangle
+          v = 37; e = 16; i = 10
+       CASE(15)  
+          el_per_v = 6; el_per_e = 2; el_per_i = 1 ! triangle
+          v = 61; e = 25; i = 15
+       CASE(4)  
+          el_per_v = 4; el_per_e = 2; el_per_i = 1 ! quadrilateral
+        ! 4 squares     2 squares     square
+        ! 4 squares
+        !  1 interior vertices
+        !  8 exterior vertices
+        !  4 interior edges
+        !  8 exterior edges
+        !  4 interior squares
+        ! 2 squares
+        !  0 interior vertices
+        !  6 exterior vertices
+        !  1 interior edges
+        !  6 exterior edges
+        !  2 interior squares
+        ! square
+        !  0 interior vertices
+        !  4 exterior vertices
+        !  0 interior edges
+        !  4 exterior edges
+        !  1 interior squares
+          v = 9; e = 0; i = 0
+       CASE(8)
+          el_per_v = 4; el_per_e = 2; el_per_i = 1 ! quadrilateral
+          v = 21; e = 13; i = 0
+       CASE(9)
+          el_per_v = 4; el_per_e = 2; el_per_i = 1 ! quadrilateral
+          v = 25; e = 15; i = 9
+       CASE DEFAULT
+          print*,"wrong number of nodes in p_row_nnz"        
+       END SELECT
+    CASE(3)  ! three dimensional elements
+       SELECT CASE (nod)
+       CASE(4)
+          el_per_v = 20; el_per_e = 5;         el_per_f = 2;         el_per_i = 1 ! tetrahedron
+        ! icosahedron    pentagonal bipyramid  triangular bipyramid  tetrahedron
+        ! icosahedron
+        !  1 interior vertices
+        ! 12 exterior vertices
+        ! 12 interior edges
+        ! 30 exterior edges
+        ! 30 interior faces
+        ! 20 exterior faces
+        ! 20 interior tetrahedra
+        ! pentagonal bipyramid
+        !  0 interior vertices
+        !  7 exterior vertices
+        !  1 interior edges
+        ! 15 exterior edges
+        !  5 interior faces
+        ! 10 exterior faces
+        !  5 interior tetrahedra
+        ! triangular bipyramid
+        !  0 interior vertices
+        !  5 exterior vertices
+        !  0 interior edges
+        !  9 exterior edges
+        !  1 interior faces
+        !  6 exterior faces
+        !  2 interior tetrahedra
+        ! tetrahedron
+        !  0 interior vertices
+        !  4 exterior vertices
+        !  0 interior edges
+        !  6 exterior edges
+        !  0 interior faces
+        !  4 exterior faces
+        !  1 interior tetrahedra
+          v = 13; e = 0; f = 0; i = 0
+       CASE(8)
+          el_per_v = 8; el_per_e = 4; el_per_f = 2; el_per_i = 1 ! hexahedron
+        ! 8 cubes       4 cubes       2 cubes       cube
+        ! 8 cubes
+        !  1 interior vertices
+        ! 26 exterior vertices
+        !  6 interior edges
+        ! 48 exterior edges
+        ! 12 interior faces
+        ! 24 exterior faces
+        !  8 interior cubes
+        ! 4 cubes
+        !  0 interior vertices
+        ! 18 exterior vertices
+        !  1 interior edges
+        ! 32 exterior edges
+        !  4 interior faces
+        ! 16 exterior faces
+        !  4 interior cubes
+        ! 2 cubes
+        !  0 interior vertices
+        ! 12 exterior vertices
+        !  0 interior edges
+        ! 20 exterior edges
+        !  1 interior faces
+        ! 10 exterior faces
+        !  2 interior cubes
+        ! cube
+        !  0 interior vertices
+        !  8 exterior vertices
+        !  0 interior edges
+        ! 12 exterior edges
+        !  0 interior faces
+        !  6 exterior faces
+        !  1 interior cubes
+          v = 27; e = 0; f = 0; i = 0
+       CASE(14) ! type 6 element
+          el_per_v = 8; el_per_e = 4; el_per_f = 2; el_per_i = 1 ! hexahedron
+          v = 63; e = 0; f = 23; i = 0
+       CASE(20)
+          el_per_v = 8; el_per_e = 4; el_per_f = 2; el_per_i = 1 ! hexahedron
+          v = 81; e = 50; f = 0; i = 0
+       CASE DEFAULT
+          print*,"wrong number of nodes in p_row_nnz"        
+       END SELECT
+    CASE DEFAULT
+       print*,"wrong number of dimensions in p_row_nnz"
+    END SELECT
+    
+    nnz = NINT(over_allocation * v) * nodof
+
+  END SUBROUTINE p_row_nnz
 END PROGRAM xx18
