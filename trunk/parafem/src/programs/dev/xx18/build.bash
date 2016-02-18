@@ -16,11 +16,14 @@ fi
 source $EPCC_PE_RELEASE/nov2015
 # This is needed because cray-tpsl is used by cray-petsc without
 # actually loading the module.
-module load cray-tpsl
+
+#module load cray-tpsl
+module load cray-tpsl-64
 
 # Split in two because /work was slow.  Seems OK on /home to compile modules and xx18 all at once.
 
-module load cray-petsc
+#module load cray-petsc
+module load cray-petsc-64
 
 (
     export PARAFEM_HOME=$(readlink --canonicalize $PWD/../../../..)
