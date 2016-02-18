@@ -32,7 +32,8 @@ release:
 	@echo "Building xx1 RELEASE"
 	$(MAKE) xx1 \
 	FFLAGS="-c -I$(MODULE) $(XX1_MPI_REL_FFLAGS)" \
-	LDFLAGS="-L$(LIB) -lParaFEM_mpi.$(VERSION) $(XX1_MPI_REL_LDFLAGS)"
+	LDFLAGS="-L$(LIB) -lParaFEM_mpi.$(VERSION) \
+	$(XX1_MPI_REL_LDFLAGS)"
 	@echo "Done xx1 RELEASE"
 
 debug:
@@ -47,8 +48,8 @@ xx1: pf-elastic.o xx1.o
 	$(FC) xx1.o pf-elastic.o -o xx1 $(LDFLAGS)
 
 pf-elastic.o:
-#	$(FC) ../../../umats/parafem/pf-elastic.f $(FFLAGS)
-	$ bgf77 ../../../umats/parafem/pf-elastic.f $(FFLAGS)
+	$(FC) ../../../umats/parafem/pf-elastic.f $(FFLAGS)
+#	$ bgf77 ../../../umats/parafem/pf-elastic.f $(FFLAGS)
 
 xx1.o: xx1.f90
 	$(FC) xx1.f90 $(FFLAGS)
