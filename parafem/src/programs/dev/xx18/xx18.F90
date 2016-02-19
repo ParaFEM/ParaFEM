@@ -1,12 +1,35 @@
 PROGRAM xx18       
-!------------------------------------------------------------------------- 
-!      Program xx18 three dimensional analysis of an elastic solid
-!      using 20-node brick elements, choice between built in 
-!      preconditioned conjugate gradient solver and PETSc library
-!      parallel version; loaded_nodes only; ARCHER eCSE06 project
-!      
-!      See program p121
-!------------------------------------------------------------------------- 
+  
+  !/****f* /xx18
+  !*  NAME
+  !*    PROGRAM: xx18
+  !*  SYNOPSIS
+  !*    Usage:   main program
+  !*  FUNCTION
+  !*      Three dimensional analysis of an elastic solid using 20-node brick
+  !*      elements, choice between built in preconditioned conjugate gradient
+  !*      solver and PETSc library.  ARCHER eCSE06 project.
+  !*      
+  !*      Parallel version.  Loaded_nodes only.  See program p121.
+  !*      
+  !*    Subroutine                 Purpose
+  !*
+  !*    p_describe_reason          Returns a description of the reason
+  !*                               for convergence in PETSc
+  !*    p_row_nnz                  Returns an approximate upper estimate
+  !*                               of the number of non zeroes in a row
+  !*                               of the global matrix
+  !*      
+  !*  AUTHORS
+  !*    Lee Margetts, Mark Filipiak
+  !*  CREATION DATE
+  !*    02.01.2007
+  !*  COPYRIGHT
+  !*    (c) University of Manchester 2007-2010, University of Edinburgh 2016
+  !******
+  !*  Place remarks that should not be included in the documentation here.
+  !*
+  !*/
 
 ! PETSc modules
 ! Use system, vectors, matrices, solvers, preconditioners
@@ -68,13 +91,16 @@ PROGRAM xx18
 
  REAL(iwp),ALLOCATABLE::points(:,:),dee(:,:),weights(:),val(:,:),        &
    disp_pp(:),g_coord_pp(:,:,:),jac(:,:),der(:,:),deriv(:,:),bee(:,:),   &
-   km(:,:),eps(:),sigma(:),diag_precon_pp(:),p_pp(:),r_pp(:),            &
-   x_pp(:),xnew_pp(:),u_pp(:),pmul_pp(:,:),utemp_pp(:,:),d_pp(:),        &
+   ! storkm_pp is used only if the built in preconditioned conjugate gradient is
+   ! used
+!!$   storkm_pp(:,:,:),km(:,:),eps(:),sigma(:),diag_precon_pp(:),p_pp(:),         &
+   km(:,:),eps(:),sigma(:),diag_precon_pp(:),p_pp(:),                          &
+   r_pp(:),x_pp(:),xnew_pp(:),u_pp(:),pmul_pp(:,:),utemp_pp(:,:),d_pp(:),      &
    timest(:),diag_precon_tmp(:,:),eld_pp(:,:),temp(:)
  INTEGER,ALLOCATABLE::rest(:,:),g_num_pp(:,:),g_g_pp(:,:),node(:)
 
 !-------------------------------------------------------------------------
-! 2a. Input and initialisation
+! 2. Input and initialisation
 !-------------------------------------------------------------------------
 
  ALLOCATE(timest(20)); timest=zero; timest(1)=elap_time()
@@ -91,17 +117,18 @@ PROGRAM xx18
  CALL read_rest(argv,numpe,rest); timest(2)=elap_time()
  ALLOCATE(points(nip,ndim),dee(nst,nst),jac(ndim,ndim),der(ndim,nod),    &
    deriv(ndim,nod),bee(nst,ntot),weights(nip),eps(nst),sigma(nst),       &
+!!$   storkm_pp(ntot,ntot,nels_pp),km(ntot,ntot),pmul_pp(ntot,nels_pp),     &
    km(ntot,ntot),pmul_pp(ntot,nels_pp),                                  &
    utemp_pp(ntot,nels_pp),g_g_pp(ntot,nels_pp))
 
 !-------------------------------------------------------------------------
-! 2b. Start up PETSc after MPI has been started
+! 3. Start up PETSc after MPI has been started
 !-------------------------------------------------------------------------
 
  CALL PetscInitialize(trim(argv)//".petsc",p_ierr)
 
 !-------------------------------------------------------------------------
-! 3. Find the steering array and equations per process
+! 4. Find the steering array and equations per process
 !-------------------------------------------------------------------------
 
  CALL rearrange(rest); g_g_pp=0; neq=0
@@ -115,7 +142,7 @@ PROGRAM xx18
  p_pp=zero;  r_pp=zero;  x_pp=zero; xnew_pp=zero; u_pp=zero; d_pp=zero
 
 !-------------------------------------------------------------------------
-! 4. Element stiffness integration and global stiffness matrix creation
+! 5. Element stiffness integration and global stiffness matrix creation
 !-------------------------------------------------------------------------
 
 ! PETSc 64-bit indices and 64-bit reals.  In most (all?) places, passing a
@@ -148,6 +175,7 @@ PROGRAM xx18
 ! sizes.
  ALLOCATE(p_rows(ntot),p_cols(ntot),p_values(ntot*ntot))
  dee=zero; CALL deemat(dee,e,v); CALL sample(element,points,weights)
+!!$ storkm_pp=zero
  elements_1: DO iel=1,nels_pp
    km=zero
    gauss_pts_1: DO i=1,nip
@@ -156,6 +184,7 @@ PROGRAM xx18
      CALL beemat(bee,deriv)
      km=km + MATMUL(MATMUL(TRANSPOSE(bee),dee),bee)*det*weights(i)
    END DO gauss_pts_1
+!!$   storkm_pp(:,:,iel)=km(:,:)
    ! 1/ Use ubound(g_g_pp,1) instead of ntot? 2/ The following depends
    ! on g_g_pp holding 0 for erased rows/columns, and MatSetValues
    ! ignoring negative indices (PETSc always uses zero-based
@@ -181,8 +210,14 @@ PROGRAM xx18
  END IF
 
 !-------------------------------------------------------------------------
-! 5. 
+! 6. Build the preconditioner (not for PETSc)
 !-------------------------------------------------------------------------
+
+!!$ ALLOCATE(diag_precon_tmp(ntot,nels_pp)); diag_precon_tmp=zero
+!!$ elements_2: DO iel=1,nels_pp ; DO i=1,ndof
+!!$   diag_precon_tmp(i,iel) = diag_precon_tmp(i,iel)+storkm_pp(i,i,iel)
+!!$ END DO;  END DO elements_2
+!!$ CALL scatter(diag_precon_pp,diag_precon_tmp); DEALLOCATE(diag_precon_tmp)
 
  IF(numpe==1)THEN
    OPEN(11,FILE=argv(1:nlen)//".res",STATUS='REPLACE',ACTION='WRITE')
@@ -220,6 +255,7 @@ PROGRAM xx18
  p_varray = r_pp
  CALL VecRestoreArrayF90(p_b,p_varray,p_ierr)
 
+!!$ DEALLOCATE(g_g_pp); diag_precon_pp=1._iwp/diag_precon_pp
  DEALLOCATE(g_g_pp)
 
 !-------------------------------------------------------------------------
@@ -281,8 +317,10 @@ PROGRAM xx18
  CALL VecDestroy(p_b,p_ierr)
  CALL MatDestroy(p_A,p_ierr)
 
-! CALL PCG_VER1(inewton,limit,tol,storkm_pp,r_pp,diag_precon_pp, &
-!               rn0,x_pp,iters)
+!!$CALL PCG_VER1(inewton,limit,tol,storkm_pp,r_pp,diag_precon_pp, &
+!!$              rn0,x_pp,iters)
+!!$
+!!$ xnew_pp   = x_pp
 
 !--------------------- preconditioned cg iterations ----------------------
 ! iters=0; timest(3)=elap_time()
@@ -310,6 +348,7 @@ PROGRAM xx18
    WRITE(11,'(A,E17.7)')"The true residual L2 norm ||b-Ax|| was  ",p_r_n2
    WRITE(11,'(A,E17.7)')"The relative error ||b-Ax||/||b|| was   ",      &
                         p_r_n2/p_b_n2
+!!$   WRITE(11,'(A,I6)')"The number of iterations to convergence was ",iters
    WRITE(11,'(A,F10.4)')"Time to solve equations was  :",                &
                          elap_time()-timest(3)  
    WRITE(11,'(A,E12.4)')"The central nodal displacement is :",xnew_pp(1)
