@@ -682,13 +682,13 @@ if ( cgca_img .eq. 1 ) write (*,*) "load inc:", cgca_liter,            &
                                    "clvg iter:", cgca_clvg_iter
 
 ! Cray can use a version with CO_SUM.
-! subroutine cgca_clvgp( coarray, rt, t, scrit, sub, &
+! subroutine cgca_clvgp( coarray, rt, t, scrit, sub, gcus, &
 !   periodicbc, iter, heartbeat, debug )
 ! sync all inside
 ! lower the crit stresses by a factor of 100.
 call cgca_clvgp( cgca_space, cgca_grt, cgca_stress,                    &
-     0.01_rdef * cgca_scrit, cgca_clvgsd, .false., cgca_clvg_iter,     &
-     10, cgca_yesdebug )
+     0.01_rdef * cgca_scrit, cgca_clvgsd, cgca_gcupdn, .false.,        &
+     cgca_clvg_iter, 10, cgca_yesdebug )
 
 if ( cgca_img .eq. 1 ) write (*,*) "dumping model to file"
 write ( cgca_citer, "(i0)" ) cgca_liter
