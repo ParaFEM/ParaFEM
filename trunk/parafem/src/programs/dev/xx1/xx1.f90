@@ -113,9 +113,13 @@ PROGRAM xx1
 
   CALL read_xx1(job_name,numpe,e,element,fixed_freedoms,limit,loaded_nodes, &
                  meshgen,nels,nip,nn,nod,nr,partitioner,tol,v)
- 
-  nprops   = 2   ! needs to go in .dat file and be read using READ_XX1
-  np_types = 2   ! needs to go in .dat file and be read using READ_XX1
+
+!
+! This part required if we have more than one material type in the mesh
+!
+! nprops   = 2   ! needs to go in .dat file and be read using READ_XX1
+! np_types = 2   ! needs to go in .dat file and be read using READ_XX1
+!
  
   CALL calc_nels_pp(job_name,nels,npes,numpe,partitioner,nels_pp)
 
@@ -162,12 +166,18 @@ PROGRAM xx1
   fname = job_name(1:LEN_TRIM(job_name)) // ".mat"
   CALL read_materialValue(prop,fname,numpe,npes)
 
-  IF(io_binary) THEN
-    CALL read_etype_pp_be(job_name,npes,numpe,etype_pp)
-  ELSE
-    PRINT *, "Different material types not supported for ASCII files"
-    CALL shutdown()
-  END IF
+!
+! This part required if there is more than one type of material in the mesh
+!
+! IF(io_binary) THEN
+!   CALL read_etype_pp_be(job_name,npes,numpe,etype_pp)
+! ELSE
+!   PRINT *, "Different material types not supported for ASCII files"
+!   CALL shutdown()
+! END IF
+!
+
+  etype_pp = 1  ! all elements have the material ID "1"
 
   timest(7) = elap_time()
    
