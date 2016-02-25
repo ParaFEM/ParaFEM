@@ -1,0 +1,2057 @@
+<?xml version="1.0" encoding="ISO-8859-1"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"
+                      "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html  xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+<head>
+<meta http-equiv="Content-Style-Type" content="text/css" />
+<meta http-equiv="Content-type" content="text/html; charset=ISO-8859-1" />
+<link rel="stylesheet" href="./parafem-api-38.0.css" type="text/css" />
+<title>./parafem-api-38.0</title>
+<!-- Source: ./../src/modules/ -->
+<!-- Generated with ROBODoc Version 4.99.32 (Apr 24 2007) -->
+</head>
+<body>
+<div id="logo">
+<a name="robo_top_of_doc">ParaFEM API (Version 38.0)</a>
+</div> <!-- logo -->
+<h3>TABLE OF CONTENTS</h3>
+<ul>
+<li>1. <a href="#robo0">/elements</a></li>
+<ul>
+<li>1.1. <a href="#robo13">elements/beemat</a></li>
+<li>1.2. <a href="#robo14">elements/deemat</a></li>
+<li>1.3. <a href="#robo15">elements/ecmat</a></li>
+<li>1.4. <a href="#robo16">elements/sample</a></li>
+<li>1.5. <a href="#robo17">elements/shape_der</a></li>
+<li>1.6. <a href="#robo18">elements/shape_fun</a></li>
+</ul>
+<li>2. <a href="#robo1">/gather_scatter</a></li>
+<ul>
+<li>2.1. <a href="#robo19">gather_scatter/allocate_gather_scatter</a></li>
+<li>2.2. <a href="#robo20">gather_scatter/calc_nels_pp</a></li>
+<li>2.3. <a href="#robo21">gather_scatter/calc_neq_pp</a></li>
+<li>2.4. <a href="#robo22">gather_scatter/calc_npes_pp</a></li>
+<li>2.5. <a href="#robo23">gather_scatter/deallocate_gather_scatter</a></li>
+<li>2.6. <a href="#robo24">gather_scatter/gather</a></li>
+<li>2.7. <a href="#robo25">gather_scatter/make_ggl</a></li>
+<li>2.8. <a href="#robo26">gather_scatter/mperror</a></li>
+<li>2.9. <a href="#robo27">gather_scatter/my_barrier</a></li>
+<li>2.10. <a href="#robo28">gather_scatter/scatter</a></li>
+<li>2.11. <a href="#robo29">gather_scatter/scatter_noadd</a></li>
+<li>2.12. <a href="#robo30">gather_scatter/scatter_nodes</a></li>
+</ul>
+<li>3. <a href="#robo2">/global_variables</a></li>
+<li>4. <a href="#robo3">/input</a></li>
+<ul>
+<li>4.1. <a href="#robo31">input/read_g_coord_pp</a></li>
+<li>4.2. <a href="#robo32">input/read_g_num_pp</a></li>
+<li>4.3. <a href="#robo33">input/read_loads</a></li>
+<li>4.4. <a href="#robo34">input/read_p121</a></li>
+<li>4.5. <a href="#robo35">input/read_p129</a></li>
+<li>4.6. <a href="#robo36">input/read_rest</a></li>
+</ul>
+<li>5. <a href="#robo4">/loading</a></li>
+<ul>
+<li>5.1. <a href="#robo37">loading/load</a></li>
+</ul>
+<li>6. <a href="#robo5">/maths</a></li>
+<ul>
+<li>6.1. <a href="#robo38">maths/determinant</a></li>
+<li>6.2. <a href="#robo39">maths/dot_product_p</a></li>
+<li>6.3. <a href="#robo40">maths/invert</a></li>
+<li>6.4. <a href="#robo41">maths/max_integer_p</a></li>
+<li>6.5. <a href="#robo42">maths/max_real_r</a></li>
+<li>6.6. <a href="#robo43">maths/maxabsval_p</a></li>
+<li>6.7. <a href="#robo44">maths/maxval_p</a></li>
+<li>6.8. <a href="#robo45">maths/norm_p</a></li>
+<li>6.9. <a href="#robo46">maths/sum_p</a></li>
+</ul>
+<li>7. <a href="#robo6">/mp_interface</a></li>
+<ul>
+<li>7.1. <a href="#robo47">mp_interface/find_pe_procs</a></li>
+</ul>
+<li>8. <a href="#robo7">/output</a></li>
+<ul>
+<li>8.1. <a href="#robo48">output/job_name_error</a></li>
+<li>8.2. <a href="#robo49">output/write_nodal_variable</a></li>
+<li>8.3. <a href="#robo50">output/write_p121</a></li>
+<li>8.4. <a href="#robo51">output/write_p129</a></li>
+</ul>
+<li>9. <a href="#robo8">/partition</a></li>
+<ul>
+<li>9.1. <a href="#robo52">partition/calc_nodes_pp</a></li>
+</ul>
+<li>10. <a href="#robo9">/pcg</a></li>
+<ul>
+<li>10.1. <a href="#robo53">pcg/checon_par</a></li>
+</ul>
+<li>11. <a href="#robo10">/precision</a></li>
+<li>12. <a href="#robo11">/steering</a></li>
+<ul>
+<li>12.1. <a href="#robo54">steering/abaqus2sg</a></li>
+<li>12.2. <a href="#robo55">steering/find_g</a></li>
+<li>12.3. <a href="#robo56">steering/rearrange</a></li>
+</ul>
+<li>13. <a href="#robo12">/timing</a></li>
+<ul>
+<li>13.1. <a href="#robo57">timing/elap_time</a></li>
+</ul>
+</ul>
+<a name="robo0">
+<a name="2felements">
+<h1>1.  /elements [ Modules ]  </h1>
+<p>[ <a href="#robo_top_of_doc">Top</a> ] [ Modules ]</p>
+<p class="item_name">NAME</p>
+<pre>    MODULE: <strong>elements</strong>
+</pre>
+<p class="item_name">SYNOPSIS</p>
+<pre>    Usage:      USE <strong>elements</strong>
+</pre>
+<p class="item_name">FUNCTION</p>
+<pre>    Contains subroutines used for computing element level matrices
+    
+    Subroutine             Purpose
+
+    SHAPE_FUN              Computes the shape functions
+    SHAPE_DER              Compute the derivatives of the shape functions
+    BEEMAT                 Compute the B matrix
+    SAMPLE                 Returns local coords of the integrating points
+    ECMAT                  Returns the consistent mass matrix
+    DEEMAT                 Compute the D matrix
+</pre>
+<p class="item_name">AUTHOR</p>
+<pre>    I.M. Smith
+    D.V. Griffiths
+</pre>
+<p class="item_name">COPYRIGHT</p>
+<pre>    2004-2010 University of Manchester
+</pre>
+<a name="robo13">
+<a name="elements2fbeemat">
+<h2>1.1.  elements/beemat [ Functions ]  </h2>
+<p>[ <a href="#robo_top_of_doc">Top</a> ] [ <a href="#robo0">elements</a> ] [ Functions ]</p>
+<p class="item_name">NAME</p>
+<pre>    SUBROUTINE: <strong>beemat</strong>
+</pre>
+<p class="item_name">SYNOPSIS</p>
+<pre>    Usage:      CALL <strong>beemat</strong>(deriv,bee)
+</pre>
+<p class="item_name">FUNCTION</p>
+<pre>    Build B-array for 3D elasticity or elastoplasticity (ih=3 or 4
+    respectively) or for 3D (ih=6)
+</pre>
+<p class="item_name">INPUTS</p>
+<pre>    The following arguments have the INTENT(IN) attribute:
+
+    deriv(ndim,nod)     : Real
+                        : Shape function derivatives in the undeformed
+                          mesh at a Gauss point
+
+    The following arguments have the INTENT(OUT) attribute:
+
+    bee(nst,ndof)       : Real
+                        : Shape function derivatives in the undeformed
+                          element arranged in B array
+</pre>
+<p class="item_name">AUTHOR</p>
+<pre>    I.M. Smith
+    D.V. Griffiths
+</pre>
+<p class="item_name">COPYRIGHT</p>
+<pre>    (c) University of Manchester 2004-2010
+</pre>
+<a name="robo14">
+<a name="elements2fdeemat">
+<h2>1.2.  elements/deemat [ Functions ]  </h2>
+<p>[ <a href="#robo_top_of_doc">Top</a> ] [ <a href="#robo0">elements</a> ] [ Functions ]</p>
+<p class="item_name">NAME</p>
+<pre>    SUBROUTINE: <strong>deemat</strong>
+</pre>
+<p class="item_name">SYNOPSIS</p>
+<pre>    Usage:      CALL <strong>deemat</strong>(e,v,dee)
+</pre>
+<p class="item_name">FUNCTION</p>
+<pre>    Compute the material matrix (D-matrix) for a linear elastic material.
+    It's valid for plane strain (ih=3), axisymmetry or plane strain
+    elastoplasticity (ih=4) or 3D problems (ih=6)
+</pre>
+<p class="item_name">INPUTS</p>
+<pre>    The following arguments have the INTENT(IN) attribute:
+
+    e                         : Real
+                              : Young's modulus
+
+    v                         : Real
+                              : Poisson's ratio
+
+    The following argument has the INTENT(OUT) attribute:
+
+    dee(nst,nst)              : Real
+                              : Material matrix for linear elasticity
+</pre>
+<p class="item_name">AUTHOR</p>
+<pre>    Smith and Griffiths 4th Edition
+</pre>
+<p class="item_name">COPYRIGHT</p>
+<pre>    (c) University of Manchester 2004-2010
+</pre>
+<a name="robo15">
+<a name="elements2fecmat">
+<h2>1.3.  elements/ecmat [ Functions ]  </h2>
+<p>[ <a href="#robo_top_of_doc">Top</a> ] [ <a href="#robo0">elements</a> ] [ Functions ]</p>
+<p class="item_name">NAME</p>
+<pre>    SUBROUTINE: <strong>ecmat</strong>
+</pre>
+<p class="item_name">SYNOPSIS</p>
+<pre>    Usage:      CALL <strong>ecmat</strong>(ecm,fun,ndof,nodof)
+</pre>
+<p class="item_name">FUNCTION</p>
+<pre>    Returns the consistent mass matrix ECM for an element with shape
+    functions FUN, NDOF freedoms and NODOF freedoms per node 
+    Source: "Programming the Finite Element Method"
+</pre>
+<p class="item_name">INPUTS</p>
+<pre>    The following arguments have the INTENT(IN) attribute:
+
+    fun(:)              : Real
+                        : Element shape functions
+
+    nodof               : Integer
+                        : Freedoms per node
+
+    ndof                : Integer
+                        : Number of degrees of freedom per element
+                          
+  OUTPUTS
+    The following arguments have the INTENT(OUT) attribute:
+
+    ecm(:,:)            : Real
+                        : Element consistent mass matrix
+</pre>
+<p class="item_name">AUTHOR</p>
+<pre>    I.M. Smith
+    D.V. Griffiths
+</pre>
+<p class="item_name">COPYRIGHT</p>
+<pre>    (c) University of Manchester 2004-2010
+</pre>
+<a name="robo16">
+<a name="elements2fsample">
+<h2>1.4.  elements/sample [ Functions ]  </h2>
+<p>[ <a href="#robo_top_of_doc">Top</a> ] [ <a href="#robo0">elements</a> ] [ Functions ]</p>
+<p class="item_name">NAME</p>
+<pre>    SUBROUTINE: <strong>sample</strong>
+</pre>
+<p class="item_name">SYNOPSIS</p>
+<pre>    Usage:      CALL <strong>sample</strong>(element,s,wt)
+</pre>
+<p class="item_name">FUNCTION</p>
+<pre>    Returns the local coordinates of the integrating points. 
+    Source: "Programming the Finite Element Method"
+</pre>
+<p class="item_name">INPUTS</p>
+<pre>    The following arguments have the INTENT(IN) attribute:
+
+    element             : Character
+                        : Element type
+                          
+  OUTPUTS
+    The following arguments have the INTENT(OUT) attribute:
+
+    s(:,:)              : Real
+                        : Local coordinates of the integrating points
+
+    wt(:)               : Real
+                        : Weighting function
+</pre>
+<p class="item_name">AUTHOR</p>
+<pre>    I.M. Smith
+    D.V. Griffiths
+</pre>
+<p class="item_name">COPYRIGHT</p>
+<pre>    (c) University of Manchester 2004-2010
+</pre>
+<a name="robo17">
+<a name="elements2fshape5fder">
+<h2>1.5.  elements/shape_der [ Functions ]  </h2>
+<p>[ <a href="#robo_top_of_doc">Top</a> ] [ <a href="#robo0">elements</a> ] [ Functions ]</p>
+<p class="item_name">NAME</p>
+<pre>    SUBROUTINE: <strong>shape_der</strong>
+</pre>
+<p class="item_name">SYNOPSIS</p>
+<pre>    Usage:      CALL <strong>shape_der</strong>(der,points,i)
+</pre>
+<p class="item_name">FUNCTION</p>
+<pre>    Compute the derivatives of the shape functions at a Gauss point.
+    Source: "Programming the Finite Element Method"
+</pre>
+<p class="item_name">INPUTS</p>
+<pre>    The following arguments have the INTENT(IN) attribute:
+
+    i                  : Integer
+                       : Gauss point number
+
+    points(nip,ndim)   : Real
+                       : Gauss points coordinates at the reference 
+                         element
+
+  OUTPUTS
+    The following arguments have the INTENT(OUT) attribute:
+
+    der(ndim,nod)      : Real
+                       : Derivatives of the shape functions at a 
+                         Gauss point
+</pre>
+<p class="item_name">AUTHOR</p>
+<pre>    I.M. Smith
+    D.V. Griffiths
+</pre>
+<p class="item_name">COPYRIGHT</p>
+<pre>    (c) University of Manchester 2004-2010
+</pre>
+<a name="robo18">
+<a name="elements2fshape5ffun">
+<h2>1.6.  elements/shape_fun [ Functions ]  </h2>
+<p>[ <a href="#robo_top_of_doc">Top</a> ] [ <a href="#robo0">elements</a> ] [ Functions ]</p>
+<p class="item_name">NAME</p>
+<pre>    SUBROUTINE: <strong>shape_fun</strong>
+</pre>
+<p class="item_name">SYNOPSIS</p>
+<pre>    Usage:      CALL <strong>shape_fun</strong>(fun,points,i)
+</pre>
+<p class="item_name">FUNCTION</p>
+<pre>    Compute the value of the shape functions at a Gauss point.
+    Source: "Programming the Finite Element Method"
+</pre>
+<p class="item_name">INPUTS</p>
+<pre>    The following arguments have the INTENT(IN) attribute:
+
+    i                  : Integer
+                       : Gauss point number
+
+    points(ndim,nip)   : Real
+                       : Gauss points coordinates at the reference 
+                         element
+
+    The following arguments have the INTENT(OUT) attribute:
+
+    fun(nod)           : Real
+                       : Value of the shape functions at a 
+                         Gauss point
+</pre>
+<p class="item_name">AUTHOR</p>
+<pre>    I.M. Smith
+    D.V. Griffiths
+</pre>
+<p class="item_name">COPYRIGHT</p>
+<pre>    (c) University of Manchester 2004-2010
+</pre>
+<a name="robo1">
+<a name="2fgather5fscatter">
+<h1>2.  /gather_scatter [ Modules ]  </h1>
+<p>[ <a href="#robo_top_of_doc">Top</a> ] [ Modules ]</p>
+<p class="item_name">NAME</p>
+<pre>    MODULE: <strong>gather_scatter</strong>
+</pre>
+<p class="item_name">SYNOPSIS</p>
+<pre>    Usage:      USE <strong>gather_scatter</strong>
+</pre>
+<p class="item_name">FUNCTION</p>
+<pre>    Subroutine                 Purpose
+
+    MY_BARRIER                 Synchronises all processors
+    MPERROR                    Returns an error code
+    CALC_NELS_PP               Computes number of <a href="#robo0">elements</a> per processor
+    CALC_NEQ_PP                Computes number of equations per processor
+    CALC_NPES_PP               Computes size of arrays for data exchange
+    ALLOCATE_GATHER_SCATTER    Allocates arrays used in GATHER &amp; SCATTER
+    DEALLOCATE_GATHER_SCATTER  Deallocates arrays used in GATHER &amp; SCATTER
+    GATHER                     Performs the <a href="#robo24">gather</a> operation: pmul = p(g)
+    SCATTER                    Performs the operation: u(g) = u(g) + utemp
+    SCATTER_NOADD              Performs the operation: u(g) = utemp
+    MAKE_GGL                   Relates equations to <a href="#robo0">elements</a> and processors
+    SCATTER_NODES                         
+</pre>
+<p class="item_name">AUTHOR</p>
+<pre>    M.A. Pettipher
+    L. Margetts
+    V. Szeremi
+    F. Calvo
+</pre>
+<p class="item_name">COPYRIGHT</p>
+<pre>    (c) University of Manchester 1996-2010
+</pre>
+<a name="robo19">
+<a name="gather5fscatter2fallocate5fgather5fscatter">
+<h2>2.1.  gather_scatter/allocate_gather_scatter [ Functions ]  </h2>
+<p>[ <a href="#robo_top_of_doc">Top</a> ] [ <a href="#robo1">gather_scatter</a> ] [ Functions ]</p>
+<p class="item_name">NAME</p>
+<pre>    SUBROUTINE: <strong>allocate_gather_scatter</strong>
+</pre>
+<p class="item_name">SYNOPSIS</p>
+<pre>    Usage:      CALL <strong>allocate_gather_scatter</strong>(npes_pp,npes)
+</pre>
+<p class="item_name">FUNCTION</p>
+<pre>    Allocates the arrays used in the subroutines GATHER and SCATTER.
+</pre>
+<p class="item_name">INPUTS</p>
+<pre>    The following arguments have the INTENT(IN) attribute:
+
+    npes_pp               : Integer
+                          : Number of processors each processor needs to 
+                          : communicate with.
+
+    npes                  : Integer
+                          : Total number of processors used by the program.
+</pre>
+<p class="item_name">AUTHOR</p>
+<pre>    M.A. Pettipher
+</pre>
+<p class="item_name">COPYRIGHT</p>
+<pre>    (c) University of Manchester 1996-2010
+</pre>
+<a name="robo20">
+<a name="gather5fscatter2fcalc5fnels5fpp">
+<h2>2.2.  gather_scatter/calc_nels_pp [ Functions ]  </h2>
+<p>[ <a href="#robo_top_of_doc">Top</a> ] [ <a href="#robo1">gather_scatter</a> ] [ Functions ]</p>
+<p class="item_name">NAME</p>
+<pre>    SUBROUTINE: <strong>calc_nels_pp</strong>
+</pre>
+<p class="item_name">SYNOPSIS</p>
+<pre>    Usage:      CALL <strong>calc_nels_pp</strong>(nels)
+</pre>
+<p class="item_name">FUNCTION</p>
+<pre>    Calculates the number of <a href="#robo0">elements</a>, NELS_PP, assigned to each processor.
+    It is effectively a very naive method of mesh partitioning. The 
+    subroutine also computes, IEL_START, the first element number on each 
+    processor. IEL_START and NELS_PP are the external variables modified by
+    this subroutine. Note that they are global variables that are not
+    passed through the list of arguments.
+
+    An example follows which explains how this subroutine works: 
+
+    If we have:   nels = 103 (number of <a href="#robo0">elements</a>)     
+                  npes = 5  (number of processors)
+
+    The <a href="#robo7">output</a> will be:
+
+    nels_pp2     = 20 (103/5=20, so 20 <a href="#robo0">elements</a> for each processor and the 
+                       remaining 3 <a href="#robo0">elements</a> will be assigned to the first 
+                       3 processors)
+
+    num_nels_pp1 = 3  (103 - 20*5 = 3, these are the 3 remaining <a href="#robo0">elements</a>)
+
+    nels_pp2     = 21 (number of <a href="#robo0">elements</a> assigned to the first 3 processors)
+
+    So the result is:
+
+    On processor 1 (numpe = 1) -----&gt; nels_pp=21  iel_start=1
+    On processor 2 (numpe = 2) -----&gt; nels_pp=21  iel_start=22
+    On processor 3 (numpe = 3) -----&gt; nels_pp=21  iel_start=43
+    On processor 4 (numpe = 4) -----&gt; nels_pp=20  iel_start=64
+    On processor 5 (numpe = 5) -----&gt; nels_pp=20  iel_start=84
+</pre>
+<p class="item_name">INPUTS</p>
+<pre>    The following argument has the INTENT(IN) attribute:
+
+    nels                  : Integer
+                          : Total number of <a href="#robo0">elements</a> in the mesh
+</pre>
+<p class="item_name">AUTHOR</p>
+<pre>    M.A. Pettipher
+    L. Margetts
+</pre>
+<p class="item_name">COPYRIGHT</p>
+<pre>    (c) University of Manchester 1996-2010
+</pre>
+<a name="robo21">
+<a name="gather5fscatter2fcalc5fneq5fpp">
+<h2>2.3.  gather_scatter/calc_neq_pp [ Functions ]  </h2>
+<p>[ <a href="#robo_top_of_doc">Top</a> ] [ <a href="#robo1">gather_scatter</a> ] [ Functions ]</p>
+<p class="item_name">NAME</p>
+<pre>    SUBROUTINE: <strong>calc_neq_pp</strong>
+</pre>
+<p class="item_name">SYNOPSIS</p>
+<pre>    Usage:      CALL <strong>calc_neq_pp</strong>(nels)
+</pre>
+<p class="item_name">FUNCTION</p>
+<pre>    Calculates the number of equations, NEQ_PP, assigned to each processor.
+    It is effectively a very naive method of mesh partitioning. The 
+    subroutine also computes, IEQ_START, the first equation number on each 
+    processor. IEQ_START and NEQ_PP are external variables modified by this
+    subroutine. Note that they are global variables that are not passed
+    through the list of arguments.
+
+    An example follows which explains how this subroutine works: 
+
+    If we have:   nels = 103 (number of equations)     
+                  npes = 5   (number of processors)
+
+    The <a href="#robo7">output</a> will be:
+
+    neq_pp2      = 20 (103/5=20, so 20 equations for each processor and the 
+                       remaining 3 equations will be assigned to the first 
+                       3 processors)
+
+    num_neq_pp1  = 3  (103 - 20*5 = 3, these are the 3 remaining equations)
+
+    nels_pp2     = 21 (number of <a href="#robo0">elements</a> assigned to the first 3 processors)
+
+    So the result is:
+
+    On processor 1 (numpe = 1) -----&gt; neq_pp=21    ieq_start=1
+    On processor 2 (numpe = 2) -----&gt; neq_pp=21    ieq_start=22
+    On processor 3 (numpe = 3) -----&gt; neq_pp=21    ieq_start=43
+    On processor 4 (numpe = 4) -----&gt; neq_pp=20    ieq_start=64
+    On processor 5 (numpe = 5) -----&gt; neq_pp=20    ieq_start=84
+</pre>
+<p class="item_name">AUTHOR</p>
+<pre>    M.A. Pettipher
+</pre>
+<p class="item_name">COPYRIGHT</p>
+<pre>    (c) University of Manchester 1996-2010
+</pre>
+<a name="robo22">
+<a name="gather5fscatter2fcalc5fnpes5fpp">
+<h2>2.4.  gather_scatter/calc_npes_pp [ Functions ]  </h2>
+<p>[ <a href="#robo_top_of_doc">Top</a> ] [ <a href="#robo1">gather_scatter</a> ] [ Functions ]</p>
+<p class="item_name">NAME</p>
+<pre>    SUBROUTINE: <strong>calc_npes_pp</strong>
+</pre>
+<p class="item_name">SYNOPSIS</p>
+<pre>    Usage:      CALL <strong>calc_npes_pp</strong>(npes,npes_pp)
+</pre>
+<p class="item_name">FUNCTION</p>
+<pre>    Sets value to be used in initial dimensions of toget and toput. We do
+    not know the exact number of processors needed by each processor until
+    MAKE_GGL is called, but we must declare these arrays (or at least
+    temporary versions of them) before the exact number is known. NPES
+    is definitely enough, but wasteful of memory, so make rough
+    overestimate based on number of processors, NPES.
+</pre>
+<p class="item_name">AUTHOR</p>
+<pre>    M.A. Pettipher
+    L. Margetts
+</pre>
+<p class="item_name">COPYRIGHT</p>
+<pre>    (c) University of Manchester 1996-2010
+</pre>
+<a name="robo23">
+<a name="gather5fscatter2fdeallocate5fgather5fscatter">
+<h2>2.5.  gather_scatter/deallocate_gather_scatter [ Functions ]  </h2>
+<p>[ <a href="#robo_top_of_doc">Top</a> ] [ <a href="#robo1">gather_scatter</a> ] [ Functions ]</p>
+<p class="item_name">NAME</p>
+<pre>    SUBROUTINE: <strong>deallocate_gather_scatter</strong>
+</pre>
+<p class="item_name">SYNOPSIS</p>
+<pre>    Usage:      CALL <strong>deallocate_gather_scatter</strong>(npes_pp,npes)
+</pre>
+<p class="item_name">FUNCTION</p>
+<pre>    Deallocates the arrays used in the subroutines GATHER and SCATTER.
+</pre>
+<p class="item_name">AUTHOR</p>
+<pre>    M.A. Pettipher
+</pre>
+<p class="item_name">COPYRIGHT</p>
+<pre>    (c) University of Manchester 1996-2010
+</pre>
+<a name="robo24">
+<a name="gather5fscatter2fgather">
+<h2>2.6.  gather_scatter/gather [ Functions ]  </h2>
+<p>[ <a href="#robo_top_of_doc">Top</a> ] [ <a href="#robo1">gather_scatter</a> ] [ Functions ]</p>
+<p class="item_name">NAME</p>
+<pre>    SUBROUTINE: <strong>gather</strong>
+</pre>
+<p class="item_name">SYNOPSIS</p>
+<pre>    Usage:      CALL <strong>gather</strong>(p_pp,pmul_pp)
+</pre>
+<p class="item_name">FUNCTION</p>
+<pre>    Performs the <strong>gather</strong> operation: pmul = p(g).
+</pre>
+<p class="item_name">INPUTS</p>
+<pre>    The following arguments have the INTENT(IN) attribute:
+
+    p_pp(:)               : Real
+                          : Distributed vector of dimension NEQ_PP
+
+    pmul_pp(:,:)          : Real
+                          : Distributed array(NTOT,NELS_PP) that is 
+                          : to be populated with the values in P_PP, 
+                          : arranged in an element-by-element form.
+</pre>
+<p class="item_name">AUTHOR</p>
+<pre>    M.A. Pettipher
+</pre>
+<p class="item_name">COPYRIGHT</p>
+<pre>    (c) University of Manchester 1996-2010
+</pre>
+<a name="robo25">
+<a name="gather5fscatter2fmake5fggl">
+<h2>2.7.  gather_scatter/make_ggl [ Functions ]  </h2>
+<p>[ <a href="#robo_top_of_doc">Top</a> ] [ <a href="#robo1">gather_scatter</a> ] [ Functions ]</p>
+<p class="item_name">NAME</p>
+<pre>    SUBROUTINE: <strong>make_ggl</strong>
+</pre>
+<p class="item_name">SYNOPSIS</p>
+<pre>    Usage:      CALL <strong>make_ggl</strong>(npes_pp,npes,gg_pp)
+</pre>
+<p class="item_name">FUNCTION</p>
+<pre>    Generates ggl_pp and associated arrays.
+</pre>
+<p class="item_name">INPUTS</p>
+<pre>    The following arguments have the INTENT(IN) attribute:
+</pre>
+<p class="item_name">AUTHOR</p>
+<pre>    M.A. Pettipher
+</pre>
+<p class="item_name">COPYRIGHT</p>
+<pre>    (c) University of Manchester 1996-2010
+</pre>
+<a name="robo26">
+<a name="gather5fscatter2fmperror">
+<h2>2.8.  gather_scatter/mperror [ Functions ]  </h2>
+<p>[ <a href="#robo_top_of_doc">Top</a> ] [ <a href="#robo1">gather_scatter</a> ] [ Functions ]</p>
+<p class="item_name">NAME</p>
+<pre>    SUBROUTINE: <strong>mperror</strong>
+</pre>
+<p class="item_name">SYNOPSIS</p>
+<pre>    Usage:      CALL <strong>mperror</strong>(cherror,errcode)
+</pre>
+<p class="item_name">AUTHOR</p>
+<pre>    M.A. Pettipher
+</pre>
+<p class="item_name">COPYRIGHT</p>
+<pre>    (c) University of Manchester 1996-2010
+</pre>
+<a name="robo27">
+<a name="gather5fscatter2fmy5fbarrier">
+<h2>2.9.  gather_scatter/my_barrier [ Functions ]  </h2>
+<p>[ <a href="#robo_top_of_doc">Top</a> ] [ <a href="#robo1">gather_scatter</a> ] [ Functions ]</p>
+<p class="item_name">NAME</p>
+<pre>    SUBROUTINE: <strong>my_barrier</strong>
+</pre>
+<p class="item_name">SYNOPSIS</p>
+<pre>    Usage:      CALL <strong>my_barrier</strong>(numpe,ibar,channel,chstr)
+</pre>
+<p class="item_name">AUTHOR</p>
+<pre>    M.A. Pettipher
+</pre>
+<p class="item_name">COPYRIGHT</p>
+<pre>    (c) University of Manchester 1996-2010
+</pre>
+<a name="robo28">
+<a name="gather5fscatter2fscatter">
+<h2>2.10.  gather_scatter/scatter [ Functions ]  </h2>
+<p>[ <a href="#robo_top_of_doc">Top</a> ] [ <a href="#robo1">gather_scatter</a> ] [ Functions ]</p>
+<p class="item_name">NAME</p>
+<pre>    SUBROUTINE: <strong>scatter</strong>
+</pre>
+<p class="item_name">SYNOPSIS</p>
+<pre>    Usage:      CALL <strong>scatter</strong>(u_pp,utemp_pp)
+</pre>
+<p class="item_name">FUNCTION</p>
+<pre>    Performs the <strong>scatter</strong> operation: u(g) = u(g) + utemp.
+</pre>
+<p class="item_name">INPUTS</p>
+<pre>    The following argument has the INTENT(IN) attribute:
+
+    utemp_pp(:)           : Real
+                          : Distributed array(NTOT,NELS_PP) that contains
+                          : data in an element-by-element form that is to 
+                          : be scattered to a vector of dimension NEQ_PP
+
+    The following argument has the INTENT(INOUT) attribute:
+
+    u_pp(:,:)             : Real
+                          : Distributed vector of dimension NEQ_PP.
+</pre>
+<p class="item_name">AUTHOR</p>
+<pre>    M.A. Pettipher
+</pre>
+<p class="item_name">COPYRIGHT</p>
+<pre>    (c) University of Manchester 1996-2010
+</pre>
+<a name="robo29">
+<a name="gather5fscatter2fscatter5fnoadd">
+<h2>2.11.  gather_scatter/scatter_noadd [ Functions ]  </h2>
+<p>[ <a href="#robo_top_of_doc">Top</a> ] [ <a href="#robo1">gather_scatter</a> ] [ Functions ]</p>
+<p class="item_name">NAME</p>
+<pre>    SUBROUTINE: <strong>scatter_noadd</strong>
+</pre>
+<p class="item_name">SYNOPSIS</p>
+<pre>    Usage:      CALL <strong>scatter_noadd</strong>(utemp_pp,u_pp)
+</pre>
+<p class="item_name">FUNCTION</p>
+<pre>    Performs the <a href="#robo28">scatter</a> operation: u(g) = utemp.
+</pre>
+<p class="item_name">INPUTS</p>
+<pre>    The following argument has the INTENT(IN) attribute:
+
+    utemp_pp(:)           : Real
+                          : Distributed array(NTOT,NELS_PP) that contains
+                          : data in an element-by-element form that is to 
+                          : be scattered to a vector of dimension NEQ_PP
+
+    The following argument has the INTENT(INOUT) attribute:
+
+    u_pp(:,:)             : Real
+                          : Distributed vector of dimension NEQ_PP.
+</pre>
+<p class="item_name">AUTHOR</p>
+<pre>    M.A. Pettipher
+    V. Szeremi
+</pre>
+<p class="item_name">COPYRIGHT</p>
+<pre>    (c) University of Manchester 1996-2010
+</pre>
+<a name="robo30">
+<a name="gather5fscatter2fscatter5fnodes">
+<h2>2.12.  gather_scatter/scatter_nodes [ Functions ]  </h2>
+<p>[ <a href="#robo_top_of_doc">Top</a> ] [ <a href="#robo1">gather_scatter</a> ] [ Functions ]</p>
+<p class="item_name">NAME</p>
+<pre>    SUBROUTINE: <strong>scatter_nodes</strong>
+</pre>
+<p class="item_name">SYNOPSIS</p>
+<pre>    Usage:      CALL <strong>scatter_nodes</strong>(npes,nn,nels_pp,g_num_pp,nod,        &amp;
+                            numvar,nodes_pp,node_start,node_end,        &amp;
+                            element_contribution,nodal_value,flag)
+</pre>
+<p class="item_name">FUNCTION</p>
+<pre>    Assembly element contributions of a nodal value
+</pre>
+<p class="item_name">INPUTS</p>
+<pre>    The following arguments have the INTENT(IN) attribute:
+
+    flag                  : Integer
+                          : Indicator (1 average sum, 0 total sum)
+
+    nels_pp               : Integer
+                          : Number of <a href="#robo0">elements</a> per processor
+
+    nn                    : Integer
+                          : Total number of nodes
+
+    nod                   : Integer
+                          : Number of nodes per element
+
+    node_end              : Integer
+                          : Last node stored in the process
+
+    node_start            : Integer
+                          : First node stored in the process
+
+    nodes_pp              : Integer
+                          : Number of nodes stored in the process
+
+    npes                  : Integer
+                          : Number of processes
+
+    numvar                : Integer
+                          : Number of components of the variable
+                            (1-scalar, 3-vector, 6-tensor)
+
+    g_num_pp(nod,nels_pp) : Integer
+                          : Elements connectivity
+
+    element_contribution(ntot,nels_pp) : Real
+                                       : Elements contribution to the 
+                                         nodal variable
+
+    The following arguments have the INTENT(OUT) attribute:
+
+    nodal_value(nodes_pp*nodof)        : Real
+                                       : Value after assembling <a href="#robo0">elements</a>
+                                         contribution
+</pre>
+<p class="item_name">AUTHOR</p>
+<pre>    F. Calvo
+</pre>
+<p class="item_name">COPYRIGHT</p>
+<pre>    (c) University of Manchester 2007-2010
+</pre>
+<a name="robo2">
+<a name="2fglobal5fvariables">
+<h1>3.  /global_variables [ Modules ]  </h1>
+<p>[ <a href="#robo_top_of_doc">Top</a> ] [ Modules ]</p>
+<p class="item_name">NAME</p>
+<pre>    MODULE: <strong>global_variables</strong>
+</pre>
+<p class="item_name">SYNOPSIS</p>
+<pre>    Usage:      USE <strong>global_variables</strong>
+</pre>
+<p class="item_name">FUNCTION</p>
+<pre>    Contains variables used in other modules and the main programs
+</pre>
+<p class="item_name">AUTHOR</p>
+<pre>    M. Pettipher   
+    L. Margetts
+</pre>
+<p class="item_name">COPYRIGHT</p>
+<pre>    (c) University of Manchester 1996-2010 
+</pre>
+<a name="robo3">
+<a name="2finput">
+<h1>4.  /input [ Modules ]  </h1>
+<p>[ <a href="#robo_top_of_doc">Top</a> ] [ Modules ]</p>
+<p class="item_name">NAME</p>
+<pre>    MODULE: <strong>input</strong>
+</pre>
+<p class="item_name">SYNOPSIS</p>
+<pre>    Usage:      USE <strong>input</strong>
+</pre>
+<p class="item_name">FUNCTION</p>
+<pre>    Contains subroutines that handle <strong>input</strong> data. These subroutines are 
+    parallel and require MPI.
+    
+    Subroutine             Purpose
+
+    READ_G_COORD_PP        Reads the global coordinates
+    READ_NUM               Reads the element nodal <a href="#robo11">steering</a> array
+    READ_REST              Reads the restraints
+    READ_P121              Reads the control data for program p121
+    READ_P129              Reads the control data for program p129
+</pre>
+<p class="item_name">AUTHOR</p>
+<pre>    L. Margetts
+</pre>
+<p class="item_name">COPYRIGHT</p>
+<pre>    2004-2010 University of Manchester
+</pre>
+<a name="robo31">
+<a name="input2fread5fg5fcoord5fpp">
+<h2>4.1.  input/read_g_coord_pp [ Functions ]  </h2>
+<p>[ <a href="#robo_top_of_doc">Top</a> ] [ <a href="#robo3">input</a> ] [ Functions ]</p>
+<p class="item_name">NAME</p>
+<pre>    SUBROUTINE: <strong>read_g_coord_pp</strong>
+</pre>
+<p class="item_name">SYNOPSIS</p>
+<pre>    Usage:      CALL <strong>read_g_coord_pp</strong>(job_name,g_num_pp,nn,npes,numpe,     &amp;
+                                     g_coord_pp)
+</pre>
+<p class="item_name">FUNCTION</p>
+<p class="item_name">INPUTS</p>
+<p class="item_name">AUTHOR</p>
+<pre>    Lee Margetts
+</pre>
+<p class="item_name">CREATION DATE</p>
+<pre>    21 May 2008
+</pre>
+<p class="item_name">COPYRIGHT</p>
+<pre>    (c) University of Manchester 2007-2010
+        Available under commercial licence
+</pre>
+<a name="robo32">
+<a name="input2fread5fg5fnum5fpp">
+<h2>4.2.  input/read_g_num_pp [ Functions ]  </h2>
+<p>[ <a href="#robo_top_of_doc">Top</a> ] [ <a href="#robo3">input</a> ] [ Functions ]</p>
+<p class="item_name">NAME</p>
+<pre>    SUBROUTINE: <strong>read_g_num_pp</strong>
+</pre>
+<p class="item_name">SYNOPSIS</p>
+<pre>    Usage:      CALL <strong>read_g_num_pp</strong>(job_name,iel_start,nels,nn,numpe,      &amp;
+                                   g_num_pp)
+</pre>
+<p class="item_name">FUNCTION</p>
+<pre>    Master process reads the global array of <a href="#robo0">elements</a> and broadcasts
+    to slave processes.
+    Processes record only its local part of <a href="#robo0">elements</a>.
+</pre>
+<p class="item_name">INPUTS</p>
+<pre>    The following arguments have the INTENT(IN) attribute:
+
+    job_name              : Character
+                          : Used to create file name to read
+
+    iel_start             : Integer
+                          : First element number in a process
+
+    nels                  : Integer
+                          : Total number of <a href="#robo0">elements</a>
+
+    nn                    : Integer
+                          : Total number of nodes 
+
+    numpe                 : Integer
+                          : Process number
+
+    The following arguments have the INTENT(OUT) attribute:
+
+    g_num_pp(nod,nels_pp) : Integer
+                          : Elements connectivity
+</pre>
+<p class="item_name">AUTHOR</p>
+<pre>    L. Margetts
+</pre>
+<p class="item_name">COPYRIGHT</p>
+<pre>    (c) University of Manchester 2007-2010
+</pre>
+<a name="robo33">
+<a name="input2fread5floads">
+<h2>4.3.  input/read_loads [ Functions ]  </h2>
+<p>[ <a href="#robo_top_of_doc">Top</a> ] [ <a href="#robo3">input</a> ] [ Functions ]</p>
+<p class="item_name">NAME</p>
+<pre>    SUBROUTINE: <strong>read_loads</strong>
+</pre>
+<p class="item_name">SYNOPSIS</p>
+<pre>    Usage:      CALL <strong>read_loads</strong>(job_name,numpe,node,value)
+</pre>
+<p class="item_name">FUNCTION</p>
+<pre>    Master processor reads the global array of nodal forces 
+    and broadcasts them to the slave processors.
+</pre>
+<p class="item_name">INPUTS</p>
+<pre>    The following arguments have the INTENT(IN) attribute:
+
+    job_name                 : Character
+                             : Used to generate file name to read
+
+    numpe                    : Integer
+                             : Processor number used for I/O
+
+    The following arguments have the INTENT(OUT) attribute:
+
+    node(loaded_nodes)       : Integer
+                             : Nodes that have an applied <a href="#robo37">load</a> 
+
+    value(ndim,loaded_nodes) : Real
+                             : Force applied on each node
+</pre>
+<p class="item_name">AUTHOR</p>
+<pre>    L. Margetts
+</pre>
+<p class="item_name">COPYRIGHT</p>
+<pre>    (c) University of Manchester 2007-2010
+</pre>
+<a name="robo34">
+<a name="input2fread5fp121">
+<h2>4.4.  input/read_p121 [ Functions ]  </h2>
+<p>[ <a href="#robo_top_of_doc">Top</a> ] [ <a href="#robo3">input</a> ] [ Functions ]</p>
+<p class="item_name">NAME</p>
+<pre>    SUBROUTINE: <strong>read_p121</strong>
+</pre>
+<p class="item_name">SYNOPSIS</p>
+<pre>    Usage:      CALL <strong>read_p121</strong>(job_name,numpe,e,element,limit,             &amp;
+                               loaded_nodesmesh,nels,nip,nn,nod,nr,tol,v
+</pre>
+<p class="item_name">FUNCTION</p>
+<pre>    Master processor reads the general data for the problem and broadcasts 
+    it to the slave processors.
+</pre>
+<p class="item_name">INPUTS</p>
+<pre>    The following arguments have the INTENT(IN) attribute:
+
+    job_name               : Character
+                           : File name that contains the data to be read
+
+    numpe                  : Integer
+                           : Processor number
+
+    The following arguments have the INTENT(INOUT) attribute:
+
+    e                      : Real
+                           : Young's modulus
+
+    element                : Character
+                           : Element type
+                           : Values: 'hexahedron' or 'tetrahedron'
+
+    limit                  : Integer
+                           : Maximum number of PCG iterations allowed
+
+    loaded_nodes           : Integer
+                           : Number of nodes with applied forces
+
+    mesh                   : Integer
+                           : 1 = Smith and Griffiths numbering scheme
+                           : 2 = Abaqus numbering scheme
+
+    nels                   : Integer
+                           : Total number of <a href="#robo0">elements</a>
+
+    nip                    : Integer
+                           : Number of Gauss integration points
+
+    nn                     : Integer
+                           : Total number of nodes in the mesh
+
+    nod                    : Integer
+                           : Number of nodes per element
+
+    nr                     : Integer
+                           : Number of nodes with restrained degrees of
+                             freedom 
+
+    tol                    : Real
+                           : Tolerance for PCG
+
+    v                      : Real
+                           : Poisson coefficient
+</pre>
+<p class="item_name">AUTHOR</p>
+<pre>    Lee Margetts
+</pre>
+<p class="item_name">CREATION DATE</p>
+<pre>    03.03.2010
+</pre>
+<p class="item_name">COPYRIGHT</p>
+<pre>    (c) University of Manchester 2010
+</pre>
+<a name="robo35">
+<a name="input2fread5fp129">
+<h2>4.5.  input/read_p129 [ Functions ]  </h2>
+<p>[ <a href="#robo_top_of_doc">Top</a> ] [ <a href="#robo3">input</a> ] [ Functions ]</p>
+<p class="item_name">NAME</p>
+<pre>    SUBROUTINE: <strong>read_p129</strong>
+</pre>
+<p class="item_name">SYNOPSIS</p>
+<pre>    Usage:      CALL <strong>read_p129</strong>(job_name,numpe,alpha1,beta1,e,element,     &amp;
+                               limit,loaded_nodes,mesh,nels,nip,nn,nod,   &amp;
+                               npri,nr,nstep,omega,rho,theta,tol,v)
+</pre>
+<p class="item_name">FUNCTION</p>
+<pre>    Master processor reads the general data for the problem and broadcasts 
+    it to the slave processors.
+</pre>
+<p class="item_name">INPUTS</p>
+<pre>    The following scalar character argument has the INTENT(IN) attribute:
+
+    job_name               : File name that contains the data to be read
+
+    The following scalar integer argument has the INTENT(IN) attribute:
+
+    numpe                  : Processor ID of calling processor
+
+    The following scalar real arguments have the INTENT(INOUT) attribute:
+
+    alpha1                 : Rayleigh damping parameter
+    beta1                  : Rayleigh damping parameter
+    e                      : Young's modulus
+    omega                  : Intermediate value
+    rho                    : Density
+    theta                  : Parameter in "theta" integrator
+    tol                    : Convergence tolerance for PCG
+    v                      : Poisson's ratio
+
+    The following scalar integer arguments have an INTENT(INOUT) attribute:
+
+    limit                  : Maximum number of PCG iterations allowed
+    loaded_nodes           : Number of nodes with applied forces
+    mesh                   : Mesh numbering scheme
+                           : 1 = Smith and Griffiths numbering scheme
+                           : 2 = Abaqus numbering scheme
+    nels                   : Total number of <a href="#robo0">elements</a>
+    nip                    : Number of integration points
+    nn                     : Number of nodes in the mesh
+    nod                    : Number of nodes per element
+    npri                   : Print interval
+    nr                     : Number of restrained nodes
+    nstep                  : Number of time steps in analysis
+
+    The following scalar character argument has an INTENT(INOUT) attribute:
+
+    element                : Element type
+                           : Values: 'hexahedron' or 'tetrahedron'
+</pre>
+<p class="item_name">AUTHOR</p>
+<pre>    Lee Margetts
+</pre>
+<p class="item_name">CREATION DATE</p>
+<pre>    25.02.2010
+</pre>
+<p class="item_name">COPYRIGHT</p>
+<pre>    (c) University of Manchester 2010
+</pre>
+<a name="robo36">
+<a name="input2fread5frest">
+<h2>4.6.  input/read_rest [ Functions ]  </h2>
+<p>[ <a href="#robo_top_of_doc">Top</a> ] [ <a href="#robo3">input</a> ] [ Functions ]</p>
+<p class="item_name">NAME</p>
+<pre>    SUBROUTINE: <strong>read_rest</strong>
+</pre>
+<p class="item_name">SYNOPSIS</p>
+<pre>    Usage:      CALL <strong>read_rest</strong>(job_name,numpe,rest)
+</pre>
+<p class="item_name">FUNCTION</p>
+<pre>    Master process reads the global array of nodes with restrained 
+    degrees of freedom.
+    Master process broadcasts to slave processes.
+</pre>
+<p class="item_name">INPUTS</p>
+<pre>    The following arguments have the INTENT(IN) attribute:
+
+    job_name               : Character
+                           : Used to create file name to read
+
+    numpe                  : Integer
+                           : Process number
+
+    The following arguments have the INTENT(OUT) attribute:
+
+    rest(nr,nodof+1)       : Integer
+                           : Nodes (column 1) and degrees of freedom
+                             restrained (columns 2,3,4). 
+                             The criterion is:  0 fixed, ! free
+</pre>
+<p class="item_name">AUTHOR</p>
+<pre>    L. Margetts
+</pre>
+<p class="item_name">COPYRIGHT</p>
+<pre>    (c) University of Manchester 2002-2010
+</pre>
+<a name="robo4">
+<a name="2floading">
+<h1>5.  /loading [ Modules ]  </h1>
+<p>[ <a href="#robo_top_of_doc">Top</a> ] [ Modules ]</p>
+<p class="item_name">NAME</p>
+<pre>    MODULE: <strong>loading</strong>
+</pre>
+<p class="item_name">SYNOPSIS</p>
+<pre>    Usage:      USE <strong>loading</strong>
+</pre>
+<p class="item_name">FUNCTION</p>
+<pre>    Contains subroutines used for <strong>loading</strong>. These subroutines are parallel 
+    and require MPI.
+    
+    Subroutine             Purpose
+
+    LOAD                   Creates the distributed applied loads vector
+</pre>
+<p class="item_name">AUTHOR</p>
+<pre>    L. Margetts
+    I.M. Smith
+    D.V. Griffiths
+</pre>
+<p class="item_name">COPYRIGHT</p>
+<pre>    2004-2010 University of Manchester
+</pre>
+<a name="robo37">
+<a name="loading2fload">
+<h2>5.1.  loading/load [ Functions ]  </h2>
+<p>[ <a href="#robo_top_of_doc">Top</a> ] [ <a href="#robo4">loading</a> ] [ Functions ]</p>
+<p class="item_name">NAME</p>
+<pre>    SUBROUTINE: <strong>load</strong>
+</pre>
+<p class="item_name">SYNOPSIS</p>
+<pre>    Usage:      CALL <strong>load</strong>(g_g_pp,g_num_pp,load_node,load_value,fext_pp)
+</pre>
+<p class="item_name">FUNCTION</p>
+<pre>    Build the distributed vector containing the natural boundary
+    conditions (forces in mechanics, fluxes in thermal problems)
+</pre>
+<p class="item_name">INPUTS</p>
+<pre>    The following arguments have the INTENT(IN) attribute:
+
+    g_g_pp(ntot,nels_pp)    : Integer
+                            : Array linking equations to <a href="#robo0">elements</a>
+
+    g_num_pp(nod,nels_pp)   : Integer
+                            : Elements connectivity
+
+    load_node(loaded_nodes) : Integer
+                            : Node numbers that have a <strong>load</strong> imposed
+                          
+    load_value(ndim,loaded_nodes)
+                            : Real
+                            : Value of the force at each loaded node
+
+    The following arguments have the INTENT(OUT) attribute:
+                          
+    fext_pp(neq_pp)         : Real
+                            : Natural boundary conditions vector
+</pre>
+<p class="item_name">AUTHOR</p>
+<pre>    Lee Margetts
+</pre>
+<p class="item_name">CREATION DATE</p>
+<pre>    26.05.2008
+</pre>
+<p class="item_name">COPYRIGHT</p>
+<pre>    (c) University of Manchester 2008-2010
+</pre>
+<a name="robo5">
+<a name="2fmaths">
+<h1>6.  /maths [ Modules ]  </h1>
+<p>[ <a href="#robo_top_of_doc">Top</a> ] [ Modules ]</p>
+<p class="item_name">NAME</p>
+<pre>    MODULE: <strong>maths</strong>
+</pre>
+<p class="item_name">SYNOPSIS</p>
+<pre>    Usage:      USE <strong>maths</strong>
+</pre>
+<p class="item_name">FUNCTION</p>
+<pre>    Contains subroutines required for standard mathematical operations on
+    matrices and vectors. These subroutines are parallel and require MPI.
+    
+    Subroutine             Purpose
+</pre>
+<p class="item_name">AUTHOR</p>
+<pre>    L. Margetts
+    I.M. Smith
+    D.V. Griffiths
+</pre>
+<p class="item_name">COPYRIGHT</p>
+<pre>    2004-2010 University of Manchester
+</pre>
+<a name="robo38">
+<a name="maths2fdeterminant">
+<h2>6.1.  maths/determinant [ Functions ]  </h2>
+<p>[ <a href="#robo_top_of_doc">Top</a> ] [ <a href="#robo5">maths</a> ] [ Functions ]</p>
+<p class="item_name">NAME</p>
+<pre>    FUNCTION: <strong>determinant</strong>
+</pre>
+<p class="item_name">SYNOPSIS</p>
+<pre>    Usage:    <strong>determinant</strong>
+</pre>
+<p class="item_name">FUNCTION</p>
+<pre>    Returns the <strong>determinant</strong> of a 1x1 2x2 3x3 jacobian matrix
+    Source: "Programming the Finite Element Method"
+</pre>
+<p class="item_name">INPUTS</p>
+<pre>    The following argument has the INTENT(IN) attribute:
+
+    jac(:,:)       : Real
+                   : Matrix whose <strong>determinant</strong> is to be computed
+</pre>
+<p class="item_name">AUTHOR</p>
+<pre>    I.M. Smith
+    D.V. Griffiths
+</pre>
+<p class="item_name">COPYRIGHT</p>
+<pre>    (c) University of Manchester 2004-2010
+</pre>
+<a name="robo39">
+<a name="maths2fdot5fproduct5fp">
+<h2>6.2.  maths/dot_product_p [ Functions ]  </h2>
+<p>[ <a href="#robo_top_of_doc">Top</a> ] [ <a href="#robo5">maths</a> ] [ Functions ]</p>
+<p class="item_name">NAME</p>
+<pre>    FUNCTION:   DOT_PRODUCT_P
+</pre>
+<p class="item_name">SYNOPSIS</p>
+<pre>    Usage:      <strong>dot_product_p</strong>(r_pp)
+</pre>
+<p class="item_name">FUNCTION</p>
+<pre>    Parallel version of the serial fortran intrinsic function dot_product.
+    Each processor computes the local dot_product. A global sum is then
+    performed across processors with the result being returned to all 
+    processors.
+</pre>
+<p class="item_name">INPUTS</p>
+<pre>    The following arguments have the INTENT(IN) attribute:
+
+    vectora(:)     : Real
+                   : Chunk of vector a on each processor
+
+    vectorb(:)     : Real
+                   : Chunk of vector b on each processor
+
+    The following arguments have the INTENT(OUT) attribute:
+
+    <strong>dot_product_p</strong>  : Real
+                   : Dot product of the distributed vectors a and b
+</pre>
+<p class="item_name">AUTHOR</p>
+<pre>    L. Margetts
+</pre>
+<p class="item_name">COPYRIGHT</p>
+<pre>    (c) University of Manchester 2002-2010
+</pre>
+<a name="robo40">
+<a name="maths2finvert">
+<h2>6.3.  maths/invert [ Functions ]  </h2>
+<p>[ <a href="#robo_top_of_doc">Top</a> ] [ <a href="#robo5">maths</a> ] [ Functions ]</p>
+<p class="item_name">NAME</p>
+<pre>    SUBROUTINE: <strong>invert</strong>(matrix)
+</pre>
+<p class="item_name">SYNOPSIS</p>
+<pre>    Usage:      CALL <strong>invert</strong>(matrix)
+</pre>
+<p class="item_name">FUNCTION</p>
+<pre>    Invert a small square matrix onto itself.
+</pre>
+<p class="item_name">AUTHOR</p>
+<pre>    I.M. Smith
+    D.V. Griffiths
+</pre>
+<p class="item_name">COPYRIGHT</p>
+<pre>    (c) University of Manchester 2004-2010
+</pre>
+<a name="robo41">
+<a name="maths2fmax5finteger5fp">
+<h2>6.4.  maths/max_integer_p [ Functions ]  </h2>
+<p>[ <a href="#robo_top_of_doc">Top</a> ] [ <a href="#robo5">maths</a> ] [ Functions ]</p>
+<p class="item_name">NAME</p>
+<pre>    FUNCTION:   MAX_INTEGER_P
+</pre>
+<p class="item_name">SYNOPSIS</p>
+<pre>    Usage:      <strong>max_integer_p</strong>(n_pp)
+</pre>
+<p class="item_name">FUNCTION</p>
+<pre>    Maximum value of an integer across processors
+    Every process keeps the result
+</pre>
+<p class="item_name">INPUTS</p>
+<pre>    The following arguments have the INTENT(IN) attribute:
+
+    n_pp:          : Integer
+                   : Integer on each processor
+
+    The following arguments have the INTENT(OUT) attribute:
+
+    n:             : Integer
+                   : Maximum value across processors
+</pre>
+<p class="item_name">AUTHOR</p>
+<pre>    L. Margetts
+</pre>
+<p class="item_name">COPYRIGHT</p>
+<pre>    (c) University of Manchester 2002-2010
+</pre>
+<a name="robo42">
+<a name="maths2fmax5freal5fr">
+<h2>6.5.  maths/max_real_r [ Functions ]  </h2>
+<p>[ <a href="#robo_top_of_doc">Top</a> ] [ <a href="#robo5">maths</a> ] [ Functions ]</p>
+<p class="item_name">NAME</p>
+<pre>    FUNCTION:   MAX_REAL_P
+</pre>
+<p class="item_name">SYNOPSIS</p>
+<pre>    Usage:      max_real_p(r_pp)
+</pre>
+<p class="item_name">FUNCTION</p>
+<pre>    Maximum value of a real across processors
+    Every process keeps the result
+</pre>
+<p class="item_name">INPUTS</p>
+<pre>    The following arguments have the INTENT(IN) attribute:
+
+    r_pp:          : Real
+                   : Real on each processor
+
+    The following arguments have the INTENT(OUT) attribute:
+
+    r:             : Real
+                   : Maximum value across processors
+</pre>
+<p class="item_name">AUTHOR</p>
+<pre>    L. Margetts
+</pre>
+<p class="item_name">COPYRIGHT</p>
+<pre>    (c) University of Manchester 2002-2010
+</pre>
+<a name="robo43">
+<a name="maths2fmaxabsval5fp">
+<h2>6.6.  maths/maxabsval_p [ Functions ]  </h2>
+<p>[ <a href="#robo_top_of_doc">Top</a> ] [ <a href="#robo5">maths</a> ] [ Functions ]</p>
+<p class="item_name">NAME</p>
+<pre>    FUNCTION:   MAXABSVAL_P
+</pre>
+<p class="item_name">SYNOPSIS</p>
+<pre>    Usage:      <strong>maxabsval_p</strong>(vectora)
+</pre>
+<p class="item_name">FUNCTION</p>
+<pre>    Computes the maximum absolute value of the components of a distributed
+    vector and then computes the maximum value across all vectors. 
+    The result is returned to all processors.
+</pre>
+<p class="item_name">INPUTS</p>
+<pre>    The following arguments have the INTENT(IN) attribute:
+
+    vectora(:)     : Real
+                   : Chunk of vector a on each processor
+
+    The following arguments have the INTENT(OUT) attribute:
+
+    <strong>maxabsval_p</strong>    : Real
+                   : Maximum absolute value of the components of the
+                     vector
+</pre>
+<p class="item_name">AUTHOR</p>
+<pre>    F. Calvo
+    L. Margetts
+</pre>
+<p class="item_name">COPYRIGHT</p>
+<pre>    (c) University of Manchester 2008-2010
+</pre>
+<a name="robo44">
+<a name="maths2fmaxval5fp">
+<h2>6.7.  maths/maxval_p [ Functions ]  </h2>
+<p>[ <a href="#robo_top_of_doc">Top</a> ] [ <a href="#robo5">maths</a> ] [ Functions ]</p>
+<p class="item_name">NAME</p>
+<pre>    FUNCTION:   MAXVAL_P
+</pre>
+<p class="item_name">SYNOPSIS</p>
+<pre>    Usage:      <strong>maxval_p</strong>(vectora)
+</pre>
+<p class="item_name">FUNCTION</p>
+<pre>    Parallel version of the serial intrinsic fortran function MAXVAL.
+    Computes the maximum value of the components of a distributed vector, 
+    and then computes the maximum value across all vectors. The result
+    is returned to all processors.
+</pre>
+<p class="item_name">INPUTS</p>
+<pre>    The following arguments have the INTENT(IN) attribute:
+
+    vectora(:)     : Real
+                   : Chunk of vector a on each processor
+
+    The following arguments have the INTENT(OUT) attribute:
+
+    <strong>maxval_p</strong>       : Real
+                   : Maximum value of the components of the vector
+</pre>
+<p class="item_name">AUTHOR</p>
+<pre>    L. Margetts
+</pre>
+<p class="item_name">COPYRIGHT</p>
+<pre>    (c) University of Manchester 2002-2010
+</pre>
+<a name="robo45">
+<a name="maths2fnorm5fp">
+<h2>6.8.  maths/norm_p [ Functions ]  </h2>
+<p>[ <a href="#robo_top_of_doc">Top</a> ] [ <a href="#robo5">maths</a> ] [ Functions ]</p>
+<p class="item_name">NAME</p>
+<pre>    FUNCTION:   NORM_P
+</pre>
+<p class="item_name">SYNOPSIS</p>
+<pre>    Usage:      <strong>norm_p</strong>(vectora)
+</pre>
+<p class="item_name">FUNCTION</p>
+<pre>    Calculates L2-norm of a distrubited vector
+    Every process keeps the result
+</pre>
+<p class="item_name">INPUTS</p>
+<pre>    The following arguments have the INTENT(IN) attribute:
+
+    vectora(:)     : Real
+                   : Chunk of vector a on each processor
+
+    The following arguments have the INTENT(OUT) attribute:
+
+    <strong>norm_p</strong>         : Real
+                   : Norm of the vector
+</pre>
+<p class="item_name">AUTHOR</p>
+<pre>    L. Margetts
+</pre>
+<p class="item_name">COPYRIGHT</p>
+<pre>    (c) University of Manchester 2002-2010
+</pre>
+<a name="robo46">
+<a name="maths2fsum5fp">
+<h2>6.9.  maths/sum_p [ Functions ]  </h2>
+<p>[ <a href="#robo_top_of_doc">Top</a> ] [ <a href="#robo5">maths</a> ] [ Functions ]</p>
+<p class="item_name">NAME</p>
+<pre>    FUNCTION:   SUM_P
+</pre>
+<p class="item_name">SYNOPSIS</p>
+<pre>    Usage:      <strong>sum_p</strong>(vectora)
+</pre>
+<p class="item_name">FUNCTION</p>
+<pre>    Parallel version of the serial fortran instrinsic SUM. The function
+    sums all the components of a distributed vector. The result of SUM_P
+    is returned to all processors. This function requires MPI.
+</pre>
+<p class="item_name">INPUTS</p>
+<pre>    The following arguments have the INTENT(IN) attribute:
+
+    vectora(:)     : Real
+                   : Local part of vector stored on calling processor
+
+    The following arguments have the INTENT(OUT) attribute:
+
+    <strong>sum_p</strong>          : Real
+                   : Sum of all the components of the vector
+</pre>
+<p class="item_name">AUTHOR</p>
+<pre>    L. Margetts
+</pre>
+<p class="item_name">COPYRIGHT</p>
+<pre>    (c) University of Manchester 2002-2010
+</pre>
+<a name="robo6">
+<a name="2fmp5finterface">
+<h1>7.  /mp_interface [ Modules ]  </h1>
+<p>[ <a href="#robo_top_of_doc">Top</a> ] [ Modules ]</p>
+<p class="item_name">NAME</p>
+<pre>    MODULE: <strong>mp_interface</strong>
+</pre>
+<p class="item_name">SYNOPSIS</p>
+<pre>    Usage:      USE <strong>mp_interface</strong>
+</pre>
+<p class="item_name">FUNCTION</p>
+<pre>    Contains subroutines required to initialize MPI at the beginning
+    of the calling program and finalize MPI at the end of the calling 
+    program
+    
+    Subroutine             Purpose
+
+    FIND_PE_PROCS          Find number of processors and own rank
+    SHUTDOWN               Terminate MPI and STOP the program
+</pre>
+<p class="item_name">AUTHOR</p>
+<pre>    L. Margetts
+    I.M. Smith
+    D.V. Griffiths
+</pre>
+<p class="item_name">COPYRIGHT</p>
+<pre>    2004-2010 University of Manchester
+</pre>
+<a name="robo47">
+<a name="mp5finterface2ffind5fpe5fprocs">
+<h2>7.1.  mp_interface/find_pe_procs [ Functions ]  </h2>
+<p>[ <a href="#robo_top_of_doc">Top</a> ] [ <a href="#robo6">mp_interface</a> ] [ Functions ]</p>
+<p class="item_name">NAME</p>
+<pre>    SUBROUTINE: <strong>find_pe_procs</strong>
+</pre>
+<p class="item_name">SYNOPSIS</p>
+<pre>    Usage:      CALL <strong>find_pe_procs</strong>(num,numprocs)
+</pre>
+<p class="item_name">FUNCTION</p>
+<pre>    Initialise MPI
+    Get the rank of the processes and the total number of processes
+</pre>
+<p class="item_name">INPUTS</p>
+<pre>    The following arguments have the INTENT(OUT) attribute:
+
+    num                    : Integer
+                           : Process number
+
+    numprocs               : Integer
+                           : Number of processes
+</pre>
+<p class="item_name">AUTHOR</p>
+<pre>    M. Pettipher
+    L. Margetts
+</pre>
+<p class="item_name">COPYRIGHT</p>
+<pre>    (c) University of Manchester 2007-2010
+</pre>
+<a name="robo7">
+<a name="2foutput">
+<h1>8.  /output [ Modules ]  </h1>
+<p>[ <a href="#robo_top_of_doc">Top</a> ] [ Modules ]</p>
+<p class="item_name">NAME</p>
+<pre>    MODULE: <strong>output</strong>
+</pre>
+<p class="item_name">SYNOPSIS</p>
+<pre>    Usage:      USE <strong>output</strong>
+</pre>
+<p class="item_name">FUNCTION</p>
+<pre>    Contains subroutines that write out the results. These subroutines are 
+    parallel and require MPI.
+    
+    Subroutine             Purpose
+    WRITE_P121             Writes out basic program data and <a href="#robo12">timing</a> info
+    WRITE_P129             Writes out basic program data and <a href="#robo12">timing</a> info
+    WRITE_NODAL_VARIABLE   Writes out results computed at the nodes
+    JOB_NAME_ERROR         Writes error message if job_name is missing
+</pre>
+<p class="item_name">AUTHOR</p>
+<pre>    L. Margetts
+</pre>
+<p class="item_name">COPYRIGHT</p>
+<pre>    2004-2010 University of Manchester
+</pre>
+<a name="robo48">
+<a name="output2fjob5fname5ferror">
+<h2>8.1.  output/job_name_error [ Functions ]  </h2>
+<p>[ <a href="#robo_top_of_doc">Top</a> ] [ <a href="#robo7">output</a> ] [ Functions ]</p>
+<p class="item_name">NAME</p>
+<pre>    SUBROUTINE: <strong>job_name_error</strong>
+</pre>
+<p class="item_name">SYNOPSIS</p>
+<pre>    Usage:      CALL <strong>job_name_error</strong>(numpe,program_name)
+</pre>
+<p class="item_name">FUNCTION</p>
+<pre>    Generates error message if commandline argument is missing.
+</pre>
+<p class="item_name">AUTHOR</p>
+<pre>    L. Margetts
+</pre>
+<p class="item_name">COPYRIGHT</p>
+<pre>    (c) University of Manchester 2007-2010
+</pre>
+<a name="robo49">
+<a name="output2fwrite5fnodal5fvariable">
+<h2>8.2.  output/write_nodal_variable [ Functions ]  </h2>
+<p>[ <a href="#robo_top_of_doc">Top</a> ] [ <a href="#robo7">output</a> ] [ Functions ]</p>
+<p class="item_name">NAME</p>
+<pre>    SUBROUTINE: <strong>write_nodal_variable</strong>
+</pre>
+<p class="item_name">SYNOPSIS</p>
+<pre>    Usage:      CALL <strong>write_nodal_variable</strong>(text,filnum,iload,nodes_pp, &amp;
+                                          numpe,numvar,stress) 
+</pre>
+<p class="item_name">FUNCTION</p>
+<pre>    Write the values of a nodal variable to a file. This subroutine is 
+    parallel and requires MPI. The master processor collects all the data
+    from the slave processors.
+</pre>
+<p class="item_name">INPUTS</p>
+<pre>    The following arguments have the INTENT(IN) attribute:
+
+    text                    : Character
+                            : Text indicating the variable to write
+
+    filnum                  : Integer
+                            : File number to write
+
+    iload                   : Integer
+                            : Load step number
+
+    nodes_pp                : Integer
+                            : Number of nodes assigned to a process
+
+    npes                    : Integer
+                            : Number of processes
+
+    numpe                   : Integer
+                            : Process number
+
+    numvar                  : Integer
+                            : Number of components of the variable
+                              (1-scalar, 3-vector, 6-tensor)
+
+    stress(nodes_pp*numvar) : Real
+                            : Nodal variables to print
+                             
+
+    The following arguments have the INTENT(OUT) attribute:
+</pre>
+<p class="item_name">AUTHOR</p>
+<pre>    F. Calvo
+    L. Margetts
+</pre>
+<p class="item_name">CREATION DATE</p>
+<pre>    04.10.2007
+</pre>
+<p class="item_name">COPYRIGHT</p>
+<pre>    (c) University of Manchester 2007-2010
+</pre>
+<a name="robo50">
+<a name="output2fwrite5fp121">
+<h2>8.3.  output/write_p121 [ Functions ]  </h2>
+<p>[ <a href="#robo_top_of_doc">Top</a> ] [ <a href="#robo7">output</a> ] [ Functions ]</p>
+<p class="item_name">NAME</p>
+<pre>    SUBROUTINE: <strong>write_p121</strong>
+</pre>
+<p class="item_name">SYNOPSIS</p>
+<pre>    Usage:      CALL <strong>write_p121</strong>(iters,job_name,neq,nn,npes,nr,numpe,      &amp;
+                                timest,tload)
+</pre>
+<p class="item_name">FUNCTION</p>
+<pre>    Master processor writes out brief details about the problem and 
+    some performance data
+</pre>
+<p class="item_name">INPUTS</p>
+<pre>    The following arguments have the INTENT(IN) attribute:
+
+    iters                  : Integer
+                           : Number of PCG iterations taken to solve problem
+
+    job_name               : Character
+                           : Job name used to name <a href="#robo7">output</a> file
+
+    neq                    : Integer
+                           : Total number of equations in the mesh
+
+    nn                     : Integer
+                           : Number of nodes in the mesh
+
+    npes                   : Integer
+                           : Number of processors used in the simulations
+
+    nr                     : Integer
+                           : Number of restrained nodes in the mesh
+
+    numpe                  : Integer
+                           : Processor number
+
+    timest(:)              : Real array
+                           : Holds <a href="#robo12">timing</a> information
+
+    tload                  : Real
+                           : Total applied <a href="#robo37">load</a>
+</pre>
+<p class="item_name">AUTHOR</p>
+<pre>    Lee Margetts
+    Based on Smith I.M. and Griffiths D.V. "Programming the Finite Element
+    Method", Edition 4, Wiley, 2004.
+</pre>
+<p class="item_name">CREATION DATE</p>
+<pre>    02.03.2010
+</pre>
+<p class="item_name">COPYRIGHT</p>
+<pre>    (c) University of Manchester 2010
+</pre>
+<a name="robo51">
+<a name="output2fwrite5fp129">
+<h2>8.4.  output/write_p129 [ Functions ]  </h2>
+<p>[ <a href="#robo_top_of_doc">Top</a> ] [ <a href="#robo7">output</a> ] [ Functions ]</p>
+<p class="item_name">NAME</p>
+<pre>    SUBROUTINE: <strong>write_p129</strong>
+</pre>
+<p class="item_name">SYNOPSIS</p>
+<pre>    Usage:      CALL <strong>write_p129</strong>(ans,job_name,neq,nn,npes,nr,numpe,        &amp;
+                                timest,tload,ttliters))
+</pre>
+<p class="item_name">FUNCTION</p>
+<pre>    Master processor writes out brief details about the problem and 
+    some performance data
+</pre>
+<p class="item_name">INPUTS</p>
+<pre>    The following scalar character argument has the INTENT(IN) attribute:
+
+    job_name               : Job name used to name <a href="#robo7">output</a> file
+
+    The following scalar integer arguments have the INTENT(IN) attribute:
+
+    neq                    : Number of equations
+    nn                     : Number of nodes in the mesh
+    npes                   : Number of processors used in the simulations
+    nr                     : Number of restrained nodes
+    numpe                  : Processor ID number
+
+    The following scalar real argument has the INTENT(IN) attribute:
+
+    tload                  : Total applied <a href="#robo37">load</a>
+
+    The following real array arguments have the INTENT(IN) attribute:
+
+    ans(:)                 : Holds a single displacement value at the 
+                           : equation number "it" for each time step
+    timest(:)              : Holds <a href="#robo12">timing</a> information
+    ttliters(:)            : Records the number of iterations required by
+                           : PCG for each time step
+</pre>
+<p class="item_name">AUTHOR</p>
+<pre>    Lee Margetts
+</pre>
+<p class="item_name">CREATION DATE</p>
+<pre>    26.02.2010
+</pre>
+<p class="item_name">COPYRIGHT</p>
+<pre>    (c) University of Manchester 2010
+</pre>
+<a name="robo8">
+<a name="2fpartition">
+<h1>9.  /partition [ Modules ]  </h1>
+<p>[ <a href="#robo_top_of_doc">Top</a> ] [ Modules ]</p>
+<p class="item_name">NAME</p>
+<pre>    MODULE: <strong>partition</strong>
+</pre>
+<p class="item_name">SYNOPSIS</p>
+<pre>    Usage:      USE <strong>partition</strong>
+</pre>
+<p class="item_name">FUNCTION</p>
+<pre>    Contains subroutines required for subdividing a finite element problem
+    over multiple processors.
+    
+    Subroutine             Purpose
+    
+    CALC_NODES_PP          Subdivide the nodes across processors
+</pre>
+<p class="item_name">AUTHOR</p>
+<pre>    F. Calvo
+    L. Margetts
+</pre>
+<p class="item_name">COPYRIGHT</p>
+<pre>    2004-2010 University of Manchester
+</pre>
+<a name="robo52">
+<a name="partition2fcalc5fnodes5fpp">
+<h2>9.1.  partition/calc_nodes_pp [ Functions ]  </h2>
+<p>[ <a href="#robo_top_of_doc">Top</a> ] [ <a href="#robo8">partition</a> ] [ Functions ]</p>
+<p class="item_name">NAME</p>
+<pre>    SUBROUTINE: <strong>calc_nodes_pp</strong>
+</pre>
+<p class="item_name">SYNOPSIS</p>
+<pre>    Usage:      CALL <strong>calc_nodes_pp</strong>(node_end,node_start,nn,npes,numpe, &amp;
+                                   nodes_pp)
+</pre>
+<p class="item_name">FUNCTION</p>
+<pre>    Subdivide the nodes across the processors. Strategy similar to that
+    found in CALC_NELS_PP and CALC_NEQ_PP.
+</pre>
+<p class="item_name">INPUTS</p>
+<pre>    The following arguments have the INTENT(IN) attribute:
+
+    nn                    : Integer
+                          : Total number of nodes
+
+    npes                  : Integer
+                          : Number of processes
+
+    numpe                 : Integer
+                          : Processor number
+
+    The following arguments have the INTENT(OUT) attribute:
+
+    node_end              : Integer
+                          : Last node stored in the process
+
+    node_start            : Integer
+                          : First node stored in the process
+
+    nodes_pp              : Integer
+                          : Number of nodes assigned to the process
+</pre>
+<p class="item_name">AUTHOR</p>
+<pre>    F. Calvo
+</pre>
+<p class="item_name">COPYRIGHT</p>
+<pre>    (c) University of Manchester 2007-2010
+</pre>
+<a name="robo9">
+<a name="2fpcg">
+<h1>10.  /pcg [ Modules ]  </h1>
+<p>[ <a href="#robo_top_of_doc">Top</a> ] [ Modules ]</p>
+<p class="item_name">NAME</p>
+<pre>    MODULE: <strong>pcg</strong>
+</pre>
+<p class="item_name">SYNOPSIS</p>
+<pre>    Usage:      USE <strong>pcg</strong>
+</pre>
+<p class="item_name">FUNCTION</p>
+<pre>    Contains subroutines required by the preconditioned conjugate gradient
+    method. These subroutines are parallel and require MPI.
+    
+    Subroutine             Purpose
+
+    CHECON_PAR             Convergence test
+</pre>
+<p class="item_name">AUTHOR</p>
+<pre>    L. Margetts
+    I.M. Smith
+    D.V. Griffiths
+</pre>
+<p class="item_name">COPYRIGHT</p>
+<pre>    2004-2010 University of Manchester
+</pre>
+<a name="robo53">
+<a name="pcg2fchecon5fpar">
+<h2>10.1.  pcg/checon_par [ Functions ]  </h2>
+<p>[ <a href="#robo_top_of_doc">Top</a> ] [ <a href="#robo9">pcg</a> ] [ Functions ]</p>
+<p class="item_name">NAME</p>
+<pre>    SUBROUTINE: <strong>checon_par</strong>
+</pre>
+<p class="item_name">SYNOPSIS</p>
+<pre>    Usage:      CALL <strong>checon_par</strong>(loads,tol,converged,oldlds)
+</pre>
+<p class="item_name">FUNCTION</p>
+<pre>    Parallel version of checon
+    Sets converged to .false. if relative change in loads and
+    oldlds is greater than tol and updates oldlds
+</pre>
+<p class="item_name">INPUTS</p>
+<pre>    The following arguments have the INTENT(IN) attribute:
+
+    loads(:)                 : Real
+                             : Solution vector
+
+    tol                      : Real
+                             : Solution tolerance
+
+    The following argument has the INTENT(INOUT) attribute:
+
+    oldlds(:)                : Real
+                             : The old solution vector
+
+    The following argument has the INTENT(OUT) attribute:
+
+    converged                : Logical
+                             : Solution has converged if 
+                               converged = .true.
+
+    The following arguments have the INTENT(OUT) attribute:
+
+    iters                    : Integer
+                             : Number of PCG iterations
+</pre>
+<p class="item_name">AUTHOR</p>
+<pre>    I.M. Smith and D.V. Griffiths
+    Modified by L. Margetts
+</pre>
+<p class="item_name">COPYRIGHT</p>
+<pre>    2004-2010 University of Manchester
+</pre>
+<a name="robo10">
+<a name="2fprecision">
+<h1>11.  /precision [ Modules ]  </h1>
+<p>[ <a href="#robo_top_of_doc">Top</a> ] [ Modules ]</p>
+<p class="item_name">NAME</p>
+<pre>    MODULE: <strong>precision</strong>
+</pre>
+<p class="item_name">SYNOPSIS</p>
+<pre>    Usage:      USE <strong>precision</strong>
+</pre>
+<p class="item_name">FUNCTION</p>
+<pre>    Sets IWP 
+</pre>
+<p class="item_name">AUTHOR</p>
+<pre>    M.A. Pettipher
+</pre>
+<p class="item_name">COPYRIGHT</p>
+<pre>    (c) University of Manchester 1996-2010
+</pre>
+<a name="robo11">
+<a name="2fsteering">
+<h1>12.  /steering [ Modules ]  </h1>
+<p>[ <a href="#robo_top_of_doc">Top</a> ] [ Modules ]</p>
+<p class="item_name">NAME</p>
+<pre>    MODULE: <strong>steering</strong>
+</pre>
+<p class="item_name">SYNOPSIS</p>
+<pre>    Usage:      USE <strong>steering</strong>
+</pre>
+<p class="item_name">FUNCTION</p>
+<pre>    Contains subroutines that relate equations or nodes to <a href="#robo0">elements</a>
+
+    Subroutine             Purpose
+    
+    REARRANGE              Modifies REST array
+    FIND_G                 Finds g from node numbers and restraints "rest"
+    ABAQUS2SG              Swaps node order from Abaqus to S&amp;G convention
+</pre>
+<p class="item_name">AUTHOR</p>
+<pre>    F. Calvo
+    L. Margetts
+</pre>
+<p class="item_name">COPYRIGHT</p>
+<pre>    2004-2010 University of Manchester
+</pre>
+<a name="robo54">
+<a name="steering2fabaqus2sg">
+<h2>12.1.  steering/abaqus2sg [ Functions ]  </h2>
+<p>[ <a href="#robo_top_of_doc">Top</a> ] [ <a href="#robo11">steering</a> ] [ Functions ]</p>
+<p class="item_name">NAME</p>
+<pre>    SUBROUTINE: <strong>abaqus2sg</strong>
+</pre>
+<p class="item_name">SYNOPSIS</p>
+<pre>    Usage:      CALL <strong>abaqus2sg</strong>(element,g_num)
+</pre>
+<p class="item_name">FUNCTION</p>
+<pre>    Converts the node <a href="#robo11">steering</a> array from the ABAQUS node ordering to 
+    the ordering in Smith and Griffiths "Programming the Finite Element
+    Method", 4th Edition. Works with both serial and parallel programs.
+
+    For 20-node hexahedra, the conversion is:
+
+    S&amp;G   :   1  2  3  4  5  6  7  8  9 10 11 12 13 14 15 16 17 18 19 20
+    Abaqus:   1  7 19 13  3  5 17 15  8 12 20  9  4 11 16 10  2  6 18 14 
+</pre>
+<p class="item_name">INPUTS</p>
+<p class="item_name">AUTHOR</p>
+<pre>    L. Margetts
+</pre>
+<p class="item_name">COPYRIGHT</p>
+<pre>    (c) University of Manchester 2009-2010
+</pre>
+<a name="robo55">
+<a name="steering2ffind5fg">
+<h2>12.2.  steering/find_g [ Functions ]  </h2>
+<p>[ <a href="#robo_top_of_doc">Top</a> ] [ <a href="#robo11">steering</a> ] [ Functions ]</p>
+<p class="item_name">NAME</p>
+<pre>    SUBROUTINE: <strong>find_g</strong>
+</pre>
+<p class="item_name">SYNOPSIS</p>
+<pre>    Usage:      CALL <strong>find_g</strong>(num,g,rest)
+</pre>
+<p class="item_name">FUNCTION</p>
+<pre>    Finds g from node numbers and restraints "rest"
+</pre>
+<p class="item_name">INPUTS</p>
+<pre>    The following argument has the INTENT(INOUT) attribute:
+
+    rest                : Integer
+                        : Array of restrained nodes
+                        : Possible <a href="#robo3">input</a> values are 1 or 0
+                        : 1 - unrestrained
+                        : 0 - restrained
+</pre>
+<p class="item_name">AUTHOR</p>
+<pre>    I.M Smith
+</pre>
+<p class="item_name">COPYRIGHT</p>
+<pre>    (c) University of Manchester 2004-2010
+</pre>
+<a name="robo56">
+<a name="steering2frearrange">
+<h2>12.3.  steering/rearrange [ Functions ]  </h2>
+<p>[ <a href="#robo_top_of_doc">Top</a> ] [ <a href="#robo11">steering</a> ] [ Functions ]</p>
+<p class="item_name">NAME</p>
+<pre>    SUBROUTINE: <strong>rearrange</strong>
+</pre>
+<p class="item_name">SYNOPSIS</p>
+<pre>    Usage:      CALL <strong>rearrange</strong>(rest)
+</pre>
+<p class="item_name">FUNCTION</p>
+<pre>    Modifies REST array, converting restrained flags into restrained
+    equation numbers.   
+</pre>
+<p class="item_name">INPUTS</p>
+<pre>    The following argument has the INTENT(INOUT) attribute:
+
+    rest                : Integer
+                        : Array of restrained nodes
+                        : Possible <a href="#robo3">input</a> values are 1 or 0
+                        : 1 - unrestrained
+                        : 0 - restrained
+</pre>
+<p class="item_name">AUTHOR</p>
+<pre>    I.M Smith
+</pre>
+<p class="item_name">COPYRIGHT</p>
+<pre>    (c) University of Manchester 2004-2010
+</pre>
+<a name="robo12">
+<a name="2ftiming">
+<h1>13.  /timing [ Modules ]  </h1>
+<p>[ <a href="#robo_top_of_doc">Top</a> ] [ Modules ]</p>
+<p class="item_name">NAME</p>
+<pre>    MODULE: <strong>timing</strong>
+</pre>
+<p class="item_name">SYNOPSIS</p>
+<pre>    Usage:      USE <strong>timing</strong>
+</pre>
+<p class="item_name">FUNCTION</p>
+<pre>    Contains subroutines used for <strong>timing</strong> purposes. These require MPI.
+    
+    Subroutine             Purpose
+
+    ELAP_TIME              Computes wall clock time
+</pre>
+<p class="item_name">AUTHOR</p>
+<pre>    L. Margetts
+    M. Pettipher
+    I.M. Smith
+    D.V. Griffiths
+</pre>
+<p class="item_name">COPYRIGHT</p>
+<pre>    2004-2010 University of Manchester
+</pre>
+<a name="robo57">
+<a name="timing2felap5ftime">
+<h2>13.1.  timing/elap_time [ Functions ]  </h2>
+<p>[ <a href="#robo_top_of_doc">Top</a> ] [ <a href="#robo12">timing</a> ] [ Functions ]</p>
+<p class="item_name">NAME</p>
+<pre>    SUBROUTINE: <strong>elap_time</strong>
+</pre>
+<p class="item_name">SYNOPSIS</p>
+<pre>    Usage:      CALL <strong>elap_time</strong>()
+</pre>
+<p class="item_name">FUNCTION</p>
+<pre>    Returns the wall clock time
+</pre>
+<p class="item_name">AUTHOR</p>
+<pre>    M. Pettipher
+    L. Margetts
+</pre>
+<p class="item_name">COPYRIGHT</p>
+<pre>    2004-2010 University of Manchester
+</pre>
+<div id="footer">
+<p>Generated from ./../src/modules/ with <a href="http://www.xs4all.nl/~rfsber/Robo/robodoc.html">ROBODoc</a> V4.99.32 on Fri Mar 26 2010 17:30:42
+</p>
+</div> <!-- footer -->
+</body>
+</html>

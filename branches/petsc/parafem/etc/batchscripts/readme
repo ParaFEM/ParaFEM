@@ -1,0 +1,48 @@
+BATCH SCRIPTS: job.xt job.xe6
+
+The file "job.xt" is an example PBS batch script that can be used on the 
+Cray XT4 and Cray XT6 systems provided by the UK HECToR service. "job.xe6" is 
+for the Cray XE6 system.
+
+  Usage: qsub job.xt
+  
+
+PBS COMMANDS EXPLAINED
+
+#PBS -A <my_account>        The account code to which the job is charged.
+#PBS -N ParaFEM             The name of the job. Here it is "ParaFEM".
+#PBS -l mppwidth=8          The total number of MPI tasks
+#PBS -l mppnppn=4           The number of MPI tasks per compute node
+#PBS -l walltime=00:19:59   The maximum wall clock time required by the job
+#PBS -j oe                  Send job output & error messages to ParaFEM.o* file
+
+BLUEGENE/Q
+
+An example loadleveller script for the BlueGene/Q at the Hartree Centre is
+job.bgq.sh.
+
+  Usage: llsubmit job.bgq.sh
+
+To view queueing jobs: $llq
+
+To cancel a job: $llcancel <jobid>
+
+NOTES
+
+ o The variables "mppwidth" and "mppnppn" can have different meanings depending
+   on the system. Here, the meanings are those used in the HECToR service. 
+   Please consult the user guide provided with your system.
+
+ o The variable "mppnppn" can be set to 1, 2, 3 or 4 on HECToR Phase2a and from
+   1 to 24 on HECToR Phase 2b. The significance is the number of MPI tasks per
+   compute node. HECToR Phase 2a has one quad core processor per node and 
+   HECToR Phase 2b has two 12-core processors per node.
+ 
+ o Useful PBS commands
+   - $qstat          Check status of all jobs in the queue 
+   - $qdel <job_id>  Delete the job with the PBS job number <job_id>
+
+ o Script job.xe6 gives an example of how to reserve one core per node using 
+   the aprun switch -r. A full explanation can be found using $man aprun.
+
+lee.margetts@manchester.ac.uk

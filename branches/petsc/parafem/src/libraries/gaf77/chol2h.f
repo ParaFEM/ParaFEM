@@ -1,0 +1,128 @@
+c  ***********************************************************************
+c  *                                                                     *
+c  *                          subroutine chol2h                          *
+c  *                                                                     *
+c  ***********************************************************************
+c  Mixed Precision Version 1.01
+c  Written by Gordon A. Fenton, TUNS, Mar. 30, 1995
+c  Latest Update: Jun 9, 1999
+c
+c  PURPOSE  to compute the LL' factorization of a symmetric covariance matrix
+c           [A]. [A] need only be non-negative definite.
+c           High precision version.
+c
+c  This function is modeled after CHOL2 except that all sums are performed
+c  in double precision for increased accuracy.
+c  This function reduces a matrix A into its LL' decomposition (where
+c  prime indicates transpose) in place. No scaling or pivoting is performed
+c  during the decomposition. This algorithm is specialized for the
+c  decomposition of a covariance matrix which may or may not be positive
+c  definite (but is at least non-negative definite). If a diagonal element
+c  is found to be (algorithmically) zero, then the entire associated column
+c  of L is set to zero. This allows the decomposition of covariance matrices
+c  such as
+c                 [A]                 [L]            [L']
+c           __          __      __          __ __          __
+c           | 1  1  1  1 |      | 1  0  0  0 | | 1  1  1  1 |
+c           | 1  1  1  1 |      | 1  0  0  0 | | 0  0  0  0 |
+c           | 1  1  1  1 |  =   | 1  0  0  0 | | 0  0  0  0 |
+c           | 1  1  1  1 |      | 1  0  0  0 | | 0  0  0  0 |
+c           `-          -'      `-          -' `-          -'
+c
+c
+c  An estimate of the maximum relative error is computed herein by comparing
+c  the lowermost diagonal element of A and L*L'.
+c
+c  Arguments to the routine are as follows;
+c
+c     A    real array of size at least n x n containing on input the
+c          matrix of coefficients in its upper triangle at least. On
+c          ouput, A will contain L' written in the upper triangle.
+c          (input/output)
+c
+c    ia    leading dimension of A exactly as specified in the calling routine.
+c          (input)
+c
+c     n    integer giving the size of the matrix A. (input)
+c
+c  rerr    estimate of the maximum relative error between L*L' and A. This
+c          is the relative error between the lower-rightmost diagonal element
+c          of A and L*L'. (output)
+c
+c  NOTE: the value of `tol' is chosen rather empirically using a fairly
+c        pathological 256 x 256 matrix. It was found that other values
+c        (such as tol = 0) could lead to large errors in [L]*[L^T] when
+c        the matrix is large and nearly singular.
+c
+c  REVISION HISTORY:
+c  1.01	replaced dummy dimensions with a (*) for GNU's compiler (Jun 9/99)
+c-----------------------------------------------------------------------------
+      subroutine chol2h( A, ia, n, rerr )
+      real*4 A(ia,*)
+      real*8 s, t, tol, zero, dble
+      data zero/0.d0/
+c					preliminaries
+      A1  = A(n,n)
+      if( n .gt. 3 ) then
+         A2  = A(n-1,n-1)
+         A3  = A(n-2,n-2)
+      endif
+      rerr = 0.
+      if( n .gt. 128 ) then
+         tol = 1.d-6
+      else
+         tol = 1.d-14
+      endif
+
+      do 50 i = 1, n
+c					find diagonal elements
+         s = zero
+         do 10 j = 1, i-1
+            s = s + dble(A(j,i))*dble(A(j,i))
+  10     continue
+         t = dble(A(i,i)) - s
+
+         if( t .le. tol ) then
+c					diagonal element is algorithmically 0
+            do 20 j = i, n
+               A(i,j) = 0.0
+  20        continue
+         else
+c					else find off-diagonal elements
+            A(i,i) = dsqrt(t)
+            do 40 j = i+1, n
+               s = zero
+               do 30 k = 1, i-1
+                  s = s + dble(A(k,i))*dble(A(k,j))
+  30           continue
+               s = (dble(A(i,j))/dble(A(i,i))) - s/dble(A(i,i))
+               A(i,j) = s
+  40        continue
+         endif
+  50  continue
+c					estimate error
+      if( n .gt. 3 ) then
+         t1 = A(1,n)*A(1,n)+A(n-1,n)*A(n-1,n) + A(n,n)*A(n,n)
+         t2 = A(1,n-1)*A(1,n-1) + A(n-1,n-1)*A(n-1,n-1)
+         t3 = A(1,n-2)*A(1,n-2)
+         do 70 i = 2, n-2
+            t1 = t1 + A(i,n)*A(i,n)
+            t2 = t2 + A(i,n-1)*A(i,n-1)
+            t3 = t3 + A(i,n-2)*A(i,n-2)
+  70     continue
+         r1 = abs((A1 - t1)/A1)
+         r2 = abs((A2 - t2)/A2)
+         if( r1 .gt. r2 ) r2 = r1
+         r3 = abs((A3 - t3)/A3)
+         if( r2 .gt. r3 ) r3 = r2
+         rerr = r3
+      else
+         t1 = A(1,n)*A(1,n)
+         do 80 i = 2, n
+            t1 = t1 + A(i,n)*A(i,n)
+  80     continue
+         rerr = abs((A1 - t1)/A1)
+      endif
+
+      return
+      end

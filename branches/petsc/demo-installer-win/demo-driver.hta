@@ -1,0 +1,97 @@
+<html>
+<head>
+	<title>ParaFEM Demonstrator</title>
+	<HTA:APPLICATION 
+		 ID="objHTA"
+		 APPLICATIONNAME="ParaFEM Demonstrator"
+		 SCROLL="no"
+		 SINGLEINSTANCE="yes"
+		 ICON="parafem.ico"
+	>
+    <style>
+    body
+    {
+        font-family: Calibri, Arial;
+    }
+    </style>	
+</head>
+
+<SCRIPT Language="VBScript">
+    Const PARAFEM_HOME = "C:\ParaFEM Demonstrator"
+
+	Sub Window_Onload
+		'Resize window
+		window.resizeTo 1000,600
+        Dim fileSystemObject, folder, folder1, foldersCollection, strDemoName
+       
+		Set fileSystemObject = CreateObject("Scripting.FileSystemObject")
+		Set folder = fileSystemObject.GetFolder(PARAFEM_HOME & "\examples")
+		Set foldersCollection = folder.SubFolders
+		Dim objTable : Set objTable = window.document.getElementById("availableDemos")
+		For Each folder1 in foldersCollection
+			strDemoName = folder1.name
+			strDemoFileName = PARAFEM_HOME & "\examples\" & strDemoName & "\demo\" & strDemoName & "_demo.txt"
+			Set objFSO = CreateObject("Scripting.FileSystemObject")
+			If objFSO.FileExists(strDemoFileName) Then
+				'Get Title of demo
+				Set objFile = objFSO.OpenTextFile(PARAFEM_HOME & "\examples\" & strDemoName & "\demo\" & strDemoName & "_demo.txt", 1)
+				Do Until objFile.AtEndOfStream
+					strDescription = objFile.ReadLine		
+				Loop
+				objFile.Close
+				Dim objRow : Set objRow = objTable.insertRow()
+				Dim intCount, objCell
+				Set objCell = objRow.insertCell()
+				objCell.innerHTML = strDescription
+				'Add Run button
+				Set objCell = objRow.insertCell()
+				objCell.innerHTML = "<input value='Run "& strDemoName &"' type='submit' onclick='vbscript:clickRun(""" & strDemoName & """)'>"
+			End if
+		Next	
+    End Sub	
+	
+	Sub clickRun(strDemoName)
+        'Replace CASE file path in Paraview saved state files
+        Const forReading = 1
+        Const forWriting = 2
+        Set objFSO = CreateObject("Scripting.FileSystemObject")
+        strPvsmFilePath =  PARAFEM_HOME & "\examples\" & strDemoName & "\demo\" & strDemoName & "_demo.pvsm"        
+        Set objFile = objFSO.OpenTextFile(strPvsmFilePath, forReading)        
+        strText = objFile.ReadAll
+        objFile.Close
+        strCaseFilePath =  PARAFEM_HOME & "\examples\" & strDemoName & "\demo\" & strDemoName & "_demo.ensi.case"
+        strNewText = Replace(strText, "%CASE_FILE_PATH%", strCaseFilePath)
+        Set  objFile = objFSO.OpenTextFile(StrPvsmFilePath, forWriting )
+        objFile.WriteLine strNewText
+        objFile.Close
+
+        'Invoke the demo-driver batch file, passing the name of the executable
+        strBatchPath = "demo-driver.bat " & strDemoName
+		Set WshShell = CreateObject("WScript.Shell")
+		strPopd = WshShell.CurrentDirectory
+		WshShell.CurrentDirectory = PARAFEM_HOME & "\bin\"
+		WshShell.Run strBatchPath
+		WshShell.CurrentDirectory = strPopd    
+	End Sub
+
+</SCRIPT>
+
+<body background="parafem_bg_fade.png">
+    <table>
+        <tr>
+            <td>            
+                <img src="parafem_logo_full.png" />
+            </td>
+	        <td>
+	            <h2>Welcome to the ParaFEM Demonstrator</h2>
+	            <h3>This package provides some sample implementations of software utilising ParaFEM</h3>
+	            <h3>The following demos are available:</h3>
+	            <table id="availableDemos">
+		            <tbody >
+		            </tbody>
+	            </table>
+            </td>
+        </tr>
+    </table>
+</body>
+</html>

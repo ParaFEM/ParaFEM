@@ -1,0 +1,89 @@
+#!/bin/sh
+
+FC="gfortran"
+AR="ar -r"
+FFLAGS="-fdefault-real-8 -c"
+
+cd src/libraries/dummy_mpi
+rm -f *.o libmpi_stubs.a
+$FC $FFLAGS mpi_stubs.f90
+$AR libmpi_stubs.a mpi_stubs.o
+cp *.mod ../../modules/mpi
+mv *.mod ../../../include
+mv libmpi_stubs.a ../../../lib
+cd ../../..
+
+cd src/libraries/gaf77
+rm -f *.o libgaf77.a
+$FC $FFLAGS *.f
+$AR libgaf77.a *.o
+mv libgaf77.a ../../../lib
+cd ../../..
+
+cd src/modules/shared
+rm -f *.o *.mod
+$FC $FFLAGS precision.f90
+$FC $FFLAGS global_variables.f90
+$FC $FFLAGS geometry.f90
+$FC $FFLAGS elements.f90
+$FC $FFLAGS steering.f90
+$FC $FFLAGS timing.f90
+$FC $FFLAGS partition.f90
+$FC $FFLAGS plasticity.f90
+$FC $FFLAGS fluid.f90
+cd ../mpi
+rm -f *.o *.mod
+mv ../shared/*.o .
+mv ../shared/*.mod .
+cp ../../../include/mpi_stubs.mod .
+$FC $FFLAGS mpi_wrapper.f90
+$FC $FFLAGS mp_interface.f90 -I../../libraries/dummy_mpi/include
+$FC $FFLAGS maths.f90
+$FC $FFLAGS input.f90
+$FC $FFLAGS output.f90
+$FC $FFLAGS gather_scatter.f90
+$FC $FFLAGS loading.f90
+# $FC $FFLAGS large_strain.f90
+$FC $FFLAGS pcg.f90
+$FC $FFLAGS bicg.f90
+$AR libparafem.a *.o
+mv libparafem.a ../../../lib
+# mv *.mod ../../../include
+cp *.mod ../../../include
+cd ../../..
+
+cd src/tools/preprocessing/rfemcube
+rm -f *.o rfemcube.exe
+$FC $FFLAGS rfemcube.f90 -I../../../../include
+$FC -L../../../../lib rfemcube.o -lgaf77 -lparafem -o rfemcube.exe
+mv rfemcube.exe ../../../../bin
+cd ../../../..
+
+cd src/tools/preprocessing/rfembc
+rm -f *.o rfembc.exe
+$FC $FFLAGS rfembc.f90 -I../../../../include
+$FC rfembc.o -o rfembc.exe
+mv rfembc.exe ../../../../bin
+cd ../../../..
+
+cd src/tools/preprocessing/rfemfield
+rm -f *.o rfemfield.exe
+$FC $FFLAGS rfemfield.f90 -I../../../../include
+$FC -L../../../../lib rfemfield.o -lgaf77 -lparafem -o rfemfield.exe
+mv rfemfield.exe ../../../../bin
+cd ../../../..
+
+cd src/tools/preprocessing/rfemreduce
+rm -f *.o rfemreduce.exe
+$FC $FFLAGS rfemreduce.f90 -I../../../../include
+$FC -L../../../../lib rfemreduce.o -lparafem -o rfemreduce.exe
+mv rfemreduce.exe ../../../../bin
+cd ../../../..
+
+cd src/programs/rfem
+rm -f *.o rfemsolve.exe
+$FC $FFLAGS rfemsolve.f90 -I../../../include
+$FC -L../../../lib rfemsolve.o -lmpi_stubs -lparafem -o rfemsolve.exe
+mv rfemsolve.exe ../../../bin
+cd ../../..
+

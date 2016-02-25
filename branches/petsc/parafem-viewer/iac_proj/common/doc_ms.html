@@ -1,0 +1,104 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
+
+<html>
+<head>
+<title>MiscWidgets</title>
+</head>
+<body bgcolor="#92bfbf">
+
+<h1>MiscWidgets</h1>
+
+<h3>Synopsis</h3>
+
+<blockquote>
+This library contains common macros that performs miscellaneous tasks that are not covered by the descriptions of the other libraries contained in the Common project.
+</blockquote>
+
+
+
+
+<hr>
+
+<h2>
+<a name="random_num">random_num</a>
+</h2>
+
+<blockquote>
+This macro allows an array of random numbers between two specified values to be easily generated.  The resultant array of numbers has a type of float. A user interface is provided that allows the number of random numbers and the maximum and minimum values or the numbers to be set. The implementation of this macro uses the low-level <a href="doc_mod.html#RandomNumCore">RandomNumCore</a> module to generate the array of random numbers.  The random number seed value provided by RandomNumCore is not currently accessible through the user interface.  Please see the <a href="doc_mod.html#RandomNumCore">RandomNumCore</a> module documentation for more details about this parameter.  By default the random number seed is not set.
+</blockquote>
+
+
+<h3>Inputs</h3>
+
+<blockquote>
+<i><b>&amp;RandomNumParams</b></i>
+</blockquote>
+
+<blockquote>
+Reference to the parameter block, which contains real instances of the parameters for the RandomNumCore module.
+</blockquote>
+
+<blockquote>
+<b><i>num_vals</i></b>
+</blockquote>
+
+<blockquote>
+The number of random numbers that should be generated. The parameter is of type int. Normally the value of this parameter is found by referring to the parameter block, which is referenced by the &amp;RandomNumParams input.
+</blockquote>
+
+<blockquote>
+<b><i>min_val max_val</i></b>
+</blockquote>
+
+<blockquote>
+The minimum and maximum values that define the range of the generated random numbers. The parameters are of type float.  All generated random numbers will be between these two values. If the specified minimum value is greater than the maximum value then the two parameters are swapped internally before the random numbers are generated. Normally the value of this parameter is found by referring to the parameter block, which is referenced by the &amp;RandomNumParams input.
+</blockquote>
+
+<blockquote>
+<b><i>rseed</i></b>
+</blockquote>
+
+<blockquote>
+The seed value used to setup the random number generator. The parameter is of type int. If the seed value does not have a value then the random number generator is not reinitialized. If the seed value does have a specific value then the random number generator is reinitialized with that value every time the output is generated. Normally the value of this parameter is found by referring to the parameter block, which is referenced by the &amp;RandomNumParams input.
+</blockquote>
+
+<hr>
+
+
+<h3>Files</h3>
+
+<blockquote>
+<I>iac_proj/common/ms_wdgts.v</I> contains the V definition of the random_num
+macro.
+</blockquote>
+
+<h3>Other Notes</h3>
+
+<blockquote>
+The MiscWidgets library inherits its process. As this library contains no procedural code, the process is not important.  The CommonMods library contains all procedural code used by the Common project and should be compiled.
+</blockquote>
+
+
+<h3>Authors</h3>
+
+<blockquote><pre>
+Andrew Dodd
+</pre></blockquote>
+
+<h3>Contact</h3>
+
+<blockquote><pre>
+International AVS Centre
+Manchester Visualization Centre
+Manchester Computing
+University of Manchester
+Oxford Road
+Manchester
+United Kingdom
+M13 9PL
+</pre></blockquote>
+
+
+</body>
+</html>
+

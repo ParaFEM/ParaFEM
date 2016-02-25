@@ -1,0 +1,1 @@
+Program p122 performs the 3D strain analysis of an elastic-plastic (Mohr-Coulomb) solid.

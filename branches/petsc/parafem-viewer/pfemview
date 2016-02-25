@@ -1,0 +1,6 @@
+#!/bin/sh
+
+echo "Starting ParaFEM Viewer ..."
+
+cd ${0%/*}
+bin/$MACHINE/express apps/pfemview.v $*

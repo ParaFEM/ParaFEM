@@ -1,0 +1,34 @@
+#!/bin/sh
+#$Id$
+#
+# PBS submission script for BlueCrystal phase 3 computer (bc3).
+# Only Intel compiler is supported on this system so far, so
+# only xx14std program can be submitted.
+#
+#PBS -l walltime=01:00:00,nodes=2:ppn=16
+#PBS -j oe
+#PBS -N xx14
+#PBS -q testq
+
+PROG=xx14
+cd $HOME/nobkp/parafem/parafem/src/programs/dev/$PROG
+OUTFILE="$PROG"std.out
+EXECUTABLE="$PROG"std.x
+CACONFILE="$PROG".conf
+MODEL=p121_medium
+
+echo				 > $OUTFILE
+
+cat $PBS_NODEFILE		>> $OUTFILE
+export confile=nodes
+cat $PBS_NODEFILE > $confile
+export nnodes=`cat $PBS_NODEFILE | wc -l`
+
+# Prepare conf file
+echo -genvall -genv I_MPI_FABRICS=shm:dapl \
+	-machinefile ./$confile \
+	-n $nnodes ./$EXECUTABLE $MODEL > $CACONFILE
+
+echo "START TIME:" `date`	>> $OUTFILE
+$EXECUTABLE			>> $OUTFILE
+echo "END TIME:  " `date`	>> $OUTFILE

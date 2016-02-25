@@ -1,0 +1,1 @@
+from vtkIOVisItBridgePython import *

@@ -1,0 +1,213 @@
+****************************************************************************************
+**  UMAT, FOR ABAQUS/STANDARD INCORPORATING ELASTO-VISCOPLASTICITY WITH LINEAR        **
+**  ISOTROPIC HARDENING. LARGE DEFORMATION FORMULATION FOR PLANE STRAIN               **
+**  AND AXI-SYMMETRIC ELEMENTS. IMPLICIT INTEGRATION WITH INITIAL STIFFNESS JACOBIAN  **
+****************************************************************************************
+****************************************************************************************
+**
+**
+**
+*USER SUBROUTINE
+      SUBROUTINE UMAT(STRESS,STATEV,DDSDDE,SSE,SPD,SCD,
+     1 RPL,DDSDDT,DRPLDE,DRPLDT,
+     2 STRAN,DSTRAN,TIME,DTIME,TEMP,DTEMP,PREDEF,DPRED,CMNAME,
+     3 NDI,NSHR,NTENS,NSTATV,PROPS,NPROPS,COORDS,DROT,PNEWDT,
+     4 CELENT,DFGRD0,DFGRD1,NOEL,NPT,LAYER,KSPT,KSTEP,KINC)
+C
+      INCLUDE 'ABA_PARAM.INC'
+C
+      CHARACTER*80 CMNAME
+C
+C
+      DIMENSION STRESS(NTENS),STATEV(NSTATV),
+     1 DDSDDE(NTENS,NTENS),DDSDDT(NTENS),DRPLDE(NTENS),
+     2 STRAN(NTENS),DSTRAN(NTENS),TIME(2),PREDEF(1),DPRED(1),
+     3 PROPS(NPROPS),COORDS(3),DROT(3,3),DFGRD0(3,3),DFGRD1(3,3)
+C
+C
+      PARAMETER (M=3,N=3, ONE=1.0,TWO=2.0,THREE=3.0)
+C
+      DIMENSION DPSTRAN(4), STRESSOLD(4), DESTRAN(4), DSTRESS(4),
+     +          PS(3), DIR(4)         
+C
+C
+C
+C
+C
+C--------------------------------------------------------------------
+C
+C     SPECIFY MATERIAL PROPERTIES
+C
+C
+      E = 1000.0
+      XNUE = 0.3
+      YIELD = 10.
+      H = 100.
+      ALPHA = 0.2418E-6
+      BETA = 0.1135  
+C 
+C
+C    RECOVER EFFECTIVE PLASTIC STRAIN, P, AND ISOTROPIC 
+C    HARDENING VARIABLE, R,FROM PREVIOUS TIME STEP
+C
+      P = STATEV(1)
+      R = STATEV(2)
+C
+C 
+C    SET UP ELASTICITY MATRIX
+C   
+      EBULK3 = E/(ONE-TWO*XNUE)
+      XK = EBULK3/THREE
+      EG2 = E/(ONE+XNUE)
+      EG = EG2/TWO
+      ELAM = (EBULK3-EG2)/THREE 
+C
+      DO I=1,4
+      DO J=1,4
+      DDSDDE(I,J) = 0.
+      END DO
+      END DO
+C
+      DO K1 = 1, 3
+         DO K2 = 1, 3
+           DDSDDE(K2,K1) = ELAM
+         END DO
+        DDSDDE(K1,K1) = EG2 + ELAM
+      END DO
+C
+        DDSDDE(4,4) = EG
+C
+C     SAVE STRESS AT BEGINNING OF TIME STEP IN STRESSOLD
+C
+      DO K=1,4
+      STRESSOLD(K) = STRESS(K)
+      END DO
+C
+C     OBTAIN TRIAL (ELASTIC) STRESS
+C
+      CALL KMLT1(DDSDDE,DSTRAN,DSTRESS,NTENS)
+C
+      DO K=1,4
+      STRESS(K) = STRESS(K) + DSTRESS(K)
+      END DO
+C
+      CALL SPRINC(STRESS,PS,1,NDI,NSHR)
+C
+C    DETERMINE EFFECTIVE TRIAL STRESS 
+C
+      PJ = (ONE/SQRT(TWO))*SQRT((PS(1)-PS(2))**2 + 
+     +     (PS(2)-PS(3))**2 + (PS(3)-PS(1))**2)
+C
+C
+       FLOW = PJ - R - YIELD
+C
+       STATEV(3) = FLOW
+       XDP = 0.
+       IF(FLOW.GT.0.)THEN
+C
+C     USE NEWTON ITERATION TO DETERMINE EFFECTIVE PLASTIC 
+C     STRAIN INCREMENT
+C
+      R0 = R
+      DO K=1,10
+      XFLOW = BETA*(PJ-(THREE*EG*XDP)-R-YIELD)
+      XPHI =  ALPHA*SINH(XFLOW)
+      XPHIDP = -THREE*EG*ALPHA*BETA*COSH(XFLOW)
+      XPHIR = -ALPHA*BETA*COSH(XFLOW)
+      XRES = XPHI - (XDP/DTIME)
+      DEQPL = XRES/((ONE/DTIME) - XPHIDP - (H*XPHIR))
+      XDP = XDP + DEQPL
+      R = R0 + H*XDP
+      IF(ABS(XRES).LT.1.E-12) GOTO 10
+      END DO
+   10 CONTINUE
+C
+       END IF
+C
+C     DETERMINE THE INCREMENTS IN PLASTIC STRAIN (ENGINEERING SHEAR)
+C
+      SIGM = (ONE/THREE)*(STRESS(1) + STRESS(2) +
+     +       STRESS(3))
+C
+      IF(PJ.GT.0.)THEN
+      DO K=1,3
+      DIR(K) = (THREE/TWO)*(STRESS(K)-SIGM)/PJ
+      END DO
+      DIR(4) = (THREE/TWO)*STRESS(4)/PJ
+      END IF
+      DO K=1,3
+      DPSTRAN(K) = XDP*DIR(K)
+      END DO
+      DPSTRAN(4) = TWO*XDP*DIR(4)
+C
+C      
+C     CALCULATE THE ELASTIC STRAIN INCREMENTS      
+C      
+      DO K=1,4
+      DESTRAN(K)=DSTRAN(K)-DPSTRAN(K)
+      END DO  
+C
+C
+C     DETERMINE STRESS INCREMENT
+C
+       CALL KMLT1(DDSDDE,DESTRAN,DSTRESS,NTENS)
+C
+C      UPDATE THE STRESS, EFFECTIVE PLASTIC STRAIN
+C      (NOTE: ISOTROPIC HARDENING VARIABLE ALREADY UPDATED)
+C
+       DO K = 1,4
+       STRESS(K) = STRESSOLD(K) + DSTRESS(K)
+       END DO
+C
+       P = P + XDP
+C
+C       
+C     STORE UPDATED STATE VARIABLES
+C
+       STATEV(1) = P
+       STATEV(2) = R
+C
+C
+      RETURN
+      END
+**
+***************************************************
+**         MULTIPLY 4X4 MATRIX WITH 4X1 VECTOR    *
+***************************************************
+*USER SUBROUTINE
+      SUBROUTINE KMLT1(DM1,DM2,DM,NTENS)
+C      
+      INCLUDE 'ABA_PARAM.INC'
+C
+      PARAMETER (M=4)
+C
+      DIMENSION DM1(M,M),DM2(M),DM(M)
+C
+      DO 10 I=1,NTENS
+      X=0.0
+      DO 20 K=1,NTENS 
+      Y=DM1(I,K)*DM2(K)
+      X=X+Y
+20    CONTINUE
+      DM(I)=X
+10    CONTINUE
+      RETURN
+      END
+**
+**
+*USER SUBROUTINE
+      SUBROUTINE DISP(U,KSTEP,KINC,TIME,NODE,JDOF)
+C
+      INCLUDE 'ABA_PARAM.INC'
+C
+      DIMENSION U(3), TIME(2)
+C
+      STRRAT = 1.E-3
+C
+      U(1) = DEXP(STRRAT*TIME(1)) - 1.
+C
+C
+      RETURN
+C
+      END
+**

@@ -1,0 +1,11 @@
+#!/bin/bash
+# @ shell       = /bin/bash
+# @ job_name    = p121
+# @ output      = ParaFEM.$(jobid).out
+# @ error       = ParaFEM.$(jobid).err
+# @ job_type    = parallel
+# @ wall_clock_limit = 00:19:59
+# @ total_tasks = 4
+# @ queue
+
+./p121 <argument>

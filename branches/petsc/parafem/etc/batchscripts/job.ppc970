@@ -1,0 +1,11 @@
+#!/bin/bash
+#@ job_name = ParaFEM
+#@ initial_dir = .
+#@ output = ParaFEM_%j.out
+#@ error  = ParaFEM_%j.err
+#@ total_tasks = 4
+#@ tasks_per_node = 4
+#@ wall_clock_limit = 00:10:00
+
+srun ./p121 ed4-large-c3d20
+

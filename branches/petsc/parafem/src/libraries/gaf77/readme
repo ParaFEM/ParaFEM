@@ -1,0 +1,111 @@
+                       GAF77 Library Version 5.0
+
+                          by Gordon A. Fenton
+
+The GAF77 library is a set of math and utility routines written over the last
+several years. They are to be taken in an "as-is" condition, that is the
+author accepts no responsibility for their use (or misuse).  I am reasonably
+confident that the math routines are error-free (beyond round-off errors).
+Some of the routines, such as choll.f and facld.f are relatively simple and do
+not have as nice round-off error properties as do those available through
+linpack, eispack, etc -- so they probably shouldn't be used on nearly singular
+or otherwise pathological matrices. This library also includes
+a variety of routines to produce realizations of Gaussian 1, 2,
+and 3 dimensional random fields. In particular the FFT, Turning Bands Method
+(TBM), and Local Average Subdivision (LAS) methods are implemented here in
+the form of Fortran 77 subroutines. Users should print and read the
+PostScript file "RFGEN.ps" for a comparison of these three methods.
+
+If installed, all the modules here have man page descriptions. See also
+Summary.doc for a brief description of each module.
+
+Any comments, bug reports, corrections, or additions can be sent to
+
+     gordon.fenton@dal.ca (http://www.engmath.dal.ca)
+
+I cannot guarantee particularly swift response times but I'll do what I can.
+If you want to add something to the library, I would appreciate it if you
+could follow the format I use for the comments at the beginning of each
+module since I use this to automatically generate man pages (cat format)
+for each module. In particular you should preserve the PURPOSE line.
+
+To make and install this library, edit the Makefile to ensure that LIBDIR
+points to the directory where libGAF77.a is to be installed, then
+
+   1) type `make'
+
+NOTE: there are a number of system specific calls implemented in these
+      routines. These work fine for Sun's f77 V1.4 Fortran Compiler and DEC's
+      OSF/1 F77 V3.32 Compiler, but need to be reworked for other platforms
+      (such as HP). Linux needs some additional routines, namely etime, fdate,
+      getlog, and getpid.
+      In particular, the following modules contain system specific calls:
+
+	1) second.f - calls the function etime(.) to return elapsed time
+		      since the start of execution. It can also return wall
+                      clock time.
+
+        2) argfn.f, argfp.f, argin.f, argop.f, and openfl.f
+                    - call the routine getarg(i,str) to return the i'th
+                      command line argument in the character string "str".
+                      i = 0 for the executing program name itself, i = 1 for
+                      the first argument etc.
+
+        3) dlspx?.f - these employ the double precision error function derf()
+                      assumed to be resident in the compiler's math library.
+
+        4) iseed.f  - uses the function getpid() to generate a relatively
+                      unique integer for the run. Any function which does
+                      this is acceptable (avoid 0).
+
+In general, the best way to implement this library on machines that do not
+support identically the above commands is to include these modules in
+a library which translate what is expected to what is actually offered
+(see second.f for an example).
+
+Where possible, other non-standard Fortran 77 extensions have been avoided.
+Let me know if you discover any.
+
+_______________________________________________________________________________
+_______________________________________________________________________________
+
+
+  DETAILS ABOUT THIS VERSION
+
+  Comments added by Lee Margetts on 29 May 2012
+
+  This version of the GAF77 library is supplied as part of the suite of 
+  software that accompanies the book Fenton G.A. and Griffiths D.V. 
+  "Risk Assessment in Geotechnical Engineering", Wiley, 2008.
+
+  The driver programs and Smith and Griffiths libraries provided in the book 
+  are different to those provided here in ParaFEM. Therefore, to avoid
+  confusion and the need to write supporting documentation, we have stripped
+  out GAF77 from the rest of the software.
+
+  A new driver program has been written, RFEM.F90 and this has limited scope.
+  It currently only creates random fields using the subroutine SIM3DE.f
+
+  For simplification, the subroutine SIM3DE.f has been added to the GAF77
+  library. In the book, this subroutine is compiled elsewhere as part of a 
+  driver program. 
+
+  On compilation, a number of files were missing. These are
+  part of the full distribution and so for convenience, those procedures called
+  by GAF77 are now built within the library GAF77. It is now self-contained.
+
+  As noted in the original readme, SECOND.f is problematic. ETIME() is not
+  an intrinsic procedure in the version of CRAY FORTRAN being used. A hack
+  has been used, but not tested.
+
+  Variables and arrays are not initiallised to zero in the source code. This 
+  caused erroneous output on initial testing, but was rectified using a 
+  compiler switch.
+
+  Another issue was that mixed REAL*4 and REAL*8 precision was used in the 
+  subroutine SIM3DE.f. This caused problems when called by the driver 
+  program RFEM.f90. All reals are now REAL*8 at that level of the library. 
+  This may have unintended consequences and will be investigated later.
+ 
+
+

@@ -1,0 +1,3 @@
+*TIMESTEPS 1 1 3
+dtim nstep npri npri_chk
+1 0.001 20000 20 10000
