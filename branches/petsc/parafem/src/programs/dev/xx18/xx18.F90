@@ -80,6 +80,8 @@ PROGRAM xx18
   ! crawl.
   REAL,PARAMETER      :: p_over_allocation=1.3
   PetscErrorCode      :: p_ierr
+  ! The PETSc objects cannot be initialised here because PETSC_NULL_OBJECT is a
+  ! common-block-object and not a constant.
   Vec                 :: p_x,p_b,p_r
   Mat                 :: p_A
   KSP                 :: p_ksp
@@ -127,6 +129,12 @@ PROGRAM xx18
 !!$    storkm_pp(ntot,ntot,nels_pp),km(ntot,ntot),pmul_pp(ntot,nels_pp),          &
     km(ntot,ntot),pmul_pp(ntot,nels_pp),                                       &
     utemp_pp(ntot,nels_pp),g_g_pp(ntot,nels_pp))
+
+  p_x   = PETSC_NULL_OBJECT
+  p_b   = PETSC_NULL_OBJECT
+  p_r   = PETSC_NULL_OBJECT
+  p_A   = PETSC_NULL_OBJECT
+  p_ksp = PETSC_NULL_OBJECT
   
   !-----------------------------------------------------------------------------
   ! 3. Start up PETSc after MPI has been started
