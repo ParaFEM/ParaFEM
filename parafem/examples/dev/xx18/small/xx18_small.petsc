@@ -1,3 +1,7 @@
+# This all needs to be in the ParaFEM control file, because several
+# different solvers might be used in one program e.g. if the matrix
+# become asymmetric.
+-mat_view ::ascii_info
 -ksp_type cg
 #-ksp_rtol 1.0e-5
 #-ksp_atol 1.0e-50
