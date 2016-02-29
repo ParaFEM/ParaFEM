@@ -1,5 +1,8 @@
 #!/bin/bash
 
+# Don't use the -debug flag.  That would make the comparison between
+# ParaFEM and PETSc unfair.
+
 if [[ $# == 1 && $1 == 'xx18' ]]; then
     export build=xx18 log=build-xx18.log
 elif [[ $# == 1 && $1 == 'modules' ]]; then
@@ -16,20 +19,19 @@ fi
 source $EPCC_PE_RELEASE/nov2015
 # This is needed because cray-tpsl is used by cray-petsc without
 # actually loading the module.
-
 #module load cray-tpsl
 module load cray-tpsl-64
 
-# Split in two because /work was slow.  Seems OK on /home to compile modules and xx18 all at once.
-
 #module load cray-petsc
 module load cray-petsc-64
+
+# Split in two because /work was slow.  Seems OK on /home to compile modules and xx18 all at once.
 
 (
     export PARAFEM_HOME=$(readlink --canonicalize $PWD/../../../..)
     if [[ $build == 'xx18' ]]; then
 	sleep 1 # TDS and /home are sleepy
-	./make-parafem-xx18 MACHINE=xc30 -debug --no-libs --no-tools -mpi -xx > $log 2>&1
+	./make-parafem-xx18 MACHINE=xc30 --no-libs --no-tools -mpi -xx > $log 2>&1
 	sleep 1 # TDS and /home are sleepy
 	mkdir -p $HOME/modulefiles/xx18
 	cat > $HOME/modulefiles/xx18/0.1 <<EOF
@@ -57,9 +59,9 @@ EOF
     elif [[ $build == 'modules' ]]; then
 	./make-parafem-xx18 MACHINE=xc30 clean execlean &> clean.log
 	sleep 1 # TDS and /home are sleepy
-	./make-parafem-xx18 MACHINE=xc30 -debug --no-libs --no-tools -mpi --only-modules > $log 2>&1
+	./make-parafem-xx18 MACHINE=xc30 --no-libs --no-tools -mpi --only-modules > $log 2>&1
 	sleep 1 # TDS and /home are sleepy
-	./make-parafem-xx18 MACHINE=xc30 -debug --no-libs -mpi --only-tools -preproc >> $log 2>&1
+	./make-parafem-xx18 MACHINE=xc30 --no-libs -mpi --only-tools -preproc >> $log 2>&1
 	sleep 1 # TDS and /home are sleepy
     fi
 )
