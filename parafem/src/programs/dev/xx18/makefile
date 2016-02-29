@@ -1,5 +1,5 @@
 # MAKEFILE src/programs/dev/xx18/makefile
-# Author: Louise M. Lever, Lee Margetts
+# Author: Louise M. Lever, Lee Margetts, Mark Filipiak
 # -----------------------------------------------------------------------
 # Compiles xx18 program executable as RELEASE or DEBUG
 # Links with RELEASE STATIC library libParaFEM_mpi.$(VERSION).a
@@ -29,7 +29,7 @@ all:	release
 
 release:
 	@echo
-	@echo "Building XX18 RELEASE"
+	@echo "Building xx18 RELEASE"
 	$(MAKE) xx18 \
 	FFLAGS="-c -I$(MODULE) $(XX18_MPI_REL_FFLAGS)" \
 	LDFLAGS="-L$(LIB) -lParaFEM_mpi.$(VERSION) $(XX18_MPI_REL_LDFLAGS)"

@@ -1,9 +1,9 @@
-# MAKEFILE src/programs/5th_ed/xx15/makefile
-# Author: Louise M. Lever
+# MAKEFILE src/programs/dev/xx15/makefile
+# Author: Louise M. Lever, Mark Filipiak
 # -----------------------------------------------------------------------
 # Compiles xx15 program executable as RELEASE or DEBUG
 # Links with RELEASE STATIC library libParaFEM_mpi.$(VERSION).a
-#    or with RELEASE STATIC library libParaFEM_mpi_D.$(VERSION).a
+#    or with DEBUG STATIC library libParaFEM_mpi_D.$(VERSION).a
 # -----------------------------------------------------------------------
 # Available Rules:
 #   (default) : execute the release rule
@@ -23,7 +23,7 @@ include ../../../../build/$(MACHINE).inc
 
 MODULE	= ../../../../include/mpi
 LIB	= ../../../../lib
-.SUFFIXES: .o .f90
+.SUFFIXES: .o .F90
 
 all:	release
 
@@ -46,8 +46,8 @@ debug:
 xx15: xx15.o
 	$(FC) xx15.o -o xx15 $(LDFLAGS)
 
-xx15.o: xx15.f90
-	$(FC) xx15.f90 $(FFLAGS)
+xx15.o: xx15.F90
+	$(FC) xx15.F90 $(FFLAGS)
 
 clean:
 	rm -f *.o
@@ -59,3 +59,6 @@ relink: xx15
 
 install:
 	cp xx15 ../../../../bin
+
+test:
+	./test.sh xx15
