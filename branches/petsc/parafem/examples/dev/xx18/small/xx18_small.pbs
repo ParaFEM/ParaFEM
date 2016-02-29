@@ -9,6 +9,6 @@ export PBS_O_WORKDIR=$(readlink -f $PBS_O_WORKDIR)
 cd $PBS_O_WORKDIR
 
 module use $HOME/modulefiles
-module load xx18
+module load parafem
 
 aprun -n 4 xx18 xx18_small
