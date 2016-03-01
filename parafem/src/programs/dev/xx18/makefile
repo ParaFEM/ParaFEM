@@ -21,7 +21,8 @@
 include ../../../../build/mk_defs.inc
 include ../../../../build/$(MACHINE).inc
 
-MODULE	= ../../../../include/mpi
+MODULE_MPI	= ../../../../include/mpi
+MODULE_PETSC	= ../../../../include/petsc
 LIB	= ../../../../lib
 .SUFFIXES: .o .F90
 
@@ -31,16 +32,16 @@ release:
 	@echo
 	@echo "Building xx18 RELEASE"
 	$(MAKE) xx18 \
-	FFLAGS="-c -I$(MODULE) $(XX18_MPI_REL_FFLAGS)" \
-	LDFLAGS="-L$(LIB) -lParaFEM_mpi.$(VERSION) $(XX18_MPI_REL_LDFLAGS)"
+	FFLAGS="-c -I$(MODULE_MPI) -I$(MODULE_PETSC) $(XX18_MPI_REL_FFLAGS)" \
+	LDFLAGS="-L$(LIB) -lParaFEM_mpi.$(VERSION) -lParaFEM_petsc.$(VERSION) $(XX18_MPI_REL_LDFLAGS)"
 	@echo "Done xx18 RELEASE"
 
 debug:
 	@echo
 	@echo "Building xx18 DEBUG"
 	$(MAKE) xx18 \
-	FFLAGS="-c -I$(MODULE) $(XX18_MPI_DBG_FFLAGS)" \
-	LDFLAGS="-L$(LIB) -lParaFEM_mpi_D.$(VERSION) $(XX18_MPI_DBG_LDFLAGS)"
+	FFLAGS="-c -I$(MODULE_MPI) -I$(MODULE_PETSC) $(XX18_MPI_DBG_FFLAGS)" \
+	LDFLAGS="-L$(LIB) -lParaFEM_mpi_D.$(VERSION) -lParaFEM_petsc_D.$(VERSION) $(XX18_MPI_DBG_LDFLAGS)"
 	@echo "Done xx18 DEBUG"
 
 xx18: xx18.o

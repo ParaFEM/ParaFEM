@@ -1,5 +1,5 @@
 # BUILD INCLUDE build/xc30.inc
-# Author: Lee Margetts
+# Author: Lee Margetts, Mark Filipiak
 # ------------------------------------------------------------------------------
 # Include file for the xc30 (ARCHER) architecture.
 # ------------------------------------------------------------------------------
@@ -31,7 +31,7 @@ EXT_LIB_METIS_RANLIB=ranlib
 # ------------------------------------------------------------------------------
 # FLAGS for MODULE/LIBRARY compliation
 # ------------------------------------------------------------------------------
-# Form is LIB_(MPI|SERIAL|OPENMP|GPU)_(REL|DBG)_(FFLAGS|LDFLAGS)
+# Form is LIB_(MPI|SERIAL|OPENMP|GPU|PETSC)_(REL|DBG)_(FFLAGS|LDFLAGS)
 # These flags are directly used by the module makefiles
 # ------------------------------------------------------------------------------
 LIB_MPI_REL_FFLAGS=-O3 -em -s real64
@@ -46,13 +46,16 @@ LIB_BEM_DBG_FFLAGS=-g -em -s real64
 LIB_BEM_P_REL_FFLAGS=-O3 -em -s real64
 LIB_BEM_P_DBG_FFLAGS=-g -em -s real64
 
+LIB_PETSC_REL_FFLAGS=-O3 -em -s real64
+LIB_PETSC_DBG_FFLAGS=-g -em -s real64
+  
 # ------------------------------------------------------------------------------
 # DEFAULT FLAGS for all program groups
 # ------------------------------------------------------------------------------
 # Form is:
 #   DEFAULT_
 #   + (P12|ED5|XX|PROG8|GAITFEM|RFEM)_
-#   + (MPI|SERIAL|OPENMP|GPU)_
+#   + (MPI|SERIAL|OPENMP|GPU|PETSC)_
 #   + (REL|DBG)_
 #   + (FFLAGS|LDFLAGS)
 # where applicable.
