@@ -3,6 +3,16 @@ program XX15
 !   program xx15:  finite strain elasto-plastic analysis with Newton-Raphson
 !------------------------------------------------------------------------------
 
+  ! PETSc modules
+  ! Use system, vectors, matrices, solvers, preconditioners
+  USE petscsys
+  USE petscvec
+  USE petscmat
+  USE petscksp
+  USE petscpc
+  
+  ! PETSc will always use MPI (unless PETSc itself has been compiled without
+  ! MPI)
   USE PRECISION
   USE GLOBAL_VARIABLES
   USE MP_INTERFACE
@@ -17,6 +27,14 @@ program XX15
   
   IMPLICIT NONE
 
+  ! PETSc types
+  ! Use system, vectors, matrices, solvers, preconditioners
+#include <petsc/finclude/petscsysdef.h>
+#include <petsc/finclude/petscvecdef.h>
+#include <petsc/finclude/petscmatdef.h>
+#include <petsc/finclude/petsckspdef.h>
+#include <petsc/finclude/petscpcdef.h>
+  
   INTEGER :: nels, nn, nr, nip, nodof=3, nod, nst=6, loaded_nodes, nn_pp,     &
    nf_start, fmt=1, i, j, k, l, ndim=3, iters, limit, iel, nn_start,          &
    num_load_steps, iload, igauss, dimH, inewton, jump, npes_pp, partitioner=1,&
@@ -39,6 +57,27 @@ program XX15
  
   LOGICAL :: converged, timewrite=.TRUE., flag=.FALSE., print_output=.FALSE., &
    tol_inc=.FALSE., lambda_inc=.TRUE.
+
+  ! PETSc variables
+  INTEGER,PARAMETER   :: p_max_string_length=1024
+  ! p_over_allocation should be a run time setting with a default set in the
+  ! program.  Choosing too small a value (e.g. 0.99) slows MatSetValues to a
+  ! crawl.
+  REAL,PARAMETER      :: p_over_allocation=1.3
+  PetscErrorCode      :: p_ierr
+  ! The PETSc objects cannot be initialised here because PETSC_NULL_OBJECT is a
+  ! common-block-object and not a constant.
+  Vec                 :: p_x,p_b,p_r
+  Mat                 :: p_A
+  KSP                 :: p_ksp
+  PetscScalar         :: p_pr_n2,p_r_n2,p_b_n2
+  PetscInt,ALLOCATABLE    :: p_rows(:),p_cols(:)
+  PetscScalar,ALLOCATABLE :: p_values(:)
+  PetscScalar,POINTER :: p_varray(:)
+  PetscInt            :: p_its,p_nnz
+  DOUBLE PRECISION    :: p_info(MAT_INFO_SIZE)
+  KSPConvergedReason  :: p_reason
+  CHARACTER(LEN=p_max_string_length) :: p_description
 
   !-------------------------- dynamic arrays-----------------------------------
   REAL(iwp), ALLOCATABLE:: points(:,:), coord(:,:), weights(:), xnew_pp(:),   &

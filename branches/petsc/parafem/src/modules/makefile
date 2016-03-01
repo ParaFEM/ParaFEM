@@ -1,5 +1,5 @@
 # MAKEFILE src/modules/makefile
-# Author: Louise M. Lever
+# Author: Louise M. Lever, Mark Filipiak
 # -----------------------------------------------------------------------
 # Compiles common "shared" files and specific "mpi" files
 # Builds as a STATIC library libParaFEM_mpi.a
@@ -20,7 +20,7 @@ VPATH = shared
 include ../../build/mk_defs.inc
 include ../../build/$(MACHINE).inc
 
-all:	release-mpi release-serial release-bem_lib release-bem_lib_p
+all:	release-mpi release-petc release-serial release-bem_lib release-bem_lib_p
 
 release-mpi:
 	@echo
@@ -33,6 +33,18 @@ debug-mpi:
 	@echo "Building MODULE DEBUG (MPI)"
 	@cd mpi && $(MAKE) debug && cd ..
 	@echo "Done MODULE DEBUG (MPI)"
+
+release-petsc:
+	@echo
+	@echo "Building MODULE RELEASE (PETSC)"
+	@cd petsc && $(MAKE) release && cd ..
+	@echo "Done MODULE RELEASE (PETSC)"
+
+debug-petsc:
+	@echo
+	@echo "Building MODULE DEBUG (PETSC)"
+	@cd petsc && $(MAKE) debug && cd ..
+	@echo "Done MODULE DEBUG (PETSC)"
 
 release-serial:
 	@echo
@@ -72,23 +84,28 @@ debug-bem_lib_p:
 
 clean:
 	@cd mpi && $(MAKE) clean && cd ..
+	@cd petsc && $(MAKE) clean && cd ..
 	@cd serial && $(MAKE) clean && cd ..
 	@cd bem && $(MAKE) clean && cd ..
 	@cd bem_p && $(MAKE) clean && cd ..
 
 execlean:
 	@cd mpi && $(MAKE) execlean && cd ..
+	@cd petsc && $(MAKE) execlean && cd ..
 	@cd serial && $(MAKE) execlean && cd ..
 	@cd bem && $(MAKE) execlean && cd ..
 	@cd bem_p && $(MAKE) execlean && cd ..
 
 install:
 	@echo
-	@echo "Installing: MPI SERIAL BEM BEM_P libraries"
-	$(MAKE) install-mpi install-serial install-bem_lib install-bem_lib_p
+	@echo "Installing: MPI PETSC SERIAL BEM BEM_P libraries"
+	$(MAKE) install-mpi install-petc install-serial install-bem_lib install-bem_lib_p
 
 install-mpi:
 	@cd mpi && $(MAKE) install & cd ..
+
+install-petsc:
+	@cd petsc && $(MAKE) install & cd ..
 
 install-serial:
 	@cd serial && $(MAKE) install & cd ..
