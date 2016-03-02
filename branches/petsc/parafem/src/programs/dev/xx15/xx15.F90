@@ -3,13 +3,10 @@ program XX15
 !   program xx15:  finite strain elasto-plastic analysis with Newton-Raphson
 !------------------------------------------------------------------------------
 
-  ! PETSc modules
-  ! Use system, vectors, matrices, solvers, preconditioners
-  USE petscsys
-  USE petscvec
-  USE petscmat
-  USE petscksp
-  USE petscpc
+  ! PETSc interface and modules
+  USE parafem_petsc
+  ! PETSc will always use MPI (unless PETSc itself has been compiled without
+  ! MPI)
   
   ! PETSc will always use MPI (unless PETSc itself has been compiled without
   ! MPI)
@@ -28,13 +25,8 @@ program XX15
   IMPLICIT NONE
 
   ! PETSc types
-  ! Use system, vectors, matrices, solvers, preconditioners
-#include <petsc/finclude/petscsysdef.h>
-#include <petsc/finclude/petscvecdef.h>
-#include <petsc/finclude/petscmatdef.h>
-#include <petsc/finclude/petsckspdef.h>
-#include <petsc/finclude/petscpcdef.h>
-  
+#include <petsc/finclude/petscdef.h>
+ 
   INTEGER :: nels, nn, nr, nip, nodof=3, nod, nst=6, loaded_nodes, nn_pp,     &
    nf_start, fmt=1, i, j, k, l, ndim=3, iters, limit, iel, nn_start,          &
    num_load_steps, iload, igauss, dimH, inewton, jump, npes_pp, partitioner=1,&
@@ -59,11 +51,6 @@ program XX15
    tol_inc=.FALSE., lambda_inc=.TRUE.
 
   ! PETSc variables
-  INTEGER,PARAMETER   :: p_max_string_length=1024
-  ! p_over_allocation should be a run time setting with a default set in the
-  ! program.  Choosing too small a value (e.g. 0.99) slows MatSetValues to a
-  ! crawl.
-  REAL,PARAMETER      :: p_over_allocation=1.3
   PetscErrorCode      :: p_ierr
   ! The PETSc objects cannot be initialised here because PETSC_NULL_OBJECT is a
   ! common-block-object and not a constant.
@@ -157,6 +144,17 @@ program XX15
 
   CALL CALC_NODES_PP(nn,npes,numpe,node_end,node_start,nodes_pp)
 
+  !-----------------------------------------------------------------------------
+  ! 1a. Start up PETSc after MPI has been started
+  !-----------------------------------------------------------------------------
+  
+  CALL PetscInitialize(TRIM(argv)//".petsc",p_ierr)
+  p_x   = PETSC_NULL_OBJECT
+  p_b   = PETSC_NULL_OBJECT
+  p_r   = PETSC_NULL_OBJECT
+  p_A   = PETSC_NULL_OBJECT
+  p_ksp = PETSC_NULL_OBJECT
+  
 !------------------------------------------------------------------------------
 ! 2. Get integration Gauss points and weights in the element
 !------------------------------------------------------------------------------
