@@ -187,7 +187,7 @@ PROGRAM xx18
     ! array order, so a transpose is needed.
     p_rows   = g_g_pp(:,iel) - 1
     p_cols   = p_rows
-    p_values = RESHAPE(TRANSPOSE(km),(/ntot*ntot/))
+    p_values = RESHAPE(TRANSPOSE(km),SHAPE(p_values))
     CALL MatSetValues(p_A,ntot,p_rows,ntot,p_cols,p_values,ADD_VALUES,p_ierr)
   END DO elements_1
   DEALLOCATE(p_rows,p_cols,p_values)
