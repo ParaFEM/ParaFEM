@@ -115,11 +115,11 @@ PROGRAM xx1
                  meshgen,nels,nip,nn,nod,nr,partitioner,tol,v)
 
 !
-! This part required if we have more than one material type in the mesh
+! This part needs modifying if we have more than one material type in the mesh
 !
-! nprops   = 2   ! needs to go in .dat file and be read using READ_XX1
-! np_types = 2   ! needs to go in .dat file and be read using READ_XX1
-!
+
+  nprops   = 2   ! needs to go in .dat file and be read using READ_XX1
+  np_types = 1   ! needs to go in .dat file and be read using READ_XX1
  
   CALL calc_nels_pp(job_name,nels,npes,numpe,partitioner,nels_pp)
 
@@ -226,8 +226,8 @@ PROGRAM xx1
   g_g_pp = 0 ; neq = 0
 
   elements_1: DO iel = 1, nels_pp
-    CALL find_g3(g_num_pp(:,iel),g_g_pp(:,iel),rest)
-!   CALL find_g(g_num_pp(:,iel),g_g_pp(:,iel),rest)
+ !  CALL find_g3(g_num_pp(:,iel),g_g_pp(:,iel),rest)
+    CALL find_g(g_num_pp(:,iel),g_g_pp(:,iel),rest)
   END DO elements_1
 
   neq = MAXVAL(g_g_pp); neq= MAX_P(neq)
@@ -310,7 +310,6 @@ PROGRAM xx1
   ELSE
     storkm_pp        = zero
     elements_3a: DO iel=1,nels_pp
-      PRINT *, "etype_pp for iel ", iel+iel_start-1, " = ",etype_pp(iel)
       e  = prop(1,etype_pp(iel))  ! if each element has own properties
       v  = prop(2,etype_pp(iel))
       dee = zero
@@ -581,6 +580,10 @@ PROGRAM xx1
       END DO
       CALL dismsh_ensi_pb2(40,1,nodes_pp,npes,numpe,1,tempres)
     END DO
+
+!   Write out ASCII for comparison
+    
+    CALL write_nodal_variable(label,24,1,nodes_pp,npes,numpe,ndim,disp_pp)
 
     DEALLOCATE(tempres)
 
