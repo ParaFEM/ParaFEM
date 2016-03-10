@@ -47,7 +47,7 @@ program XX15
   CHARACTER(len=15) :: element
   CHARACTER(len=50) :: text, fname_base, fname
  
-  LOGICAL :: converged, timewrite=.TRUE., flag=.FALSE., print_output=.TRUE., &
+  LOGICAL :: converged, timewrite=.TRUE., flag=.FALSE., print_output=.FALSE., &
    tol_inc=.FALSE., lambda_inc=.TRUE.
 
   CHARACTER(len=50) :: solver="parafem"
@@ -485,10 +485,11 @@ program XX15
     ! Update the load increments
     lambda_prev=lambda_total
     lambda_total=lambda_total+lambda
-    IF (lambda_total>1._iwp) THEN
-      lambda_total = 1._iwp
-      lambda = lambda_total - lambda_prev
-    END IF
+!!$    ! Don't overshoot.  This is commented out to match the original xx15.
+!!$    IF (lambda_total>1._iwp) THEN
+!!$      lambda_total = 1._iwp
+!!$      lambda = lambda_total - lambda_prev
+!!$    END IF
 
     ! Exit if the time increment is less that the specified minimum
     IF (lambda<min_inc) THEN
@@ -613,8 +614,9 @@ program XX15
            
           ! Calculate the stiffness tensor of the element
           geeFT = TRANSPOSE(geeF)
-          storekm_pp(:,:,iel) = storekm_pp(:,:,iel)                         &
-                                + (MATMUL(MATMUL(geeFT,deeF),geeF)*dw)
+          storekm_pp(:,:,iel)=storekm_pp(:,:,iel) + (MATMUL(MATMUL(geeFT,     &
+           deeF),geeF)*dw)
+
         END DO
 
         IF (solver=="petsc") THEN
@@ -648,11 +650,11 @@ program XX15
       ! Time is accumulated over all load increments
       timest(16) = timest(16) + (ELAP_TIME() - timest(12))
       
+!------------------------------------------------------------------------------
+! 12. Build and invert the preconditioner (ParaFEM only)
+!------------------------------------------------------------------------------
+
       IF (solver=="parafem") THEN
-        !-----------------------------------------------------------------------
-        ! 12. Build and invert the preconditioner
-        !-----------------------------------------------------------------------
-        
         timest(17) = ELAP_TIME()
         
         diag_precon_tmp = zero
@@ -736,9 +738,6 @@ program XX15
       deltax_pp = zero
       res_pp    = r_pp
 
-      WRITE(*,*)"r_pp(1:)"
-      WRITE(*,*)r_pp(1:)
-
       IF (solver=="parafem") THEN
         CALL PCG_VER1(inewton,limit,tol,storekm_pp,r_pp(1:),                   &
                       diag_precon_pp(1:),rn0,deltax_pp(1:),iters)
@@ -799,10 +798,6 @@ program XX15
       timest(19) = timest(19) + (ELAP_TIME() - timest(18))
 
       ! Total displacements
-      WRITE(*,*)"xnew_pp(1:)"
-      WRITE(*,*)xnew_pp(1:)
-      WRITE(*,*)"deltax_pp(1:)"
-      WRITE(*,*)deltax_pp(1:)
       xnew_pp(1:) = xnew_pp(1:) + deltax_pp(1:)
       xnew_pp(0) = zero
       
@@ -843,7 +838,11 @@ program XX15
         IF (numpe==1) THEN
           WRITE(*,*) 'The load increment is cut in half'
         END IF
-        lambda_total=lambda_total-lambda
+        IF (print_output) THEN
+          lambda_total=lambda_total-temp_inc
+        ELSE
+          lambda_total=lambda_total-lambda
+        END IF
         lambda=half*lambda
         xnew_pp=xnewprev_pp
         flag=.FALSE.
@@ -940,12 +939,6 @@ program XX15
         
         ! Save the converged displacement
         xnew_pp_previous=xnew_pp
-        IF (numpe==1) THEN
-          WRITE(*,*)"xnew_pp(1:)"
-          WRITE(*,*)xnew_pp(1:)
-          WRITE(*,*)"lnstrainelas(:)"
-          WRITE(*,*)lnstrainelas(:)
-        END IF
 
         EXIT
       END IF
@@ -1006,7 +999,8 @@ program XX15
     END IF
     
 !-----print out displacements, stress, principal stress and reactions -------
-    IF (print_output) THEN
+    !IF (print_output) THEN
+!!$    IF (iload==max_inc) THEN
       
       writetimes = writetimes + 1
       IF(timewrite) THEN
@@ -1022,7 +1016,6 @@ program XX15
       !ALLOCATE(reacnodes_pp(nodes_pp*nodof))
       
       CALL GATHER(xnew_pp(1:),xnewel_pp)
-      ! The fixed freedoms are not in the global vector.
       IF (numfix_pp > 0) THEN
         DO i = 1,numfix_pp
           xnewel_pp(fixdof_pp(i),fixelem_pp(i)) = fixvaltot_pp(i)
@@ -1077,28 +1070,28 @@ program XX15
         END DO
       END DO
 
-      text = "*DISPLACEMENT"
+!      text = "*DISPLACEMENT"
       CALL SCATTER_NODES(npes,nn,nels_pp,g_num_pp,nod,nodof,nodes_pp, &
               node_start,node_end,xnewel_pp,xnewnodes_pp,1)
       CALL WRITE_NODAL_VARIABLE(text,24,iload,nodes_pp,npes,numpe,nodof, &
                                 xnewnodes_pp)
 	  DEALLOCATE(xnewnodes_pp)
 
-      text = "*STRESS"
+!      text = "*STRESS"
       !CALL NODAL_PROJECTION(npes,nn,nels_pp,g_num_pp,nod,nst,nodes_pp,  &
       ! node_start,node_end,shape_integral_pp,stress_integral_pp,stressnodes_pp)
       !CALL WRITE_NODAL_VARIABLE(text,25,iload,nodes_pp,npes,numpe,nst,   &
       !                          stressnodes_pp)
       !DEALLOCATE(stress_integral_pp,stressnodes_pp)
 
-      text = "*NODAL REACTIONS"
+!      text = "*NODAL REACTIONS"
       !CALL SCATTER_NODES(npes,nn,nels_pp,g_num_pp,nod,nodof,nodes_pp, &
       !        node_start,node_end,storefint_pp,reacnodes_pp,0)
       !CALL WRITE_NODAL_VARIABLE(text,26,iload,nodes_pp,npes,numpe,nodof, &
       !                          reacnodes_pp)
       !DEALLOCATE(reacnodes_pp)
 
-      text = "*ELASTIC STRAIN"
+!      text = "*ELASTIC STRAIN"
       CALL NODAL_PROJECTION(npes,nn,nels_pp,g_num_pp,nod,nst,nodes_pp,  &
        node_start,node_end,shape_integral_pp,strain_integral_pp,strainnodes_pp)
       CALL WRITE_NODAL_VARIABLE(text,27,iload,nodes_pp,npes,numpe,nst,   &
@@ -1132,7 +1125,9 @@ program XX15
       !   FLOAT(unload_tot)/FLOAT(yield_tot*8)
       !END IF
       
-    END IF  !printing
+      print_output=.false.
+
+!!$    END IF  !printing
     
     IF (iload==max_inc) THEN
       EXIT
