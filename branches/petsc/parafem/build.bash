@@ -14,14 +14,6 @@ build.bash modules to re-build the ParaFEM modules and p12meshgen'
     exit 2 # incorrect usage
 fi
 
-# The following two commands are needed until the new modules are set
-# to be the defaults.
-source $EPCC_PE_RELEASE/nov2015
-# This is needed because cray-tpsl is used by cray-petsc without
-# actually loading the module.
-#module load cray-tpsl
-module load cray-tpsl-64
-
 #module load cray-petsc
 module load cray-petsc-64
 
