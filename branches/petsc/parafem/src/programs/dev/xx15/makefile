@@ -24,7 +24,7 @@ include ../../../../build/$(MACHINE).inc
 MODULE_MPI	= ../../../../include/mpi
 MODULE_PETSC	= ../../../../include/petsc
 LIB	= ../../../../lib
-.SUFFIXES: .o .F90
+.SUFFIXES: .o .F90 .f90
 
 all:	release
 
@@ -34,6 +34,9 @@ release:
 	$(MAKE) xx15 \
 	FFLAGS="-c -I$(MODULE_MPI) -I$(MODULE_PETSC) $(XX15_MPI_REL_FFLAGS)" \
 	LDFLAGS="-L$(LIB) -lParaFEM_mpi.$(VERSION) -lParaFEM_petsc.$(VERSION) $(XX15_MPI_REL_LDFLAGS)"
+	$(MAKE) xx15_original \
+	FFLAGS="-c -I$(MODULE_MPI) $(XX15_MPI_REL_FFLAGS)" \
+	LDFLAGS="-L$(LIB) -lParaFEM_mpi.$(VERSION) $(XX15_MPI_REL_LDFLAGS)"
 	@echo "Done xx15 RELEASE"
 
 debug:
@@ -42,6 +45,9 @@ debug:
 	$(MAKE) xx15 \
 	FFLAGS="-c -I$(MODULE_MPI) -I$(MODULE_PETSC) $(XX15_MPI_DBG_FFLAGS)" \
 	LDFLAGS="-L$(LIB) -lParaFEM_mpi_D.$(VERSION) -lParaFEM_petsc_D.$(VERSION) $(XX15_MPI_DBG_LDFLAGS)"
+	$(MAKE) xx15_original \
+	FFLAGS="-c -I$(MODULE_MPI) $(XX15_MPI_DBG_FFLAGS)" \
+	LDFLAGS="-L$(LIB) -lParaFEM_mpi_D.$(VERSION) $(XX15_MPI_DBG_LDFLAGS)"
 	@echo "Done xx15 DEBUG"
 
 xx15: xx15.o
@@ -50,16 +56,24 @@ xx15: xx15.o
 xx15.o: xx15.F90
 	$(FC) xx15.F90 $(FFLAGS)
 
+xx15_original: xx15_original.o
+	$(FC) xx15_original.o -o xx15_original  $(LDFLAGS)
+
+xx15_original.o: xx15_original.f90
+	$(FC) xx15_original.f90 $(FFLAGS)
+
 clean:
 	rm -f *.o
 
 execlean:
-	rm -f xx15 ../../../../bin/xx15
+	rm -f xx15 xx15_original ../../../../bin/xx15 ../../../../bin/xx15_original
 
-relink: xx15
+relink: xx15 xx15_original
 
 install:
 	cp xx15 ../../../../bin
+	cp xx15_original ../../../../bin
 
 test:
 	./test.sh xx15
+	./test.sh xx15_original
