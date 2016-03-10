@@ -47,8 +47,10 @@ program XX15
   CHARACTER(len=15) :: element
   CHARACTER(len=50) :: text, fname_base, fname
  
-  LOGICAL :: converged, timewrite=.TRUE., flag=.FALSE., print_output=.FALSE., &
+  LOGICAL :: converged, timewrite=.TRUE., flag=.FALSE., print_output=.TRUE., &
    tol_inc=.FALSE., lambda_inc=.TRUE.
+
+  CHARACTER(len=50) :: solver="parafem"
 
   ! PETSc variables
   PetscErrorCode      :: p_ierr
@@ -106,7 +108,7 @@ program XX15
 !  If I have forgotten to write the name of the file in the command
 !  line, the program is stopped
   IF (argc /= 1) THEN
-    IF (numpe==npes) THEN
+    IF (numpe==1) THEN
       WRITE(*,*) "Need name of filename_base!!"
     END IF
     CALL SHUTDOWN
@@ -122,12 +124,14 @@ program XX15
                              nip,limit,tol,e,v,nod,num_load_steps,jump,tol2)
 
   IF (nels < npes) THEN
+    IF (numpe==1) THEN
+      WRITE(*,*)"Error: fewer elements than processors"
+    END IF
     CALL SHUTDOWN
-    WRITE(*,*)"Error: less elements than processors"
     STOP
   END IF
 
-  IF(numpe==npes) THEN
+  IF(numpe==1) THEN
     fname = fname_base(1:INDEX(fname_base," ")-1) // ".res"
     OPEN (11, file=fname, status='replace', action='write')
   END IF
@@ -144,17 +148,19 @@ program XX15
 
   CALL CALC_NODES_PP(nn,npes,numpe,node_end,node_start,nodes_pp)
 
-  !-----------------------------------------------------------------------------
-  ! 1a. Start up PETSc after MPI has been started
-  !-----------------------------------------------------------------------------
-  
-  CALL PetscInitialize(TRIM(argv)//".petsc",p_ierr)
-  p_x   = PETSC_NULL_OBJECT
-  p_b   = PETSC_NULL_OBJECT
-  p_r   = PETSC_NULL_OBJECT
-  p_A   = PETSC_NULL_OBJECT
-  p_ksp = PETSC_NULL_OBJECT
-  
+  IF (solver=="petsc") THEN
+    !--------------------------------------------------------------------------
+    ! 1a. Start up PETSc after MPI has been started
+    !--------------------------------------------------------------------------
+    
+    CALL PetscInitialize(TRIM(fname_base)//".petsc",p_ierr)
+    p_x   = PETSC_NULL_OBJECT
+    p_b   = PETSC_NULL_OBJECT
+    p_r   = PETSC_NULL_OBJECT
+    p_A   = PETSC_NULL_OBJECT
+    p_ksp = PETSC_NULL_OBJECT
+  END IF
+
 !------------------------------------------------------------------------------
 ! 2. Get integration Gauss points and weights in the element
 !------------------------------------------------------------------------------
@@ -288,9 +294,9 @@ program XX15
     ALLOCATE(fixvalprev_pp(fixdim*fixed_nodes))
     ALLOCATE(fixvaltot_pp(fixdim*fixed_nodes))
     
-	fixelem_pp = 0
-	fixdof_pp  = 0
-	fixval_pp       = zero
+    fixelem_pp      = 0
+    fixdof_pp       = 0
+    fixval_pp       = zero
     fixvalpiece_pp  = zero
     fixvalprev_pp   = zero
     fixvaltot_pp    = zero
@@ -357,6 +363,56 @@ program XX15
   xnewprev_pp      = zero
 
   ALLOCATE(diag_precon_tmp(ntot,nels_pp))
+
+  IF (solver=="petsc") THEN
+    !---------------------------------------------------------------------------
+    ! 9a. Set up PETSc
+    !---------------------------------------------------------------------------
+    
+    ! PETSc 64-bit indices and 64-bit reals.  In most (all?) places, passing a
+    ! 32-bit integer where an intent(in) 64-integer is required is safe, because
+    ! the PETSc Fortran-C interface de-references the pointer that is actually
+    ! passed, even though it does not specify any intent in the Fortran
+    ! interface.  This is not safe when passing arrays, they need to be copied
+    ! to PetscInt arrays.  And for safety the same should be done for the
+    ! PetscScalar arrays.
+    CALL MatCreate(PETSC_COMM_WORLD,p_A,p_ierr)
+    CALL MatSetSizes(p_A,neq_pp,neq_pp,PETSC_DETERMINE,PETSC_DETERMINE,p_ierr)
+    CALL MatSetType(p_A,MATAIJ,p_ierr)
+    !- Block size fixed to 1 for just now - this cannot be set to nodof until
+    !- the restraints are handled block-wise in ParaFEM.  CALL
+    !- MatSetBlockSize(p_A,nodof,p_ierr)
+    
+    ! Find an approximate number of zeroes per row for the matrix size
+    ! pre-allocation.
+    CALL p_row_nnz(nodof,ndim,nod,p_over_allocation,p_nnz)
+    CALL MatSeqAIJSetPreallocation(p_A,p_nnz,PETSC_NULL_INTEGER,p_ierr)
+    CALL MatMPIAIJSetPreallocation(p_A,p_nnz,PETSC_NULL_INTEGER,              &
+      p_nnz,PETSC_NULL_INTEGER,p_ierr)
+    ! If the allocation is too small, PETSc will produce reams of information
+    ! and not construct the matrix properly.  We output some information at the
+    ! end if p_over_allocation should be increased.
+    CALL MatSetOption(p_A,MAT_NEW_NONZERO_ALLOCATION_ERR,PETSC_FALSE,p_ierr)
+    
+    ! RHS vector.  For this particular order (create, set size, set type) the
+    ! allocation is done by set type.
+    CALL VecCreate(PETSC_COMM_WORLD,p_b,p_ierr)
+    CALL VecSetSizes(p_b,neq_pp,PETSC_DECIDE,p_ierr)
+    CALL VecSetType(p_b,VECSTANDARD,p_ierr)
+    !- Block size fixed to 1 for just now - this cannot be set to nodof until the
+    !- restraints are handled block-wise in ParaFEM.
+    !- CALL VecSetBlockSize(p_b,nodof,p_ierr)
+
+    ! Solution vector
+    CALL VecDuplicate(p_b,p_x,p_ierr) 
+    
+    CALL KSPCreate(PETSC_COMM_WORLD,p_ksp,p_ierr)
+    CALL KSPSetOperators(p_ksp,p_A,p_A,p_ierr)
+  
+    ! Arrays of PETSc types to be proof against changes in index and scalar
+    ! sizes.
+    ALLOCATE(p_rows(ntot),p_cols(ntot),p_values(ntot*ntot))
+  END IF
 
   !----------------------------------------------------------------------------
   ! 10. Initialise the solution vector to 0.0
@@ -429,6 +485,10 @@ program XX15
     ! Update the load increments
     lambda_prev=lambda_total
     lambda_total=lambda_total+lambda
+    IF (lambda_total>1._iwp) THEN
+      lambda_total = 1._iwp
+      lambda = lambda_total - lambda_prev
+    END IF
 
     ! Exit if the time increment is less that the specified minimum
     IF (lambda<min_inc) THEN
@@ -492,6 +552,9 @@ program XX15
       timest(12) = ELAP_TIME()
       
       storekm_pp = zero
+      IF (solver=="petsc") THEN
+        CALL MatZeroEntries(p_A,p_ierr)
+      END IF
       
       DO iel = 1,nels_pp
 
@@ -550,35 +613,63 @@ program XX15
            
           ! Calculate the stiffness tensor of the element
           geeFT = TRANSPOSE(geeF)
-          storekm_pp(:,:,iel)=storekm_pp(:,:,iel) + (MATMUL(MATMUL(geeFT,     &
-           deeF),geeF)*dw)
-
+          storekm_pp(:,:,iel) = storekm_pp(:,:,iel)                         &
+                                + (MATMUL(MATMUL(geeFT,deeF),geeF)*dw)
         END DO
+
+        IF (solver=="petsc") THEN
+          ! 1/ Use ubound(g_g_pp,1) instead of ntot? 2/ The following depends on
+          ! g_g_pp holding 0 for erased rows/columns, and MatSetValues ignoring
+          ! negative indices (PETSc always uses zero-based indexing). 3/ PETSc uses C
+          ! array order, so a transpose is needed.
+          p_rows   = g_g_pp(:,iel) - 1
+          p_cols   = p_rows
+          p_values = RESHAPE(TRANSPOSE(storekm_pp(:,:,iel)),SHAPE(p_values))
+          CALL MatSetValues(p_A,ntot,p_rows,ntot,p_cols,p_values,ADD_VALUES,  &
+                            p_ierr)
+        END IF
       END DO
+
+      IF (solver=="petsc") THEN
+        CALL MatAssemblyBegin(p_A,MAT_FINAL_ASSEMBLY,p_ierr)
+        CALL MatAssemblyEnd(p_A,MAT_FINAL_ASSEMBLY,p_ierr)
+        
+        CALL MatGetInfo(p_A,MAT_GLOBAL_SUM,p_info,p_ierr)
+        IF(numpe==1)THEN
+          IF(p_info(MAT_INFO_MALLOCS)/=0.0)THEN
+            WRITE(*,'(A,I0,A)') "The matrix assembly required ",               &
+              NINT(p_info(MAT_INFO_MALLOCS)),                                  &
+              " mallocs.  Increase p_over_allocation to speed up "             &
+              //"the assembly."
+          END IF
+        END IF
+      END IF
       
       ! Time is accumulated over all load increments
       timest(16) = timest(16) + (ELAP_TIME() - timest(12))
       
-!------------------------------------------------------------------------------
-! 12. Build and invert the preconditioner
-!------------------------------------------------------------------------------
-
-      timest(17) = ELAP_TIME()
-      
-      diag_precon_tmp = zero
-
-      DO iel = 1,nels_pp
-        DO k = 1,ntot 
-          diag_precon_tmp(k,iel)=diag_precon_tmp(k,iel) + storekm_pp(k,k,iel)
+      IF (solver=="parafem") THEN
+        !-----------------------------------------------------------------------
+        ! 12. Build and invert the preconditioner
+        !-----------------------------------------------------------------------
+        
+        timest(17) = ELAP_TIME()
+        
+        diag_precon_tmp = zero
+        
+        DO iel = 1,nels_pp
+          DO k = 1,ntot 
+            diag_precon_tmp(k,iel)=diag_precon_tmp(k,iel) + storekm_pp(k,k,iel)
+          END DO
         END DO
-      END DO
+        
+        diag_precon_pp(:) = zero
+        CALL SCATTER(diag_precon_pp(1:),diag_precon_tmp)
+        
+        diag_precon_pp(1:) = one/diag_precon_pp(1:)
+        diag_precon_pp(0)  = zero
+      END IF
 
-      diag_precon_pp(:) = zero
-      CALL SCATTER(diag_precon_pp(1:),diag_precon_tmp)
-
-      diag_precon_pp(1:) = one/diag_precon_pp(1:)
-      diag_precon_pp(0)  = zero
-      
 !------------------------------------------------------------------------------
 ! 13. Initialize PCG
 !------------------------------------------------------------------------------
@@ -590,15 +681,15 @@ program XX15
       ! displacements to the internal force vector
       IF (inewton==1 .AND. numfix_pp>0) THEN
         DO i = 1,numfix_pp
-	      DO j = 1,ntot
-	        IF (g_g_pp(j,fixelem_pp(i))>0) THEN
+          DO j = 1,ntot
+            IF (g_g_pp(j,fixelem_pp(i))>0) THEN
               storefint_pp(j,fixelem_pp(i)) = storefint_pp(j,fixelem_pp(i)) + &
-               fixvalpiece_pp(i)*storekm_pp(j,fixdof_pp(i),fixelem_pp(i))
-	        END IF
+                fixvalpiece_pp(i)*storekm_pp(j,fixdof_pp(i),fixelem_pp(i))
+            END IF
           END DO
-	    END DO
-	  END IF
-		  
+        END DO
+      END IF
+      
       fint_pp = zero
       CALL SCATTER(fint_pp(1:),storefint_pp)
 
@@ -612,19 +703,93 @@ program XX15
       IF (maxdiff == zero) THEN
         IF(numpe==1) THEN
           WRITE(*,*) "maxdiff = zero and now exiting loop"
-          EXIT
         END IF
+        EXIT
+      END IF
+
+      IF (solver=="petsc") THEN
+        ! KSP type, tolerances (rtol, abstol, dtol, maxits), KSP options, PC
+        ! type, PC options are set in the xx18*.ppetsc file.  Those options are
+        ! used to set up the preconditioned Krylov solver
+        CALL KSPSetFromOptions(p_ksp,p_ierr)
+        ! But the relative tolerance and maximum number of iterations are
+        ! overriden by the value in the ParaFEM control file.  Note that
+        ! relative tolerance for PETSc is for the preconditioned residual.  What
+        ! is the ParaFEM iteration limit: non-linear iterations or solver
+        ! iterations?
+        CALL KSPSetTolerances(p_ksp,tol,PETSC_DEFAULT_REAL,PETSC_DEFAULT_REAL, &
+                              limit,p_ierr)
+
+        ! load vector
+        CALL VecGetArrayF90(p_b,p_varray,p_ierr)
+        ! This is OK as long as PetscScalars not smaller than ParaFEM reals.  There
+        ! should be a test for sizes of PetscScalars (and PetscInts) and ParaFEM reals
+        ! (and indices).
+        p_varray = r_pp(1:)
+        CALL VecRestoreArrayF90(p_b,p_varray,p_ierr)
       END IF
 
 !------------------------------------------------------------------------------
-!------------------------------- Solve using PCG ------------------------------
+!------------------------------- Solve using preconditioned Krylov solver -----
 !------------------------------------------------------------------------------
       
       deltax_pp = zero
       res_pp    = r_pp
 
-      CALL PCG_VER1(inewton,limit,tol,storekm_pp,r_pp(1:), &
-       diag_precon_pp(1:),rn0,deltax_pp(1:),iters)
+      WRITE(*,*)"r_pp(1:)"
+      WRITE(*,*)r_pp(1:)
+
+      IF (solver=="parafem") THEN
+        CALL PCG_VER1(inewton,limit,tol,storekm_pp,r_pp(1:),                   &
+                      diag_precon_pp(1:),rn0,deltax_pp(1:),iters)
+      ELSE IF (solver=="petsc") THEN
+        ! Solution vector
+        ! For non-linear solves, the previous solution will be used as an initial
+        ! guess: copy the ParaFEM solution vector to PETSc.
+        CALL VecGetArrayF90(p_x,p_varray,p_ierr)
+        ! This is OK as long as PetscScalars are not smaller than ParaFEM reals.
+        ! There should be a test for sizes of PetscScalars (and PetscInts) and ParaFEM
+        ! reals (and indices).
+        p_varray = deltax_pp(1:)
+        CALL VecRestoreArrayF90(p_x,p_varray,p_ierr)
+        CALL KSPSetInitialGuessNonzero(p_ksp,PETSC_TRUE,p_ierr)
+        CALL KSPSolve(p_ksp,p_b,p_x,p_ierr)
+
+        ! Preconditioned residual L2 norm
+        CALL KSPGetResidualNorm(p_ksp,p_pr_n2,p_ierr)
+        ! True residual L2 norm
+        CALL VecDuplicate(p_b,p_r,p_ierr)
+        CALL KSPBuildResidual(p_ksp,PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,p_r,p_ierr)
+        CALL VecNorm(p_r,NORM_2,p_r_n2,p_ierr)
+        CALL VecDestroy(p_r,p_ierr)
+        ! L2 norm of load
+        CALL VecNorm(p_b,NORM_2,p_b_n2,p_ierr)
+        
+        CALL KSPGetIterationNumber(p_ksp,p_its,p_ierr)
+        CALL KSPGetConvergedReason(p_ksp,p_reason,p_ierr)
+        CALL p_describe_reason(p_reason,p_description)
+        
+        ! Copy PETSc solution vector to ParaFEM
+        CALL VecGetArrayF90(p_x,p_varray,p_ierr)
+        ! This is OK as long as ParaFEM reals not smaller than PetscScalars.  There
+        ! should be a test for sizes of PetscScalars (and PetscInts) and ParaFEM reals
+        ! (and indices).
+        deltax_pp(1:) = p_varray
+        CALL VecRestoreArrayF90(p_x,p_varray,p_ierr)
+
+        IF(numpe==1)THEN
+          WRITE(11,'(A,I0,A)') "The reason for convergence was ",p_reason,     &
+                               " "//TRIM(p_description)
+          WRITE(11,'(A,I0)') "The number of iterations to convergence was ",   &
+                             p_its
+          WRITE(11,'(A,E17.7)') "The preconditioned residual L2 norm was ",    &
+                                p_pr_n2
+          WRITE(11,'(A,E17.7)') "The true residual L2 norm ||b-Ax|| was  ",    &
+                                p_r_n2
+          WRITE(11,'(A,E17.7)') "The relative error ||b-Ax||/||b|| was   ",    &
+                                p_r_n2/p_b_n2
+        END IF
+      END IF
 
       IF (numpe==1) THEN
         WRITE(91,*)iload,inewton,iters
@@ -634,6 +799,10 @@ program XX15
       timest(19) = timest(19) + (ELAP_TIME() - timest(18))
 
       ! Total displacements
+      WRITE(*,*)"xnew_pp(1:)"
+      WRITE(*,*)xnew_pp(1:)
+      WRITE(*,*)"deltax_pp(1:)"
+      WRITE(*,*)deltax_pp(1:)
       xnew_pp(1:) = xnew_pp(1:) + deltax_pp(1:)
       xnew_pp(0) = zero
       
@@ -674,11 +843,7 @@ program XX15
         IF (numpe==1) THEN
           WRITE(*,*) 'The load increment is cut in half'
         END IF
-        IF (print_output) THEN
-          lambda_total=lambda_total-temp_inc
-        ELSE
-          lambda_total=lambda_total-lambda
-        END IF
+        lambda_total=lambda_total-lambda
         lambda=half*lambda
         xnew_pp=xnewprev_pp
         flag=.FALSE.
@@ -775,6 +940,12 @@ program XX15
         
         ! Save the converged displacement
         xnew_pp_previous=xnew_pp
+        IF (numpe==1) THEN
+          WRITE(*,*)"xnew_pp(1:)"
+          WRITE(*,*)xnew_pp(1:)
+          WRITE(*,*)"lnstrainelas(:)"
+          WRITE(*,*)lnstrainelas(:)
+        END IF
 
         EXIT
       END IF
@@ -785,7 +956,7 @@ program XX15
 !------------------------- End Newton-Raphson iterations ----------------------
 !------------------------------------------------------------------------------
 
-    IF (numpe==npes) THEN
+    IF (numpe==1) THEN
       WRITE(11,'(a,i3,a,f12.4,a,i4,a)') "Time after load step ",iload,": ", &
       ELAP_TIME() - timest(1),"     (",inewton," iterations )"
     END IF
@@ -835,26 +1006,26 @@ program XX15
     END IF
     
 !-----print out displacements, stress, principal stress and reactions -------
-    !IF (print_output) THEN
-    IF (iload==max_inc) THEN
+    IF (print_output) THEN
       
-	  writetimes = writetimes + 1
+      writetimes = writetimes + 1
       IF(timewrite) THEN
-	    timest(4) = ELAP_TIME( )
-	  END IF
-
+        timest(4) = ELAP_TIME( )
+      END IF
+      
       ALLOCATE(xnewnodes_pp(nodes_pp*nodof))
-	  ALLOCATE(shape_integral_pp(nod,nels_pp))
-	  !ALLOCATE(stress_integral_pp(nod*nst,nels_pp))
-	  ALLOCATE(strain_integral_pp(nod*nst,nels_pp))
-	  !ALLOCATE(stressnodes_pp(nodes_pp*nst))
-	  ALLOCATE(strainnodes_pp(nodes_pp*nst))
-	  !ALLOCATE(reacnodes_pp(nodes_pp*nodof))
-
+      ALLOCATE(shape_integral_pp(nod,nels_pp))
+      !ALLOCATE(stress_integral_pp(nod*nst,nels_pp))
+      ALLOCATE(strain_integral_pp(nod*nst,nels_pp))
+      !ALLOCATE(stressnodes_pp(nodes_pp*nst))
+      ALLOCATE(strainnodes_pp(nodes_pp*nst))
+      !ALLOCATE(reacnodes_pp(nodes_pp*nodof))
+      
       CALL GATHER(xnew_pp(1:),xnewel_pp)
+      ! The fixed freedoms are not in the global vector.
       IF (numfix_pp > 0) THEN
         DO i = 1,numfix_pp
-          xnewel_pp(fixdof_pp(i),fixelem_pp(i)) = fixvalpiece_pp(i)
+          xnewel_pp(fixdof_pp(i),fixelem_pp(i)) = fixvaltot_pp(i)
         END DO
       END IF
 
@@ -906,28 +1077,28 @@ program XX15
         END DO
       END DO
 
-!      text = "*DISPLACEMENT"
+      text = "*DISPLACEMENT"
       CALL SCATTER_NODES(npes,nn,nels_pp,g_num_pp,nod,nodof,nodes_pp, &
               node_start,node_end,xnewel_pp,xnewnodes_pp,1)
       CALL WRITE_NODAL_VARIABLE(text,24,iload,nodes_pp,npes,numpe,nodof, &
                                 xnewnodes_pp)
 	  DEALLOCATE(xnewnodes_pp)
 
-!      text = "*STRESS"
+      text = "*STRESS"
       !CALL NODAL_PROJECTION(npes,nn,nels_pp,g_num_pp,nod,nst,nodes_pp,  &
       ! node_start,node_end,shape_integral_pp,stress_integral_pp,stressnodes_pp)
       !CALL WRITE_NODAL_VARIABLE(text,25,iload,nodes_pp,npes,numpe,nst,   &
       !                          stressnodes_pp)
       !DEALLOCATE(stress_integral_pp,stressnodes_pp)
 
-!      text = "*NODAL REACTIONS"
+      text = "*NODAL REACTIONS"
       !CALL SCATTER_NODES(npes,nn,nels_pp,g_num_pp,nod,nodof,nodes_pp, &
       !        node_start,node_end,storefint_pp,reacnodes_pp,0)
       !CALL WRITE_NODAL_VARIABLE(text,26,iload,nodes_pp,npes,numpe,nodof, &
       !                          reacnodes_pp)
       !DEALLOCATE(reacnodes_pp)
 
-!      text = "*ELASTIC STRAIN"
+      text = "*ELASTIC STRAIN"
       CALL NODAL_PROJECTION(npes,nn,nels_pp,g_num_pp,nod,nst,nodes_pp,  &
        node_start,node_end,shape_integral_pp,strain_integral_pp,strainnodes_pp)
       CALL WRITE_NODAL_VARIABLE(text,27,iload,nodes_pp,npes,numpe,nst,   &
@@ -961,8 +1132,6 @@ program XX15
       !   FLOAT(unload_tot)/FLOAT(yield_tot*8)
       !END IF
       
-      print_output=.false.
-
     END IF  !printing
     
     IF (iload==max_inc) THEN
@@ -989,7 +1158,15 @@ program XX15
 
   200 CONTINUE
 
-  IF (numpe==npes) THEN
+  IF (solver=="petsc") THEN
+    DEALLOCATE(p_rows,p_cols,p_values)
+    CALL KSPDestroy(p_ksp,p_ierr)
+    CALL VecDestroy(p_x,p_ierr)
+    CALL VecDestroy(p_b,p_ierr)
+    CALL MatDestroy(p_A,p_ierr)
+  END IF
+
+  IF (numpe==1) THEN
     WRITE(11,'(a,i5,a)') "This job ran on ",npes," processors"
     WRITE(11,'(A,3(I8,A))')"There are ",nn," nodes",nels," elements and ",&
                            neq," equations"
@@ -1009,6 +1186,9 @@ program XX15
   WRITE(*,*) 'The simulation is finished'
 
 !---------------------------------- shutdown ----------------------------------
+  IF (solver=="petsc") THEN
+    CALL PetscFinalize(p_ierr)
+  END IF
   CALL SHUTDOWN()
 
  END PROGRAM XX15
