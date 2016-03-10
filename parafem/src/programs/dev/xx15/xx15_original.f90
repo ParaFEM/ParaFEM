@@ -799,7 +799,7 @@ program XX15
     
 !-----print out displacements, stress, principal stress and reactions -------
     !IF (print_output) THEN
-    IF (iload==max_inc) THEN
+!!$    IF (iload==max_inc) THEN
       
 	  writetimes = writetimes + 1
       IF(timewrite) THEN
@@ -817,7 +817,7 @@ program XX15
       CALL GATHER(xnew_pp(1:),xnewel_pp)
       IF (numfix_pp > 0) THEN
         DO i = 1,numfix_pp
-          xnewel_pp(fixdof_pp(i),fixelem_pp(i)) = fixvalpiece_pp(i)
+          xnewel_pp(fixdof_pp(i),fixelem_pp(i)) = fixvaltot_pp(i)
         END DO
       END IF
 
@@ -926,7 +926,7 @@ program XX15
       
       print_output=.false.
 
-    END IF  !printing
+!!$    END IF  !printing
     
     IF (iload==max_inc) THEN
       EXIT
