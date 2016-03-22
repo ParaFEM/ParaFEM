@@ -1128,7 +1128,7 @@ program XX15
         END DO
       END DO
 
-!      text = "*DISPLACEMENT"
+      text = "*DISPLACEMENT"
       CALL SCATTER_NODES(npes,nn,nels_pp,g_num_pp,nod,nodof,nodes_pp, &
               node_start,node_end,xnewel_pp,xnewnodes_pp,1)
       CALL WRITE_NODAL_VARIABLE(text,24,iload,nodes_pp,npes,numpe,nodof, &
@@ -1149,7 +1149,7 @@ program XX15
       !                          reacnodes_pp)
       !DEALLOCATE(reacnodes_pp)
 
-!      text = "*ELASTIC STRAIN"
+      text = "*ELASTIC STRAIN"
       CALL NODAL_PROJECTION(npes,nn,nels_pp,g_num_pp,nod,nst,nodes_pp,  &
        node_start,node_end,shape_integral_pp,strain_integral_pp,strainnodes_pp)
       CALL WRITE_NODAL_VARIABLE(text,27,iload,nodes_pp,npes,numpe,nst,   &
