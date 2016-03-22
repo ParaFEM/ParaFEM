@@ -152,7 +152,7 @@ showusage() {
     echo "  --no-libs will disable the building of the external libraries"
     echo "  --no-tools will disable the building of the tools"
     echo "  --no-install will compile the libraries, modules, programs and tools but not install then in bin/"
-    echo "  --install-mpi-parafem_petsc-only will install only the MPI, choose_solver, and PETSc interface modules"
+    echo "  --install-mpi-parafem_petsc-only will install only the MPI, choose_solvers, and PETSc interface modules"
     echo
 }
 
