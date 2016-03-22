@@ -1805,8 +1805,8 @@ MODULE LARGE_STRAIN
     RETURN
 
   END SUBROUTINE SHAPE_FUNCTIONS
-  SUBROUTINE PLASTICITY(deeF,jacF,jacFinc,sigma1C,statev,lnstrainelas, &
-   sigma,detF,statevar_num,iel,igauss)
+  SUBROUTINE PLASTICITY(deeF,jacF,jacFinc,sigma1C,statev,lnstrainelas,        &
+                        sigma,detF,umat)
     ! Updates the stresses and computes the spatial tangent operator from the 
     ! material contribution in the following form: Aijkl=(1/2J)*(D:L:B)ijkl
     ! D is the derivative of the Kirchhoff stress with respect to the 
@@ -1819,15 +1819,25 @@ MODULE LARGE_STRAIN
     IMPLICIT NONE
 
     REAL(iwp), INTENT(IN) :: jacF(:,:), jacFinc(:,:), detF
-    INTEGER, INTENT(IN) :: statevar_num
     REAL(iwp), INTENT(OUT) :: deeF(:,:), sigma(:,:), sigma1C(:)
     REAL(iwp), INTENT(INOUT) :: lnstrainelas(:), statev(:)
+    INTERFACE
+      SUBROUTINE umat(stress,statev,ddsdde,stran,dstran,ntens)
+        USE PRECISION
+        IMPLICIT NONE
+        INTEGER, INTENT(IN) :: ntens
+        REAL(iwp), INTENT(IN) :: dstran(:)
+        REAL(iwp), INTENT(OUT) :: stress(:), ddsdde(:,:)
+        REAL(iwp), INTENT(INOUT) :: stran(:), statev(:)
+      END SUBROUTINE UMAT
+    END INTERFACE
+    
     REAL(iwp) :: d_tensor(9,9), lnderiv(9,9), strderb(9,9), bderiv(9,9),      &
      geom_comp(9,9), ddsdde(6,6), b_tensor_3x3(3,3), et1(6), et2(6), et3(6),  &
      b_tensor(6), dstran(6), btensor(6), lne1, lne2, lne3, e1, e2, e3
     REAL(iwp), PARAMETER :: half=0.5_iwp, one=1._iwp, two=2._iwp,             &
      tol=0.000001_iwp
-    INTEGER :: ntens, iel, igauss
+    INTEGER :: ntens
        
     ntens=6
 
@@ -1863,7 +1873,7 @@ MODULE LARGE_STRAIN
     ! ABAQUS. The only difference is that the material properties should be
     ! defined inside of the subroutine
     sigma1C=0._iwp
-    CALL umat(sigma1C,statev,ddsdde,lnstrainelas,dstran,ntens,statevar_num,iel,igauss)
+    CALL umat(sigma1C,statev,ddsdde,lnstrainelas,dstran,ntens)
 
     ! Convert Kirchhoff stress into Cauchy stress
     sigma1C=(one/detF)*sigma1C
@@ -3064,15 +3074,17 @@ MODULE LARGE_STRAIN
 
   END FUNCTION TENSOR_P_IJKL
   
-  SUBROUTINE UMAT(stress,statev,ddsdde,stran,dstran,ntens,statevar_num,iel,igauss)
+  SUBROUTINE UMAT(stress,statev,ddsdde,stran,dstran,ntens)
 
     ! This subroutine returns the updated stress, strain and the tangent 
     ! operator for the Eccentric-Ellipsoid model with (linear) isotropic 
     ! hardening and associative plastic flow rule
     IMPLICIT NONE
     
+    INTEGER, INTENT(IN) :: ntens
+    REAL(iwp), INTENT(IN) :: dstran(:)
     REAL(iwp), INTENT(OUT) :: stress(:), ddsdde(:,:)
-	REAL(iwp), INTENT(INOUT) :: stran(:), statev(:), dstran(:)
+    REAL(iwp), INTENT(INOUT) :: stran(:), statev(:)
     REAL(iwp) :: scalar_term, eqplas, e, nu, yield_t, yield_c, f_lower_0,     &
      f_upper_0, syield, hard, sfs, zeta, stress_eq, plastic_mul, norm_flow,   &
      yield, ran_scalar, norm_solution, nen, eqplas_trial, res_piv, alpha,     &
@@ -3085,8 +3097,7 @@ MODULE LARGE_STRAIN
     REAL(iwp), PARAMETER :: zero=0._iwp, one=1._iwp, two=2._iwp,              &
 	 tol=0.000001_iwp, half=0.5_iwp, tol_nr=0.00000001_iwp, beta=0.0001_iwp,  &
      ls_const=0.1_iwp, four=4._iwp
-    INTEGER, INTENT(IN) :: ntens, statevar_num
-    INTEGER :: i, j, iter, iel, igauss, ls_iter
+    INTEGER :: i, j, iter, ls_iter
     INTEGER, PARAMETER :: max_nr_iter=50, max_ls_iter=25
      
 	! Assign material properties (user defined)
@@ -3477,13 +3488,13 @@ MODULE LARGE_STRAIN
   RETURN
   END SUBROUTINE INVERSE  
 
- SUBROUTINE UMAT1(stress,statev,ddsdde,stran,dstran,ntens,statevar_num,iel,igauss)
+ SUBROUTINE UMAT1(stress,statev,ddsdde,stran,dstran,ntens)
 
     REAL(iwp), INTENT(OUT) :: stress(:), ddsdde(:,:)
 	REAL(iwp), INTENT(INOUT) :: stran(:), statev(:), dstran(:)
     REAL(iwp) :: scalar_term, e, nu
     REAL(iwp), PARAMETER :: zero=0._iwp, one=1._iwp, two=2._iwp
-    INTEGER, INTENT(IN) :: ntens, statevar_num, iel, igauss
+    INTEGER, INTENT(IN) :: ntens
     INTEGER :: i, j
 	
     ! Assign material properties

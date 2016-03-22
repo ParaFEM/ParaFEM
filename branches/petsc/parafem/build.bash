@@ -1,5 +1,7 @@
 #!/bin/bash
 
+version="0.1"
+
 # Don't use the -debug flag.  That would make the comparison between
 # ParaFEM and PETSc unfair.
 
@@ -14,6 +16,9 @@ build.bash modules to re-build the ParaFEM modules and p12meshgen'
     exit 2 # incorrect usage
 fi
 
+mkdir -p $HOME/modulefiles/parafem
+export modulefile=$HOME/modulefiles/parafem/$version
+
 #module load cray-petsc
 module load cray-petsc-64
 
@@ -25,8 +30,7 @@ module load cray-petsc-64
 	sleep 1 # TDS and /home are sleepy
 	./make-parafem MACHINE=xc30 --no-libs --no-tools -mpi -parafem_petsc --install-mpi-parafem_petsc-only -xx > $log 2>&1
 	sleep 1 # TDS and /home are sleepy
-	mkdir -p $HOME/modulefiles/parafem
-	cat > $HOME/modulefiles/parafem/0.1 <<EOF
+	cat > $modulefile <<EOF
 #%Module
 #
 # Module parafem
@@ -51,6 +55,7 @@ EOF
     elif [[ $build == 'modules' ]]; then
 	sleep 1 # TDS and /home are sleepy
 	./make-parafem MACHINE=xc30 clean execlean &> clean.log
+	rm -f $modulefile
 	sleep 1 # TDS and /home are sleepy
 	./make-parafem MACHINE=xc30 --no-libs --no-tools -mpi -parafem_petsc --install-mpi-parafem_petsc-only --only-modules > $log 2>&1
 	sleep 1 # TDS and /home are sleepy
