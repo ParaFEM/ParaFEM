@@ -23,7 +23,7 @@ module load cray-petsc-64
     export PARAFEM_HOME=$(readlink --canonicalize $PWD)
     if [[ $build == 'xx' ]]; then
 	sleep 1 # TDS and /home are sleepy
-	./make-parafem MACHINE=xc30 --no-libs --no-tools -mpi -petsc --install-mpi-petsc-only -xx > $log 2>&1
+	./make-parafem MACHINE=xc30 --no-libs --no-tools -mpi -parafem_petsc --install-mpi-parafem_petsc-only -xx > $log 2>&1
 	sleep 1 # TDS and /home are sleepy
 	mkdir -p $HOME/modulefiles/parafem
 	cat > $HOME/modulefiles/parafem/0.1 <<EOF
@@ -49,11 +49,12 @@ module-whatis "xx15 and xx18: ParaFEM with PETSc"
 EOF
 	sleep 1 # TDS and /home are sleepy
     elif [[ $build == 'modules' ]]; then
+	sleep 1 # TDS and /home are sleepy
 	./make-parafem MACHINE=xc30 clean execlean &> clean.log
 	sleep 1 # TDS and /home are sleepy
-	./make-parafem MACHINE=xc30 --no-libs --no-tools -mpi -petsc --install-mpi-petsc-only --only-modules > $log 2>&1
+	./make-parafem MACHINE=xc30 --no-libs --no-tools -mpi -parafem_petsc --install-mpi-parafem_petsc-only --only-modules > $log 2>&1
 	sleep 1 # TDS and /home are sleepy
-	./make-parafem MACHINE=xc30 --no-libs -mpi -petsc --install-mpi-petsc-only --only-tools -preproc >> $log 2>&1
+	./make-parafem MACHINE=xc30 --no-libs -mpi -parafem_petsc --install-mpi-parafem_petsc-only --only-tools -preproc >> $log 2>&1
 	sleep 1 # TDS and /home are sleepy
     fi
 )

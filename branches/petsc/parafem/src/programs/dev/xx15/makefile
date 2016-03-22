@@ -21,8 +21,9 @@
 include ../../../../build/mk_defs.inc
 include ../../../../build/$(MACHINE).inc
 
-MODULE_MPI	= ../../../../include/mpi
-MODULE_PETSC	= ../../../../include/petsc
+MODULE_MPI            = ../../../../include/mpi
+MODULE_CHOOSE_SOLVERS = ../../../../include/choose_solvers
+MODULE_PARAFEM_PETSC  = ../../../../include/parafem_petsc
 LIB	= ../../../../lib
 .SUFFIXES: .o .F90 .f90
 
@@ -32,8 +33,8 @@ release:
 	@echo
 	@echo "Building xx15 RELEASE"
 	$(MAKE) xx15 \
-	FFLAGS="-c -I$(MODULE_MPI) -I$(MODULE_PETSC) $(XX15_MPI_REL_FFLAGS)" \
-	LDFLAGS="-L$(LIB) -lParaFEM_mpi.$(VERSION) -lParaFEM_petsc.$(VERSION) $(XX15_MPI_REL_LDFLAGS)"
+	FFLAGS="-c -I$(MODULE_MPI) -I$(MODULE_CHOOSE_SOLVERS) -I$(MODULE_PARAFEM_PETSC) $(XX15_MPI_REL_FFLAGS)" \
+	LDFLAGS="-L$(LIB) -lParaFEM_mpi.$(VERSION) -lParaFEM_choose_solvers.$(VERSION) -lParaFEM_parafem_petsc.$(VERSION) $(XX15_MPI_REL_LDFLAGS)"
 	$(MAKE) xx15_original \
 	FFLAGS="-c -I$(MODULE_MPI) $(XX15_MPI_REL_FFLAGS)" \
 	LDFLAGS="-L$(LIB) -lParaFEM_mpi.$(VERSION) $(XX15_MPI_REL_LDFLAGS)"
@@ -43,8 +44,8 @@ debug:
 	@echo
 	@echo "Building xx15 DEBUG"
 	$(MAKE) xx15 \
-	FFLAGS="-c -I$(MODULE_MPI) -I$(MODULE_PETSC) $(XX15_MPI_DBG_FFLAGS)" \
-	LDFLAGS="-L$(LIB) -lParaFEM_mpi_D.$(VERSION) -lParaFEM_petsc_D.$(VERSION) $(XX15_MPI_DBG_LDFLAGS)"
+	FFLAGS="-c -I$(MODULE_MPI) -I$(MODULE_CHOOSE_SOLVERS) -I$(MODULE_PARAFEM_PETSC) $(XX15_MPI_DBG_FFLAGS)" \
+	LDFLAGS="-L$(LIB) -lParaFEM_mpi_D.$(VERSION) -lParaFEM_choose_solvers_D.$(VERSION) -lParaFEM_parafem_petsc_D.$(VERSION) $(XX15_MPI_DBG_LDFLAGS)"
 	$(MAKE) xx15_original \
 	FFLAGS="-c -I$(MODULE_MPI) $(XX15_MPI_DBG_FFLAGS)" \
 	LDFLAGS="-L$(LIB) -lParaFEM_mpi_D.$(VERSION) $(XX15_MPI_DBG_LDFLAGS)"

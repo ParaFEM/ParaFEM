@@ -20,7 +20,7 @@ VPATH = shared
 include ../../build/mk_defs.inc
 include ../../build/$(MACHINE).inc
 
-all:	release-mpi release-petc release-serial release-bem_lib release-bem_lib_p
+all:	release-mpi release-choose_solvers release-parafem_petsc release-serial release-bem_lib release-bem_lib_p
 
 release-mpi:
 	@echo
@@ -34,17 +34,29 @@ debug-mpi:
 	@cd mpi && $(MAKE) debug && cd ..
 	@echo "Done MODULE DEBUG (MPI)"
 
-release-petsc:
+release-choose_solvers:
 	@echo
-	@echo "Building MODULE RELEASE (PETSC)"
-	@cd petsc && $(MAKE) release && cd ..
-	@echo "Done MODULE RELEASE (PETSC)"
+	@echo "Building MODULE RELEASE (CHOOSE_SOLVERS)"
+	@cd choose_solvers && $(MAKE) release && cd ..
+	@echo "Done MODULE RELEASE (CHOOSE_SOLVERS)"
 
-debug-petsc:
+debug-choose_solvers:
 	@echo
-	@echo "Building MODULE DEBUG (PETSC)"
-	@cd petsc && $(MAKE) debug && cd ..
-	@echo "Done MODULE DEBUG (PETSC)"
+	@echo "Building MODULE DEBUG (CHOOSE_SOLVERS)"
+	@cd choose_solvers && $(MAKE) debug && cd ..
+	@echo "Done MODULE DEBUG (CHOOSE_SOLVERS)"
+
+release-parafem_petsc: release-mpi
+	@echo
+	@echo "Building MODULE RELEASE (PARAFEM_PETSC)"
+	@cd parafem_petsc && $(MAKE) release && cd ..
+	@echo "Done MODULE RELEASE (PARAFEM_PETSC)"
+
+debug-parafem_petsc: debug-mpi
+	@echo
+	@echo "Building MODULE DEBUG (PARAFEM_PETSC)"
+	@cd parafem_petsc && $(MAKE) debug && cd ..
+	@echo "Done MODULE DEBUG (PARAFEM_PETSC)"
 
 release-serial:
 	@echo
@@ -84,28 +96,33 @@ debug-bem_lib_p:
 
 clean:
 	@cd mpi && $(MAKE) clean && cd ..
-	@cd petsc && $(MAKE) clean && cd ..
+	@cd choose_solvers && $(MAKE) clean && cd ..
+	@cd parafem_petsc && $(MAKE) clean && cd ..
 	@cd serial && $(MAKE) clean && cd ..
 	@cd bem && $(MAKE) clean && cd ..
 	@cd bem_p && $(MAKE) clean && cd ..
 
 execlean:
 	@cd mpi && $(MAKE) execlean && cd ..
-	@cd petsc && $(MAKE) execlean && cd ..
+	@cd choose_solvers && $(MAKE) execlean && cd ..
+	@cd parafem_petsc && $(MAKE) execlean && cd ..
 	@cd serial && $(MAKE) execlean && cd ..
 	@cd bem && $(MAKE) execlean && cd ..
 	@cd bem_p && $(MAKE) execlean && cd ..
 
 install:
 	@echo
-	@echo "Installing: MPI PETSC SERIAL BEM BEM_P libraries"
-	$(MAKE) install-mpi install-petc install-serial install-bem_lib install-bem_lib_p
+	@echo "Installing: MPI CHOOSE_SOLVERS PARAFEM_PETSC SERIAL BEM BEM_P libraries"
+	$(MAKE) install-mpi install-choose_solvers install-parafem_petsc install-serial install-bem_lib install-bem_lib_p
 
 install-mpi:
 	@cd mpi && $(MAKE) install & cd ..
 
-install-petsc:
-	@cd petsc && $(MAKE) install & cd ..
+install-choose_solvers:
+	@cd choose_solvers && $(MAKE) install & cd ..
+
+install-parafem_petsc:
+	@cd parafem_petsc && $(MAKE) install & cd ..
 
 install-serial:
 	@cd serial && $(MAKE) install & cd ..

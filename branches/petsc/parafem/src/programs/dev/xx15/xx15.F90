@@ -3,13 +3,11 @@ program XX15
 !   program xx15:  finite strain elasto-plastic analysis with Newton-Raphson
 !------------------------------------------------------------------------------
 
-  ! PETSc interface and modules
+  ! Choice of solvers
+  USE choose_solvers
+  ! PETSc interface and modules.  PETSc will always use MPI (unless PETSc itself
+  ! has been compiled without MPI)
   USE parafem_petsc
-  ! PETSc will always use MPI (unless PETSc itself has been compiled without
-  ! MPI)
-  
-  ! PETSc will always use MPI (unless PETSc itself has been compiled without
-  ! MPI)
   USE PRECISION
   USE GLOBAL_VARIABLES
   USE MP_INTERFACE
@@ -50,9 +48,12 @@ program XX15
   LOGICAL :: converged, timewrite=.TRUE., flag=.FALSE., print_output=.FALSE., &
    tol_inc=.FALSE., lambda_inc=.TRUE.
 
-  CHARACTER(len=50) :: solver="parafem"
+! Default solvers are ParaFEM.  parafem_solvers is defined in choose_solvers
+  CHARACTER(len=50) :: solvers = parafem_solvers 
 
   ! PETSc variables
+  CHARACTER(len=1024) :: p_fname
+  LOGICAL             :: p_exist
   PetscErrorCode      :: p_ierr
   ! The PETSc objects cannot be initialised here because PETSC_NULL_OBJECT is a
   ! common-block-object and not a constant.
@@ -97,7 +98,7 @@ program XX15
   ! 1. Input and initialisation
   !----------------------------------------------------------------------------
 
-  timest(1) = ELAP_TIME( )
+  timest(1) = ELAP_TIME()
 
   CALL FIND_PE_PROCS(numpe,npes)
 
@@ -107,22 +108,47 @@ program XX15
 
 !  If I have forgotten to write the name of the file in the command
 !  line, the program is stopped
-  IF (argc /= 1) THEN
-    IF (numpe==1) THEN
+  IF (argc < 1) THEN
+    IF (numpe == 1) THEN
       WRITE(*,*) "Need name of filename_base!!"
     END IF
     CALL SHUTDOWN
     STOP
   END IF
 
-!     Input:  1: The first argument in the command line (arg1) 
-  CALL GETARG(1, fname_base)
-!     Output: fname_base ch: Name of the file (maybe par131) 
- 
-  fname = fname_base(1:INDEX(fname_base," ")-1) // ".dat"
-  CALL READ_DATA_XX7(fname,numpe,nels,nn,nr,loaded_nodes,fixed_nodes, &
-                             nip,limit,tol,e,v,nod,num_load_steps,jump,tol2)
+! Input:  1: The first argument in the command line (arg1) 
+  IF (argc >= 1) THEN
+    CALL GETARG(1,fname_base)
+  END IF
 
+  fname = fname_base(1:INDEX(fname_base," ")-1) // ".dat"
+  CALL READ_DATA_XX7(fname,numpe,nels,nn,nr,loaded_nodes,fixed_nodes,          &
+                     nip,limit,tol,e,v,nod,num_load_steps,jump,tol2)
+
+! Input:  2: The second argument in the command line (arg2)
+  IF (argc >= 2) THEN
+    CALL GETARG(2,solvers)
+  END IF
+
+  IF (.NOT. solvers_valid(solvers)) THEN
+    IF (numpe == 1) THEN
+      WRITE(*,*) "Solvers can be " // solvers_list()
+    END IF
+    CALL SHUTDOWN
+    STOP
+  END IF
+
+  IF(solvers == petsc_solvers) THEN
+    IF(numpe == 1) THEN
+      p_fname = TRIM(fname_base) // ".petsc"
+      INQUIRE(file=TRIM(p_fname),exist=p_exist)
+      IF (.NOT. p_exist) THEN
+        p_fname = ""
+      END IF
+    END IF
+    CALL MPI_BCAST(p_fname,LEN(p_fname),MPI_CHARACTER,0,MPI_COMM_WORLD,ier)
+  END IF
+    
   IF (nels < npes) THEN
     IF (numpe==1) THEN
       WRITE(*,*)"Error: fewer elements than processors"
@@ -148,12 +174,11 @@ program XX15
 
   CALL CALC_NODES_PP(nn,npes,numpe,node_end,node_start,nodes_pp)
 
-  IF (solver=="petsc") THEN
-    !--------------------------------------------------------------------------
-    ! 1a. Start up PETSc after MPI has been started
-    !--------------------------------------------------------------------------
-    
-    CALL PetscInitialize(TRIM(fname_base)//".petsc",p_ierr)
+!--------------------------------------------------------------------------
+! 1a. Start up PETSc after MPI has been started
+!--------------------------------------------------------------------------
+  IF (solvers == petsc_solvers) THEN
+    CALL PetscInitialize(p_fname,p_ierr)
     p_x   = PETSC_NULL_OBJECT
     p_b   = PETSC_NULL_OBJECT
     p_r   = PETSC_NULL_OBJECT
@@ -364,11 +389,10 @@ program XX15
 
   ALLOCATE(diag_precon_tmp(ntot,nels_pp))
 
-  IF (solver=="petsc") THEN
-    !---------------------------------------------------------------------------
-    ! 9a. Set up PETSc
-    !---------------------------------------------------------------------------
-    
+!---------------------------------------------------------------------------
+! 9a. Set up PETSc
+!---------------------------------------------------------------------------
+  IF (solvers == petsc_solvers) THEN
     ! PETSc 64-bit indices and 64-bit reals.  In most (all?) places, passing a
     ! 32-bit integer where an intent(in) 64-integer is required is safe, because
     ! the PETSc Fortran-C interface de-references the pointer that is actually
@@ -406,6 +430,7 @@ program XX15
     ! Solution vector
     CALL VecDuplicate(p_b,p_x,p_ierr) 
     
+    ! Krylov solver data structures
     CALL KSPCreate(PETSC_COMM_WORLD,p_ksp,p_ierr)
     CALL KSPSetOperators(p_ksp,p_A,p_A,p_ierr)
   
@@ -485,11 +510,11 @@ program XX15
     ! Update the load increments
     lambda_prev=lambda_total
     lambda_total=lambda_total+lambda
-!!$    ! Don't overshoot.  This is commented out to match the original xx15.
-!!$    IF (lambda_total>1._iwp) THEN
-!!$      lambda_total = 1._iwp
-!!$      lambda = lambda_total - lambda_prev
-!!$    END IF
+    ! Don't overshoot.
+    IF (lambda_total>1._iwp) THEN
+      lambda_total = 1._iwp
+      lambda = lambda_total - lambda_prev
+    END IF
 
     ! Exit if the time increment is less that the specified minimum
     IF (lambda<min_inc) THEN
@@ -553,7 +578,7 @@ program XX15
       timest(12) = ELAP_TIME()
       
       storekm_pp = zero
-      IF (solver=="petsc") THEN
+      IF (solvers == petsc_solvers) THEN
         CALL MatZeroEntries(p_A,p_ierr)
       END IF
       
@@ -619,20 +644,20 @@ program XX15
 
         END DO
 
-        IF (solver=="petsc") THEN
+        IF (solvers == petsc_solvers) THEN
           ! 1/ Use ubound(g_g_pp,1) instead of ntot? 2/ The following depends on
           ! g_g_pp holding 0 for erased rows/columns, and MatSetValues ignoring
-          ! negative indices (PETSc always uses zero-based indexing). 3/ PETSc uses C
-          ! array order, so a transpose is needed.
+          ! negative indices (PETSc always uses zero-based indexing). 3/ PETSc
+          ! uses C array order, so a transpose is needed.
           p_rows   = g_g_pp(:,iel) - 1
           p_cols   = p_rows
           p_values = RESHAPE(TRANSPOSE(storekm_pp(:,:,iel)),SHAPE(p_values))
-          CALL MatSetValues(p_A,ntot,p_rows,ntot,p_cols,p_values,ADD_VALUES,  &
+          CALL MatSetValues(p_A,ntot,p_rows,ntot,p_cols,p_values,ADD_VALUES,   &
                             p_ierr)
         END IF
       END DO
 
-      IF (solver=="petsc") THEN
+      IF (solvers == petsc_solvers) THEN
         CALL MatAssemblyBegin(p_A,MAT_FINAL_ASSEMBLY,p_ierr)
         CALL MatAssemblyEnd(p_A,MAT_FINAL_ASSEMBLY,p_ierr)
         
@@ -654,7 +679,7 @@ program XX15
 ! 12. Build and invert the preconditioner (ParaFEM only)
 !------------------------------------------------------------------------------
 
-      IF (solver=="parafem") THEN
+      IF (solvers == parafem_solvers) THEN
         timest(17) = ELAP_TIME()
         
         diag_precon_tmp = zero
@@ -709,16 +734,14 @@ program XX15
         EXIT
       END IF
 
-      IF (solver=="petsc") THEN
+      IF (solvers == petsc_solvers) THEN
         ! KSP type, tolerances (rtol, abstol, dtol, maxits), KSP options, PC
         ! type, PC options are set in the xx18*.ppetsc file.  Those options are
         ! used to set up the preconditioned Krylov solver
         CALL KSPSetFromOptions(p_ksp,p_ierr)
         ! But the relative tolerance and maximum number of iterations are
         ! overriden by the value in the ParaFEM control file.  Note that
-        ! relative tolerance for PETSc is for the preconditioned residual.  What
-        ! is the ParaFEM iteration limit: non-linear iterations or solver
-        ! iterations?
+        ! relative tolerance for PETSc is for the preconditioned residual.
         CALL KSPSetTolerances(p_ksp,tol,PETSC_DEFAULT_REAL,PETSC_DEFAULT_REAL, &
                               limit,p_ierr)
 
@@ -732,16 +755,16 @@ program XX15
       END IF
 
 !------------------------------------------------------------------------------
-!------------------------------- Solve using preconditioned Krylov solver -----
+!----------------- Solve using preconditioned Krylov solver -------------------
 !------------------------------------------------------------------------------
       
       deltax_pp = zero
       res_pp    = r_pp
 
-      IF (solver=="parafem") THEN
+      IF (solvers == parafem_solvers) THEN
         CALL PCG_VER1(inewton,limit,tol,storekm_pp,r_pp(1:),                   &
                       diag_precon_pp(1:),rn0,deltax_pp(1:),iters)
-      ELSE IF (solver=="petsc") THEN
+      ELSE IF (solvers == petsc_solvers) THEN
         ! Solution vector
         ! For non-linear solves, the previous solution will be used as an initial
         ! guess: copy the ParaFEM solution vector to PETSc.
@@ -776,7 +799,7 @@ program XX15
         deltax_pp(1:) = p_varray
         CALL VecRestoreArrayF90(p_x,p_varray,p_ierr)
 
-        IF(numpe==1)THEN
+        IF(numpe == 1)THEN
           WRITE(11,'(A,I0,A)') "The reason for convergence was ",p_reason,     &
                                " "//TRIM(p_description)
           WRITE(11,'(A,I0)') "The number of iterations to convergence was ",   &
@@ -1153,7 +1176,7 @@ program XX15
 
   200 CONTINUE
 
-  IF (solver=="petsc") THEN
+  IF (solvers == petsc_solvers) THEN
     DEALLOCATE(p_rows,p_cols,p_values)
     CALL KSPDestroy(p_ksp,p_ierr)
     CALL VecDestroy(p_x,p_ierr)
@@ -1181,7 +1204,7 @@ program XX15
   WRITE(*,*) 'The simulation is finished'
 
 !---------------------------------- shutdown ----------------------------------
-  IF (solver=="petsc") THEN
+  IF (solvers == petsc_solvers) THEN
     CALL PetscFinalize(p_ierr)
   END IF
   CALL SHUTDOWN()

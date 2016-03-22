@@ -269,6 +269,7 @@ PROGRAM xx18
   ! KSP type, tolerances (rtol, abstol, dtol, maxits), KSP options, PC type, PC
   ! options are set in the xx18*.ppetsc file.  Those options are used to set up
   ! the preconditioned Krylov solver
+  CALL KSPSetOptionsPrefix(p_ksp,"abc1_",p_ierr) ! testing!!!
   CALL KSPSetFromOptions(p_ksp,p_ierr)
   ! But the relative tolerance and maximum number of iterations are overriden by
   ! the value in the ParaFEM control file.  Note that relative tolerance for
