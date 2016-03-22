@@ -31,7 +31,7 @@ EXT_LIB_METIS_RANLIB=ranlib
 # ------------------------------------------------------------------------------
 # FLAGS for MODULE/LIBRARY compliation
 # ------------------------------------------------------------------------------
-# Form is LIB_(MPI|SERIAL|OPENMP|GPU|PETSC)_(REL|DBG)_(FFLAGS|LDFLAGS)
+# Form is LIB_(MPI|SERIAL|OPENMP|GPU|CHOOSE_SOLVER|PARAFEM_PETSC)_(REL|DBG)_(FFLAGS|LDFLAGS)
 # These flags are directly used by the module makefiles
 # ------------------------------------------------------------------------------
 LIB_MPI_REL_FFLAGS=-O3 -em -s real64
@@ -46,8 +46,11 @@ LIB_BEM_DBG_FFLAGS=-g -em -s real64
 LIB_BEM_P_REL_FFLAGS=-O3 -em -s real64
 LIB_BEM_P_DBG_FFLAGS=-g -em -s real64
 
-LIB_PETSC_REL_FFLAGS=-O3 -em -s real64
-LIB_PETSC_DBG_FFLAGS=-g -em -s real64
+LIB_CHOOSE_SOLVER_REL_FFLAGS=-O3 -em -s real64
+LIB_CHOOSE_SOLVER_DBG_FFLAGS=-g -em -s real64
+  
+LIB_PARAFEM_PETSC_REL_FFLAGS=-O3 -em -s real64
+LIB_PARAFEM_PETSC_DBG_FFLAGS=-g -em -s real64
   
 # ------------------------------------------------------------------------------
 # DEFAULT FLAGS for all program groups
@@ -55,7 +58,7 @@ LIB_PETSC_DBG_FFLAGS=-g -em -s real64
 # Form is:
 #   DEFAULT_
 #   + (P12|ED5|XX|PROG8|GAITFEM|RFEM)_
-#   + (MPI|SERIAL|OPENMP|GPU|PETSC)_
+#   + (MPI|SERIAL|OPENMP|GPU)_
 #   + (REL|DBG)_
 #   + (FFLAGS|LDFLAGS)
 # where applicable.

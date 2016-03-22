@@ -1,10 +1,10 @@
 MODULE parafem_petsc
   
-  !/****h* /petsc
+  !/****h* /parafem_petsc
   !*  NAME
-  !*    MODULE: petsc
+  !*    MODULE: parafem_petsc
   !*  SYNOPSIS
-  !*    Usage:      USE petsc
+  !*    Usage:      USE parafem_petsc
   !*  FUNCTION
   !*    Contains data and subroutines that define the PETSc interface.  These
   !*    subroutines are parallel and require MPI.
@@ -23,16 +23,9 @@ MODULE parafem_petsc
   !*
   !*/
   
-  ! PETSc modules
-  ! Use system, vectors, matrices, solvers, preconditioners
-  USE petscsys
-  USE petscvec
-  USE petscmat
-  USE petscksp
-  USE petscpc
-  
   ! PETSc will always use MPI (unless PETSc itself has been compiled without
   ! MPI)
+  USE mp_interface
 
   IMPLICIT NONE
 
@@ -40,16 +33,32 @@ MODULE parafem_petsc
 
   ! PETSc types
 #include <petsc/finclude/petscdef.h>
+
+  ! PETSc modules could be used, but the ParaFEM mp_interface module INCLUDEs
+  ! mpif.h rather than USEing mpi, so there are multiple definitions from the
+  ! USE mpi that is in the PETSc modules.  So include the PETSc headers and
+  ! don't include mpif.h again.
+#define PETSC_AVOID_MPIF_H
+#include <petsc/finclude/petscsys.h>
+#include <petsc/finclude/petscvec.h>
+#include <petsc/finclude/petscvec.h90>
+#include <petsc/finclude/petscmat.h>
+#include <petsc/finclude/petscmat.h90>
+#include <petsc/finclude/petscksp.h>
+#include <petsc/finclude/petscksp.h90>
+#include <petsc/finclude/petscpc.h>
+#include <petsc/finclude/petscpc.h90>
   
-  ! PETSc variables
+  ! PETSc parameters
   INTEGER,PARAMETER   :: p_max_string_length=1024
   ! p_over_allocation should be a run time setting with a default set in the
   ! program.  Choosing too small a value (e.g. 0.99) slows MatSetValues to a
   ! crawl.
   REAL,PARAMETER      :: p_over_allocation=1.3
 
-  ! the following will become a global data structure variable (not p_ierr)
+  ! PETSc variables
 
+  ! the following will become a global data structure variable (not p_ierr)
 !!$  PetscErrorCode      :: p_ierr
 !!$  ! The PETSc objects cannot be initialised here because PETSC_NULL_OBJECT is a
 !!$  ! common-block-object and not a constant.
@@ -67,38 +76,40 @@ MODULE parafem_petsc
   
 CONTAINS
   
-  !/****if* petsc/p_describe_reason
-  !*  NAME
-  !*    SUBROUTINE: p_describe_reason
-  !*  SYNOPSIS
-  !*    Usage:      p_describe_reason(p_reason,p_description)
-  !*  FUNCTION
-  !*      Returns a description of the reason for convergence in PETSc
-  !*  ARGUMENTS
-  !*    INTENT(IN)
-  !*
-  !*    p_reason           : KSPConvergedReason
-  !*                         The PETSc code for the convergence reason
-  !*    INTENT(OUT)
-  !*
-  !*    p_description      : Character
-  !*                         Description of the convergence reason
-  !*  AUTHOR
-  !*    Mark Filipiak
-  !*  CREATION DATE
-  !*    19.02.2016
-  !*  MODIFICATION HISTORY
-  !*    Version 1, 19.02.2016, Mark Filipiak
-  !*  COPYRIGHT
-  !*    (c) University of Edinburgh 2016
-  !******
-  !*  Place remarks that should not be included in the documentation here.
-  !*
-  !*  This will change with PETSc version.  The alternative is to use PETSc's
-  !*  KSPConvergedReasons C string array but that only gives the name, not the
-  !*  extended description.
-  !*/
   SUBROUTINE p_describe_reason(p_reason,p_description)
+
+    !/****if* petsc/p_describe_reason
+    !*  NAME
+    !*    SUBROUTINE: p_describe_reason
+    !*  SYNOPSIS
+    !*    Usage:      p_describe_reason(p_reason,p_description)
+    !*  FUNCTION
+    !*      Returns a description of the reason for convergence in PETSc
+    !*  ARGUMENTS
+    !*    INTENT(IN)
+    !*
+    !*    p_reason           : KSPConvergedReason
+    !*                         The PETSc code for the convergence reason
+    !*    INTENT(OUT)
+    !*
+    !*    p_description      : Character
+    !*                         Description of the convergence reason
+    !*  AUTHOR
+    !*    Mark Filipiak
+    !*  CREATION DATE
+    !*    19.02.2016
+    !*  MODIFICATION HISTORY
+    !*    Version 1, 19.02.2016, Mark Filipiak
+    !*  COPYRIGHT
+    !*    (c) University of Edinburgh 2016
+    !******
+    !*  Place remarks that should not be included in the documentation here.
+    !*
+    !*  This will change with PETSc version.  The alternative is to use PETSc's
+    !*  KSPConvergedReasons C string array but that only gives the name, not the
+    !*  extended description.
+    !*/
+
     IMPLICIT NONE
     KSPConvergedReason, INTENT(IN)  :: p_reason
     CHARACTER(LEN=*),   INTENT(OUT) :: p_description
@@ -197,55 +208,58 @@ CONTAINS
     END SELECT
   END SUBROUTINE p_describe_reason
   
-  !/****if* petsc/p_row_nnz
-  !*  NAME
-  !*    SUBROUTINE: p_row_nnz
-  !*  SYNOPSIS
-  !*    Usage:      p_row_nnz(nodof,ndim,nod,over_allocation,nnz)
-  !*  FUNCTION
-  !*    Returns an approximate upper estimate of the number of non-zeroes in a
-  !*    row of the global matrix.  The number of non-zeroes in a row is used to
-  !*    get an approximate pre-allocation for the PETSc matrix assembly.  Too
-  !*    small a value will slow down the assembly, too large a value will waste
-  !*    memory. 
-  !*  ARGUMENTS
-  !*    INTENT(IN)
-  !*
-  !*    nodof              : Integer
-  !*                         Number of dofs per node
-  !*    ndim               : Integer
-  !*                         Number of dimensions of the problem
-  !*    nod                : Integer
-  !*                         Number of nodes per element
-  !*    over_allocation    : Real
-  !*                         over_allocation is a safety factor and allows for
-  !*                         distorted grids with more than the simple number of
-  !*                         elements around a point or edge.  Chose this to be
-  !*                         larger than 1.25, which would correspond to 5
-  !*                         hexahedra about an edge.  (Note that the average
-  !*                         number of tetrahedra around a point is about 22, so
-  !*                         the safety-factor will allow for that as well.
-  !*
-  !*    INTENT(OUT)
-  !*
-  !*    nnz                : PetscInt
-  !*                         Approximate upper estimate of the number of
-  !*                         non-zeroes in a row of the global matrix
-  !*  AUTHOR
-  !*    Mark Filipiak
-  !*  CREATION DATE
-  !*    19.02.2016
-  !*  MODIFICATION HISTORY
-  !*    Version 1, 19.02.2016, Mark Filipiak
-  !*  COPYRIGHT
-  !*    (c) University of Edinburgh 2016
-  !******
-  !*  Place remarks that should not be included in the documentation here.
-  !*
-  !*  This will not work if there are several different elements in the mesh
-  !*  (or would have to called for each element and the largest nnz used).
-  !*/
   SUBROUTINE p_row_nnz(nodof,ndim,nod,over_allocation,nnz)
+
+    !/****if* petsc/p_row_nnz
+    !*  NAME
+    !*    SUBROUTINE: p_row_nnz
+    !*  SYNOPSIS
+    !*    Usage:      p_row_nnz(nodof,ndim,nod,over_allocation,nnz)
+    !*  FUNCTION
+    !*    Returns an approximate upper estimate of the number of non-zeroes in a
+    !*    row of the global matrix.  The number of non-zeroes in a row is used
+    !*    to get an approximate pre-allocation for the PETSc matrix assembly.
+    !*    Too small a value will slow down the assembly, too large a value will
+    !*    waste memory.
+    !*  ARGUMENTS
+    !*    INTENT(IN)
+    !*
+    !*    nodof              : Integer
+    !*                         Number of dofs per node
+    !*    ndim               : Integer
+    !*                         Number of dimensions of the problem
+    !*    nod                : Integer
+    !*                         Number of nodes per element
+    !*    over_allocation    : Real
+    !*                         over_allocation is a safety factor and allows for
+    !*                         distorted grids with more than the simple number
+    !*                         of elements around a point or edge.  Chose this
+    !*                         to be larger than 1.25, which would correspond to
+    !*                         5 hexahedra about an edge.  (Note that the
+    !*                         average number of tetrahedra around a point is
+    !*                         about 22, so the safety-factor will allow for
+    !*                         that as well.
+    !*
+    !*    INTENT(OUT)
+    !*
+    !*    nnz                : PetscInt
+    !*                         Approximate upper estimate of the number of
+    !*                         non-zeroes in a row of the global matrix
+    !*  AUTHOR
+    !*    Mark Filipiak
+    !*  CREATION DATE
+    !*    19.02.2016
+    !*  MODIFICATION HISTORY
+    !*    Version 1, 19.02.2016, Mark Filipiak
+    !*  COPYRIGHT
+    !*    (c) University of Edinburgh 2016
+    !******
+    !*  Place remarks that should not be included in the documentation here.
+    !*
+    !*  This will not work if there are several different elements in the mesh
+    !*  (or would have to called for each element and the largest nnz used).
+    !*/
+
     IMPLICIT NONE
     INTEGER,  INTENT(IN)   :: nodof
     INTEGER,  INTENT(IN)   :: ndim
