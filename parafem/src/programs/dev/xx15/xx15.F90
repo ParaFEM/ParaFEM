@@ -48,6 +48,9 @@ program XX15
   LOGICAL :: converged, timewrite=.TRUE., flag=.FALSE., print_output=.FALSE., &
    tol_inc=.FALSE., lambda_inc=.TRUE.
 
+! Default umat is large_strain's umat.
+  CHARACTER(len=50) :: umat_name = "umat" 
+
 ! Default solvers are ParaFEM.  parafem_solvers is defined in choose_solvers
   CHARACTER(len=50) :: solvers = parafem_solvers 
 
@@ -149,6 +152,11 @@ program XX15
     CALL MPI_BCAST(p_fname,LEN(p_fname),MPI_CHARACTER,0,MPI_COMM_WORLD,ier)
   END IF
     
+! Input:  3: The second argument in the command line (arg3)
+  IF (argc >= 3) THEN
+    CALL GETARG(3,umat_name)
+  END IF
+
   IF (nels < npes) THEN
     IF (numpe==1) THEN
       WRITE(*,*)"Error: fewer elements than processors"
@@ -496,7 +504,9 @@ program XX15
     ! previously converged full increments (not affected by the output  
     ! requests) are below 6
     IF ((iter<6).AND.(prev_iter<6).AND.(iload>2)) THEN
-      WRITE(*,*) 'The load increment is increased by 50%'
+      IF (numpe==1) THEN
+        WRITE(*,*) 'The load increment is increased by 50%'
+      END IF
       lambda=1.5*lambda
     END IF
 
@@ -518,7 +528,9 @@ program XX15
 
     ! Exit if the time increment is less that the specified minimum
     IF (lambda<min_inc) THEN
-      WRITE(*,*) 'The load increment is too small'
+      IF(numpe==1) THEN
+        WRITE(*,*) 'The load increment is too small'
+      END IF
       EXIT
     END IF
 
@@ -619,8 +631,13 @@ program XX15
           
           timest(14) = ELAP_TIME()
 
-          CALL PLASTICITY(deeF,jacF,jacFinc,sigma1C,statev,lnstrainelas,      &
-           sigma,detF,statevar_num,iel,igauss)
+          IF (umat_name == "umat") THEN
+            CALL PLASTICITY(deeF,jacF,jacFinc,sigma1C,statev,lnstrainelas,      &
+                            sigma,detF,umat)
+          ELSE IF (umat_name == "umat_necking") THEN
+            CALL PLASTICITY(deeF,jacF,jacFinc,sigma1C,statev,lnstrainelas,      &
+                            sigma,detF,umat_necking)
+          END IF
            
           timest(15) = ELAP_TIME()
 
@@ -735,15 +752,28 @@ program XX15
       END IF
 
       IF (solvers == petsc_solvers) THEN
-        ! KSP type, tolerances (rtol, abstol, dtol, maxits), KSP options, PC
-        ! type, PC options are set in the xx18*.ppetsc file.  Those options are
-        ! used to set up the preconditioned Krylov solver
-        CALL KSPSetFromOptions(p_ksp,p_ierr)
-        ! But the relative tolerance and maximum number of iterations are
-        ! overriden by the value in the ParaFEM control file.  Note that
-        ! relative tolerance for PETSc is for the preconditioned residual.
+        ! The general tolerance and maximum number of linear solver iterations
+        ! come from the value in the ParaFEM control file.  Note that relative
+        ! tolerance for PETSc is for the preconditioned residual.
         CALL KSPSetTolerances(p_ksp,tol,PETSC_DEFAULT_REAL,PETSC_DEFAULT_REAL, &
                               limit,p_ierr)
+        ! KSP type, per-KSP tolerances (rtol, abstol, dtol, maxits), KSP
+        ! options, PC type, PC options are set in the xx*.petsc file.  Those
+        ! options are used to set up the preconditioned Krylov solver.  If there
+        ! are several KSP types to be chosen from, then each one will be
+        ! bracketed by -prefix_push and -prefix_pop.  For example
+        !
+        ! -prefix_push abc1_
+        !   -ksp_type minres
+        ! -prefix_pop
+        !
+        ! in the xx*.petsc file and 
+        !
+        ! CALL KSPSetOptionsPrefix(p_ksp,"abc1_",p_ierr)
+        !
+        ! before KSPSetFromOptions before using the 'abc1_' solver.  Thus you
+        ! can switch for CG to GMRES during a simulation.
+        CALL KSPSetFromOptions(p_ksp,p_ierr)
 
         ! load vector
         CALL VecGetArrayF90(p_b,p_varray,p_ierr)
@@ -949,8 +979,13 @@ program XX15
 
             CALL DEFGRAINC(igauss,auxm_inc,upd_coord,points,jacFinc,ndim,nod)
 
-            CALL PLASTICITY(deeF,jacF,jacFinc,sigma1C,statev,lnstrainelas,    &
-             sigma,detF,statevar_num,iel,igauss)
+            IF (umat_name == "umat") THEN
+              CALL PLASTICITY(deeF,jacF,jacFinc,sigma1C,statev,lnstrainelas,      &
+                              sigma,detF,umat)
+            ELSE IF (umat_name == "umat_necking") THEN
+              CALL PLASTICITY(deeF,jacF,jacFinc,sigma1C,statev,lnstrainelas,      &
+                              sigma,detF,umat_necking)
+            END IF
 
             ! Save the variables
             statevar_con(iel,igauss,:)=statev(:)
@@ -1201,13 +1236,203 @@ program XX15
 !   Formats
   2000 FORMAT(' Energy  ',i3,1p,i3,1p,e25.15,1p,e25.15) 
 
-  WRITE(*,*) 'The simulation is finished'
+  IF (numpe==1) THEN
+    WRITE(*,*) 'The simulation is finished'
+  END IF
 
 !---------------------------------- shutdown ----------------------------------
   IF (solvers == petsc_solvers) THEN
     CALL PetscFinalize(p_ierr)
   END IF
   CALL SHUTDOWN()
+
+CONTAINS
+  
+  SUBROUTINE umat_necking(stress,statev,ddsdde,stran,dstran,ntens)
+    
+    ! This subroutine returns the updated stress, strain and the tangent 
+    ! operator for the integrated constitutive law
+    INTEGER, INTENT(IN) :: ntens
+    REAL(iwp), INTENT(IN) :: dstran(:)
+    REAL(iwp), INTENT(OUT) :: stress(:), ddsdde(:,:)
+    REAL(iwp), INTENT(INOUT) :: stran(:), statev(:)
+    integer :: i, j, iel, igauss, max_iter
+
+    real(iwp) :: bulk_mod, shear_mod, scalar_term, smises, syield, eqplas, &
+     tr, plastic_mul, e, nu, h, syield0, tol, sdev_norm, tr_stran
+    real(iwp) :: stress_dev(6), proj_tensor(6,6), flow_flow(6,6), unit_tensor(6,6), &
+     ixi_tensor(6,6), flow(6), term(6,6), unit_vector(6), unit_sym(6,6), stran_dev(6), &
+     stress_inf, delta, tangent, res_der, yield_fun
+
+    ! Assign maximum number of newton-raphson iterations to calculate the plastic multiplier
+    max_iter=10
+
+    ! Assign the tolerance to check converge of the newton-raphson
+    tol=0.000001
+
+    ! Assign material properties
+    e=206900
+    nu=0.29
+    h=129.24
+    syield0=450
+    stress_inf=715
+    delta=-16.93
+
+    ! Recover the previous equivalent plastic strain
+    eqplas=statev(1)
+
+    ! Setting the fourth and second-order tensors to zero
+    proj_tensor(:,:)=0
+    flow_flow(:,:)=0
+    unit_tensor(:,:)=0
+    ixi_tensor(:,:)=0
+    ddsdde(:,:)=0
+    stress(:)=0
+
+    ! Assigning values to the shear and bulk modulus
+    bulk_mod=e/(3*(1-2*nu))
+    shear_mod=e/(2*(1+nu))
+
+    ! Compute the linear elastic isotropic stiffness matrix
+    scalar_term=e/((1+nu)*(1-2*nu))
+
+    ddsdde(1,1)=1-nu
+    ddsdde(2,2)=1-nu
+    ddsdde(3,3)=1-nu
+    ddsdde(4,4)=(1-2*nu)/2
+    ddsdde(5,5)=(1-2*nu)/2
+    ddsdde(6,6)=(1-2*nu)/2
+    ddsdde(1,2)=nu
+    ddsdde(1,3)=nu
+    ddsdde(2,1)=nu
+    ddsdde(2,3)=nu
+    ddsdde(3,1)=nu
+    ddsdde(3,2)=nu
+
+    ddsdde=scalar_term*ddsdde
+
+    ! Calculate the trace of the strain tensor
+    tr_stran=stran(1)+stran(2)+stran(3)
+
+    ! Calculate the predictor strain and stress
+    DO i=1,ntens
+      DO j=1,ntens
+        !stress(i)=stress(i)+ddsdde(i,j)*dstran(j)
+        stress(i)=stress(i)+ddsdde(i,j)*stran(j)
+      END DO
+      !stran(i)=stran(i)+dstran(i)
+    END DO
+
+    stress_dev(:)=stress(:)
+    tr=stress(1)+stress(2)+stress(3)
+    stress_dev(1)=stress_dev(1)-(1.0/3.0)*tr
+    stress_dev(2)=stress_dev(2)-(1.0/3.0)*tr
+    stress_dev(3)=stress_dev(3)-(1.0/3.0)*tr
+
+    ! Calculate the equivalent Von Mises stress
+    smises=((stress(1)-stress(2))**2)+((stress(2)-stress(3))**2)+ &
+     ((stress(3)-stress(1))**2)
+    DO i=4,ntens
+      smises=smises+6*(stress(i)**2)
+    END DO
+    smises=SQRT(smises/2)
+
+    ! Calculate the yield stress
+    syield=(stress_inf-syield0)*(1-EXP(delta*eqplas))+h*eqplas+syield0
+
+    ! Determine if there is yielding
+    IF (smises>syield) THEN
+ 
+      ! Calculate the plastic multiplicator through a newton-raphson scheme
+      ! Initialize the plastic multiplicator and the residual function
+      plastic_mul=0
+      yield_fun=smises-syield
+
+      DO i=1,max_iter
+        ! Calculate the hardening slope
+        tangent=(-(stress_inf-syield0)*delta)*EXP(delta*(eqplas+plastic_mul))+h
+      
+        ! Calculate the residual derivative
+        res_der=-3*shear_mod-tangent
+
+        ! New guess for the plastic multiplicator
+        plastic_mul=plastic_mul-(yield_fun/res_der)
+
+        ! Check for convergence
+        syield=(stress_inf-syield0)*(1-EXP(delta*(eqplas+plastic_mul)))+ &
+         h*(eqplas+plastic_mul)+syield0
+        yield_fun=smises-3*shear_mod*plastic_mul-syield
+
+        IF (yield_fun<tol) THEN
+          EXIT
+        END IF
+      END DO
+
+      ! Create the unit flow vector
+      sdev_norm=((stress_dev(1)**2)+(stress_dev(2)**2)+(stress_dev(3)**2)+ &
+       (2*stress_dev(4)**2)+(2*stress_dev(5)**2)+(2*stress_dev(6)**2))
+      sdev_norm=SQRT(sdev_norm)
+      flow(:)=stress_dev(:)/sdev_norm
+
+      ! Update the equivalent plastic strain
+      eqplas=eqplas+plastic_mul
+
+      ! Update the stress
+      DO i=1,3
+        stress(i)=stress_dev(i)*(1-((plastic_mul*3*shear_mod)/smises))+ &
+         (1.0/3.0)*tr
+      END DO
+
+      DO i=4,ntens
+        stress(i)=stress_dev(i)*(1-((plastic_mul*3*shear_mod)/smises))
+      END DO
+
+      ! Update the elastic strains
+      DO i=1,3
+        stran(i)=stran(i)-plastic_mul*(SQRT(3.0/2.0))*flow(i)
+      END DO
+
+      DO i=4,ntens
+        stran(i)=stran(i)-2*plastic_mul*(SQRT(3.0/2.0))*flow(i)
+      END DO
+
+      ! Assemble the tangent operator
+      ! Create the IxI tensor
+      DO i=1,3
+        DO j=1,3
+          ixi_tensor(i,j)=1
+        END DO
+      END DO
+
+      ! Create the unit tensor
+      DO i=1,3
+        unit_tensor(i,i)=1
+      END DO
+      unit_tensor(4,4)=0.5
+      unit_tensor(5,5)=0.5
+      unit_tensor(6,6)=0.5
+
+      ! Create the projection tensor
+      DO i=1,ntens
+        DO j=1,ntens
+          proj_tensor(i,j)=unit_tensor(i,j)-(1.0/3.0)*ixi_tensor(i,j)
+
+          ! Create the tensor product of the two flow vectors
+          flow_flow(i,j)=flow(i)*flow(j)
+
+          ! Assemble all the parts into the final tangent operator
+          ddsdde(i,j)=ddsdde(i,j)-((plastic_mul*6*shear_mod**2)/smises)* &
+           proj_tensor(i,j)+6*(shear_mod**2)*((plastic_mul/smises)-(1.0/(3* &
+           shear_mod+tangent)))*flow_flow(i,j)
+        END DO
+      END DO
+    END IF
+
+    ! Update the state variables
+    statev(1)=eqplas
+
+    RETURN
+  END SUBROUTINE UMAT_NECKING
 
  END PROGRAM XX15
  

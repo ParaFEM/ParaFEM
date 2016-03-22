@@ -266,17 +266,28 @@ PROGRAM xx18
   
   CALL KSPCreate(PETSC_COMM_WORLD,p_ksp,p_ierr)
   CALL KSPSetOperators(p_ksp,p_A,p_A,p_ierr)
-  ! KSP type, tolerances (rtol, abstol, dtol, maxits), KSP options, PC type, PC
-  ! options are set in the xx18*.ppetsc file.  Those options are used to set up
-  ! the preconditioned Krylov solver
-  CALL KSPSetOptionsPrefix(p_ksp,"abc1_",p_ierr) ! testing!!!
-  CALL KSPSetFromOptions(p_ksp,p_ierr)
-  ! But the relative tolerance and maximum number of iterations are overriden by
-  ! the value in the ParaFEM control file.  Note that relative tolerance for
-  ! PETSc is for the preconditioned residual.  What is the ParaFEM iteration
-  ! limit: non-linear iterations or solver iterations?
+  ! The general tolerance and maximum number of linear solver iterations come
+  ! from the value in the ParaFEM control file.  Note that relative tolerance
+  ! for PETSc is for the preconditioned residual.
   CALL KSPSetTolerances(p_ksp,tol,PETSC_DEFAULT_REAL,PETSC_DEFAULT_REAL,       &
                         limit,p_ierr)
+  ! KSP type, per-KSP tolerances (rtol, abstol, dtol, maxits), KSP options, PC
+  ! type, PC options are set in the xx*.petsc file.  Those options are used to
+  ! set up the preconditioned Krylov solver.  If there are several KSP types to
+  ! be chosen from, then each one will be bracketed by -prefix_push and
+  ! -prefix_pop.  For example
+  !
+  ! -prefix_push abc1_
+  !   -ksp_type minres
+  ! -prefix_pop
+  !
+  ! in the xx*.petsc file and 
+  !
+  ! CALL KSPSetOptionsPrefix(p_ksp,"abc1_",p_ierr)
+  !
+  ! before KSPSetFromOptions before using the 'abc1_' solver.  Thus you can
+  ! switch for CG to GMRES during a simulation.
+  CALL KSPSetFromOptions(p_ksp,p_ierr)
   
   ! Solution vector
   CALL VecDuplicate(p_b,p_x,p_ierr) 
