@@ -48,8 +48,7 @@ program XX15
   LOGICAL :: converged, timewrite=.TRUE., flag=.FALSE., print_output=.FALSE., &
    tol_inc=.FALSE., lambda_inc=.TRUE.
 
-! Default umat is large_strain's umat.
-  CHARACTER(len=50) :: umat_name = "umat" 
+  CHARACTER(len=50) :: umat_name
 
 ! Default solvers are ParaFEM.  parafem_solvers is defined in choose_solvers
   CHARACTER(len=50) :: solvers = parafem_solvers 
@@ -125,8 +124,8 @@ program XX15
   END IF
 
   fname = fname_base(1:INDEX(fname_base," ")-1) // ".dat"
-  CALL READ_DATA_XX7(fname,numpe,nels,nn,nr,loaded_nodes,fixed_nodes,          &
-                     nip,limit,tol,e,v,nod,num_load_steps,jump,tol2)
+  CALL READ_DATA_XX15(fname,numpe,nels,nn,nr,loaded_nodes,fixed_nodes,         &
+                      nip,limit,tol,e,v,nod,num_load_steps,jump,tol2,umat_name)
 
 ! Input:  2: The second argument in the command line (arg2)
   IF (argc >= 2) THEN
@@ -152,11 +151,6 @@ program XX15
     CALL MPI_BCAST(p_fname,LEN(p_fname),MPI_CHARACTER,0,MPI_COMM_WORLD,ier)
   END IF
     
-! Input:  3: The second argument in the command line (arg3)
-  IF (argc >= 3) THEN
-    CALL GETARG(3,umat_name)
-  END IF
-
   IF (nels < npes) THEN
     IF (numpe==1) THEN
       WRITE(*,*)"Error: fewer elements than processors"
@@ -633,12 +627,18 @@ program XX15
           
           timest(14) = ELAP_TIME()
 
-          IF (umat_name == "umat") THEN
-            CALL PLASTICITY(deeF,jacF,jacFinc,sigma1C,statev,lnstrainelas,      &
-                            sigma,detF,umat)
-          ELSE IF (umat_name == "umat_necking") THEN
-            CALL PLASTICITY(deeF,jacF,jacFinc,sigma1C,statev,lnstrainelas,      &
-                            sigma,detF,umat_necking)
+          IF (umat_name == "umat_elastic") THEN
+            CALL PLASTICITY(deeF,jacF,jacFinc,sigma1C,statev,lnstrainelas,     &
+                            sigma,detF,statevar_num,iel,igauss,                &
+                            umat_elastic)
+          ELSE IF (umat_name == "umat_quadric_linear_hardening") THEN
+            CALL PLASTICITY(deeF,jacF,jacFinc,sigma1C,statev,lnstrainelas,     &
+                            sigma,detF,statevar_num,iel,igauss,                &
+                            umat_quadric_linear_hardening)
+          ELSE IF (umat_name == "umat_vm_nonlinear_hard") THEN
+            CALL PLASTICITY(deeF,jacF,jacFinc,sigma1C,statev,lnstrainelas,     &
+                            sigma,detF,statevar_num,iel,igauss,                &
+                            umat_vm_nonlinear_hard)
           END IF
            
           timest(15) = ELAP_TIME()
@@ -981,12 +981,18 @@ program XX15
 
             CALL DEFGRAINC(igauss,auxm_inc,upd_coord,points,jacFinc,ndim,nod)
 
-            IF (umat_name == "umat") THEN
-              CALL PLASTICITY(deeF,jacF,jacFinc,sigma1C,statev,lnstrainelas,      &
-                              sigma,detF,umat)
-            ELSE IF (umat_name == "umat_necking") THEN
-              CALL PLASTICITY(deeF,jacF,jacFinc,sigma1C,statev,lnstrainelas,      &
-                              sigma,detF,umat_necking)
+            IF (umat_name == "umat_elastic") THEN
+              CALL PLASTICITY(deeF,jacF,jacFinc,sigma1C,statev,lnstrainelas,   &
+                              sigma,detF,statevar_num,iel,igauss,              &
+                              umat_elastic)
+            ELSE IF (umat_name == "umat_quadric_linear_hardening") THEN
+              CALL PLASTICITY(deeF,jacF,jacFinc,sigma1C,statev,lnstrainelas,   &
+                              sigma,detF,statevar_num,iel,igauss,              &
+                              umat_quadric_linear_hardening)
+            ELSE IF (umat_name == "umat_vm_nonlinear_hard") THEN
+              CALL PLASTICITY(deeF,jacF,jacFinc,sigma1C,statev,lnstrainelas,   &
+                              sigma,detF,statevar_num,iel,igauss,              &
+                              umat_vm_nonlinear_hard)
             END IF
 
             ! Save the variables
@@ -1266,15 +1272,534 @@ program XX15
 
 CONTAINS
   
-  SUBROUTINE umat_necking(stress,statev,ddsdde,stran,dstran,ntens)
+!------------------------------------------------------------------------------
+!------------------------------------------------------------------------------
+!------------------------------------------------------------------------------
+  
+  SUBROUTINE READ_DATA_XX15(fname,numpe,nels,nn,nr,loaded_nodes,fixed_nodes,   &
+                            nip,limit,tol,e,v,nod,num_load_steps,jump,tol2,    &
+                            umat_name)
+
+    !/****f* input_output/read_data_xx15
+    !*  NAME
+    !*    SUBROUTINE: read_data_xx15
+    !*  SYNOPSIS
+    !*    Usage:      CALL read_data_xx15(fname,numpe,nels,nn,nr,             &
+    !*                                   loaded_nodes,fixed_nodes,nip,        &
+    !*                                   limit,tol,e,v,nod,num_load_steps,    &
+    !*                                   jump,tol2,umat_name)
+    !*  FUNCTION
+    !*    Master process reads the general data of the problem
+    !*    Master process broadcasts to slave processes.
+    !*  INPUTS
+    !*    The following arguments have the INTENT(IN) attribute:
+    !*
+    !*    fname                  : Character
+    !*                           : File name to read
+    !*
+    !*    numpe                  : Integer
+    !*                           : Process number
+    !*
+    !*    The following arguments have the INTENT(OUT) attribute:
+    !*
+    !*    nels                   : Integer
+    !*                           : Total number of elements
+    !*
+    !*    nn                     : Integer
+    !*                           : Total number of nodes 
+    !*
+    !*    nr                     : Integer
+    !*                           : Number of nodes with restrained degrees of
+    !*                             freedom 
+    !*
+    !*    loaded_nodes           : Integer
+    !*                           : Number of nodes with applied forces
+    !*
+    !*    fixed_nodes            : Integer
+    !*                           : Number of restrained degrees of freedom 
+    !*                             with a non-zero applied value
+    !*
+    !*    nip                    : Integer
+    !*                           : Number of Gauss integration points
+    !*
+    !*    limit                  : Integer
+    !*                           : Maximum number of PCG iterations allowed
+    !*
+    !*    tol                    : Real
+    !*                           : Tolerance for PCG
+    !*
+    !*    e                      : Real
+    !*                           : Young's modulus
+    !*
+    !*    v                      : Real
+    !*                           : Poisson coefficient
+    !*
+    !*    nod                    : Integer
+    !*                           : Number of nodes per element
+    !*
+    !*    num_load_steps         : Integer
+    !*                           : Number of load steps
+    !*
+    !*    jump                   : Integer
+    !*                           : Number of load steps to skip before writing
+    !*                             results (periodically)
+    !*
+    !*    tol2                   : Real
+    !*                           : Tolerance for Newton-Raphson loop
+    !*
+    !*    umat_name              : Character(len=*)
+    !*                           : Umat to use
+    !*
+    !*  AUTHOR
+    !*    Francisco Calvo
+    !*    L. Margetts
+    !*  CREATION DATE
+    !*    01.06.2007
+    !*  MODIFICATION HISTORY
+    !*    Version 2, 25.03.2016, Mark Filipiak
+    !*  COPYRIGHT
+    !*    (c) University of Manchester 2007-2011
+    !*    (c) University of Edinburgh 2016
+    !******
+    !*  Place remarks that should not be included in the documentation here.
+    !*
+    !*/
+  
+    IMPLICIT NONE
+
+    CHARACTER(*), INTENT(IN)  :: fname
+    INTEGER,      INTENT(IN)  :: numpe
+    INTEGER,      INTENT(OUT) :: nels, nn, nr, loaded_nodes, fixed_nodes, nip,&
+                                 limit, nod, num_load_steps, jump
+    REAL(iwp),    INTENT(OUT) :: tol, e, v, tol2
+    CHARACTER(*), INTENT(OUT) :: umat_name
+    INTEGER                   :: bufsize, ier, vec_integer(10)
+    REAL(iwp)                 :: vec_real(4)
+
+    !----------------------------------------------------------------------
+    ! 1. Master process reads the data and builds the integer and real
+    !    vectors with the data
+    !----------------------------------------------------------------------
+
+    IF (numpe==1) THEN
+      OPEN(10,FILE=fname,STATUS='OLD',ACTION='READ')
+      READ(10,*)nels,nn,nr,loaded_nodes,fixed_nodes,nip
+      READ(10,*)limit,tol,e,v
+      READ(10,*)nod
+      READ(10,*)num_load_steps,jump
+      READ(10,*)tol2
+      READ(10,*)umat_name
+      CLOSE(10)
+      
+      vec_integer(1)  = nels
+      vec_integer(2)  = nn
+      vec_integer(3)  = nr
+      vec_integer(4)  = loaded_nodes
+      vec_integer(5)  = fixed_nodes
+      vec_integer(6)  = nip
+      vec_integer(7)  = limit
+      vec_real(1)     = tol
+      vec_real(2)     = e
+      vec_real(3)     = v
+      vec_integer(8)  = nod
+      vec_integer(9)  = num_load_steps
+      vec_integer(10) = jump
+      vec_real(4)     = tol2
+      
+    END IF
+
+    !----------------------------------------------------------------------
+    ! 2. Master process broadcasts the data to slave processes
+    !----------------------------------------------------------------------
+
+    bufsize = 10
+    CALL MPI_BCAST(vec_integer,bufsize,MPI_INTEGER,0,MPI_COMM_WORLD,ier)
+
+    bufsize = 4
+    CALL MPI_BCAST(vec_real,bufsize,MPI_REAL8,0,MPI_COMM_WORLD,ier)
+
+    bufsize = len(umat_name)
+    CALL MPI_BCAST(umat_name,bufsize,MPI_CHARACTER,0,MPI_COMM_WORLD,ier)
+
+    !----------------------------------------------------------------------
+    ! 3. Slave processes extract the variables back from the vectors
+    !----------------------------------------------------------------------
+
+    IF (numpe/=1) THEN
+      nels           = vec_integer(1)
+      nn             = vec_integer(2)
+      nr             = vec_integer(3)
+      loaded_nodes   = vec_integer(4)
+      fixed_nodes    = vec_integer(5)
+      nip            = vec_integer(6)
+      limit          = vec_integer(7)
+      tol            = vec_real(1)
+      e              = vec_real(2)
+      v              = vec_real(3)
+      nod            = vec_integer(8)
+      num_load_steps = vec_integer(9)
+      jump           = vec_integer(10)
+      tol2           = vec_real(4)
+    END IF
+
+    RETURN
+
+  END SUBROUTINE READ_DATA_XX15
+
+!------------------------------------------------------------------------------
+!------------------------------------------------------------------------------
+!------------------------------------------------------------------------------
+
+  SUBROUTINE umat_elastic(stress,statev,ddsdde,stran,dstran,ntens,             &
+                          statevar_num,iel,igauss)
+
+    IMPLICIT NONE
+
+    INTEGER, INTENT(IN) :: ntens
+    INTEGER, INTENT(IN) :: statevar_num, iel, igauss
+    REAL(iwp), INTENT(OUT) :: stress(:), ddsdde(:,:)
+    REAL(iwp), INTENT(INOUT) :: stran(:), statev(:), dstran(:)
+
+    REAL(iwp) :: scalar_term, e, nu
+    REAL(iwp), PARAMETER :: zero=0._iwp, one=1._iwp, two=2._iwp
+    INTEGER :: i, j
+	
+    ! Assign material properties
+    e=12700._iwp
+    nu=0.3_iwp
+    
+    ! Setting the fourth and second-order tensors to zero
+    ddsdde=zero
+    stress=zero
+
+    ! Compute the linear elastic isotropic stiffness matrix
+    scalar_term=e/((one+nu)*(one-two*nu))
+
+    ddsdde(1,1)=one-nu
+    ddsdde(2,2)=one-nu
+    ddsdde(3,3)=one-nu
+    ddsdde(4,4)=(one-two*nu)/two
+    ddsdde(5,5)=(one-two*nu)/two
+    ddsdde(6,6)=(one-two*nu)/two
+    ddsdde(1,2)=nu
+    ddsdde(1,3)=nu
+    ddsdde(2,1)=nu
+    ddsdde(2,3)=nu
+    ddsdde(3,1)=nu
+    ddsdde(3,2)=nu
+
+    ddsdde=scalar_term*ddsdde
+
+    ! Calculate the predictor strain and stress
+    DO i=1,ntens
+      DO j=1,ntens
+        stress(i)=stress(i)+ddsdde(i,j)*stran(j)
+      END DO
+    END DO
+    
+    RETURN
+  END SUBROUTINE umat_elastic
+
+!------------------------------------------------------------------------------
+!------------------------------------------------------------------------------
+!------------------------------------------------------------------------------
+
+  SUBROUTINE umat_quadric_linear_hardening(stress,statev,ddsdde,stran,dstran,  &
+                                           ntens,statevar_num,iel,igauss)
+
+    ! This subroutine returns the updated stress, strain and the tangent 
+    ! operator for the Eccentric-Ellipsoid model with (linear) isotropic 
+    ! hardening and associative plastic flow rule
+    IMPLICIT NONE
+    
+    INTEGER, INTENT(IN) :: ntens
+    INTEGER, INTENT(IN) :: statevar_num, iel, igauss
+    REAL(iwp), INTENT(OUT) :: stress(:), ddsdde(:,:)
+    REAL(iwp), INTENT(INOUT) :: stran(:), statev(:), dstran(:)
+
+    REAL(iwp) :: scalar_term, eqplas, e, nu, yield_t, yield_c, f_lower_0,     &
+     f_upper_0, syield, hard, sfs, zeta, stress_eq, plastic_mul, norm_flow,   &
+     yield, ran_scalar, norm_solution, nen, eqplas_trial, res_piv, alpha,     &
+     mprod, mprev, mder, alpha1, alpha2
+    REAL(iwp) :: unit_tensor(6), ixi(6,6), ixi_sym(6,6), f_4(6,6), f_2(6),    &
+     flow_dir(7), fs(6), res_strain(6), dnds(6,6), unit_7(7,7),               &
+     strain_trial(6), residuals(8), results(8), jacobian(8,8), fd(7),         &
+     inv_jacobian(8,8), e_comp(6,6), nxn(6,6), en(6), g_mat(7,7),             &
+     flow_dir_stress(6), grad_flow(7,7), dir(8), results0(8)
+    REAL(iwp), PARAMETER :: zero=0._iwp, one=1._iwp, two=2._iwp,              &
+	 tol=0.000001_iwp, half=0.5_iwp, tol_nr=0.00000001_iwp, beta=0.0001_iwp,  &
+     ls_const=0.1_iwp, four=4._iwp
+    INTEGER :: i, j, iter, ls_iter
+    INTEGER, PARAMETER :: max_nr_iter=50, max_ls_iter=25
+     
+    ! Assign material properties (user defined)
+    ! Yield properties obtained from Wolfram et al. 2012
+    e=12700._iwp
+    nu=0.3_iwp
+    yield_t=52._iwp !(0.41%)
+    yield_c=105._iwp !(0.83%)
+    !zeta=0.2_iwp
+    zeta=0.49_iwp
+    !hard=0.001 ! Corresponds to 0% of the elastic slope
+    hard=0.296_iwp ! Corresponds to 5% of the elastic slope in tension
+    hard=0.038_iwp ! Corresponds to 5% of the elastic slope in compression
+     
+    ! Assign derived material properties
+    f_upper_0=(yield_t+yield_c)/(two*yield_t*yield_c)
+    f_lower_0=(one/two)*((one/yield_t)-(one/yield_c))
+       
+    ! Recover the previous equivalent plastic strain
+    eqplas_trial=statev(1)
+
+    ! Initializing variables
+    ddsdde=zero
+    stress=zero
+
+    ! Compute the linear elastic isotropic stiffness matrix
+    scalar_term=e/((one+nu)*(one-two*nu))
+
+    ddsdde(1,1)=one-nu
+    ddsdde(2,2)=one-nu
+    ddsdde(3,3)=one-nu
+    ddsdde(4,4)=(one-two*nu)/two
+    ddsdde(5,5)=(one-two*nu)/two
+    ddsdde(6,6)=(one-two*nu)/two
+    ddsdde(1,2)=nu
+    ddsdde(1,3)=nu
+    ddsdde(2,1)=nu
+    ddsdde(2,3)=nu
+    ddsdde(3,1)=nu
+    ddsdde(3,2)=nu
+
+    ddsdde=scalar_term*ddsdde
+    
+    ! Calculate the predictor strain and stress
+    DO i=1,ntens
+      DO j=1,ntens
+        stress(i)=stress(i)+ddsdde(i,j)*stran(j)
+      END DO
+    END DO
+    
+    ! Define the unit tensor, IxI and IxI_sym
+    ixi=zero
+    ixi_sym=zero
+    
+    DO i=1,3
+      unit_tensor(i)=one
+      unit_tensor(i+3)=zero
+      DO j=1,3
+        ixi(i,j)=one
+      END DO
+      
+      ixi_sym(i,i)=one
+      ixi_sym(i+3,i+3)=half
+    END DO
+
+    ! Define the fourth order tensor F_4 and the second order tensor F_2
+    f_4=-zeta*(f_upper_0**2)*ixi+(zeta+one)*(f_upper_0**2)*ixi_sym
+    f_2=f_lower_0*unit_tensor
+        
+    ! Calculate the equivalent stress
+    fs=MATMUL(f_4,stress)
+    fs(4:6)=four*fs(4:6)
+    sfs=DOT_PROD(stress,fs,6)
+    sfs=SQRT(sfs)
+    stress_eq=sfs+DOT_PROD(f_2,stress,6)
+        
+    ! Calculate the equivalent yield stress
+    syield=one+hard*eqplas_trial
+    
+    ! Determine if there is yielding
+    ! =========================================================================
+    IF ((stress_eq-syield)>=tol) THEN
+
+      ! This material point is yielding, proceed with the return-mapping
+      ! =======================================================================
+
+      ! Initialise some matrices
+      g_mat=zero
+      g_mat(1:6,1:6)=ddsdde
+      g_mat(7,7)=hard
+      
+      unit_7=zero
+      DO i=1,7
+        unit_7(i,i)=one
+      END DO
+      
+      ! Initialize variables before the local Newton-Raphson loop
+      plastic_mul=zero
+      strain_trial=stran
+      
+      DO iter=1,max_nr_iter
+      
+        ! Warn if the maximum number of iterations has been reached
+        IF (iter==max_nr_iter) THEN
+          WRITE(*,*) 'Maximum local Newton-Raphson iterations have been reached'
+        END IF
+        
+        ! Calculate the flow direction
+        IF (iter.EQ.1) THEN
+          flow_dir_stress=(fs/sfs)+f_2
+      
+          ! Compute the residuals 
+          yield=sfs+DOT_PROD(f_2,stress,6)-(one+hard*(plastic_mul+eqplas_trial))
+         
+          ! Assemble the residual and the results vector
+          residuals=zero
+          results(1:6)=stran(1:6)  
+          
+          residuals(7)=zero
+          results(7)=-eqplas_trial
+          
+          residuals(8)=yield
+          results(8)=zero
+        END IF
+        
+        ! Assemble the flow direction
+        flow_dir(1:6)=flow_dir_stress(1:6)
+        flow_dir(7)=one
+         
+        ! Calculate the Jacobian
+        ! =====================================================================
+         
+        ! Calculate the derivative of the flow vector with respect to stress
+        fs=MATMUL(f_4,stress)
+        fs(4:6)=four*fs(4:6)
+        
+        dnds=(f_4/sfs)
+        dnds(4:6,4:6)=four*dnds(4:6,4:6)
+        
+        dnds=dnds-TENSOR_PRODUCT_22(fs,(fs/(sfs**3)))
+         
+        grad_flow=zero
+        grad_flow(1:6,1:6)=dnds
+                 
+        ! Assemble the jacobian
+        jacobian(1:7,1:7)=unit_7+plastic_mul*MATMUL(grad_flow,g_mat)
+        fd=MATMUL(flow_dir,g_mat)
+        
+        jacobian(8,1:7)=fd(1:7)
+        jacobian(1:7,8)=flow_dir(1:7)        
+        jacobian(8,8)=zero
+        
+        ! Invert the Jacobian
+        CALL INVERSE(jacobian,inv_jacobian,8)
+        ! =====================================================================
+         
+        ! Compute direction of advance
+        dir=-MATMUL(inv_jacobian,residuals)
+         
+        ! Line search scheme
+        ! =====================================================================
+        
+        ! Set up some initial results
+        alpha=one
+        mprod=half*DOT_PROD(residuals,residuals,8)
+        mprev=mprod
+        mder=-two*mprod
+        results0=results
+        
+        DO ls_iter=1,max_ls_iter
+        
+          ! Update new results
+          results=results0+alpha*dir
+          plastic_mul=results(8)
+          eqplas=-results(7)
+          stran(1:6)=results(1:6)
+          stress=MATMUL(ddsdde,stran)
+          
+          fs=MATMUL(f_4,stress)
+          fs(4:6)=four*fs(4:6)
+          sfs=DOT_PROD(stress,fs,6)
+          sfs=SQRT(sfs)
+          flow_dir_stress=(fs/sfs)+f_2
+          
+          res_strain=stran-strain_trial+plastic_mul*flow_dir_stress
+          res_piv=-eqplas+eqplas_trial+plastic_mul
+          yield=sfs+DOT_PROD(f_2,stress,6)-(one+hard*(plastic_mul+eqplas_trial))
+         
+          residuals(1:6)=res_strain(1:6)
+          residuals(7)=res_piv
+          residuals(8)=yield
+          
+          mprod=half*DOT_PROD(residuals,residuals,8)
+          
+          IF (mprod<=((one-two*ls_const*beta)*mprev)) THEN
+            EXIT
+          ELSE
+            alpha1=ls_const*alpha
+            alpha2=(-(alpha**2)*mder)/(two*(mprod-mprev-alpha*mder))
+            
+            IF (alpha1>=alpha2) THEN
+              alpha=alpha1
+            ELSE
+              alpha=alpha2
+            END IF
+          END IF
+        END DO
+        ! =====================================================================
+         
+        ! Exit if convergence
+        ! =====================================================================
+        norm_solution=zero
+        DO i=1,8
+          norm_solution=norm_solution+(residuals(i)**2)
+        END DO
+        norm_solution=SQRT(norm_solution)
+         
+        IF (norm_solution<=tol_nr) THEN
+          EXIT
+        END IF
+        ! =====================================================================
+        
+      END DO
+      
+      ! Update equivalent plastic strain     
+      eqplas=eqplas_trial+plastic_mul
+
+      ! Assemble tangent operator
+      CALL INVERSE(ddsdde,e_comp,6)
+      dnds=e_comp+plastic_mul*dnds
+      CALL INVERSE(dnds,ddsdde,6)
+      en=MATMUL(ddsdde,flow_dir_stress)
+      nxn=tensor_product_22(en,en)
+      
+      DO i=4,6
+        flow_dir(i)=half*flow_dir(i)
+      END DO
+      
+      nen=double_contraction_22(flow_dir,en)+hard
+      ddsdde=ddsdde-(one/nen)*nxn
+      
+      ! Update state variables
+      statev(1)=eqplas
+
+    END IF
+    
+    ! End of yielding
+    ! =========================================================================
+    
+    RETURN
+  END SUBROUTINE umat_quadric_linear_hardening
+  
+!------------------------------------------------------------------------------
+!------------------------------------------------------------------------------
+!------------------------------------------------------------------------------
+
+  SUBROUTINE umat_vm_nonlinear_hard(stress,statev,ddsdde,stran,dstran,ntens,   &
+                                    statevar_num,iel,igauss)
+    
     
     ! This subroutine returns the updated stress, strain and the tangent 
     ! operator for the integrated constitutive law
+    IMPLICIT NONE
+
     INTEGER, INTENT(IN) :: ntens
-    REAL(iwp), INTENT(IN) :: dstran(:)
+    INTEGER, INTENT(IN) :: statevar_num, iel, igauss
     REAL(iwp), INTENT(OUT) :: stress(:), ddsdde(:,:)
-    REAL(iwp), INTENT(INOUT) :: stran(:), statev(:)
-    integer :: i, j, iel, igauss, max_iter
+    REAL(iwp), INTENT(INOUT) :: stran(:), statev(:), dstran(:)
+
+    integer :: i, j, max_iter
 
     real(iwp) :: bulk_mod, shear_mod, scalar_term, smises, syield, eqplas, &
      tr, plastic_mul, e, nu, h, syield0, tol, sdev_norm, tr_stran
@@ -1450,7 +1975,7 @@ CONTAINS
     statev(1)=eqplas
 
     RETURN
-  END SUBROUTINE UMAT_NECKING
+  END SUBROUTINE umat_vm_nonlinear_hard
 
 !------------------------------------------------------------------------------
 !------------------------------------------------------------------------------
