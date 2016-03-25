@@ -34,7 +34,7 @@ program XX15
   REAL(iwp) :: det, tol, maxdiff, tol2, detF, detFinc, energy, energy1, rn0,  &
    timest(40), detF_mean, initial_guess, lambda, lambda_total, lambda_prev,   &
    energy_prev, energy_prev_prev, min_inc, next_output, temp_inc, dw, e, v,   &
-   jacFtransinv(3,3), jacFtrans(3,3), sum_strain(3,3)
+   jacFtransinv(3,3), jacFtrans(3,3), sum_strain(3,3), max_disp, max_disp_inc
 
   REAL(iwp), PARAMETER :: tol_increment=0.000001_iwp, tol_val=0.00000001_iwp
   REAL(iwp), PARAMETER :: zero=0.0_iwp, one=1._iwp, half=0.5_iwp
@@ -347,7 +347,9 @@ program XX15
       END DO
     END DO
     
-    DEALLOCATE(fixed_node, fixed_dof, fixed_value)
+    max_disp = MAXVAL(ABS(fixed_value))
+
+    DEALLOCATE(fixed_dof, fixed_value)
 
   END IF
   
@@ -1039,21 +1041,21 @@ program XX15
         !OPEN(28, file=fname, status='replace', action='write')
                 
         ! Homogenized stress and strain
-        fname = fname_base(1:INDEX(fname_base, " ")-1) // "_hom_stress.res"
-        OPEN(29, file=fname, status='replace', action='write')
-        fname = fname_base(1:INDEX(fname_base, " ")-1) // "_hom_strain.res"
-        OPEN(30, file=fname, status='replace', action='write')
+        !fname = fname_base(1:INDEX(fname_base, " ")-1) // "_hom_stress.res"
+        !OPEN(29, file=fname, status='replace', action='write')
+        !fname = fname_base(1:INDEX(fname_base, " ")-1) // "_hom_strain.res"
+        !OPEN(30, file=fname, status='replace', action='write')
         
         ! Load and displacement
-        !fname = fname_base(1:INDEX(fname_base, " ")-1) // "_disp_load.res"
-        !OPEN(31, file=fname, status='replace', action='write')
+        fname = fname_base(1:INDEX(fname_base, " ")-1) // "_disp_load.res"
+        OPEN(31, file=fname, status='replace', action='write')
       END IF
     END IF
 
     IF (numpe==1) THEN
-      CALL FLUSH(29)
-      CALL FLUSH(30)
-      !CALL FLUSH(31)
+      !CALL FLUSH(29)
+      !CALL FLUSH(30)
+      CALL FLUSH(31)
     END IF
     
 !-----print out displacements, stress, principal stress and reactions -------
@@ -1071,7 +1073,7 @@ program XX15
       ALLOCATE(strain_integral_pp(nod*nst,nels_pp))
       !ALLOCATE(stressnodes_pp(nodes_pp*nst))
       ALLOCATE(strainnodes_pp(nodes_pp*nst))
-      !ALLOCATE(reacnodes_pp(nodes_pp*nodof))
+      ALLOCATE(reacnodes_pp(nodes_pp*nodof))
       
       CALL GATHER(xnew_pp(1:),xnewel_pp)
       IF (numfix_pp > 0) THEN
@@ -1158,6 +1160,17 @@ program XX15
       DEALLOCATE(strain_integral_pp,strainnodes_pp)
       DEALLOCATE(shape_integral_pp)
 
+      IF (fixed_nodes>0) THEN
+        CALL SCATTER_NODES(npes,nn,nels_pp,g_num_pp,nod,nodof,nodes_pp,        &
+                           node_start,node_end,storefint_pp,reacnodes_pp,0)
+        
+        max_disp_inc = max_disp*lambda_total
+        
+        CALL WRITE_LOAD_DISP(31,nodes_pp,npes,numpe,reacnodes_pp,max_disp_inc, &
+                             fixed_node,iload)
+      END IF
+      DEALLOCATE(reacnodes_pp)
+
       IF(timewrite) THEN
         timest(5) = elap_time( )
         timewrite = .FALSE.
@@ -1197,8 +1210,9 @@ program XX15
     !CLOSE(25)
     !CLOSE(26)
     CLOSE(27)
-    CLOSE(29)
-    CLOSE(30)
+    !CLOSE(29)
+    !CLOSE(30)
+    CLOSE(31)
   END IF
 
 !------------------------------------------------------------------------------
@@ -1210,6 +1224,10 @@ program XX15
 !------------------------------------------------------------------------------
 
   200 CONTINUE
+
+  IF (fixed_nodes>0) THEN
+    DEALLOCATE(fixed_node)
+  END IF
 
   IF (solvers == petsc_solvers) THEN
     DEALLOCATE(p_rows,p_cols,p_values)
@@ -1434,6 +1452,230 @@ CONTAINS
     RETURN
   END SUBROUTINE UMAT_NECKING
 
+!------------------------------------------------------------------------------
+!------------------------------------------------------------------------------
+!------------------------------------------------------------------------------ 
+
+  SUBROUTINE WRITE_LOAD_DISP(filnum,nodes_pp,npes,numpe,load,disp,load_node,iload)
+
+  !/****f* xx15/write_load_disp
+  !*  NAME
+  !*    SUBROUTINE: write_load_disp
+  !*  SYNOPSIS
+  !*    Usage:      CALL write_load_disp(text,filnum,iload,nodes_pp,numpe,    &
+  !*                 numvar,stress) 
+  !*  FUNCTION
+  !*    Write the load and displacement values to a file.
+  !*  INPUTS
+  !*    The following arguments have the INTENT(IN) attribute:
+  !*
+  !*    nodes_pp                : Integer
+  !*                            : Number of nodes assigned to a process
+  !*
+  !*    load_node(loaded_nodes) : Integer
+  !*                            : Loaded nodes
+  !*
+  !*    npes                    : Integer
+  !*                            : Number of processes
+  !*
+  !*    numpe                   : Integer
+  !*                            : Process number
+  !*
+  !*    load(nodes_pp*3)        : Real
+  !*                            : First set of nodal variables to print
+  !*
+  !*    disp(fixed_nodes)       : Real
+  !*                            : Second set of nodal variables to print
+  !*                             
+  !*  AUTHOR
+  !*    F. Calvo
+  !*    L. Margetts
+  !*    F. Levrero Florencio
+  !*  CREATION DATE
+  !*    31.03.2015
+  !*  COPYRIGHT
+  !*    (c) University of Manchester 2007-2010
+  !*    (c) The University of Edinburgh 2015
+  !******
+  !*
+  !*/
+
+    IMPLICIT NONE
+
+    INTEGER, INTENT(IN)           :: filnum, nodes_pp, npes, numpe,           &
+                                      load_node(:), iload
+    REAL(iwp), INTENT(IN)         :: load(:), disp
+    INTEGER                       :: i, j, idx1, nod_r, bufsize1, bufsize2,   &
+                                      n, k, m, ier, iproc, bufsize,           &
+                                      loaded_nodes
+    INTEGER                       :: statu(MPI_STATUS_SIZE)
+    INTEGER, ALLOCATABLE          :: get(:), get_n(:), cum_n(:)
+    REAL(iwp)                     :: max_disp, load_total, sum_load
+    REAL(iwp), ALLOCATABLE        :: send_load(:), rec_load(:)
+
+!------------------------------------------------------------------------------
+! 1. Allocate arrays involved in communications
+!------------------------------------------------------------------------------
+
+    ALLOCATE(get(npes),get_n(npes),cum_n(npes))
+  
+!------------------------------------------------------------------------------
+! 2. Master processor populates the array "get" containing "nodes_pp" of 
+!    every processor. Slave processors send this number to the master processor
+!------------------------------------------------------------------------------
+
+    get = 0
+    get(1) = nodes_pp
+
+    bufsize = 1
+
+    DO i = 2,npes
+      IF(numpe==i) THEN
+        CALL MPI_SEND(nodes_pp,bufsize,MPI_INTEGER,0,i,MPI_COMM_WORLD,ier)
+      END IF
+    
+      IF(numpe==1) THEN
+        CALL MPI_RECV(nod_r,bufsize,MPI_INTEGER,i-1,i,MPI_COMM_WORLD,statu,ier)
+        get(i) = nod_r
+      END IF
+    END DO
+    
+!------------------------------------------------------------------------------
+! 3. Broadcast the get array and created the accumulated get array
+!------------------------------------------------------------------------------  
+
+    bufsize = npes
+    CALL MPI_BCAST(get,bufsize,MPI_INTEGER,0,MPI_COMM_WORLD,ier)
+    
+    cum_n(1) = get(1)
+    DO i = 2,npes
+      cum_n(i) = cum_n(i-1)+get(i)
+    END DO
+
+!------------------------------------------------------------------------------
+! 4. Counts the number of loaded nodes in each process and sends it to the 
+!    master process
+!------------------------------------------------------------------------------  
+  
+    loaded_nodes = UBOUND(load_node,1)
+    bufsize = 1
+    n = 0
+    
+    DO i = 1,loaded_nodes
+      ! Loaded nodes which belong to the master process
+      IF (numpe==1) THEN
+        IF (load_node(i).LE.get(1)) THEN
+          !output_load(i) = load(load_node(i)*3)
+          n = n+1
+        END IF
+      END IF
+      
+     ! Loaded nodes which belong to the rest of processes
+      DO j = 2,npes
+        IF (numpe==j) THEN
+          IF ((load_node(i).LE.cum_n(j)).AND.(load_node(i).GT.cum_n(j-1))) THEN
+            n = n+1
+          END IF
+        END IF
+      END DO
+    END DO
+    
+    ! Send the number of loaded_nodes per process to the master process
+    bufsize = 1
+    DO i = 2,npes
+      IF (numpe==i) THEN
+        CALL MPI_SEND(n,bufsize,MPI_INTEGER,0,i,MPI_COMM_WORLD,ier)
+      END IF
+      
+      IF (numpe==1) THEN
+        CALL MPI_RECV(get_n(i),bufsize,MPI_INTEGER,i-1,i,MPI_COMM_WORLD,      &
+         statu,ier)
+      END IF      
+    END DO
+
+!------------------------------------------------------------------------------
+! 5. Creates a data set containing the loads and the corresponding node number
+!    and sends it to the master process
+!------------------------------------------------------------------------------  
+    
+    ! Creates the data to be sent
+    m = 0
+    DO i=1,loaded_nodes
+      DO j = 2,npes
+        IF (numpe==j) THEN
+          IF (i==1) THEN
+            ALLOCATE(send_load(n))
+          END IF
+          
+          IF ((load_node(i).LE.cum_n(j)).AND.(load_node(i).GT.cum_n(j-1))) THEN
+            m = m+1
+            send_load(m) = load((load_node(i)-cum_n(j-1))*3)
+          END IF
+        END IF
+      END DO
+    END DO
+
+    ! Send the data to the master process
+    get_n(1) = n
+    sum_load = 0._iwp
+    
+    DO i = 2,npes
+      IF (numpe==i) THEN
+        IF (n.GT.0) THEN
+          bufsize = n
+          CALL MPI_SEND(send_load,bufsize,MPI_REAL8,0,(i+npes),MPI_COMM_WORLD, &
+           ier)
+        END IF
+      END IF
+        
+      IF (numpe==1) THEN
+        ALLOCATE(rec_load(get_n(i)))
+        
+        IF (get_n(i).GT.0) THEN
+
+          CALL MPI_RECV(rec_load,get_n(i),MPI_REAL8,i-1,(i+npes),              &
+           MPI_COMM_WORLD,statu,ier)
+         
+          DO j=1,get_n(i)
+            sum_load = sum_load+rec_load(j)
+          END DO
+        END IF
+        
+        DEALLOCATE(rec_load)
+      END IF
+    END DO
+
+!------------------------------------------------------------------------------
+! 6. Writing of the results
+!------------------------------------------------------------------------------   
+
+    IF (numpe==1) THEN
+      load_total = 0._iwp
+      max_disp = 0._iwp
+      
+      IF (iload==1) THEN
+        WRITE(filnum,*) load_total,max_disp
+      END IF
+
+      load_total = sum_load
+      
+      WRITE(filnum,*) load_total,disp
+    END IF
+
+!------------------------------------------------------------------------------
+! 7. Deallocation
+!------------------------------------------------------------------------------  
+
+    DEALLOCATE(get,cum_n)
+    
+    IF (numpe==1) THEN
+      DEALLOCATE(get_n)
+    ELSE
+      DEALLOCATE(send_load)
+    END IF
+    
+  END SUBROUTINE WRITE_LOAD_DISP
+  
  END PROGRAM XX15
  
 !------------------------------------------------------------------------------
