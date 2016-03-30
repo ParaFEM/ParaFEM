@@ -24,7 +24,9 @@ include ../../../../build/$(MACHINE).inc
 MODULE_MPI            = ../../../../include/mpi
 MODULE_CHOOSE_SOLVERS = ../../../../include/choose_solvers
 MODULE_PARAFEM_PETSC  = ../../../../include/parafem_petsc
-LIB	= ../../../../lib
+LIB	    = ../../../../lib
+EXECUTABLES = xx15_elastic xx15_quadric_linear_hardening xx15_vm_nonlinear_hardening
+
 .SUFFIXES: .o .F90 .f90
 
 all:	release
@@ -32,7 +34,7 @@ all:	release
 release:
 	@echo
 	@echo "Building xx15 RELEASE"
-	$(MAKE) xx15 \
+	$(MAKE) $(EXECUTABLES) \
 	FFLAGS="-c -I$(MODULE_MPI) -I$(MODULE_CHOOSE_SOLVERS) -I$(MODULE_PARAFEM_PETSC) $(XX15_MPI_REL_FFLAGS)" \
 	LDFLAGS="-L$(LIB) -lParaFEM_mpi.$(VERSION) -lParaFEM_choose_solvers.$(VERSION) -lParaFEM_parafem_petsc.$(VERSION) $(XX15_MPI_REL_LDFLAGS)"
 #	$(MAKE) xx15_original \
@@ -43,7 +45,7 @@ release:
 debug:
 	@echo
 	@echo "Building xx15 DEBUG"
-	$(MAKE) xx15 \
+	$(MAKE) $(EXECUTABLES) \
 	FFLAGS="-c -I$(MODULE_MPI) -I$(MODULE_CHOOSE_SOLVERS) -I$(MODULE_PARAFEM_PETSC) $(XX15_MPI_DBG_FFLAGS)" \
 	LDFLAGS="-L$(LIB) -lParaFEM_mpi_D.$(VERSION) -lParaFEM_choose_solvers_D.$(VERSION) -lParaFEM_parafem_petsc_D.$(VERSION) $(XX15_MPI_DBG_LDFLAGS)"
 #	$(MAKE) xx15_original \
@@ -51,30 +53,40 @@ debug:
 #	LDFLAGS="-L$(LIB) -lParaFEM_mpi_D.$(VERSION) $(XX15_MPI_DBG_LDFLAGS)"
 	@echo "Done xx15 DEBUG"
 
-xx15: xx15.o
-	$(FC) xx15.o -o xx15 $(LDFLAGS)
+xx15_elastic: xx15_elastic.o plasticity_xx15.o
+	$(FC) $(LDFLAGS) -o $@ $+
 
-xx15.o: xx15.F90
-	$(FC) xx15.F90 $(FFLAGS)
+xx15_quadric_linear_hardening: xx15_quadric_linear_hardening.o plasticity_xx15.o
+	$(FC) $(LDFLAGS) -o $@ $+
 
-xx15_original: xx15_original.o
-	$(FC) xx15_original.o -o xx15_original  $(LDFLAGS)
+xx15_vm_nonlinear_hardening: xx15_vm_nonlinear_hardening.o plasticity_xx15.o
+	$(FC) $(LDFLAGS) -o $@ $+
 
-xx15_original.o: xx15_original.f90
-	$(FC) xx15_original.f90 $(FFLAGS)
+xx15_original: xx15_original.o plasticity_xx15.o
+	$(FC) $(LDFLAGS) -o $@ $+
+
+# Compiling the xx15 objects needs the plasticity_xx15 module already
+# compiled.
+xx15_%.o : xx15_%.F90 plasticity_xx15.o
+	$(FC) $(FFLAGS) -o $@ $< 
+
+plasticity_xx15.o : plasticity_xx15.F90
+	$(FC) $(FFLAGS) -o $@ $< 
 
 clean:
 	rm -f *.o
 
 execlean:
-	rm -f xx15 xx15_original ../../../../bin/xx15 ../../../../bin/xx15_original
+	rm -f $(EXECUTABLES) #xx15_original
+	cd ../../../../bin
+	rm -f $(EXECUTABLES) #xx15_original
 
-relink: xx15 #xx15_original
+relink: $(EXECUTABLES) #xx15_original
 
 install:
-	cp xx15 ../../../../bin
+	cp $(EXECUTABLES) ../../../../bin
 #	cp xx15_original ../../../../bin
 
 test:
-	./test.sh xx15
+#	./test.sh xx15
 #	./test.sh xx15_original
