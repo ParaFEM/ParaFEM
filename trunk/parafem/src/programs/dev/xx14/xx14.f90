@@ -188,7 +188,7 @@ ntot = ndof
 
 ! g_num_pp(nod,nels_pp) - integer, elements connectivity
 ! g_coord_pp - global coord?
-!https://code.google.com/p/parafem/source/browse/trunk/parafem/src/modules/mpi/input.f90
+!https://sourceforge.net/p/parafem/code/HEAD/tree/trunk/parafem/src/modules/mpi/input.f90
 ALLOCATE( g_num_pp( nod, nels_pp ) )
 allocate( g_coord_pp( nod, ndim, nels_pp ) )
 allocate( rest( nr,nodof+1) )
@@ -197,7 +197,7 @@ g_num_pp = 0
 g_coord_pp = zero
 rest = 0
 
-!https://code.google.com/p/parafem/source/browse/trunk/parafem/src/modules/mpi/input.f90
+!https://sourceforge.net/p/parafem/code/HEAD/tree/trunk/parafem/src/modules/mpi/input.f90
 CALL read_g_num_pp( argv, iel_start, nn, npes, numpe, g_num_pp )
 
 IF ( meshgen == 2 ) CALL abaqus2sg( element, g_num_pp )
@@ -284,6 +284,10 @@ cgca_res = 1.0e5_rdef
 ! i.e. per second. Let's say 1 km/s = 1.0e3 m/s = 1.0e6 mm/s. 
 cgca_length = 1.0e6_rdef
 
+! In p121_medium, each element is 0.25 x 0.25 x 0.25 mm, so
+! the charlen must be bigger than that.
+cgca_charlen = 0.4
+
 ! each image calculates the coarray grid dimensions
 call cgca_gdim( cgca_nimgs, cgca_ir, cgca_qual )
 
@@ -317,15 +321,15 @@ call cgca_as( 1, cgca_c(1),  1, cgca_c(2),  1, cgca_c(3),              &
 call cgca_imco( cgca_space, cgca_lres, cgca_bcol, cgca_bcou )
 
 ! dump box lower and upper corners from every image
-write ( *,"(a,i0,2(a,3(g0,tr1)),a)" ) "img: ", cgca_img,               &
-       " bcol: (", cgca_bcol, ") bcou: (", cgca_bcou, ")"
+write ( *,"(a,i0,2(a,3(es9.2,tr1)))" ) "img ", cgca_img,               &
+       " bcol: ", cgca_bcol, "bcou: ", cgca_bcou
 
 ! and now in FE cs:
-write ( *,"(a,i0,2(a,3(g0,tr1)),a)" ) "img: ", cgca_img,               &
-   " FE bcol: (",                                                      &
-    matmul( transpose( cgca_rot ),cgca_bcol ) + cgca_origin,           &
-  ") FE bcou: (",                                                      &
-    matmul( transpose( cgca_rot ),cgca_bcou ) + cgca_origin, ")"
+!write ( *,"(a,i0,2(a,3(es9.2,tr1)),a)" ) "img: ", cgca_img,            &
+!   " FE bcol: (",                                                      &
+!    matmul( transpose( cgca_rot ),cgca_bcol ) + cgca_origin,           &
+!  ") FE bcou: (",                                                      &
+!    matmul( transpose( cgca_rot ),cgca_bcou ) + cgca_origin, ")"
 
 ! confirm that image number .eq. MPI process number
 write (*,*) "img",cgca_img," <-> MPI proc", numpe
@@ -344,12 +348,17 @@ cgca_pfem_centroid_tmp%r = sum( g_coord_pp(:,:,:), dim=1 ) / nod
 sync all ! must add execution segment
          ! use cgca_pfem_centroid_tmp[*]%r
 
-!subroutine cgca_pfem_cenc( origin, rot, bcol, bcou )
+! Set lcentr private arrays on every image. Choose one of the two
+! routines that do this:
+! - cgca_pfem_cenc - uses all-to-all algorithm.
+! - cgca_pfem_map  - uses CO_SUM, CO_MAX and *large* tmp arrays
+! Both routines have identical sets of input arguments.
 call cgca_pfem_cenc( cgca_origin, cgca_rot, cgca_bcol, cgca_bcou )
+!call cgca_pfem_map( cgca_origin, cgca_rot, cgca_bcol, cgca_bcou )
 
-         ! use cgca_pfem_centroid_tmp[*]%r
-sync all ! must add execution segment
-         ! deallocate cgca_pfem_centroid_tmp[*]%r
+! Dump lcentr for debug
+! *** a lot *** of data
+!call cgca_pfem_lcentr_dump
 
 ! Allocate cgca_pfem_integrity%i(:), array component of a coarray of
 ! derived type. Allocating *local* array.
@@ -385,11 +394,12 @@ call cgca_nr( cgca_space, cgca_ng, .false. )
 ! assign rotation tensors, sync all inside
 call cgca_rt( cgca_grt )
 
-! solidify, implicit sync all inside
+! solidify
 !subroutine cgca_sld( coarray, periodicbc, iter, heartbeat, solid )
 ! second argument:
 !  .true. - periodic BC
 ! .false. - no periodic BC
+! ===>>> implicit sync all inside <<<===
 call cgca_sld( cgca_space, .false., 0, 10, cgca_solid )
 
 ! initiate grain boundaries
@@ -400,9 +410,12 @@ call cgca_igb( cgca_space )
 ! sync needed following halo exchange
 call cgca_gbs( cgca_space )
 call cgca_hxi( cgca_space )
+
 sync all
+
 call cgca_gbs( cgca_space )
 call cgca_hxi( cgca_space )
+
 sync all
 
 ! update grain connectivity, local routine, no sync needed
@@ -414,17 +427,13 @@ if ( cgca_img .eq. 1 ) then
               [ 1, 1, cgca_ir(3)/2 ] = cgca_clvg_state_100_edge
 end if
 
-sync all
-
-! In p121_medium, each element is 0.25 x 0.25 x 0.25 mm, so
-! the charlen must be bigger than that.
-cgca_charlen = 0.4
-
          ! cgca_space changed locally on every image
 sync all !
          ! cgca_space used
 
 ! Now can deallocate the temp array cgca_pfem_centroid_tmp%r.
+! Could've done this earlier, but best to wait until sync all is
+! required, to avoid extra sync.
 call cgca_pfem_ctdalloc
 
 ! img 1 dumps space arrays to files
