@@ -34,7 +34,7 @@ PROGRAM xx15_elastic
   REAL(iwp) :: det, tol, maxdiff, tol2, detF, detFinc, energy, energy1, rn0,  &
    timest(40), detF_mean, initial_guess, lambda, lambda_total, lambda_prev,   &
    energy_prev, energy_prev_prev, min_inc, next_output, temp_inc, dw, e, v,   &
-   jacFtransinv(3,3), jacFtrans(3,3), sum_strain(3,3), max_disp, max_disp_inc
+   jacFtransinv(3,3), jacFtrans(3,3), sum_strain(3,3)
 
   REAL(iwp), PARAMETER :: tol_increment=0.000001_iwp, tol_val=0.00000001_iwp
   REAL(iwp), PARAMETER :: zero=0.0_iwp, one=1._iwp, half=0.5_iwp
@@ -339,9 +339,7 @@ PROGRAM xx15_elastic
       END DO
     END DO
     
-    max_disp = MAXVAL(ABS(fixed_value))
-
-    DEALLOCATE(fixed_dof, fixed_value)
+    DEALLOCATE(fixed_node, fixed_dof, fixed_value)
 
   END IF
   
@@ -1031,15 +1029,15 @@ PROGRAM xx15_elastic
         !OPEN(30, file=fname, status='replace', action='write')
         
         ! Load and displacement
-        fname = fname_base(1:INDEX(fname_base, " ")-1) // "_disp_load.res"
-        OPEN(31, file=fname, status='replace', action='write')
+        !fname = fname_base(1:INDEX(fname_base, " ")-1) // "_disp_load.res"
+        !OPEN(31, file=fname, status='replace', action='write')
       END IF
     END IF
 
     IF (numpe==1) THEN
       !CALL FLUSH(29)
       !CALL FLUSH(30)
-      CALL FLUSH(31)
+      !CALL FLUSH(31)
     END IF
     
 !-----print out displacements, stress, principal stress and reactions -------
@@ -1057,7 +1055,7 @@ PROGRAM xx15_elastic
       ALLOCATE(strain_integral_pp(nod*nst,nels_pp))
       !ALLOCATE(stressnodes_pp(nodes_pp*nst))
       ALLOCATE(strainnodes_pp(nodes_pp*nst))
-      ALLOCATE(reacnodes_pp(nodes_pp*nodof))
+      !ALLOCATE(reacnodes_pp(nodes_pp*nodof))
       
       CALL GATHER(xnew_pp(1:),xnewel_pp)
       IF (numfix_pp > 0) THEN
@@ -1144,15 +1142,6 @@ PROGRAM xx15_elastic
       DEALLOCATE(strain_integral_pp,strainnodes_pp)
       DEALLOCATE(shape_integral_pp)
 
-      IF (fixed_nodes>0) THEN
-        CALL SCATTER_NODES(npes,nn,nels_pp,g_num_pp,nod,nodof,nodes_pp,        &
-                           node_start,node_end,storefint_pp,reacnodes_pp,0)
-        
-        max_disp_inc = max_disp*lambda_total
-        
-      END IF
-      DEALLOCATE(reacnodes_pp)
-
       IF(timewrite) THEN
         timest(5) = elap_time( )
         timewrite = .FALSE.
@@ -1194,7 +1183,7 @@ PROGRAM xx15_elastic
     CLOSE(27)
     !CLOSE(29)
     !CLOSE(30)
-    CLOSE(31)
+    !CLOSE(31)
   END IF
 
 !------------------------------------------------------------------------------
@@ -1206,10 +1195,6 @@ PROGRAM xx15_elastic
 !------------------------------------------------------------------------------
 
   200 CONTINUE
-
-  IF (fixed_nodes>0) THEN
-    DEALLOCATE(fixed_node)
-  END IF
 
   IF (solvers == petsc_solvers) THEN
     DEALLOCATE(p_rows,p_cols,p_values)
