@@ -3,6 +3,11 @@ PROGRAM xx15_quadric_linear_hardening
 !   program xx15:  finite strain elasto-plastic analysis with Newton-Raphson
 !------------------------------------------------------------------------------
 
+  ! Choice of solvers
+  USE choose_solvers
+  ! PETSc interface and modules.  PETSc will always use MPI (unless PETSc itself
+  ! has been compiled without MPI)
+  USE parafem_petsc
   USE PRECISION
   USE GLOBAL_VARIABLES
   USE MP_INTERFACE
@@ -17,7 +22,9 @@ PROGRAM xx15_quadric_linear_hardening
   
   IMPLICIT NONE
 
-  ! neq, ntot declared in global_variables
+  ! PETSc types
+#include <petsc/finclude/petscdef.h>
+ 
   INTEGER :: nels, nn, nr, nip, nodof=3, nod, nst=6, loaded_nodes, nn_pp,     &
    nf_start, fmt=1, i, j, k, l, ndim=3, iters, limit, iel, nn_start,          &
    num_load_steps, iload, igauss, dimH, inewton, jump, npes_pp, partitioner=1,&
@@ -44,6 +51,27 @@ PROGRAM xx15_quadric_linear_hardening
   LOGICAL :: converged, timewrite=.TRUE., flag=.FALSE., print_output=.FALSE., &
    tol_inc=.FALSE., lambda_inc=.TRUE., noncon_flag=.FALSE.
 
+! Default solvers are ParaFEM.  parafem_solvers is defined in choose_solvers
+  CHARACTER(len=50) :: solvers = parafem_solvers 
+
+  ! PETSc variables
+  CHARACTER(len=1024) :: p_fname
+  LOGICAL             :: p_exist
+  PetscErrorCode      :: p_ierr
+  ! The PETSc objects cannot be initialised here because PETSC_NULL_OBJECT is a
+  ! common-block-object and not a constant.
+  Vec                 :: p_x,p_b,p_r
+  Mat                 :: p_A
+  KSP                 :: p_ksp
+  PetscScalar         :: p_pr_n2,p_r_n2,p_b_n2
+  PetscInt,ALLOCATABLE    :: p_rows(:),p_cols(:)
+  PetscScalar,ALLOCATABLE :: p_values(:)
+  PetscScalar,POINTER :: p_varray(:)
+  PetscInt            :: p_its,p_nnz
+  DOUBLE PRECISION    :: p_info(MAT_INFO_SIZE)
+  KSPConvergedReason  :: p_reason
+  CHARACTER(LEN=p_max_string_length) :: p_description
+
   !-------------------------- dynamic arrays-----------------------------------
   REAL(iwp), ALLOCATABLE:: points(:,:), coord(:,:), weights(:), xnew_pp(:),   &
    diag_precon_pp(:), r_pp(:), bee(:,:), load_value(:,:), g_coord_pp(:,:),    &
@@ -69,11 +97,11 @@ PROGRAM xx15_quadric_linear_hardening
    fixed_dof(:), fixelem_pp(:), fixdof_pp(:), unload_pp(:,:), rm_vec(:)
   !----------------------------------------------------------------------------
 
-  !-------------------------------------------------------------------------
+  !----------------------------------------------------------------------------
   ! 1. Input and initialisation
-  !-------------------------------------------------------------------------
+  !----------------------------------------------------------------------------
 
-  timest(1) = ELAP_TIME( )
+  timest(1) = ELAP_TIME()
 
   CALL FIND_PE_PROCS(numpe,npes)
 
@@ -83,29 +111,56 @@ PROGRAM xx15_quadric_linear_hardening
 
 !  If I have forgotten to write the name of the file in the command
 !  line, the program is stopped
-  IF (argc /= 1) THEN
-    IF (numpe==npes) THEN
+  IF (argc < 1) THEN
+    IF (numpe == 1) THEN
       WRITE(*,*) "Need name of filename_base!!"
     END IF
     CALL SHUTDOWN
     STOP
   END IF
 
-!     Input:  1: The first argument in the command line (arg1) 
-  CALL GETARG(1, fname_base)
-!     Output: fname_base ch: Name of the file (maybe par131) 
- 
-  fname = fname_base(1:INDEX(fname_base," ")-1) // ".dat"
-  CALL READ_DATA_XX7(fname,numpe,nels,nn,nr,loaded_nodes,fixed_nodes, &
-                             nip,limit,tol,e,v,nod,num_load_steps,jump,tol2)
+! Input:  1: The first argument in the command line (arg1) 
+  IF (argc >= 1) THEN
+    CALL GETARG(1,fname_base)
+  END IF
 
-  IF (nels < npes) THEN
+  fname = fname_base(1:INDEX(fname_base," ")-1) // ".dat"
+  CALL READ_DATA_XX7(fname,numpe,nels,nn,nr,loaded_nodes,fixed_nodes,          &
+                     nip,limit,tol,e,v,nod,num_load_steps,jump,tol2)
+
+! Input:  2: The second argument in the command line (arg2)
+  IF (argc >= 2) THEN
+    CALL GETARG(2,solvers)
+  END IF
+
+  IF (.NOT. solvers_valid(solvers)) THEN
+    IF (numpe == 1) THEN
+      WRITE(*,*) "Solvers can be " // solvers_list()
+    END IF
     CALL SHUTDOWN
-    WRITE(*,*)"Error: less elements than processors"
     STOP
   END IF
 
-  IF(numpe==npes) THEN
+  IF(solvers == petsc_solvers) THEN
+    IF(numpe == 1) THEN
+      p_fname = TRIM(fname_base) // ".petsc"
+      INQUIRE(file=TRIM(p_fname),exist=p_exist)
+      IF (.NOT. p_exist) THEN
+        p_fname = ""
+      END IF
+    END IF
+    CALL MPI_BCAST(p_fname,LEN(p_fname),MPI_CHARACTER,0,MPI_COMM_WORLD,ier)
+  END IF
+    
+  IF (nels < npes) THEN
+    IF (numpe==1) THEN
+      WRITE(*,*)"Error: fewer elements than processors"
+    END IF
+    CALL SHUTDOWN
+    STOP
+  END IF
+
+  IF(numpe==1) THEN
     fname = fname_base(1:INDEX(fname_base," ")-1) // ".res"
     OPEN (11, file=fname, status='replace', action='write')
   END IF
@@ -121,6 +176,18 @@ PROGRAM xx15_quadric_linear_hardening
   ntot = nod * nodof
 
   CALL CALC_NODES_PP(nn,npes,numpe,node_end,node_start,nodes_pp)
+
+!--------------------------------------------------------------------------
+! 1a. Start up PETSc after MPI has been started
+!--------------------------------------------------------------------------
+  IF (solvers == petsc_solvers) THEN
+    CALL PetscInitialize(p_fname,p_ierr)
+    p_x   = PETSC_NULL_OBJECT
+    p_b   = PETSC_NULL_OBJECT
+    p_r   = PETSC_NULL_OBJECT
+    p_A   = PETSC_NULL_OBJECT
+    p_ksp = PETSC_NULL_OBJECT
+  END IF
 
 !------------------------------------------------------------------------------
 ! 2. Get integration Gauss points and weights in the element
@@ -257,9 +324,9 @@ PROGRAM xx15_quadric_linear_hardening
     ALLOCATE(fixvalprev_pp(fixdim*fixed_nodes))
     ALLOCATE(fixvaltot_pp(fixdim*fixed_nodes))
     
-	fixelem_pp = 0
-	fixdof_pp  = 0
-	fixval_pp       = zero
+    fixelem_pp      = 0
+    fixdof_pp       = 0
+    fixval_pp       = zero
     fixvalpiece_pp  = zero
     fixvalprev_pp   = zero
     fixvaltot_pp    = zero
@@ -283,9 +350,9 @@ PROGRAM xx15_quadric_linear_hardening
   
   timest(9) = ELAP_TIME()
 
-  !-------------------------------------------------------------------------
+  !----------------------------------------------------------------------------
   ! 8. Read and distribute natural boundary conditions
-  !-------------------------------------------------------------------------
+  !----------------------------------------------------------------------------
 
   ALLOCATE(fextpiece_pp(0:neq_pp))
   ALLOCATE(fext_pp(0:neq_pp))
@@ -307,9 +374,9 @@ PROGRAM xx15_quadric_linear_hardening
   
   timest(10) = ELAP_TIME()
 
-  !-------------------------------------------------------------------------
+  !----------------------------------------------------------------------------
   ! 9. Allocate arrays dimensioned by neq_pp
-  !-------------------------------------------------------------------------
+  !----------------------------------------------------------------------------
 
   ALLOCATE(r_pp(0:neq_pp), xnew_pp(0:neq_pp), diag_precon_pp(0:neq_pp))
   ALLOCATE(res_pp(0:neq_pp), deltax_pp(0:neq_pp), fint_pp(0:neq_pp)) 
@@ -327,9 +394,59 @@ PROGRAM xx15_quadric_linear_hardening
 
   ALLOCATE(diag_precon_tmp(ntot,nels_pp))
 
-  !-------------------------------------------------------------------------
+!---------------------------------------------------------------------------
+! 9a. Set up PETSc
+!---------------------------------------------------------------------------
+  IF (solvers == petsc_solvers) THEN
+    ! PETSc 64-bit indices and 64-bit reals.  In most (all?) places, passing a
+    ! 32-bit integer where an intent(in) 64-integer is required is safe, because
+    ! the PETSc Fortran-C interface de-references the pointer that is actually
+    ! passed, even though it does not specify any intent in the Fortran
+    ! interface.  This is not safe when passing arrays, they need to be copied
+    ! to PetscInt arrays.  And for safety the same should be done for the
+    ! PetscScalar arrays.
+    CALL MatCreate(PETSC_COMM_WORLD,p_A,p_ierr)
+    CALL MatSetSizes(p_A,neq_pp,neq_pp,PETSC_DETERMINE,PETSC_DETERMINE,p_ierr)
+    CALL MatSetType(p_A,MATAIJ,p_ierr)
+    !- Block size fixed to 1 for just now - this cannot be set to nodof until
+    !- the restraints are handled block-wise in ParaFEM.  CALL
+    !- MatSetBlockSize(p_A,nodof,p_ierr)
+    
+    ! Find an approximate number of zeroes per row for the matrix size
+    ! pre-allocation.
+    CALL p_row_nnz(nodof,ndim,nod,p_over_allocation,p_nnz)
+    CALL MatSeqAIJSetPreallocation(p_A,p_nnz,PETSC_NULL_INTEGER,p_ierr)
+    CALL MatMPIAIJSetPreallocation(p_A,p_nnz,PETSC_NULL_INTEGER,              &
+      p_nnz,PETSC_NULL_INTEGER,p_ierr)
+    ! If the allocation is too small, PETSc will produce reams of information
+    ! and not construct the matrix properly.  We output some information at the
+    ! end if p_over_allocation should be increased.
+    CALL MatSetOption(p_A,MAT_NEW_NONZERO_ALLOCATION_ERR,PETSC_FALSE,p_ierr)
+    
+    ! RHS vector.  For this particular order (create, set size, set type) the
+    ! allocation is done by set type.
+    CALL VecCreate(PETSC_COMM_WORLD,p_b,p_ierr)
+    CALL VecSetSizes(p_b,neq_pp,PETSC_DECIDE,p_ierr)
+    CALL VecSetType(p_b,VECSTANDARD,p_ierr)
+    !- Block size fixed to 1 for just now - this cannot be set to nodof until the
+    !- restraints are handled block-wise in ParaFEM.
+    !- CALL VecSetBlockSize(p_b,nodof,p_ierr)
+
+    ! Solution vector
+    CALL VecDuplicate(p_b,p_x,p_ierr) 
+    
+    ! Krylov solver data structures
+    CALL KSPCreate(PETSC_COMM_WORLD,p_ksp,p_ierr)
+    CALL KSPSetOperators(p_ksp,p_A,p_A,p_ierr)
+  
+    ! Arrays of PETSc types to be proof against changes in index and scalar
+    ! sizes.
+    ALLOCATE(p_rows(ntot),p_cols(ntot),p_values(ntot*ntot))
+  END IF
+
+  !----------------------------------------------------------------------------
   ! 10. Initialise the solution vector to 0.0
-  !-------------------------------------------------------------------------
+  !----------------------------------------------------------------------------
 
   ! Vector comp to compute F (gradient of deformation)
   DO i = 1,nod
@@ -359,10 +476,10 @@ PROGRAM xx15_quadric_linear_hardening
   ! Establish the number of times the output is printed
   number_output=1
   counter_output=1
-
+  
   ! Set the initial guess (normalized)
-  initial_guess=0.01_iwp
-  lambda=initial_guess
+  initial_guess  = 0.01_iwp
+  lambda         = initial_guess
   lambda_total   = zero
   lambda_prev    = zero
   next_output=one/number_output
@@ -392,7 +509,7 @@ PROGRAM xx15_quadric_linear_hardening
 
     100 CONTINUE
 
-    ! Check if the simulation is finished
+    ! If lambda is larger than unity, the simulation is finished
     IF (lambda_total>=(1._iwp-tol_increment)) THEN
       EXIT
     END IF
@@ -409,7 +526,9 @@ PROGRAM xx15_quadric_linear_hardening
 
     ! Exit if the time increment is less that the specified minimum
     IF (lambda<min_inc) THEN
-      WRITE(*,*) 'The load increment is too small'
+      IF(numpe==1) THEN
+        WRITE(*,*) 'The load increment is too small'
+      END IF
       EXIT
     END IF
 
@@ -469,6 +588,9 @@ PROGRAM xx15_quadric_linear_hardening
       timest(12) = ELAP_TIME()
       
       storekm_pp = zero
+      IF (solvers == petsc_solvers) THEN
+        CALL MatZeroEntries(p_A,p_ierr)
+      END IF
       
       DO iel = 1,nels_pp
 
@@ -495,16 +617,14 @@ PROGRAM xx15_quadric_linear_hardening
 
         DO igauss = 1,nip
 
-          ! Initialise the state variables to the same as in the previous     
-          ! increment
+          ! Initialise the state variables to the same converged value of     
+          ! the last time increment
           statev(:)=statevar_con(iel,igauss,:)
           lnstrainelas(:)=lnstrainelas_mat_con(iel,igauss,:)
 
-          ! Calculates the deformation gradient
+          ! Calculates the total and incremental deformation gradients
           CALL DEFGRA(igauss,auxm,coord,points,det,detF,beeF,geeF,jacF,ndim,  &
            nod)
-
-          ! Calculates the incremental deformation gradient
           CALL DEFGRAINC(igauss,auxm_inc,upd_coord,points,jacFinc,ndim,nod)
           
           timest(14) = ELAP_TIME()
@@ -518,24 +638,54 @@ PROGRAM xx15_quadric_linear_hardening
            
           timest(15) = ELAP_TIME()
 
+          ! During the first Newton-Raphson iteration, retrieve the previous  
+          ! converged stress and stiffness tensor
           IF ((iload>1).AND.(inewton==1)) THEN
             deeF(:,:)=stiffness_mat_con(iel,igauss,:,:)
             sigma1C(:)=sigma1C_mat_con(iel,igauss,:)
           END IF
           
           dw = det*weights(igauss)
-   
+          
+          ! Calculate the internal force vector of the element
           storefint_pp(:,iel)=storefint_pp(:,iel) + MATMUL(TRANSPOSE(beeF),   &
            sigma1C)*dw
-          
+           
+          ! Calculate the stiffness tensor of the element
           geeFT = TRANSPOSE(geeF)
-          
           storekm_pp(:,:,iel)=storekm_pp(:,:,iel) + (MATMUL(MATMUL(geeFT,     &
            deeF),geeF)*dw)
 
         END DO
+
+        IF (solvers == petsc_solvers) THEN
+          ! 1/ Use ubound(g_g_pp,1) instead of ntot? 2/ The following depends on
+          ! g_g_pp holding 0 for erased rows/columns, and MatSetValues ignoring
+          ! negative indices (PETSc always uses zero-based indexing). 3/ PETSc
+          ! uses C array order, so a transpose is needed.
+          p_rows   = g_g_pp(:,iel) - 1
+          p_cols   = p_rows
+          p_values = RESHAPE(TRANSPOSE(storekm_pp(:,:,iel)),SHAPE(p_values))
+          CALL MatSetValues(p_A,ntot,p_rows,ntot,p_cols,p_values,ADD_VALUES,   &
+                            p_ierr)
+        END IF
       END DO
-      
+
+      IF (solvers == petsc_solvers) THEN
+        CALL MatAssemblyBegin(p_A,MAT_FINAL_ASSEMBLY,p_ierr)
+        CALL MatAssemblyEnd(p_A,MAT_FINAL_ASSEMBLY,p_ierr)
+        
+        CALL MatGetInfo(p_A,MAT_GLOBAL_SUM,p_info,p_ierr)
+        IF(numpe==1)THEN
+          IF(p_info(MAT_INFO_MALLOCS)/=0.0)THEN
+            WRITE(*,'(A,I0,A)') "The matrix assembly required ",               &
+              NINT(p_info(MAT_INFO_MALLOCS)),                                  &
+              " mallocs.  Increase p_over_allocation to speed up "             &
+              //"the assembly."
+          END IF
+        END IF
+      END IF
+            
       ! This code deals with the fail of local convergence
       ! ---------------------------------------------------------------------------
       200 CONTINUE
@@ -588,43 +738,47 @@ PROGRAM xx15_quadric_linear_hardening
       timest(16) = timest(16) + (ELAP_TIME() - timest(12))
       
 !------------------------------------------------------------------------------
-! 12. Build and invert the preconditioner
+! 12. Build and invert the preconditioner (ParaFEM only)
 !------------------------------------------------------------------------------
 
-      timest(17) = ELAP_TIME()
-      
-      diag_precon_tmp = zero
-
-      DO iel = 1,nels_pp
-        DO k = 1,ntot 
-          diag_precon_tmp(k,iel)=diag_precon_tmp(k,iel) + storekm_pp(k,k,iel)
+      IF (solvers == parafem_solvers) THEN
+        timest(17) = ELAP_TIME()
+        
+        diag_precon_tmp = zero
+        
+        DO iel = 1,nels_pp
+          DO k = 1,ntot 
+            diag_precon_tmp(k,iel)=diag_precon_tmp(k,iel) + storekm_pp(k,k,iel)
+          END DO
         END DO
-      END DO
+        
+        diag_precon_pp(:) = zero
+        CALL SCATTER(diag_precon_pp(1:),diag_precon_tmp)
+        
+        diag_precon_pp(1:) = one/diag_precon_pp(1:)
+        diag_precon_pp(0)  = zero
+      END IF
 
-      diag_precon_pp(:) = zero
-      CALL SCATTER(diag_precon_pp(1:),diag_precon_tmp)
-
-      diag_precon_pp(1:) = one/diag_precon_pp(1:)
-      diag_precon_pp(0)  = zero
-      
 !------------------------------------------------------------------------------
 ! 13. Initialize PCG
 !------------------------------------------------------------------------------
       
       timest(18) = ELAP_TIME()
       
+      ! During the first Newton-Raphson iteration, the incremental 
+      ! displacements are applied through a linear mapping of these 
+      ! displacements to the internal force vector
       IF (inewton==1 .AND. numfix_pp>0) THEN
         DO i = 1,numfix_pp
-	      DO j = 1,ntot
-	        IF (g_g_pp(j,fixelem_pp(i))>0) THEN
-              storefint_pp(j,fixelem_pp(i)) =                                 &
-               storefint_pp(j,fixelem_pp(i)) +                                &
-               fixvalpiece_pp(i)*storekm_pp(j,fixdof_pp(i),fixelem_pp(i))
-	        END IF
+          DO j = 1,ntot
+            IF (g_g_pp(j,fixelem_pp(i))>0) THEN
+              storefint_pp(j,fixelem_pp(i)) = storefint_pp(j,fixelem_pp(i)) + &
+                fixvalpiece_pp(i)*storekm_pp(j,fixdof_pp(i),fixelem_pp(i))
+            END IF
           END DO
-	    END DO
-	  END IF
-		  
+        END DO
+      END IF
+      
       fint_pp = zero
       CALL SCATTER(fint_pp(1:),storefint_pp)
 
@@ -638,19 +792,101 @@ PROGRAM xx15_quadric_linear_hardening
       IF (maxdiff == zero) THEN
         IF(numpe==1) THEN
           WRITE(*,*) "maxdiff = zero and now exiting loop"
-          EXIT
         END IF
+        EXIT
       END IF
 
-!---------------------------------------------------------------------------
-!------------------------------- Solve using PCG ---------------------------
-!---------------------------------------------------------------------------
+      IF (solvers == petsc_solvers) THEN
+        ! The general tolerance and maximum number of linear solver iterations
+        ! come from the value in the ParaFEM control file.  Note that relative
+        ! tolerance for PETSc is for the preconditioned residual.
+        CALL KSPSetTolerances(p_ksp,tol,PETSC_DEFAULT_REAL,PETSC_DEFAULT_REAL, &
+                              limit,p_ierr)
+        ! KSP type, per-KSP tolerances (rtol, abstol, dtol, maxits), KSP
+        ! options, PC type, PC options are set in the xx*.petsc file.  Those
+        ! options are used to set up the preconditioned Krylov solver.  If there
+        ! are several KSP types to be chosen from, then each one will be
+        ! bracketed by -prefix_push and -prefix_pop.  For example
+        !
+        ! -prefix_push abc1_
+        !   -ksp_type minres
+        ! -prefix_pop
+        !
+        ! in the xx*.petsc file and 
+        !
+        ! CALL KSPSetOptionsPrefix(p_ksp,"abc1_",p_ierr)
+        !
+        ! before KSPSetFromOptions before using the 'abc1_' solver.  Thus you
+        ! can switch for CG to GMRES during a simulation.
+        CALL KSPSetFromOptions(p_ksp,p_ierr)
+
+        ! load vector
+        CALL VecGetArrayF90(p_b,p_varray,p_ierr)
+        ! This is OK as long as PetscScalars not smaller than ParaFEM reals.  There
+        ! should be a test for sizes of PetscScalars (and PetscInts) and ParaFEM reals
+        ! (and indices).
+        p_varray = r_pp(1:)
+        CALL VecRestoreArrayF90(p_b,p_varray,p_ierr)
+      END IF
+
+!------------------------------------------------------------------------------
+!----------------- Solve using preconditioned Krylov solver -------------------
+!------------------------------------------------------------------------------
       
       deltax_pp = zero
       res_pp    = r_pp
 
-      CALL PCG_VER1(inewton,limit,tol,storekm_pp,r_pp(1:), &
-       diag_precon_pp(1:),rn0,deltax_pp(1:),iters)
+      IF (solvers == parafem_solvers) THEN
+        CALL PCG_VER1(inewton,limit,tol,storekm_pp,r_pp(1:),                   &
+                      diag_precon_pp(1:),rn0,deltax_pp(1:),iters)
+      ELSE IF (solvers == petsc_solvers) THEN
+        ! Solution vector
+        ! For non-linear solves, the previous solution will be used as an initial
+        ! guess: copy the ParaFEM solution vector to PETSc.
+        CALL VecGetArrayF90(p_x,p_varray,p_ierr)
+        ! This is OK as long as PetscScalars are not smaller than ParaFEM reals.
+        ! There should be a test for sizes of PetscScalars (and PetscInts) and ParaFEM
+        ! reals (and indices).
+        p_varray = deltax_pp(1:)
+        CALL VecRestoreArrayF90(p_x,p_varray,p_ierr)
+        CALL KSPSetInitialGuessNonzero(p_ksp,PETSC_TRUE,p_ierr)
+        CALL KSPSolve(p_ksp,p_b,p_x,p_ierr)
+
+        ! Preconditioned residual L2 norm
+        CALL KSPGetResidualNorm(p_ksp,p_pr_n2,p_ierr)
+        ! True residual L2 norm
+        CALL VecDuplicate(p_b,p_r,p_ierr)
+        CALL KSPBuildResidual(p_ksp,PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,p_r,p_ierr)
+        CALL VecNorm(p_r,NORM_2,p_r_n2,p_ierr)
+        CALL VecDestroy(p_r,p_ierr)
+        ! L2 norm of load
+        CALL VecNorm(p_b,NORM_2,p_b_n2,p_ierr)
+        
+        CALL KSPGetIterationNumber(p_ksp,p_its,p_ierr)
+        CALL KSPGetConvergedReason(p_ksp,p_reason,p_ierr)
+        CALL p_describe_reason(p_reason,p_description)
+        
+        ! Copy PETSc solution vector to ParaFEM
+        CALL VecGetArrayF90(p_x,p_varray,p_ierr)
+        ! This is OK as long as ParaFEM reals not smaller than PetscScalars.  There
+        ! should be a test for sizes of PetscScalars (and PetscInts) and ParaFEM reals
+        ! (and indices).
+        deltax_pp(1:) = p_varray
+        CALL VecRestoreArrayF90(p_x,p_varray,p_ierr)
+
+        IF(numpe == 1)THEN
+          WRITE(11,'(A,I0,A)') "The reason for convergence was ",p_reason,     &
+                               " "//TRIM(p_description)
+          WRITE(11,'(A,I0)') "The number of iterations to convergence was ",   &
+                             p_its
+          WRITE(11,'(A,E17.7)') "The preconditioned residual L2 norm was ",    &
+                                p_pr_n2
+          WRITE(11,'(A,E17.7)') "The true residual L2 norm ||b-Ax|| was  ",    &
+                                p_r_n2
+          WRITE(11,'(A,E17.7)') "The relative error ||b-Ax||/||b|| was   ",    &
+                                p_r_n2/p_b_n2
+        END IF
+      END IF
 
       IF (numpe==1) THEN
         WRITE(91,*)iload,inewton,iters
@@ -659,8 +895,11 @@ PROGRAM xx15_quadric_linear_hardening
 
       timest(19) = timest(19) + (ELAP_TIME() - timest(18))
 
+      ! Total displacements
       xnew_pp(1:) = xnew_pp(1:) + deltax_pp(1:)
       xnew_pp(0) = zero
+      
+      ! Incremental displacements corresponding to the time increment
       deltax_pp_temp(1:) = deltax_pp_temp(1:) + deltax_pp(1:)
       deltax_pp_temp(0) = zero
 
@@ -684,9 +923,16 @@ PROGRAM xx15_quadric_linear_hardening
         END IF 
       END IF
 
+      ! The time increment is cut in half if one of the following situations
+      ! happen:
+      ! - The maximum number of iterations has been met
+      ! - The current iteration diverged (the current energy is larger than
+      ! the two previous energies)
+      ! - There is some numerical instability which causes some NaN values
       IF ((inewton==limit_2).OR.(((energy_prev_prev/energy1)<(energy_prev/    &
-       energy1)).AND.((energy_prev/energy1)<(energy/energy1)).AND.(inewton>2))&
-       .OR.(ISNAN(energy))) THEN
+       energy1)).AND.((energy_prev/energy1)<(energy/energy1)).AND.            &
+        (inewton>2)).OR.(ISNAN(energy))) THEN
+        
         IF (numpe==1) THEN
           WRITE(*,*) 'The load increment is cut in half'
         END IF
@@ -711,6 +957,9 @@ PROGRAM xx15_quadric_linear_hardening
         GOTO 100
       END IF
  
+      ! After convergence, a last "iteration" is needed to calculate the fully
+      ! converged values (some FE algorithms omit this step, but we perform
+      ! it because we are interested in a fully precise solution)
       IF (converged) THEN 
 
         timest(20) = ELAP_TIME()
@@ -743,7 +992,7 @@ PROGRAM xx15_quadric_linear_hardening
         DO i = 1,numfix_pp
           xnewelinc_pp(fixdof_pp(i),fixelem_pp(i)) = fixvalpiece_pp(i)
         END DO
-
+        
         DO iel = 1,nels_pp
 
           DO i = 1,nod
@@ -847,12 +1096,12 @@ PROGRAM xx15_quadric_linear_hardening
       END IF
 
     END DO iterations
-    
+
 !------------------------------------------------------------------------------
 !------------------------- End Newton-Raphson iterations ----------------------
 !------------------------------------------------------------------------------
 
-    IF (numpe==npes) THEN
+    IF (numpe==1) THEN
       WRITE(11,'(a,i3,a,f12.4,a,i4,a)') "Time after load step ",iload,": ", &
       ELAP_TIME() - timest(1),"     (",inewton," iterations )"
     END IF
@@ -865,9 +1114,9 @@ PROGRAM xx15_quadric_linear_hardening
     !  DEALLOCATE(diag_precon_tmp)
     !END IF
 
-!----------------------------------------------------------------------------
-!-----------------------------print out results -----------------------------
-!----------------------------------------------------------------------------
+!------------------------------------------------------------------------------
+!-----------------------------print out results -------------------------------
+!------------------------------------------------------------------------------
     IF (numpe==1) THEN
       IF (iload==1) THEN
         ! Displacement and total strain
@@ -884,10 +1133,10 @@ PROGRAM xx15_quadric_linear_hardening
         !OPEN(28, file=fname, status='replace', action='write')
                 
         ! Homogenized stress and strain
-        fname = fname_base(1:INDEX(fname_base, " ")-1) // "_hom_stress.res"
-        OPEN(29, file=fname, status='replace', action='write')
-        fname = fname_base(1:INDEX(fname_base, " ")-1) // "_hom_strain.res"
-        OPEN(30, file=fname, status='replace', action='write')
+        !fname = fname_base(1:INDEX(fname_base, " ")-1) // "_hom_stress.res"
+        !OPEN(29, file=fname, status='replace', action='write')
+        !fname = fname_base(1:INDEX(fname_base, " ")-1) // "_hom_strain.res"
+        !OPEN(30, file=fname, status='replace', action='write')
         
         ! Load and displacement
         !fname = fname_base(1:INDEX(fname_base, " ")-1) // "_disp_load.res"
@@ -909,32 +1158,32 @@ PROGRAM xx15_quadric_linear_hardening
     ! load_node,iload)
      
     IF (numpe==1) THEN
-      CALL FLUSH(29)
-      CALL FLUSH(30)
+      !CALL FLUSH(29)
+      !CALL FLUSH(30)
       !CALL FLUSH(31)
     END IF
     
 !-----print out displacements, stress, principal stress and reactions -------
     !IF (print_output) THEN
-    IF (iload==max_inc) THEN
+!!$    IF (iload==max_inc) THEN
       
-	  writetimes = writetimes + 1
+      writetimes = writetimes + 1
       IF(timewrite) THEN
-	    timest(4) = ELAP_TIME( )
-	  END IF
-
+        timest(4) = ELAP_TIME( )
+      END IF
+      
       ALLOCATE(xnewnodes_pp(nodes_pp*nodof))
-	  ALLOCATE(shape_integral_pp(nod,nels_pp))
-	  !ALLOCATE(stress_integral_pp(nod*nst,nels_pp))
-	  ALLOCATE(strain_integral_pp(nod*nst,nels_pp))
-	  !ALLOCATE(stressnodes_pp(nodes_pp*nst))
-	  ALLOCATE(strainnodes_pp(nodes_pp*nst))
-	  !ALLOCATE(reacnodes_pp(nodes_pp*nodof))
-
+      ALLOCATE(shape_integral_pp(nod,nels_pp))
+      !ALLOCATE(stress_integral_pp(nod*nst,nels_pp))
+      ALLOCATE(strain_integral_pp(nod*nst,nels_pp))
+      !ALLOCATE(stressnodes_pp(nodes_pp*nst))
+      ALLOCATE(strainnodes_pp(nodes_pp*nst))
+      !ALLOCATE(reacnodes_pp(nodes_pp*nodof))
+      
       CALL GATHER(xnew_pp(1:),xnewel_pp)
       IF (numfix_pp > 0) THEN
         DO i = 1,numfix_pp
-          xnewel_pp(fixdof_pp(i),fixelem_pp(i)) = fixvalpiece_pp(i)
+          xnewel_pp(fixdof_pp(i),fixelem_pp(i)) = fixvaltot_pp(i)
         END DO
       END IF
 
@@ -986,7 +1235,7 @@ PROGRAM xx15_quadric_linear_hardening
         END DO
       END DO
 
-!      text = "*DISPLACEMENT"
+      text = "*DISPLACEMENT"
       CALL SCATTER_NODES(npes,nn,nels_pp,g_num_pp,nod,nodof,nodes_pp, &
               node_start,node_end,xnewel_pp,xnewnodes_pp,1)
       CALL WRITE_NODAL_VARIABLE(text,24,iload,nodes_pp,npes,numpe,nodof, &
@@ -1007,7 +1256,7 @@ PROGRAM xx15_quadric_linear_hardening
       !                          reacnodes_pp)
       !DEALLOCATE(reacnodes_pp)
 
-!      text = "*ELASTIC STRAIN"
+      text = "*ELASTIC STRAIN"
       CALL NODAL_PROJECTION(npes,nn,nels_pp,g_num_pp,nod,nst,nodes_pp,  &
        node_start,node_end,shape_integral_pp,strain_integral_pp,strainnodes_pp)
       CALL WRITE_NODAL_VARIABLE(text,27,iload,nodes_pp,npes,numpe,nst,   &
@@ -1043,7 +1292,7 @@ PROGRAM xx15_quadric_linear_hardening
       
       print_output=.false.
 
-    END IF  !printing
+!!$    END IF  !printing
     
     IF (iload==max_inc) THEN
       EXIT
@@ -1055,8 +1304,9 @@ PROGRAM xx15_quadric_linear_hardening
     !CLOSE(25)
     !CLOSE(26)
     CLOSE(27)
-    CLOSE(29)
-    CLOSE(30)
+    !CLOSE(29)
+    !CLOSE(30)
+    !CLOSE(31)
   END IF
 
 !------------------------------------------------------------------------------
@@ -1067,7 +1317,15 @@ PROGRAM xx15_quadric_linear_hardening
 !------------------------------------------------------------------------------
 !------------------------------------------------------------------------------
 
-  IF (numpe==npes) THEN
+  IF (solvers == petsc_solvers) THEN
+    DEALLOCATE(p_rows,p_cols,p_values)
+    CALL KSPDestroy(p_ksp,p_ierr)
+    CALL VecDestroy(p_x,p_ierr)
+    CALL VecDestroy(p_b,p_ierr)
+    CALL MatDestroy(p_A,p_ierr)
+  END IF
+
+  IF (numpe==1) THEN
     WRITE(11,'(a,i5,a)') "This job ran on ",npes," processors"
     WRITE(11,'(A,3(I8,A))')"There are ",nn," nodes",nels," elements and ",&
                            neq," equations"
@@ -1084,13 +1342,18 @@ PROGRAM xx15_quadric_linear_hardening
 !   Formats
   2000 FORMAT(' Energy  ',i3,1p,i3,1p,e25.15,1p,e25.15) 
 
-  WRITE(*,*) 'The simulation is finished'
+  IF (numpe==1) THEN
+    WRITE(*,*) 'The simulation is finished'
+  END IF
 
 !---------------------------------- shutdown ----------------------------------
+  IF (solvers == petsc_solvers) THEN
+    CALL PetscFinalize(p_ierr)
+  END IF
   CALL SHUTDOWN()
 
 CONTAINS
-
+  
 !------------------------------------------------------------------------------
 !------------------------------------------------------------------------------
 !------------------------------------------------------------------------------
