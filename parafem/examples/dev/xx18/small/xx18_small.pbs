@@ -11,4 +11,4 @@ cd $PBS_O_WORKDIR
 module use $HOME/modulefiles
 module load parafem
 
-aprun -n 4 xx18 xx18_small
+aprun -n 24 xx18 xx18_small
