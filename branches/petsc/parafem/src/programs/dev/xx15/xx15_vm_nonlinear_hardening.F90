@@ -52,20 +52,8 @@ PROGRAM xx15_vm_nonlinear_hardening
  
   LOGICAL :: converged, timewrite=.TRUE., flag=.FALSE., print_output=.FALSE., &
    tol_inc=.FALSE., lambda_inc=.TRUE., flag_load=.TRUE., noncon_flag=.FALSE.
-   
-   
-   
-   
-   
-   
-  REAL(iwp) :: sum_force_2
-   
-   
-   
-   
-   
-   
-   
+
+  REAL(iwp) :: sum_force_2_pp, sum_force_2
 
 ! Default solvers are ParaFEM.  parafem_solvers is defined in choose_solvers
   CHARACTER(len=50) :: solvers = parafem_solvers 
@@ -361,7 +349,7 @@ PROGRAM xx15_vm_nonlinear_hardening
     
     max_disp = MAXVAL(ABS(fixed_value))
 
-    DEALLOCATE(fixed_node, fixed_dof, fixed_value)
+    DEALLOCATE(fixed_dof, fixed_value)
 
   END IF
   
@@ -385,7 +373,7 @@ PROGRAM xx15_vm_nonlinear_hardening
 
     CALL LOAD_2(nn_start,g_num_pp,load_node,load_value,nf_pp,fext_pp(1:))
    
-    !DEALLOCATE(load_node,load_value)
+    DEALLOCATE(load_node,load_value)
 
   END IF
   
@@ -1198,25 +1186,21 @@ PROGRAM xx15_vm_nonlinear_hardening
      node_end,storefint_pp,reacnodes_pp,0)
      
     max_disp_inc = max_disp*lambda_total
-    
-    
-    
-    
-    
-    
-    sum_force_2=zero
-    do i=1,(nodes_pp)
-      do j=1,loaded_nodes
-        if (i==load_node(j)) then
-          sum_force_2=sum_force_2+reacnodes_pp((i-1)*3+2)
-        end if
-      end do
-    end do
-     
-    write(31,*) sum_force_2,max_disp_inc
-     
-     
-     
+
+    sum_force_2_pp=zero
+    DO i=1,nodes_pp
+      DO j=1,fixed_nodes
+        IF (node_start+i-1 == fixed_node(j)) THEN
+          sum_force_2_pp=sum_force_2_pp+reacnodes_pp((i-1)*3+2)
+        END IF
+      END DO
+    END DO
+    CALL MPI_REDUCE(sum_force_2_pp,sum_force_2,1,MPI_REAL8,MPI_SUM,0,          &
+                    MPI_COMM_WORLD,ier)
+
+    IF (numpe==1) THEN
+      WRITE(31,*) max_disp_inc,sum_force_2
+    END IF
      
     !CALL WRITE_LOAD_DISP(31,nodes_pp,npes,numpe,reacnodes_pp,max_disp_inc,        &
     ! load_node,iload)
@@ -1319,7 +1303,7 @@ PROGRAM xx15_vm_nonlinear_hardening
       !                          stressnodes_pp)
       !DEALLOCATE(stress_integral_pp,stressnodes_pp)
 
-!      text = "*NODAL REACTIONS"
+      text = "*NODAL REACTIONS"
       CALL SCATTER_NODES(npes,nn,nels_pp,g_num_pp,nod,nodof,nodes_pp, &
               node_start,node_end,storefint_pp,reacnodes_pp,0)
       CALL WRITE_NODAL_VARIABLE(text,26,iload,nodes_pp,npes,numpe,nodof, &
@@ -1419,6 +1403,11 @@ PROGRAM xx15_vm_nonlinear_hardening
   END IF
 
 !---------------------------------- shutdown ----------------------------------
+
+  IF (fixed_nodes > 0) THEN
+    DEALLOCATE(fixed_node)
+  END IF
+
   IF (solvers == petsc_solvers) THEN
     CALL PetscFinalize(p_ierr)
   END IF
