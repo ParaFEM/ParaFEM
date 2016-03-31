@@ -11,4 +11,4 @@ cd $PBS_O_WORKDIR
 module use $HOME/modulefiles
 module load parafem
 
-aprun -n 4 xx15 xx15
+aprun -n 1 xx15_quadric_linear_hardening mesh_input_file_tension

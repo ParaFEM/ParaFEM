@@ -1,7 +1,7 @@
--mat_view ::ascii_info
--ksp_type cg
+-ksp_type minres
 #-ksp_rtol 1.0e-5
 #-ksp_atol 1.0e-50
 #-ksp_divtol 1.0e+5
 #-ksp_max_it 10000
 -pc_type jacobi
+-pc_jacobi_abs

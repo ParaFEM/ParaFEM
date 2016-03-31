@@ -1,0 +1,14 @@
+#!/bin/bash
+
+#PBS -N xx15
+#PBS -l select=1
+#PBS -l walltime=00:20:00
+#PBS -A z01-csetds
+
+export PBS_O_WORKDIR=$(readlink -f $PBS_O_WORKDIR)
+cd $PBS_O_WORKDIR
+
+module use $HOME/modulefiles
+module load parafem
+
+aprun -n 1 xx15_quadric_linear_hardening mesh_input_file_compression
