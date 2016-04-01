@@ -68,6 +68,7 @@ PROGRAM xx15_quadric_linear_hardening
   PetscScalar,ALLOCATABLE :: p_values(:)
   PetscScalar,POINTER :: p_varray(:)
   PetscInt            :: p_its,p_nnz
+  PetscReal           :: p_rtol
   DOUBLE PRECISION    :: p_info(MAT_INFO_SIZE)
   KSPConvergedReason  :: p_reason
   CHARACTER(LEN=p_max_string_length) :: p_description
@@ -852,8 +853,9 @@ PROGRAM xx15_quadric_linear_hardening
         CALL KSPSetInitialGuessNonzero(p_ksp,PETSC_TRUE,p_ierr)
         CALL KSPSolve(p_ksp,p_b,p_x,p_ierr)
 
-        ! Preconditioned residual L2 norm
-        CALL KSPGetResidualNorm(p_ksp,p_pr_n2,p_ierr)
+        ! Preconditioned norm tolerance
+        CALL KSPGetTolerances(p_ksp,p_rtol,PETSC_NULL_REAL,PETSC_NULL_REAL,    &
+                              PETSC_NULL_INTEGER,p_ierr)
         ! True residual L2 norm
         CALL VecDuplicate(p_b,p_r,p_ierr)
         CALL KSPBuildResidual(p_ksp,PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,p_r,p_ierr)
@@ -875,16 +877,14 @@ PROGRAM xx15_quadric_linear_hardening
         CALL VecRestoreArrayF90(p_x,p_varray,p_ierr)
 
         IF(numpe == 1)THEN
-          WRITE(11,'(A,I0,A)') "The reason for convergence was ",p_reason,     &
-                               " "//TRIM(p_description)
-          WRITE(11,'(A,I0)') "The number of iterations to convergence was ",   &
-                             p_its
-          WRITE(11,'(A,E17.7)') "The preconditioned residual L2 norm was ",    &
-                                p_pr_n2
-          WRITE(11,'(A,E17.7)') "The true residual L2 norm ||b-Ax|| was  ",    &
-                                p_r_n2
-          WRITE(11,'(A,E17.7)') "The relative error ||b-Ax||/||b|| was   ",    &
-                                p_r_n2/p_b_n2
+          WRITE(11,'(A,I0,A)')                                                 &
+            "The reason for convergence was ",p_reason," "//TRIM(p_description)
+          WRITE(11,'(A,I0)')                                                   &
+            "The number of iterations to convergence was ",p_its
+          WRITE(11,'(A,E17.7)')                                                &
+            "The preconditioned relative error tolerance was ",p_rtol
+          WRITE(11,'(A,E17.7)')                                                &
+            "The relative error ||b-Ax||/||b|| was           ",p_r_n2/p_b_n2
         END IF
       END IF
 

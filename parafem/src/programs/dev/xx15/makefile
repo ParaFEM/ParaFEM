@@ -36,10 +36,8 @@ release:
 	@echo "Building xx15 RELEASE"
 	$(MAKE) $(EXECUTABLES) \
 	FFLAGS="-c -I$(MODULE_MPI) -I$(MODULE_CHOOSE_SOLVERS) -I$(MODULE_PARAFEM_PETSC) $(XX15_MPI_REL_FFLAGS)" \
-	LDFLAGS="-L$(LIB) -lParaFEM_mpi.$(VERSION) -lParaFEM_choose_solvers.$(VERSION) -lParaFEM_parafem_petsc.$(VERSION) $(XX15_MPI_REL_LDFLAGS)"
-#	$(MAKE) xx15_original \
-#	FFLAGS="-c -I$(MODULE_MPI) $(XX15_MPI_REL_FFLAGS)" \
-#	LDFLAGS="-L$(LIB) -lParaFEM_mpi.$(VERSION) $(XX15_MPI_REL_LDFLAGS)"
+	LDFLAGS="-L$(LIB) $(XX15_MPI_REL_LDFLAGS)" \
+	LIBS="-lParaFEM_mpi.$(VERSION) -lParaFEM_choose_solvers.$(VERSION) -lParaFEM_parafem_petsc.$(VERSION)"
 	@echo "Done xx15 RELEASE"
 
 debug:
@@ -47,23 +45,21 @@ debug:
 	@echo "Building xx15 DEBUG"
 	$(MAKE) $(EXECUTABLES) \
 	FFLAGS="-c -I$(MODULE_MPI) -I$(MODULE_CHOOSE_SOLVERS) -I$(MODULE_PARAFEM_PETSC) $(XX15_MPI_DBG_FFLAGS)" \
-	LDFLAGS="-L$(LIB) -lParaFEM_mpi_D.$(VERSION) -lParaFEM_choose_solvers_D.$(VERSION) -lParaFEM_parafem_petsc_D.$(VERSION) $(XX15_MPI_DBG_LDFLAGS)"
-#	$(MAKE) xx15_original \
-#	FFLAGS="-c -I$(MODULE_MPI) $(XX15_MPI_DBG_FFLAGS)" \
-#	LDFLAGS="-L$(LIB) -lParaFEM_mpi_D.$(VERSION) $(XX15_MPI_DBG_LDFLAGS)"
+	LDFLAGS="-L$(LIB) $(XX15_MPI_DBG_LDFLAGS)" \
+	LIBS="-lParaFEM_mpi_D.$(VERSION) -lParaFEM_choose_solvers_D.$(VERSION) -lParaFEM_parafem_petsc_D.$(VERSION)"
 	@echo "Done xx15 DEBUG"
 
 xx15_elastic: xx15_elastic.o plasticity_xx15.o
-	$(FC) $(LDFLAGS) -o $@ $+
+	$(FC) $(LDFLAGS) -o $@ $+ $(LIBS)
 
 xx15_quadric_linear_hardening: xx15_quadric_linear_hardening.o plasticity_xx15.o
-	$(FC) $(LDFLAGS) -o $@ $+
+	$(FC) $(LDFLAGS) -o $@ $+ $(LIBS)
 
 xx15_vm_nonlinear_hardening: xx15_vm_nonlinear_hardening.o plasticity_xx15.o
-	$(FC) $(LDFLAGS) -o $@ $+
+	$(FC) $(LDFLAGS) -o $@ $+ $(LIBS)
 
 xx15_original: xx15_original.o plasticity_xx15.o
-	$(FC) $(LDFLAGS) -o $@ $+
+	$(FC) $(LDFLAGS) -o $@ $+ $(LIBS)
 
 # Compiling the xx15 objects needs the plasticity_xx15 module already
 # compiled.
@@ -77,16 +73,14 @@ clean:
 	rm -f *.o
 
 execlean:
-	rm -f $(EXECUTABLES) #xx15_original
+	rm -f $(EXECUTABLES)
 	cd ../../../../bin
-	rm -f $(EXECUTABLES) #xx15_original
+	rm -f $(EXECUTABLES)
 
-relink: $(EXECUTABLES) #xx15_original
+relink: $(EXECUTABLES)
 
 install:
 	cp $(EXECUTABLES) ../../../../bin
-#	cp xx15_original ../../../../bin
 
 test:
 #	./test.sh xx15
-#	./test.sh xx15_original
