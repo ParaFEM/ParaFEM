@@ -12,19 +12,13 @@ PROGRAM xx18
   !*    
   !*    Parallel version.  Loaded_nodes only.  See program p121.
   !*    
-  !*    Subroutine                 Purpose
-  !*    
-  !*    p_describe_reason          Returns a description of the reason
-  !*                               for convergence in PETSc
-  !*    p_row_nnz                  Returns an approximate upper estimate
-  !*                               of the number of non zeroes in a row
-  !*                               of the global matrix
   !*  AUTHORS
   !*    Lee Margetts, Mark Filipiak
   !*  CREATION DATE
   !*    02.01.2007
   !*  MODIFICATION HISTORY
   !*    Version 2, 19.02.2016, Mark Filipiak
+  !*    Version 3, 01.04.2016, Mark Filipiak
   !*  COPYRIGHT
   !*    (c) University of Manchester 2007-2010, University of Edinburgh 2016
   !******
@@ -32,11 +26,11 @@ PROGRAM xx18
   !*
   !*/
   
-  ! PETSc interface and modules
+  ! Choice of solvers
+  USE choose_solvers
+  ! PETSc interface and modules.  PETSc will always use MPI (unless PETSc itself
+  ! has been compiled without MPI)
   USE parafem_petsc
-  ! PETSc will always use MPI (unless PETSc itself has been compiled without
-  ! MPI)
-
   USE PRECISION; USE global_variables; USE mp_interface; USE input
   USE output; USE loading; USE timing; USE maths; USE gather_scatter
   USE steering; USE new_library; USE large_strain 
@@ -62,7 +56,16 @@ PROGRAM xx18
   CHARACTER(LEN=15)   :: element
   CHARACTER(LEN=6)    :: ch 
 
+  ! Default solvers are ParaFEM.  parafem_solvers is defined in choose_solvers
+  CHARACTER(len=50) :: solvers = parafem_solvers
+  ! Temporarily use these variables until the solver argument reading is ina a
+  ! choose_solvers subroutine.
+  INTEGER             :: argc, iargc
+  CHARACTER(len=50)   :: fname_base
+
   ! PETSc variables
+  CHARACTER(len=1024) :: p_fname
+  LOGICAL             :: p_exist
   PetscErrorCode      :: p_ierr
   ! The PETSc objects cannot be initialised here because PETSC_NULL_OBJECT is a
   ! common-block-object and not a constant.
@@ -74,6 +77,7 @@ PROGRAM xx18
   PetscScalar,ALLOCATABLE :: p_values(:)
   PetscScalar,POINTER :: p_varray(:)
   PetscInt            :: p_its,p_nnz
+  PetscReal           :: p_rtol
   DOUBLE PRECISION    :: p_info(MAT_INFO_SIZE)
   KSPConvergedReason  :: p_reason
   CHARACTER(LEN=p_max_string_length) :: p_description
@@ -84,10 +88,7 @@ PROGRAM xx18
   
   REAL(iwp),ALLOCATABLE :: points(:,:),dee(:,:),weights(:),val(:,:),           &
     disp_pp(:),g_coord_pp(:,:,:),jac(:,:),der(:,:),deriv(:,:),bee(:,:),        &
-    ! storkm_pp is used only if the built in preconditioned conjugate gradient
-    ! is used
-!!$    storkm_pp(:,:,:),km(:,:),eps(:),sigma(:),diag_precon_pp(:),p_pp(:),        &
-    km(:,:),eps(:),sigma(:),diag_precon_pp(:),p_pp(:),                         &
+    storkm_pp(:,:,:),eps(:),sigma(:),diag_precon_pp(:),p_pp(:),                &
     r_pp(:),x_pp(:),xnew_pp(:),u_pp(:),pmul_pp(:,:),utemp_pp(:,:),d_pp(:),     &
     timest(:),diag_precon_tmp(:,:),eld_pp(:,:),temp(:)
   INTEGER,ALLOCATABLE :: rest(:,:),g_num_pp(:,:),g_g_pp(:,:),node(:)
@@ -100,6 +101,32 @@ PROGRAM xx18
   CALL find_pe_procs(numpe,npes); CALL getname(argv,nlen) 
   CALL read_p121(argv,numpe,e,element,limit,loaded_nodes,meshgen,nels,         &
                  nip,nn,nod,nr,partitioner,tol,v)
+
+! Input:  2: The second argument in the command line (arg2)
+  IF (argc >= 2) THEN
+    CALL GETARG(2,solvers)
+  END IF
+
+  IF (.NOT. solvers_valid(solvers)) THEN
+    IF (numpe == 1) THEN
+      WRITE(*,*) "Solvers can be " // solvers_list()
+    END IF
+    CALL SHUTDOWN
+    STOP
+  END IF
+
+  fname_base = argv
+  IF(solvers == petsc_solvers) THEN
+    IF(numpe == 1) THEN
+      p_fname = TRIM(fname_base) // ".petsc"
+      INQUIRE(file=TRIM(p_fname),exist=p_exist)
+      IF (.NOT. p_exist) THEN
+        p_fname = ""
+      END IF
+    END IF
+    CALL MPI_BCAST(p_fname,LEN(p_fname),MPI_CHARACTER,0,MPI_COMM_WORLD,ier)
+  END IF
+
   CALL calc_nels_pp(argv,nels,npes,numpe,partitioner,nels_pp)
   ndof=nod*nodof; ntot=ndof
   ALLOCATE(g_num_pp(nod, nels_pp),g_coord_pp(nod,ndim,nels_pp),                &
@@ -110,21 +137,20 @@ PROGRAM xx18
   CALL read_rest(argv,numpe,rest); timest(2)=elap_time()
   ALLOCATE(points(nip,ndim),dee(nst,nst),jac(ndim,ndim),der(ndim,nod),         &
     deriv(ndim,nod),bee(nst,ntot),weights(nip),eps(nst),sigma(nst),            &
-!!$    storkm_pp(ntot,ntot,nels_pp),km(ntot,ntot),pmul_pp(ntot,nels_pp),          &
-    km(ntot,ntot),pmul_pp(ntot,nels_pp),                                       &
+    storkm_pp(ntot,ntot,nels_pp),pmul_pp(ntot,nels_pp),                        &
     utemp_pp(ntot,nels_pp),g_g_pp(ntot,nels_pp))
 
   !-----------------------------------------------------------------------------
   ! 3. Start up PETSc after MPI has been started
   !-----------------------------------------------------------------------------
-  
-  CALL PetscInitialize(TRIM(argv)//".petsc",p_ierr)
-  p_x   = PETSC_NULL_OBJECT
-  p_b   = PETSC_NULL_OBJECT
-  p_r   = PETSC_NULL_OBJECT
-  p_A   = PETSC_NULL_OBJECT
-  p_ksp = PETSC_NULL_OBJECT
-  
+  IF (solvers == petsc_solvers) THEN
+    CALL PetscInitialize(p_fname,p_ierr)
+    p_x   = PETSC_NULL_OBJECT
+    p_b   = PETSC_NULL_OBJECT
+    p_r   = PETSC_NULL_OBJECT
+    p_A   = PETSC_NULL_OBJECT
+    p_ksp = PETSC_NULL_OBJECT
+  END IF
   
   !-----------------------------------------------------------------------------
   ! 4. Find the steering array and equations per process
@@ -144,77 +170,93 @@ PROGRAM xx18
   ! 5. Element stiffness integration and global stiffness matrix creation
   !-----------------------------------------------------------------------------
   
-  ! PETSc 64-bit indices and 64-bit reals.  In most (all?) places, passing a
-  ! 32-bit integer where an intent(in) 64-integer is required is safe, because
-  ! the PETSc Fortran-C interface de-references the pointer that is actually
-  ! passed, even though it does not specify any intent in the Fortran interface.
-  ! This is not safe when passing arrays, they need to be copied to PetscInt
-  ! arrays.  And for safety the same should be done for the PetscScalar arrays.
-  CALL MatCreate(PETSC_COMM_WORLD,p_A,p_ierr)
-  CALL MatSetSizes(p_A,neq_pp,neq_pp,PETSC_DETERMINE,PETSC_DETERMINE,p_ierr)
-  CALL MatSetType(p_A,MATAIJ,p_ierr)
-  !- Block size fixed to 1 for just now - this cannot be set to nodof until the
-  !- restraints are handled block-wise in ParaFEM.
-  !- CALL MatSetBlockSize(p_A,nodof,p_ierr)
-  
-  ! Find an approximate number of zeroes per row for the matrix size
-  ! pre-allocation.
-  CALL p_row_nnz(nodof,ndim,nod,p_over_allocation,p_nnz)
-  CALL MatSeqAIJSetPreallocation(p_A,p_nnz,PETSC_NULL_INTEGER,p_ierr)
-  CALL MatMPIAIJSetPreallocation(p_A,p_nnz,PETSC_NULL_INTEGER,                 &
-                                     p_nnz,PETSC_NULL_INTEGER,p_ierr)
-  ! If the allocation is too small, PETSc will produce reams of information and
-  ! not construct the matrix properly.  We output some information at the end if
-  ! p_over_allocation should be increased.
-  CALL MatSetOption(p_A,MAT_NEW_NONZERO_ALLOCATION_ERR,PETSC_FALSE,p_ierr)
-  
-  ! Arrays of PETSc types to be proof against changes in index and scalar sizes.
-  ALLOCATE(p_rows(ntot),p_cols(ntot),p_values(ntot*ntot))
+  IF (solvers == petsc_solvers) THEN
+    ! PETSc 64-bit indices and 64-bit reals.  In most (all?) places, passing a
+    ! 32-bit integer where an intent(in) 64-integer is required is safe, because
+    ! the PETSc Fortran-C interface de-references the pointer that is actually
+    ! passed, even though it does not specify any intent in the Fortran
+    ! interface.  This is not safe when passing arrays, they need to be copied
+    ! to PetscInt arrays.  And for safety the same should be done for the
+    ! PetscScalar arrays.
+    CALL MatCreate(PETSC_COMM_WORLD,p_A,p_ierr)
+    CALL MatSetSizes(p_A,neq_pp,neq_pp,PETSC_DETERMINE,PETSC_DETERMINE,p_ierr)
+    CALL MatSetType(p_A,MATAIJ,p_ierr)
+    !- Block size fixed to 1 for just now - this cannot be set to nodof until
+    !- the restraints are handled block-wise in ParaFEM.  CALL
+    !- MatSetBlockSize(p_A,nodof,p_ierr)
+    
+    ! Find an approximate number of zeroes per row for the matrix size
+    ! pre-allocation.
+    CALL p_row_nnz(nodof,ndim,nod,p_over_allocation,p_nnz)
+    CALL MatSeqAIJSetPreallocation(p_A,p_nnz,PETSC_NULL_INTEGER,p_ierr)
+    CALL MatMPIAIJSetPreallocation(p_A,p_nnz,PETSC_NULL_INTEGER,              &
+      p_nnz,PETSC_NULL_INTEGER,p_ierr)
+    ! If the allocation is too small, PETSc will produce reams of information
+    ! and not construct the matrix properly.  We output some information at the
+    ! end if p_over_allocation should be increased.
+    CALL MatSetOption(p_A,MAT_NEW_NONZERO_ALLOCATION_ERR,PETSC_FALSE,p_ierr)
+
+    ! Arrays of PETSc types to be proof against changes in index and scalar sizes.
+    ALLOCATE(p_rows(ntot),p_cols(ntot),p_values(ntot*ntot))
+  END IF
+
   dee=zero; CALL deemat(dee,e,v); CALL sample(element,points,weights)
-!!$  storkm_pp=zero
+  storkm_pp=zero
+  IF (solvers == petsc_solvers) THEN
+    CALL MatZeroEntries(p_A,p_ierr)
+  END IF
+
   elements_1: DO iel=1,nels_pp
-    km=zero
     gauss_pts_1: DO i=1,nip
       CALL shape_der(der,points,i); jac=MATMUL(der,g_coord_pp(:,:,iel))
       det=determinant(jac); CALL invert(jac); deriv=MATMUL(jac,der)
       CALL beemat(bee,deriv)
-      km=km + MATMUL(MATMUL(TRANSPOSE(bee),dee),bee)*det*weights(i)
+      storkm_pp(:,:,iel) = storkm_pp(:,:,iel)                                  &
+        + MATMUL(MATMUL(TRANSPOSE(bee),dee),bee)*det*weights(i)
     END DO gauss_pts_1
-!!$    storkm_pp(:,:,iel)=km(:,:)
-    ! 1/ Use ubound(g_g_pp,1) instead of ntot? 2/ The following depends on
-    ! g_g_pp holding 0 for erased rows/columns, and MatSetValues ignoring
-    ! negative indices (PETSc always uses zero-based indexing). 3/ PETSc uses C
-    ! array order, so a transpose is needed.
-    p_rows   = g_g_pp(:,iel) - 1
-    p_cols   = p_rows
-    p_values = RESHAPE(TRANSPOSE(km),SHAPE(p_values))
-    CALL MatSetValues(p_A,ntot,p_rows,ntot,p_cols,p_values,ADD_VALUES,p_ierr)
+
+    IF (solvers == petsc_solvers) THEN
+      ! 1/ Use ubound(g_g_pp,1) instead of ntot? 2/ The following depends on
+      ! g_g_pp holding 0 for erased rows/columns, and MatSetValues ignoring
+      ! negative indices (PETSc always uses zero-based indexing). 3/ PETSc uses
+      ! C array order, so a transpose is needed.
+      p_rows   = g_g_pp(:,iel) - 1
+      p_cols   = p_rows
+      p_values = RESHAPE(TRANSPOSE(storkm_pp(:,:,iel)),SHAPE(p_values))
+      CALL MatSetValues(p_A,ntot,p_rows,ntot,p_cols,p_values,ADD_VALUES,p_ierr)
+    END IF
   END DO elements_1
-  DEALLOCATE(p_rows,p_cols,p_values)
-  
-  CALL MatAssemblyBegin(p_A,MAT_FINAL_ASSEMBLY,p_ierr)
-  CALL MatAssemblyEnd(p_A,MAT_FINAL_ASSEMBLY,p_ierr)
-  
-  CALL MatGetInfo(p_A,MAT_GLOBAL_SUM,p_info,p_ierr)
-  IF(numpe==1)THEN
-    IF(p_info(MAT_INFO_MALLOCS)/=0.0)THEN
-      WRITE(*,'(A,I0,A)') "The matrix assembly required ",                     &
-                          NINT(p_info(MAT_INFO_MALLOCS)),                      &
-                          " mallocs.  Increase p_over_allocation to speed up " &
-                          //"the assembly."
+
+  IF (solvers == petsc_solvers) THEN
+    DEALLOCATE(p_rows,p_cols,p_values)
+    
+    CALL MatAssemblyBegin(p_A,MAT_FINAL_ASSEMBLY,p_ierr)
+    CALL MatAssemblyEnd(p_A,MAT_FINAL_ASSEMBLY,p_ierr)
+    
+    CALL MatGetInfo(p_A,MAT_GLOBAL_SUM,p_info,p_ierr)
+    IF(numpe==1)THEN
+      IF(p_info(MAT_INFO_MALLOCS)/=0.0)THEN
+        WRITE(*,'(A,I0,A)') "The matrix assembly required ",                   &
+                            NINT(p_info(MAT_INFO_MALLOCS)),                    &
+                            " mallocs.  Increase p_over_allocation to speed "  &
+                            //"up the assembly."
+      END IF
     END IF
   END IF
   
   !-----------------------------------------------------------------------------
-  ! 6. Build the preconditioner (not for PETSc)
+  ! 6. Build and invert the preconditioner (ParaFEM only)
   !-----------------------------------------------------------------------------
 
-!!$  ALLOCATE(diag_precon_tmp(ntot,nels_pp)); diag_precon_tmp=zero
-!!$  elements_2: DO iel=1,nels_pp ; DO i=1,ndof
-!!$    diag_precon_tmp(i,iel) = diag_precon_tmp(i,iel)+storkm_pp(i,i,iel)
-!!$  END DO elements_2;  END DO elements_2
-!!$  CALL scatter(diag_precon_pp,diag_precon_tmp); DEALLOCATE(diag_precon_tmp)
-  
+  IF (solvers == parafem_solvers) THEN
+    ALLOCATE(diag_precon_tmp(ntot,nels_pp)); diag_precon_tmp=zero
+    elements_2: DO iel=1,nels_pp; DO i=1,ndof
+      diag_precon_tmp(i,iel) = diag_precon_tmp(i,iel)+storkm_pp(i,i,iel)
+    END DO;  END DO elements_2
+    CALL scatter(diag_precon_pp,diag_precon_tmp); DEALLOCATE(diag_precon_tmp)
+    diag_precon_pp = 1._iwp/diag_precon_pp
+  END IF
+
   IF(numpe==1)THEN
     OPEN(11,FILE=argv(1:nlen)//".res",STATUS='REPLACE',ACTION='WRITE')
     WRITE(11,'(A,I7,A)') "This job ran on ",npes," processes"
@@ -236,22 +278,23 @@ PROGRAM xx18
     DEALLOCATE(node,val)
   END IF
   
-  ! RHS vector.  For this particular order (create, set size, set type) the
-  ! allocation is done by set type.
-  CALL VecCreate(PETSC_COMM_WORLD,p_b,p_ierr)
-  CALL VecSetSizes(p_b,neq_pp,PETSC_DECIDE,p_ierr)
-  CALL VecSetType(p_b,VECSTANDARD,p_ierr)
-  !- Block size fixed to 1 for just now - this cannot be set to nodof until the
-  !- restraints are handled block-wise in ParaFEM.
-  !- CALL VecSetBlockSize(p_b,nodof,p_ierr)
-  CALL VecGetArrayF90(p_b,p_varray,p_ierr)
-  ! This is OK as long as PetscScalars not smaller than ParaFEM reals.  There
-  ! should be a test for sizes of PetscScalars (and PetscInts) and ParaFEM reals
-  ! (and indices).
-  p_varray = r_pp
-  CALL VecRestoreArrayF90(p_b,p_varray,p_ierr)
-  
-!!$  DEALLOCATE(g_g_pp); diag_precon_pp=1._iwp/diag_precon_pp
+  IF (solvers == petsc_solvers) THEN
+    ! RHS vector.  For this particular order (create, set size, set type) the
+    ! allocation is done by set type.
+    CALL VecCreate(PETSC_COMM_WORLD,p_b,p_ierr)
+    CALL VecSetSizes(p_b,neq_pp,PETSC_DECIDE,p_ierr)
+    CALL VecSetType(p_b,VECSTANDARD,p_ierr)
+    ! Block size fixed to 1 for just now - this cannot be set to nodof until the
+    ! restraints are handled block-wise in ParaFEM.  CALL
+    ! VecSetBlockSize(p_b,nodof,p_ierr)
+    CALL VecGetArrayF90(p_b,p_varray,p_ierr)
+    ! This is OK as long as PetscScalars not smaller than ParaFEM reals.  There
+    ! should be a test for sizes of PetscScalars (and PetscInts) and ParaFEM
+    ! reals (and indices).
+    p_varray = r_pp
+    CALL VecRestoreArrayF90(p_b,p_varray,p_ierr)
+  END IF
+
   DEALLOCATE(g_g_pp)
   
   !-----------------------------------------------------------------------------
@@ -260,94 +303,88 @@ PROGRAM xx18
   
   timest(3) = elap_time()
   x_pp      = zero
-!!$  iters     = 0
-!!$  inewton   = 1    ! must be one in this program
-!!$  rn0       = zero
   
-  CALL KSPCreate(PETSC_COMM_WORLD,p_ksp,p_ierr)
-  CALL KSPSetOperators(p_ksp,p_A,p_A,p_ierr)
-  ! The general tolerance and maximum number of linear solver iterations come
-  ! from the value in the ParaFEM control file.  Note that relative tolerance
-  ! for PETSc is for the preconditioned residual.
-  CALL KSPSetTolerances(p_ksp,tol,PETSC_DEFAULT_REAL,PETSC_DEFAULT_REAL,       &
-                        limit,p_ierr)
-  ! KSP type, per-KSP tolerances (rtol, abstol, dtol, maxits), KSP options, PC
-  ! type, PC options are set in the xx*.petsc file.  Those options are used to
-  ! set up the preconditioned Krylov solver.  If there are several KSP types to
-  ! be chosen from, then each one will be bracketed by -prefix_push and
-  ! -prefix_pop.  For example
-  !
-  ! -prefix_push abc1_
-  !   -ksp_type minres
-  ! -prefix_pop
-  !
-  ! in the xx*.petsc file and 
-  !
-  ! CALL KSPSetOptionsPrefix(p_ksp,"abc1_",p_ierr)
-  !
-  ! before KSPSetFromOptions before using the 'abc1_' solver.  Thus you can
-  ! switch for CG to GMRES during a simulation.
-  CALL KSPSetFromOptions(p_ksp,p_ierr)
-  
-  ! Solution vector
-  CALL VecDuplicate(p_b,p_x,p_ierr) 
-  ! For non-linear solves, the previous solution will be used as an initial
-  ! guess: copy the ParaFEM solution vector to PETSc.
-  CALL VecGetArrayF90(p_x,p_varray,p_ierr)
-  ! This is OK as long as PetscScalars are not smaller than ParaFEM reals.
-  ! There should be a test for sizes of PetscScalars (and PetscInts) and ParaFEM
-  ! reals (and indices).
-  p_varray = x_pp
-  CALL VecRestoreArrayF90(p_x,p_varray,p_ierr)
-  CALL KSPSetInitialGuessNonzero(p_ksp,PETSC_TRUE,p_ierr)
-  CALL KSPSolve(p_ksp,p_b,p_x,p_ierr)
-  
-  ! Preconditioned residual L2 norm
-  CALL KSPGetResidualNorm(p_ksp,p_pr_n2,p_ierr)
-  ! True residual L2 norm
-  CALL VecDuplicate(p_b,p_r,p_ierr)
-  CALL KSPBuildResidual(p_ksp,PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,p_r,p_ierr)
-  CALL VecNorm(p_r,NORM_2,p_r_n2,p_ierr)
-  CALL VecDestroy(p_r,p_ierr)
-  ! L2 norm of load
-  CALL VecNorm(p_b,NORM_2,p_b_n2,p_ierr)
+  IF (solvers == parafem_solvers) THEN
+    iters     = 0
+    inewton   = 1    ! must be one in this program
+    rn0       = zero
+    CALL PCG_VER1(inewton,limit,tol,storkm_pp,r_pp,diag_precon_pp,rn0,x_pp,iters)
+    xnew_pp = x_pp
+    IF(numpe==1)THEN
+      WRITE(11,'(A,I6)') "The number of iterations to convergence was ",iters
+    END IF
+  ELSE IF (solvers == petsc_solvers) THEN
+    CALL KSPCreate(PETSC_COMM_WORLD,p_ksp,p_ierr)
+    CALL KSPSetOperators(p_ksp,p_A,p_A,p_ierr)
+    ! The general tolerance and maximum number of linear solver iterations come
+    ! from the value in the ParaFEM control file.  Note that relative tolerance
+    ! for PETSc is for the preconditioned residual.
+    CALL KSPSetTolerances(p_ksp,tol,PETSC_DEFAULT_REAL,PETSC_DEFAULT_REAL,     &
+                          limit,p_ierr)
+    ! KSP type, per-KSP tolerances (rtol, abstol, dtol, maxits), KSP options, PC
+    ! type, PC options are set in the xx*.petsc file.  Those options are used to
+    ! set up the preconditioned Krylov solver.  If there are several KSP types
+    ! to be chosen from, then each one will be bracketed by -prefix_push and
+    ! -prefix_pop.  For example
+    !
+    ! -prefix_push abc1_
+    !   -ksp_type minres
+    ! -prefix_pop
+    !
+    ! in the xx*.petsc file and 
+    !
+    ! CALL KSPSetOptionsPrefix(p_ksp,"abc1_",p_ierr)
+    !
+    ! before KSPSetFromOptions before using the 'abc1_' solver.  Thus you can
+    ! switch for CG to GMRES during a simulation.
+    CALL KSPSetFromOptions(p_ksp,p_ierr)
+    
+    ! Solution vector
+    CALL VecDuplicate(p_b,p_x,p_ierr) 
 
-  CALL KSPGetIterationNumber(p_ksp,p_its,p_ierr)
-  CALL KSPGetConvergedReason(p_ksp,p_reason,p_ierr)
-  CALL p_describe_reason(p_reason,p_description)
-  
-  ! Copy PETSc solution vector to ParaFEM
-  CALL VecGetArrayF90(p_x,p_varray,p_ierr)
-  ! This is OK as long as ParaFEM reals not smaller than PetscScalars.  There
-  ! should be a test for sizes of PetscScalars (and PetscInts) and ParaFEM reals
-  ! (and indices).
-  xnew_pp = p_varray
-  CALL VecRestoreArrayF90(p_x,p_varray,p_ierr)
-  
-  CALL VecDestroy(p_x,p_ierr)
-  CALL KSPDestroy(p_ksp,p_ierr)
-  CALL VecDestroy(p_b,p_ierr)
-  CALL MatDestroy(p_A,p_ierr)
-  
-!!$  CALL PCG_VER1(inewton,limit,tol,storkm_pp,r_pp,diag_precon_pp,rn0,x_pp,iters)
-!!$  xnew_pp = x_pp
+    CALL KSPSolve(p_ksp,p_b,p_x,p_ierr)
 
-  IF(numpe==1)THEN
-    WRITE(11,'(A,I0,A)') "The reason for convergence was ",p_reason,           &
-                         " "//TRIM(p_description)
-    WRITE(11,'(A,I0)') "The number of iterations to convergence was ",p_its
-    WRITE(11,'(A,E17.7)') "The preconditioned residual L2 norm was ",p_pr_n2
-    WRITE(11,'(A,E17.7)') "The true residual L2 norm ||b-Ax|| was  ",p_r_n2
-    WRITE(11,'(A,E17.7)') "The relative error ||b-Ax||/||b|| was   ",          &
-                          p_r_n2/p_b_n2
-!!$    WRITE(11,'(A,I6)') "The number of iterations to convergence was ",iters
-    WRITE(11,'(A,F10.4)') "Time to solve equations was  :",                    &
-                          elap_time()-timest(3)  
-    WRITE(11,'(A,E12.4)') "The central nodal displacement is :",xnew_pp(1)
+    ! Preconditioned norm tolerance
+    CALL KSPGetTolerances(p_ksp,p_rtol,PETSC_NULL_REAL,PETSC_NULL_REAL,        &
+                          PETSC_NULL_INTEGER,p_ierr)
+    ! True residual L2 norm
+    CALL VecDuplicate(p_b,p_r,p_ierr)
+    CALL KSPBuildResidual(p_ksp,PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,p_r,p_ierr)
+    CALL VecNorm(p_r,NORM_2,p_r_n2,p_ierr)
+    CALL VecDestroy(p_r,p_ierr)
+    ! L2 norm of load
+    CALL VecNorm(p_b,NORM_2,p_b_n2,p_ierr)
+    
+    CALL KSPGetIterationNumber(p_ksp,p_its,p_ierr)
+    CALL KSPGetConvergedReason(p_ksp,p_reason,p_ierr)
+    CALL p_describe_reason(p_reason,p_description)
+  
+    ! Copy PETSc solution vector to ParaFEM
+    CALL VecGetArrayF90(p_x,p_varray,p_ierr)
+    ! This is OK as long as ParaFEM reals not smaller than PetscScalars.  There
+    ! should be a test for sizes of PetscScalars (and PetscInts) and ParaFEM
+    ! reals (and indices).
+    xnew_pp = p_varray
+    CALL VecRestoreArrayF90(p_x,p_varray,p_ierr)
+    
+    CALL VecDestroy(p_x,p_ierr)
+    CALL KSPDestroy(p_ksp,p_ierr)
+    CALL VecDestroy(p_b,p_ierr)
+    CALL MatDestroy(p_A,p_ierr)
+
+    IF(numpe == 1)THEN
+      WRITE(11,'(A,I0,A)')                                                     &
+        "The reason for convergence was ",p_reason," "//TRIM(p_description)
+      WRITE(11,'(A,I0)')                                                       &
+        "The number of iterations to convergence was ",p_its
+      WRITE(11,'(A,E17.7)')                                                    &
+        "The preconditioned relative error tolerance was ",p_rtol
+      WRITE(11,'(A,E17.7)')                                                    &
+        "The relative error ||b-Ax||/||b|| was           ",p_r_n2/p_b_n2
+    END IF
   END IF
 
-!!$  DEALLOCATE(p_pp,r_pp,x_pp,u_pp,d_pp,diag_precon_pp,storkm_pp,pmul_pp) 
-  DEALLOCATE(p_pp,r_pp,x_pp,u_pp,d_pp,diag_precon_pp,pmul_pp) 
+  DEALLOCATE(p_pp,r_pp,x_pp,u_pp,d_pp,diag_precon_pp,storkm_pp,pmul_pp) 
   
   !-----------------------------------------------------------------------------
   ! 9. Recover stresses at centroidal gauss point
@@ -392,7 +429,10 @@ PROGRAM xx18
   ! 11. Shut down PETSc and ParaEFM
   !-----------------------------------------------------------------------------
   
-  CALL PetscFinalize(p_ierr)
+  IF (solvers == petsc_solvers) THEN
+    CALL PetscFinalize(p_ierr)
+  END IF
+
   CALL SHUTDOWN() 
   
 END PROGRAM xx18
