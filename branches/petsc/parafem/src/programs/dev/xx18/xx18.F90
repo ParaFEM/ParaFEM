@@ -98,7 +98,9 @@ PROGRAM xx18
   !-----------------------------------------------------------------------------
   
   ALLOCATE(timest(20)); timest=zero; timest(1)=elap_time()
-  CALL find_pe_procs(numpe,npes); CALL getname(argv,nlen) 
+  CALL find_pe_procs(numpe,npes)
+  argc = IARGC()
+  CALL getname(argv,nlen) 
   CALL read_p121(argv,numpe,e,element,limit,loaded_nodes,meshgen,nels,         &
                  nip,nn,nod,nr,partitioner,tol,v)
 
