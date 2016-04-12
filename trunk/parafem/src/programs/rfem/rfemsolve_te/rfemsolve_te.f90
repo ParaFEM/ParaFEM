@@ -3,8 +3,14 @@ PROGRAM rfemsolve_te
 !      Program rfemsolve_te three dimensional analysis of an elastic solid
 !                        load control or displacement control; multiple
 !                        material types; sequential version
+!      
+!      Author(s): David Arregui and Lee Margetts
+!
+!      Cite DOI : 10.1016/j.nucmat.2015.05.058
+!                 10.1007/s11831-014-9139-3
+!                 
 !------------------------------------------------------------------------------ 
-                      
+                    ! need to change this to test on multiple cores  
   USE mpi_wrapper   ! uncomment line to compile without MPI
 
   USE precision     ; USE global_variables ; USE mp_interface
@@ -192,6 +198,10 @@ PROGRAM rfemsolve_te
   fname = inst_in(1:LEN_TRIM(inst_in)) // ".mat" ! Move to subroutine
   CALL read_materialValue(prop,fname,numpe,npes)       ! CALL read_prop? 
   
+!------------------------------------------------------------------------------
+! Nodal temperatures
+!------------------------------------------------------------------------------
+
   !OPEN TEMPERATURE FILES
   !Read the temperature change at each node and assign to the dtemp vector
   
@@ -211,8 +221,9 @@ PROGRAM rfemsolve_te
   bufsize = nn
  
   CALL MPI_BCAST(dtemp,bufsize,MPI_REAL8,0,MPI_COMM_WORLD,ier)
-  
-PRINT *, "READ_MATERIALVALUE COMPLETED"
+
+!------------------------------------------------------------------------------  
+  PRINT *, "READ_MATERIALVALUE COMPLETED"
   
   
 
@@ -299,14 +310,18 @@ PRINT *, "READ_MATERIALVALUE COMPLETED"
 
   CALL sample(element,points,weights)
 
-  teps=zero
-  storkm_pp       = zero
+  teps      = zero
+  storkm_pp = zero
   
-  etl_pp = zero
+  etl_pp    = zero
   
-  cte = 0
-  
-  constant = 0.0435
+  cte       = zero
+
+!
+! need to remove constant from the program to make it more generic
+!  
+
+  constant  = 0.0435
    
   elements_3: DO iel=1,nels_pp
                 
@@ -318,6 +333,11 @@ PRINT *, "READ_MATERIALVALUE COMPLETED"
     !Relationship between CTE and Young's modulus
     
     v = prop(2,etype_pp(iel))
+
+!
+! need to move this outside of the program to make it more generic
+!
+
     e = constant/prop(1,etype_pp(iel))
          
     CALL deemat(dee,e,v)
