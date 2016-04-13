@@ -45,12 +45,11 @@ PROGRAM rfemsolve_te
   CHARACTER(LEN=50)     :: fname,inst_in,job_in,label,instance_id
   LOGICAL               :: converged = .false.
   
+
+  !New variables
   !Temporal variable
-    
   REAL(iwp)             :: constant
-  REAL(iwp)             :: etemp
-  REAL(iwp)             :: store
-    
+       
   !Temperature value
   REAL(iwp)             :: gtemp
 
@@ -71,19 +70,15 @@ PROGRAM rfemsolve_te
   REAL(iwp),ALLOCATABLE :: principal(:),reacnodes_pp(:)  
   INTEGER,  ALLOCATABLE :: rest(:,:),g_num_pp(:,:),g_g_pp(:,:),node(:)
   INTEGER,  ALLOCATABLE :: no(:),no_pp(:),no_pp_temp(:),sense(:),etype_pp(:)
-  REAL(iwp),ALLOCATABLE :: g(:)
     
   !Temperature variables
-  INTEGER  :: z
-  
+    
   REAL(iwp),ALLOCATABLE :: dtel(:),dtemp(:),etl(:),cte(:),teps(:)
-  INTEGER(iwp),ALLOCATABLE :: num(:),numc(:)
-  
+  INTEGER(iwp),ALLOCATABLE :: num(:)
   REAL(iwp),ALLOCATABLE :: etl_pp(:,:)
   REAL(iwp),ALLOCATABLE :: tload_pp(:) 
-  REAL(iwp),ALLOCATABLE :: thermalload(:)
-  REAL(iwp),ALLOCATABLE :: ele(:)
-  
+
+   
   
 !------------------------------------------------------------------------------
 ! 2a. Definition of variable names not listed in the 5th edition
@@ -157,18 +152,14 @@ PROGRAM rfemsolve_te
 
   !Force Vector
   ALLOCATE(num(nod))
-  ALLOCATE(numc(nod))
   ALLOCATE(etl(ndof))
   ALLOCATE(dtel(nod))
   ALLOCATE(dtemp(nn))
   ALLOCATE(teps(nst))
    
-  ALLOCATE(g(ndof))
-  
-  ALLOCATE(etl_pp(ndof,nels_pp))
 
   
-  ALLOCATE(ele(nels_pp))
+  ALLOCATE(etl_pp(ndof,nels_pp))
  
   g_num_pp   = 0
   rest       = 0
@@ -296,7 +287,7 @@ PROGRAM rfemsolve_te
   !CHANGE array size
   
   ALLOCATE(tload_pp(neq_pp))
-  ALLOCATE(thermalload(neq_pp)) 
+ 
   
   timest(9) = elap_time()
 
@@ -329,7 +320,7 @@ PROGRAM rfemsolve_te
     cte (2)   = prop(1,etype_pp(iel))
     cte (3)   = prop(1,etype_pp(iel))
     dee = zero
-    etemp=0
+   
     !Relationship between CTE and Young's modulus
     
     v = prop(2,etype_pp(iel))
@@ -347,22 +338,7 @@ PROGRAM rfemsolve_te
     
     !Extraction of nodal temperature changes for each element
     dtel=dtemp(num)
-    
-    !Temperature change average for each element
-    !DO i=1,nip
-    !    CALL shape_fun(fun,points,i)
-    
-    !Calculuation of temperature changes at each integration point
-    !    gtemp=dot_product(fun,dtel)
-    
-    !Storage of temperatures from the integration points
-    !    etemp = gtemp + etemp
-        
-    !END DO
-    
-    !Reassignation of the element average temperature changes to each node of an element
-    !dtel(:) = etemp/REAL(nip)
-                 
+                  
     etl=zero
         
     gauss_pts_1: DO i=1,nip
