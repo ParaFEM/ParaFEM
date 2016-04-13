@@ -7,11 +7,17 @@
 
     Usage: 
   
+  ./cylinder.exe  radius  length  error  label  number_elements
 
+   Example: 
+
+   ./cylinder.exe 1 1 0.01 Newfile 2
+    
   NOTES 
 
   o The program has not yet been finished
   o By default, the element node ordering follows the Abaqus convention
+
 
   AUTHORS
 
