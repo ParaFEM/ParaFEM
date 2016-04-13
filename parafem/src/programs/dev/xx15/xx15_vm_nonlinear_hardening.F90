@@ -512,10 +512,12 @@ PROGRAM xx15_vm_nonlinear_hardening
     ! Increase the stage control by 50% if the number of iterations of the two 
     ! previously converged full increments (not affected by the output  
     ! requests) are below 6
-    !IF ((iter<6).AND.(prev_iter<6).AND.(iload>2)) THEN
-    !  WRITE(*,*) 'The load increment is increased by 50%'
-    !  lambda=1.5*lambda
-    !END IF
+    IF ((iter<6).AND.(prev_iter<6).AND.(iload>2)) THEN
+      IF(numpe==1) THEN
+        WRITE(*,*) 'The load increment is increased by 50%'
+      END IF
+      lambda=1.5*lambda
+    END IF
 
     ! Make sure it is not larger than unity
     !IF (counter_output>number_output) THEN
