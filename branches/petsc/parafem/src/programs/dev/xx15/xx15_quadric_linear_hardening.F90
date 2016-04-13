@@ -495,18 +495,19 @@ PROGRAM xx15_quadric_linear_hardening
 !------------------------------------------------------------------------------
 !------------------------------------------------------------------------------
 
-  !DO iload = 1,max_inc
-  DO iload = 1,5
+  DO iload = 1,max_inc
   
     converged = .FALSE.
 
     ! Increase the stage control by 50% if the number of iterations of the two 
     ! previously converged full increments (not affected by the output  
     ! requests) are below 6
-    !IF ((iter<6).AND.(prev_iter<6).AND.(iload>2)) THEN
-    !  WRITE(*,*) 'The load increment is increased by 50%'
-    !  lambda=1.5*lambda
-    !END IF
+    IF ((iter<6).AND.(prev_iter<6).AND.(iload>2)) THEN
+      IF(numpe==1) THEN
+        WRITE(*,*) 'The load increment is increased by 50%'
+      END IF
+      lambda=1.5*lambda
+    END IF
 
     100 CONTINUE
 
@@ -851,6 +852,7 @@ PROGRAM xx15_quadric_linear_hardening
         p_varray = deltax_pp(1:)
         CALL VecRestoreArrayF90(p_x,p_varray,p_ierr)
         CALL KSPSetInitialGuessNonzero(p_ksp,PETSC_TRUE,p_ierr)
+
         CALL KSPSolve(p_ksp,p_b,p_x,p_ierr)
 
         ! Preconditioned norm tolerance
