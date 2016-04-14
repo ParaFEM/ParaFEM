@@ -19,8 +19,24 @@ fi
 mkdir -p $HOME/modulefiles/parafem
 export modulefile=$HOME/modulefiles/parafem/$version
 
-#module load cray-petsc
-module load cray-petsc-64
+# When the default modules are up to date, then only this line is
+# needed.
+#module load cray-petsc-64
+
+# To get the 14 April 2016 Archer modules the following lines are
+# needed, including an explicit load of cray-tpsl-64.  Switch back to
+# a simple 'module load cray-petsc-64' when the defaults are changed.
+module swap modules modules/3.2.10.3
+module swap cray-mpich cray-mpich/7.3.2
+module swap craype craype/2.5.3
+module swap cce cce/8.4.5
+module swap cray-libsci cray-libsci/16.03.1
+module load cray-tpsl-64/16.03.1
+module load cray-petsc-64/3.6.3.0
+
+module list -t 2>&1 | head -n 1 > $log
+module list -t 2>&1 | tail -n +2 | sort >> $log
+echo >> $log
 
 # There is clock skew between TDS and /home so sleeps are needed.
 
@@ -28,7 +44,7 @@ module load cray-petsc-64
     export PARAFEM_HOME=$(readlink --canonicalize $PWD)
     if [[ $build == 'xx' ]]; then
 	sleep 1 # TDS and /home are sleepy
-	./make-parafem MACHINE=xc30 --no-libs --no-tools -mpi -parafem_petsc --install-mpi-parafem_petsc-only -xx > $log 2>&1
+	./make-parafem MACHINE=xc30 --no-libs --no-tools -mpi -parafem_petsc --install-mpi-parafem_petsc-only -xx >> $log 2>&1
 	sleep 1 # TDS and /home are sleepy
 	cat > $modulefile <<EOF
 #%Module
@@ -57,7 +73,7 @@ EOF
 	./make-parafem MACHINE=xc30 clean execlean &> clean.log
 	rm -f $modulefile
 	sleep 1 # TDS and /home are sleepy
-	./make-parafem MACHINE=xc30 --no-libs --no-tools -mpi -parafem_petsc --install-mpi-parafem_petsc-only --only-modules > $log 2>&1
+	./make-parafem MACHINE=xc30 --no-libs --no-tools -mpi -parafem_petsc --install-mpi-parafem_petsc-only --only-modules >> $log 2>&1
 	sleep 1 # TDS and /home are sleepy
 	./make-parafem MACHINE=xc30 --no-libs -mpi -parafem_petsc --install-mpi-parafem_petsc-only --only-tools -preproc >> $log 2>&1
 	sleep 1 # TDS and /home are sleepy
