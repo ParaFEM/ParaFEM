@@ -5,13 +5,13 @@
   use with CGPACK. The version here has been adapted to output in binary 
   Ensight Gold format.
 
-    Usage: 
-  
-  ./cylinder.exe  radius  length  error  label  number_elements
+   Usage: 
+ 
+     ./cylinder  radius  length  error  label  number_elements
 
    Example: 
 
-   ./cylinder.exe 1 1 0.01 Newfile 2
+    ./cylinder 1 1 0.01 Newfile 2
     
   NOTES 
 
