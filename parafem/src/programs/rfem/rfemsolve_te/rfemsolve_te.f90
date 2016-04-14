@@ -3,8 +3,14 @@ PROGRAM rfemsolve_te
 !      Program rfemsolve_te three dimensional analysis of an elastic solid
 !                        load control or displacement control; multiple
 !                        material types; sequential version
+!      
+!      Author(s): David Arregui and Lee Margetts
+!
+!      Cite DOI : 10.1016/j.nucmat.2015.05.058
+!                 10.1007/s11831-014-9139-3
+!                 
 !------------------------------------------------------------------------------ 
-                      
+                    ! need to change this to test on multiple cores  
   USE mpi_wrapper   ! uncomment line to compile without MPI
 
   USE precision     ; USE global_variables ; USE mp_interface
@@ -39,12 +45,11 @@ PROGRAM rfemsolve_te
   CHARACTER(LEN=50)     :: fname,inst_in,job_in,label,instance_id
   LOGICAL               :: converged = .false.
   
+
+  !New variables
   !Temporal variable
-    
   REAL(iwp)             :: constant
-  REAL(iwp)             :: etemp
-  REAL(iwp)             :: store
-    
+       
   !Temperature value
   REAL(iwp)             :: gtemp
 
@@ -65,19 +70,15 @@ PROGRAM rfemsolve_te
   REAL(iwp),ALLOCATABLE :: principal(:),reacnodes_pp(:)  
   INTEGER,  ALLOCATABLE :: rest(:,:),g_num_pp(:,:),g_g_pp(:,:),node(:)
   INTEGER,  ALLOCATABLE :: no(:),no_pp(:),no_pp_temp(:),sense(:),etype_pp(:)
-  REAL(iwp),ALLOCATABLE :: g(:)
     
   !Temperature variables
-  INTEGER  :: z
-  
+    
   REAL(iwp),ALLOCATABLE :: dtel(:),dtemp(:),etl(:),cte(:),teps(:)
-  INTEGER(iwp),ALLOCATABLE :: num(:),numc(:)
-  
+  INTEGER(iwp),ALLOCATABLE :: num(:)
   REAL(iwp),ALLOCATABLE :: etl_pp(:,:)
   REAL(iwp),ALLOCATABLE :: tload_pp(:) 
-  REAL(iwp),ALLOCATABLE :: thermalload(:)
-  REAL(iwp),ALLOCATABLE :: ele(:)
-  
+
+   
   
 !------------------------------------------------------------------------------
 ! 2a. Definition of variable names not listed in the 5th edition
@@ -151,18 +152,14 @@ PROGRAM rfemsolve_te
 
   !Force Vector
   ALLOCATE(num(nod))
-  ALLOCATE(numc(nod))
   ALLOCATE(etl(ndof))
   ALLOCATE(dtel(nod))
   ALLOCATE(dtemp(nn))
   ALLOCATE(teps(nst))
    
-  ALLOCATE(g(ndof))
-  
-  ALLOCATE(etl_pp(ndof,nels_pp))
 
   
-  ALLOCATE(ele(nels_pp))
+  ALLOCATE(etl_pp(ndof,nels_pp))
  
   g_num_pp   = 0
   rest       = 0
@@ -192,6 +189,10 @@ PROGRAM rfemsolve_te
   fname = inst_in(1:LEN_TRIM(inst_in)) // ".mat" ! Move to subroutine
   CALL read_materialValue(prop,fname,numpe,npes)       ! CALL read_prop? 
   
+!------------------------------------------------------------------------------
+! Nodal temperatures
+!------------------------------------------------------------------------------
+
   !OPEN TEMPERATURE FILES
   !Read the temperature change at each node and assign to the dtemp vector
   
@@ -211,8 +212,9 @@ PROGRAM rfemsolve_te
   bufsize = nn
  
   CALL MPI_BCAST(dtemp,bufsize,MPI_REAL8,0,MPI_COMM_WORLD,ier)
-  
-PRINT *, "READ_MATERIALVALUE COMPLETED"
+
+!------------------------------------------------------------------------------  
+  PRINT *, "READ_MATERIALVALUE COMPLETED"
   
   
 
@@ -285,7 +287,7 @@ PRINT *, "READ_MATERIALVALUE COMPLETED"
   !CHANGE array size
   
   ALLOCATE(tload_pp(neq_pp))
-  ALLOCATE(thermalload(neq_pp)) 
+ 
   
   timest(9) = elap_time()
 
@@ -299,14 +301,18 @@ PRINT *, "READ_MATERIALVALUE COMPLETED"
 
   CALL sample(element,points,weights)
 
-  teps=zero
-  storkm_pp       = zero
+  teps      = zero
+  storkm_pp = zero
   
-  etl_pp = zero
+  etl_pp    = zero
   
-  cte = 0
-  
-  constant = 0.0435
+  cte       = zero
+
+!
+! need to remove constant from the program to make it more generic
+!  
+
+  constant  = 0.0435
    
   elements_3: DO iel=1,nels_pp
                 
@@ -314,10 +320,15 @@ PRINT *, "READ_MATERIALVALUE COMPLETED"
     cte (2)   = prop(1,etype_pp(iel))
     cte (3)   = prop(1,etype_pp(iel))
     dee = zero
-    etemp=0
+   
     !Relationship between CTE and Young's modulus
     
     v = prop(2,etype_pp(iel))
+
+!
+! need to move this outside of the program to make it more generic
+!
+
     e = constant/prop(1,etype_pp(iel))
          
     CALL deemat(dee,e,v)
@@ -327,22 +338,7 @@ PRINT *, "READ_MATERIALVALUE COMPLETED"
     
     !Extraction of nodal temperature changes for each element
     dtel=dtemp(num)
-    
-    !Temperature change average for each element
-    !DO i=1,nip
-    !    CALL shape_fun(fun,points,i)
-    
-    !Calculuation of temperature changes at each integration point
-    !    gtemp=dot_product(fun,dtel)
-    
-    !Storage of temperatures from the integration points
-    !    etemp = gtemp + etemp
-        
-    !END DO
-    
-    !Reassignation of the element average temperature changes to each node of an element
-    !dtel(:) = etemp/REAL(nip)
-                 
+                  
     etl=zero
         
     gauss_pts_1: DO i=1,nip

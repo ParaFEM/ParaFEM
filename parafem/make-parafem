@@ -82,11 +82,11 @@ BUILD_GROUP_5ED="p121 p122 p123 p124 p125 p126 p127 p128 p129 p1210" # p1211
 BUILD_GROUP_XX="xx15 xx18" #"xx1 xx11 xx12 xx12_b xx7 xx8 xx14 xx15 xx18" 
 BUILD_GROUP_PROG8="prog81 prog82 prog83"
 BUILD_GROUP_GAITFEM="gaitfem"
-BUILD_GROUP_RFEM= # "rfemsolve rfemsolve_te"
+BUILD_GROUP_RFEM="rfemsolve rfemsolve_te"
 
 # TOOLS build options
 BUILD_TOOLS_OPT=
-BUILD_GROUP_PREPROC="p12meshgen" #"inp2pf mg2d partitioner dinomesher fearfy KUBCgen rfemfield rfembc rfemcube p12meshgen"
+BUILD_GROUP_PREPROC="p12meshgen" #"inp2pf mg2d partitioner dinomesher fearfy KUBCgen rfemfield rfembc rfemcube p12meshgen p12meshgenbin cylinder"
 BUILD_GROUP_POSTPROC="d2off bnd2dis mat2numpe upvw2dis pf2ensi pf2ensibin pf2ensi_case ensibin2ascii TTR_ensibin2ascii ttrb2ttr ndttrget endian_convert"
 
 # DEFAULT build options for LIBRARIES, MODULES, PROGRAMS and TOOLS
