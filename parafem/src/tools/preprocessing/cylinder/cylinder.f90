@@ -172,7 +172,6 @@ do i = 1, nels_1
 end do
 
 
-
 !CALL ParaFEM subroutines to produce ensi.case files
 CALL MESH_ENSI_CASE(filesuff,nlen,nstep,npri,dtim,solid)
 CALL MESH_ENSI_GEO_BIN(filesuff,nlen,g_coord_1,g_num_1,element1)

@@ -18,7 +18,7 @@ contains
 
 !***************************************************************
 
-subroutine brickel( fname , el1, el2 , el3, g_num)
+subroutine brickel( fname , el1, el2 , el3, g_num, nels_1)
 
 ! dump element definitions to file in abaqus standard
 ! Start from 1. Assume the model is brick, with el1, el2, el3 elements
@@ -87,6 +87,8 @@ do i = 1 , el1
 end do
 end do
 end do
+
+nels_1 = elnum
 
 close( funit, iostat=errstat )
 if ( errstat .ne. 0 ) then
