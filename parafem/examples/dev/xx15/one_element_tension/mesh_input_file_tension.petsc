@@ -1,4 +1,9 @@
--ksp_type minres
+# The combination MINRES/Jacobi in PETSc 3.6.3 gives an error for this test
+# because the residual becomes exactly zero.  PETSc MINRES is corrected in
+# PETSc dev and this will be in a future PETSc release.  In the meantime
+# use conjugate gradient - we want to test the ParaFEM-PETSc interface, not
+# PETSc.
+-ksp_type cg
 #-ksp_rtol 1.0e-5
 #-ksp_atol 1.0e-50
 #-ksp_divtol 1.0e+5
