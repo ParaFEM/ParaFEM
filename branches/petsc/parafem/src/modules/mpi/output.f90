@@ -1400,7 +1400,11 @@ MODULE OUTPUT
                           ((timest(14)-timest(13))/(timest(14)-timest(1)))*100  
     WRITE(11,'(A,F12.6,A/)')  "Total execution time                        ",  &
                           timest(14)-timest(1),"  100.00"
-    
+   
+    WRITE(11,'(/,A)') "Please cite the following references:"
+    WRITE(11,'(/,A)')   "DOI:10.1007/s11831-014-9139-3"
+    WRITE(11,'(A)')     "DOI:10.1016/j.nucmat.2015.05.058"
+ 
     CLOSE(11)
     CLOSE(31)
     
