@@ -314,7 +314,7 @@ end if
 
 end subroutine cyldmp_err
 
-PRINT *, g_coord_1
+!PRINT *, g_coord_1
 
 !***************************************************************
 
