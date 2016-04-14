@@ -23,6 +23,14 @@ INTEGER          :: nlen,nstep,npri
 REAL(8)          :: dtim
 LOGICAL          :: solid
 
+!Variables for MESH_ENSI_MATID_BIN, MESH_ENSI_NDLDS_BIN
+
+double precision, ALLOCATABLE  :: loads(:)
+double precision, ALLOCATABLE  :: etype_1(:)
+INTEGER          :: nod_1
+INTEGER          :: nels_1
+INTEGER, ALLOCATABLE :: nf_1(:,:)
+
 
 !Variables for subroutine ESH_ENSI_GEO_BIN
 INTEGER, ALLOCATABLE           :: g_num_1(:,:)
@@ -139,12 +147,40 @@ npri = 1
 dtim = 1.0
 solid = .true.
 element1 = 'hexahedron'
+nod_1 = 8
+
+!Allocation of variables for subroutines 
+ALLOCATE(etype_1(nel3*nel*nel))
+ALLOCATE(nf_1(4,nels_1))
+ALLOCATE(loads(nels_1))
+
+
+!Material properties assignation
+do i = 1, nel3*nel*nel
+	etype_1(i) = 10000
+end do
+
+
+do i = 1, nels_1
+
+	loads(i) = 1.0
+	nf_1(1,i) = i
+	nf_1(2,i) = 0
+	nf_1(3,i) = 0
+	nf_1(4,i) = 0
+
+end do
+
 
 
 !CALL ParaFEM subroutines to produce ensi.case files
 CALL MESH_ENSI_CASE(filesuff,nlen,nstep,npri,dtim,solid)
 CALL MESH_ENSI_GEO_BIN(filesuff,nlen,g_coord_1,g_num_1,element1)
 
+
+CALL MESH_ENSI_MATID_BIN(filesuff,nlen,nod_1,element1,etype_1)
+CALL MESH_ENSI_NDLDS_BIN(filesuff,nlen,nf_1,loads)
+!CALL MESH_ENSI_NDBND_BIN(filesuff,nf_1,nlen,nod_1,solid)
 
 CONTAINS
 
@@ -459,5 +495,289 @@ SUBROUTINE MESH_ENSI_GEO_BIN(argv,nlen,g_coord,g_num,element)
     RETURN
   
   END SUBROUTINE MESH_ENSI_GEO_BIN
+
+!------------------------------------------------------------------------------
+!------------------------------------------------------------------------------
+!------------------------------------------------------------------------------
+
+  SUBROUTINE MESH_ENSI_MATID_BIN(argv,nlen,nod,element,etype)
+
+   !/****f* input/mesh_ensi_matid_bin
+   !*  NAME
+   !*    SUBROUTINE: mesh_ensi_matid_bin
+   !*  SYNOPSIS
+   !*    Usage:      CALL mesh_ensi_matid_bin(argv,nlen,nod,element,etype)
+   !*  FUNCTION
+   !*    This subroutine outputs material type for each element in the mesh
+   !*    in the C binary version of the Ensight gold format. Models in this 
+   !*    format can be viewed in ParaView.
+   !*  INPUTS
+   !*    Scalar integers
+   !*    nlen             : number of characters in data file base name
+   !*    nod              : number of nodes in the element
+   !*
+   !*    Scalar characters
+   !*    argv             : holds data file base name
+   !*	 element          : element type
+   !*
+   !*    Dynamic scalar arrays
+   !*    etype            : element property type vector
+   !* 
+   !*  OUTPUTS
+   !*  AUTHOR
+   !*    L. Margetts
+   !*  COPYRIGHT
+   !*    (c) University of Manchester 2004-2014
+   !******
+   !*  Place remarks that should not be included in the documentation here.
+   !*
+   !*  ParaView has a bug which prevents the 'Material' section of the 
+   !*  ENSIGHT Gold to be read and therefore integer MATID values
+   !*  http://www.paraview.org/Bug/view.php?id=15151
+   !*  http://www3.ensight.com/EnSight10_Docs/UserManual.pdf pp.713
+   !*  Workaround - use MATIDs as reals and convert into int for ParaFEM
+   !*
+   !*/
+
+    USE, INTRINSIC :: ISO_C_BINDING
+    
+    IMPLICIT none
+  
+    INTEGER,PARAMETER             :: iwp=SELECTED_REAL_KIND(15)
+    INTEGER,   INTENT(IN)         :: nlen,nod
+    REAL(iwp), INTENT(IN)         :: etype(:)
+    CHARACTER(LEN=15), INTENT(IN) :: argv,element  
+    CHARACTER(LEN=80)             :: cbuffer
+  
+!------------------------------------------------------------------------------
+! 1. Write file containing material IDs
+!------------------------------------------------------------------------------
+  
+    OPEN(14,FILE=argv(1:nlen)//'.bin.ensi.MATID',STATUS="REPLACE",            &
+                 FORM="UNFORMATTED", ACTION="WRITE", ACCESS="STREAM")
+
+    cbuffer = "Alya Ensight Gold --- Scalar per-element variable file"
+    WRITE(14) cbuffer
+    cbuffer = "part" ;  WRITE(14)
+    WRITE(14) cbuffer
+    WRITE(14) int(1,kind=c_int)
+    cbuffer = "coordinates" ; WRITE(14)
+  
+    SELECT CASE(element)
+      CASE('triangle')
+        SELECT CASE(nod) 
+          CASE(3)
+            cbuffer = "tria3" ; WRITE(14) cbuffer
+          CASE DEFAULT
+            WRITE(14,'(A)') "# Element type not recognised"
+        END SELECT
+      CASE('quadrilateral')
+        SELECT CASE(nod) 
+          CASE(4)
+            cbuffer = "quad4" ; WRITE(14) cbuffer
+          CASE(8)
+            cbuffer = "quad8" ; WRITE(14) cbuffer
+          CASE DEFAULT
+            WRITE(14,'(A)') "# Element type not recognised"
+        END SELECT
+      CASE('hexahedron')
+        SELECT CASE(nod) 
+          CASE(8)
+            cbuffer = "hexa8"   ; WRITE(14) cbuffer
+          CASE(20)
+            cbuffer = "hexa20"  ; WRITE(14) cbuffer
+          CASE DEFAULT
+            WRITE(14,'(A)') "# Element type not recognised"
+        END SELECT
+      CASE('tetrahedron')
+        SELECT CASE(nod)
+          CASE(4)
+            WRITE(14,'(A)') "tetra4"
+          CASE DEFAULT
+          WRITE(14,'(A)') "# Element type not recognised"
+        END SELECT
+      CASE DEFAULT
+        WRITE(14,'(A)')   "# Element type not recognised"
+    END SELECT
+   
+    WRITE(14) real(etype(:),kind=c_float) 
+    !PRINT *, etype
+    CLOSE(14)
+  
+    RETURN
+  
+  END SUBROUTINE MESH_ENSI_MATID_BIN
+  
+!------------------------------------------------------------------------------
+!------------------------------------------------------------------------------
+!------------------------------------------------------------------------------
+
+  SUBROUTINE MESH_ENSI_NDBND_BIN(argv,nf,nlen,nod,solid)
+
+   !/****f* input/mesh_ensi_ndbnd_bin
+   !*  NAME
+   !*    SUBROUTINE: mesh_ensi_ndbnd_bin
+   !*  SYNOPSIS
+   !*    Usage:      CALL mesh_ensi_ndbnd_bin(argv,nf,nlen,nod,solid)
+   !*  FUNCTION
+   !*    This subroutine outputs a file of restrained nodes in the C binary 
+   !*    version of the Ensight gold format. Models in this format can be 
+   !*    viewed in ParaView.
+   !*  INPUTS
+   !*    Scalar integers
+   !*    nlen             : number of characters in data file base name
+   !*    nod              : number of nodes per element
+   !*    Scalar characters
+   !*    argv             : holds data file base name
+   !*
+   !*    Scalar logicals
+   !*    solid            : type of analysis solid if .true. fluid if .false.
+   !*
+   !*    Dynamic scalar arrays
+   !*    nf               : nodal freedom matrix
+   !*  OUTPUTS
+   !*    File: <job_name>.bin.ensi.NDBND 
+   !*  AUTHOR
+   !*    L. Margetts
+   !*  COPYRIGHT
+   !*    (c) University of Manchester 2004-2014
+   !******
+   !*  Place remarks that should not be included in the documentation here.
+   !*
+   !*/
+
+    USE, INTRINSIC :: ISO_C_BINDING
+    
+    IMPLICIT none
+  
+    INTEGER,PARAMETER             :: iwp=SELECTED_REAL_KIND(15)
+    INTEGER,   INTENT(IN)         :: nlen,nod
+    INTEGER,   INTENT(IN)         :: nf(:,:)
+    INTEGER                       :: i,nfe,nn,ndim
+    CHARACTER(LEN=15), INTENT(IN) :: argv  
+    CHARACTER(LEN=80)             :: cbuffer
+    LOGICAL, INTENT(IN)           :: solid
+    
+  !------------------------------------------------------------------------------
+  ! 1. Initialisation
+  !------------------------------------------------------------------------------
+  
+    ndim = UBOUND(nf,1)-1  
+    nn   = UBOUND(nf,2)
+  
+  !------------------------------------------------------------------------------
+  ! 2. Write boundary conditions. Encoded using formula: 4z + 2y + 1x
+  !
+  !    110 = 1   010 = 2   100 = 3   011 = 4   101 = 5   001 = 6   000 = 7
+  !-----------------------------------------------------------------------------
+  
+    IF(solid) THEN
+
+      OPEN(15,FILE=argv(1:nlen)//'.bin.ensi.NDBND',STATUS="REPLACE",           &
+                 FORM="UNFORMATTED", ACTION="WRITE", ACCESS="STREAM")
+
+      cbuffer = "Alya Ensight Gold --- Scalar per-node variable file"
+      WRITE(15)
+      cbuffer = "part"         ; WRITE(15)
+      WRITE(15) int(1,kind=c_int)
+      cbuffer = "coordinates"  ; WRITE(15)
+
+      IF(ndim==3) THEN
+        DO i=1,nod 
+          nfe=0
+          IF(nf(1,i)==0) nfe=nfe+1
+          IF(nf(2,i)==0) nfe=nfe+2
+          IF(nf(3,i)==0) nfe=nfe+4
+          WRITE(15) int(nfe,kind=c_int)
+        END DO
+      ELSE IF(ndim==2) THEN
+        DO i=1,nn
+          nfe=0
+          IF(nf(1,i)==0) nfe=nfe+1
+          IF(nf(2,i)==0) nfe=nfe+2
+          WRITE(15) int(nfe,kind=c_int)
+        END DO
+      ELSE
+        PRINT *, "Wrong number of dimensions in mesh_ensi"
+      END IF   
+    END IF
+  
+	
+    CLOSE(15)
+  
+    RETURN
+  
+  END SUBROUTINE MESH_ENSI_NDBND_BIN
+
+ SUBROUTINE MESH_ENSI_NDLDS_BIN(argv,nlen,nf,loads)
+
+   !/****f* input/mesh_ensi_ndlds_bin
+   !*  NAME
+   !*    SUBROUTINE: mesh_ensi_ndlds_bin
+   !*  SYNOPSIS
+   !*    Usage:      CALL mesh_ensi_ndlds_bin(argv,nlen,nf,loads)
+   !*  FUNCTION
+   !*    This subroutine outputs a file of loads in the C binary version of the 
+   !*    Ensight gold format. Models in this format can be viewed in ParaView.
+   !*  INPUTS
+   !*    Scalar integers
+   !*    nlen             : number of characters in data file base name
+   !*
+   !*    Scalar characters
+   !*    argv             : holds data file base name
+   !*
+   !*    Dynamic scalar arrays
+   !*    nf               : nodal freedom matrix
+   !* 
+   !*    Dynamic real arrays
+   !*	 oldlds           : initial loads vector
+   !*
+   !*  OUTPUTS
+   !*  AUTHOR
+   !*    L. Margetts
+   !*  COPYRIGHT
+   !*    (c) University of Manchester 2004-2014
+   !******
+   !*  Place remarks that should not be included in the documentation here.
+   !*
+   !*/
+
+    USE, INTRINSIC :: ISO_C_BINDING
+    
+    IMPLICIT none
+  
+    INTEGER,PARAMETER             :: iwp=SELECTED_REAL_KIND(15)
+    INTEGER,   INTENT(IN)         :: nlen
+    INTEGER,   INTENT(IN)         :: nf(:,:)
+    INTEGER                       :: i,j
+    REAL(iwp), INTENT(IN)         :: loads(:)
+    CHARACTER(LEN=15), INTENT(IN) :: argv
+    CHARACTER(LEN=80)             :: cbuffer
+    
+  !-----------------------------------------------------------------------------
+  ! 1. Write loaded nodes
+  !-----------------------------------------------------------------------------
+  
+    OPEN(16,FILE=argv(1:nlen)//'.bin.ensi.NDLDS',STATUS="REPLACE",             &
+                 FORM="UNFORMATTED", ACTION="WRITE", ACCESS="STREAM")
+
+    cbuffer = "Alya Ensight Gold --- Vector per-node variable file"
+    WRITE(16)
+    cbuffer = "part"        ; WRITE(16)
+    WRITE(16) int(1,kind=c_int)
+    cbuffer = "coordinates" ; WRITE(16)
+
+    DO j=1,UBOUND(nf,1)
+      DO i=1, UBOUND(nf,2)
+        WRITE(16) real(loads(nf(j,i)),kind=c_float)
+      END DO
+    END DO
+    CLOSE(16)
+  
+    RETURN
+  
+  END SUBROUTINE MESH_ENSI_NDLDS_BIN
+
+
 
 end program cylinder
