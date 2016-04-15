@@ -18,7 +18,7 @@ contains
 
 !***************************************************************
 
-subroutine brickel( fname , el1, el2 , el3, g_num, nels_1)
+subroutine brickel( fname , el1, el2 , el3, g_num)
 
 ! dump element definitions to file in abaqus standard
 ! Start from 1. Assume the model is brick, with el1, el2, el3 elements
@@ -26,6 +26,9 @@ subroutine brickel( fname , el1, el2 , el3, g_num, nels_1)
 
 character( len=* ), intent(in) :: fname
 integer, intent(in) :: el1, el2, el3
+
+
+
 
 integer :: funit, errstat, i, j, k , elnum, nd1, nd2, nd3, nd12,       &
  full_lay, full_row, fullt, node1, node2, node3, node4, node5,         &
@@ -88,7 +91,7 @@ end do
 end do
 end do
 
-nels_1 = elnum
+
 
 close( funit, iostat=errstat )
 if ( errstat .ne. 0 ) then
@@ -187,7 +190,7 @@ end subroutine cyldmp
 
 !***************************************************************
 
-subroutine cyldmp_err( fname, nbot, nmid, ntop, rad, dist, err, array, g_coord_1 )
+subroutine cyldmp_err( fname, nbot, nmid, ntop, rad, dist, err, array, g_coord_1, nels_1 )
 
 ! - replicate circle nodes along 3. First "nbot" times a perfect
 !   circle, then "nmid" times with a random error of +- "err" in
@@ -212,6 +215,8 @@ double precision :: coord1, coord2, coord3, rnderr(2)
 
 
 !New Variables
+integer, intent(out)   :: nels_1
+
 double precision :: storagecoord(3)
 double precision, Allocatable, intent(inout) :: g_coord_1(:,:)
 INTEGER  :: findex
@@ -309,6 +314,8 @@ do i = 1 , arrlen
 end do
 end do
  
+nels_1 = nn
+
 close( funit, iostat=errstat )
 if ( errstat .ne. 0 ) then
   stop "ERROR: cirep: close"

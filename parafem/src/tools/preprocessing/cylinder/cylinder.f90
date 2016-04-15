@@ -111,7 +111,7 @@ call circle( nel , circ )
  !subroutine cyldmp_err( fname, nbot, nmid, ntop, rad, dist, err, array )
 
 call cyldmp_err( trim( nodefile ), int( fixed_len), int( length ),     &
-                 int( fixed_len ), rad, dist, cerr, circ, g_coord_1 )
+                 int( fixed_len ), rad, dist, cerr, circ, g_coord_1, nels_1 )
 
 ALLOCATE(g_num_1(8,nel3*nel*nel))
 
@@ -180,6 +180,9 @@ CALL MESH_ENSI_GEO_BIN(filesuff,nlen,g_coord_1,g_num_1,element1)
 CALL MESH_ENSI_MATID_BIN(filesuff,nlen,nod_1,element1,etype_1)
 CALL MESH_ENSI_NDLDS_BIN(filesuff,nlen,nf_1,loads)
 !CALL MESH_ENSI_NDBND_BIN(filesuff,nf_1,nlen,nod_1,solid)
+
+!PRINT *, "nels_1"
+!PRINT *, nels_1
 
 CONTAINS
 
