@@ -179,7 +179,7 @@ CALL MESH_ENSI_GEO_BIN(filesuff,nlen,g_coord_1,g_num_1,element1)
 
 CALL MESH_ENSI_MATID_BIN(filesuff,nlen,nod_1,element1,etype_1)
 CALL MESH_ENSI_NDLDS_BIN(filesuff,nlen,nf_1,loads)
-!CALL MESH_ENSI_NDBND_BIN(filesuff,nf_1,nlen,nod_1,solid)
+CALL MESH_ENSI_NDBND_BIN(filesuff,nf_1,nlen,nod_1,solid)
 
 !PRINT *, "nels_1"
 !PRINT *, nels_1
@@ -655,19 +655,25 @@ SUBROUTINE MESH_ENSI_GEO_BIN(argv,nlen,g_coord,g_num,element)
     INTEGER,PARAMETER             :: iwp=SELECTED_REAL_KIND(15)
     INTEGER,   INTENT(IN)         :: nlen,nod
     INTEGER,   INTENT(IN)         :: nf(:,:)
-    INTEGER                       :: i,nfe,nn,ndim
+    INTEGER                       :: i,nn,ndim
+!   INTEGER                       :: nfe
+    REAL(iwp)                     :: nfe
     CHARACTER(LEN=15), INTENT(IN) :: argv  
     CHARACTER(LEN=80)             :: cbuffer
     LOGICAL, INTENT(IN)           :: solid
     
-  !------------------------------------------------------------------------------
+  !-----------------------------------------------------------------------------
   ! 1. Initialisation
-  !------------------------------------------------------------------------------
+  !-----------------------------------------------------------------------------
   
     ndim = UBOUND(nf,1)-1  
     nn   = UBOUND(nf,2)
-  
-  !------------------------------------------------------------------------------
+ 
+    PRINT *, "ndim=",ndim
+    PRINT *, "nn=",nn
+    PRINT *, "solid=",solid
+ 
+  !-----------------------------------------------------------------------------
   ! 2. Write boundary conditions. Encoded using formula: 4z + 2y + 1x
   !
   !    110 = 1   010 = 2   100 = 3   011 = 4   101 = 5   001 = 6   000 = 7
@@ -679,18 +685,19 @@ SUBROUTINE MESH_ENSI_GEO_BIN(argv,nlen,g_coord,g_num,element)
                  FORM="UNFORMATTED", ACTION="WRITE", ACCESS="STREAM")
 
       cbuffer = "Alya Ensight Gold --- Scalar per-node variable file"
-      WRITE(15)
-      cbuffer = "part"         ; WRITE(15)
+      WRITE(15) cbuffer
+      cbuffer = "part"         ; WRITE(15) cbuffer
       WRITE(15) int(1,kind=c_int)
-      cbuffer = "coordinates"  ; WRITE(15)
+      cbuffer = "coordinates"  ; WRITE(15) cbuffer
 
       IF(ndim==3) THEN
-        DO i=1,nod 
+        DO i=1,nn 
           nfe=0
           IF(nf(1,i)==0) nfe=nfe+1
           IF(nf(2,i)==0) nfe=nfe+2
           IF(nf(3,i)==0) nfe=nfe+4
-          WRITE(15) int(nfe,kind=c_int)
+          WRITE(15) real(nfe,kind=c_float) 
+!         WRITE(15) int(nfe,kind=c_int)
         END DO
       ELSE IF(ndim==2) THEN
         DO i=1,nn
