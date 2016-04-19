@@ -190,7 +190,7 @@ end subroutine cyldmp
 
 !***************************************************************
 
-subroutine cyldmp_err( fname, nbot, nmid, ntop, rad, dist, err, array, g_coord_1, nels_1 )
+subroutine cyldmp_err( fname, nbot, nmid, ntop, rad, dist, err, array, g_coord_1, nn_1 )
 
 ! - replicate circle nodes along 3. First "nbot" times a perfect
 !   circle, then "nmid" times with a random error of +- "err" in
@@ -215,7 +215,7 @@ double precision :: coord1, coord2, coord3, rnderr(2)
 
 
 !New Variables
-integer, intent(out)   :: nels_1
+integer, intent(out)   :: nn_1
 
 double precision :: storagecoord(3)
 double precision, Allocatable, intent(inout) :: g_coord_1(:,:)
@@ -314,7 +314,7 @@ do i = 1 , arrlen
 end do
 end do
  
-nels_1 = nn
+nn_1 = nn
 
 close( funit, iostat=errstat )
 if ( errstat .ne. 0 ) then
