@@ -28,8 +28,10 @@ LOGICAL          :: solid
 double precision, ALLOCATABLE  :: loads(:)
 double precision, ALLOCATABLE  :: etype_1(:)
 INTEGER          :: nod_1
-INTEGER          :: nels_1
+INTEGER          :: nn
 INTEGER, ALLOCATABLE :: nf_1(:,:)
+
+double precision, ALLOCATABLE  :: val(:,:)
 
 
 !Variables for subroutine ESH_ENSI_GEO_BIN
@@ -111,7 +113,7 @@ call circle( nel , circ )
  !subroutine cyldmp_err( fname, nbot, nmid, ntop, rad, dist, err, array )
 
 call cyldmp_err( trim( nodefile ), int( fixed_len), int( length ),     &
-                 int( fixed_len ), rad, dist, cerr, circ, g_coord_1, nels_1 )
+                 int( fixed_len ), rad, dist, cerr, circ, g_coord_1, nn )
 
 ALLOCATE(g_num_1(8,nel3*nel*nel))
 
@@ -151,8 +153,10 @@ nod_1 = 8
 
 !Allocation of variables for subroutines 
 ALLOCATE(etype_1(nel3*nel*nel))
-ALLOCATE(nf_1(4,nels_1))
-ALLOCATE(loads(nels_1))
+ALLOCATE(nf_1(4,nn))
+ALLOCATE(loads(nn))
+
+ALLOCATE(val(4,nn))
 
 
 !Material properties assignation
@@ -161,15 +165,27 @@ do i = 1, nel3*nel*nel
 end do
 
 
-do i = 1, nels_1
+do i = 1, nn
 
-	loads(i) = 1.0
+
 	nf_1(1,i) = i
 	nf_1(2,i) = 0
-	nf_1(3,i) = 0
+	nf_1(3,i) = 1
 	nf_1(4,i) = 0
 
 end do
+
+
+do i = 1, nn
+
+
+        val(1,i) = i
+	val(2,i) = 0
+	val(3,i) = 1
+	val(4,i) = 0
+
+end do
+
 
 
 !CALL ParaFEM subroutines to produce ensi.case files
@@ -178,11 +194,11 @@ CALL MESH_ENSI_GEO_BIN(filesuff,nlen,g_coord_1,g_num_1,element1)
 
 
 CALL MESH_ENSI_MATID_BIN(filesuff,nlen,nod_1,element1,etype_1)
-CALL MESH_ENSI_NDLDS_BIN(filesuff,nlen,nf_1,loads)
+
 CALL MESH_ENSI_NDBND_BIN(filesuff,nf_1,nlen,nod_1,solid)
 
-!PRINT *, "nels_1"
-!PRINT *, nels_1
+
+
 
 CONTAINS
 
@@ -693,11 +709,11 @@ SUBROUTINE MESH_ENSI_GEO_BIN(argv,nlen,g_coord,g_num,element)
       IF(ndim==3) THEN
         DO i=1,nn 
           nfe=0
-          IF(nf(1,i)==0) nfe=nfe+1
-          IF(nf(2,i)==0) nfe=nfe+2
-          IF(nf(3,i)==0) nfe=nfe+4
+          IF(nf(2,i)==0) nfe=nfe+1
+          IF(nf(3,i)==0) nfe=nfe+2
+          IF(nf(4,i)==0) nfe=nfe+4
           WRITE(15) real(nfe,kind=c_float) 
-!         WRITE(15) int(nfe,kind=c_int)
+         !WRITE(15) int(nfe,kind=c_int)
         END DO
       ELSE IF(ndim==2) THEN
         DO i=1,nn
@@ -718,7 +734,7 @@ SUBROUTINE MESH_ENSI_GEO_BIN(argv,nlen,g_coord,g_num,element)
   
   END SUBROUTINE MESH_ENSI_NDBND_BIN
 
- SUBROUTINE MESH_ENSI_NDLDS_BIN(argv,nlen,nf,loads)
+SUBROUTINE MESH_ENSI_NDLDS_BIN2(argv,nlen,nf,loads)
 
    !/****f* input/mesh_ensi_ndlds_bin
    !*  NAME
@@ -771,10 +787,10 @@ SUBROUTINE MESH_ENSI_GEO_BIN(argv,nlen,g_coord,g_num,element)
                  FORM="UNFORMATTED", ACTION="WRITE", ACCESS="STREAM")
 
     cbuffer = "Alya Ensight Gold --- Vector per-node variable file"
-    WRITE(16)
-    cbuffer = "part"        ; WRITE(16)
+    WRITE(16) cbuffer
+    cbuffer = "part"        ; WRITE(16) cbuffer
     WRITE(16) int(1,kind=c_int)
-    cbuffer = "coordinates" ; WRITE(16)
+    cbuffer = "coordinates" ; WRITE(16) cbuffer
 
     DO j=1,UBOUND(nf,1)
       DO i=1, UBOUND(nf,2)
@@ -785,8 +801,100 @@ SUBROUTINE MESH_ENSI_GEO_BIN(argv,nlen,g_coord,g_num,element)
   
     RETURN
   
-  END SUBROUTINE MESH_ENSI_NDLDS_BIN
+  END SUBROUTINE MESH_ENSI_NDLDS_BIN2
 
+SUBROUTINE MESH_ENSI_NDLDS_BIN(argv,nlen,val)
+
+   !/****f* input/mesh_ensi_ndlds_bin
+   !*  NAME
+   !*    SUBROUTINE: mesh_ensi_ndlds_bin
+   !*  SYNOPSIS
+   !*    Usage:      CALL mesh_ensi_ndlds_bin(argv,nlen,nf,loads)
+   !*  FUNCTION
+   !*    This subroutine outputs a file of loads in the C binary version of the 
+   !*    Ensight gold format. Models in this format can be viewed in ParaView.
+   !*  INPUTS
+   !*    Scalar integers
+   !*    nlen             : number of characters in data file base name
+   !*
+   !*    Scalar characters
+   !*    argv             : holds data file base name
+   !*
+   !*    Dynamic scalar arrays
+   !*    nf               : nodal freedom matrix
+   !* 
+   !*    Dynamic real arrays
+   !*	 oldlds           : initial loads vector
+   !*
+   !*  OUTPUTS
+   !*  AUTHOR
+   !*    L. Margetts
+   !*  COPYRIGHT
+   !*    (c) University of Manchester 2004-2014
+   !******
+   !*  Place remarks that should not be included in the documentation here.
+   !*
+   !*/
+
+    USE, INTRINSIC :: ISO_C_BINDING
+    
+    IMPLICIT none
+  
+    INTEGER,PARAMETER             :: iwp=SELECTED_REAL_KIND(15)
+    INTEGER,   INTENT(IN)         :: nlen
+    REAL,   INTENT(IN)            :: val(:,:)
+    INTEGER                       :: i,j,k,ndim,nn
+    !REAL(iwp), INTENT(IN)         :: loads(:)
+    CHARACTER(LEN=15), INTENT(IN) :: argv
+    CHARACTER(LEN=80)             :: cbuffer
+        
+    REAL                          :: zero
+
+    ndim = UBOUND(val,1)-1  
+    nn   = UBOUND(val,2)
+
+  !-----------------------------------------------------------------------------
+  ! 1. Write loaded nodes
+  !-----------------------------------------------------------------------------
+  
+    OPEN(16,FILE=argv(1:nlen)//'.bin.ensi.NDLDS',STATUS="REPLACE",             &
+                 FORM="UNFORMATTED", ACTION="WRITE", ACCESS="STREAM")
+
+    cbuffer = "Alya Ensight Gold --- Vector per-node variable file"
+    WRITE(16) cbuffer
+
+    cbuffer = "part"        ; WRITE(16) cbuffer
+    WRITE(16) int(1,kind=c_int)
+    cbuffer = "coordinates" ; WRITE(16) cbuffer
+
+    k=1
+    zero = 0.0
+
+    DO i=1,ndim
+    	DO j=1,nn
+	   !IF(j=node(k)) THEN
+           k=k+1
+	   WRITE(16) REAL(val(i,j), kind=c_float)
+
+	   
+		
+           !ELSE
+
+           WRITE(16) REAL(zero, kind=c_float)
+                
+           !END IF
+
+       END DO
+    END DO
+
+   
+PRINT *, val(i,j)
+
+    CLOSE(16)
+  
+    RETURN
+  
+  END SUBROUTINE MESH_ENSI_NDLDS_BIN
 
 
 end program cylinder
