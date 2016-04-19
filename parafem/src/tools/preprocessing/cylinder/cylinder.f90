@@ -734,7 +734,7 @@ SUBROUTINE MESH_ENSI_GEO_BIN(argv,nlen,g_coord,g_num,element)
   
   END SUBROUTINE MESH_ENSI_NDBND_BIN
 
-SUBROUTINE MESH_ENSI_NDLDS_BIN2(argv,nlen,nf,loads)
+SUBROUTINE MESH_ENSI_NDLDS_BIN(argv,nlen,nf,loads)
 
    !/****f* input/mesh_ensi_ndlds_bin
    !*  NAME
@@ -801,9 +801,9 @@ SUBROUTINE MESH_ENSI_NDLDS_BIN2(argv,nlen,nf,loads)
   
     RETURN
   
-  END SUBROUTINE MESH_ENSI_NDLDS_BIN2
+  END SUBROUTINE MESH_ENSI_NDLDS_BIN
 
-SUBROUTINE MESH_ENSI_NDLDS_BIN(argv,nlen,val)
+SUBROUTINE MESH_ENSI_NDLDS_BIN2(argv,nlen,nn,val,node)
 
    !/****f* input/mesh_ensi_ndlds_bin
    !*  NAME
@@ -824,13 +824,13 @@ SUBROUTINE MESH_ENSI_NDLDS_BIN(argv,nlen,val)
    !*    nf               : nodal freedom matrix
    !* 
    !*    Dynamic real arrays
-   !*	 oldlds           : initial loads vector
+   !*	 xxxxx           : initial loads vector
    !*
    !*  OUTPUTS
-   !*  AUTHOR
-   !*    L. Margetts
+   !*  AUTHORS
+   !*    J.D Arregui-Mena &L. Margetts
    !*  COPYRIGHT
-   !*    (c) University of Manchester 2004-2014
+   !*    (c) University of Manchester 2004-2016
    !******
    !*  Place remarks that should not be included in the documentation here.
    !*
@@ -841,17 +841,15 @@ SUBROUTINE MESH_ENSI_NDLDS_BIN(argv,nlen,val)
     IMPLICIT none
   
     INTEGER,PARAMETER             :: iwp=SELECTED_REAL_KIND(15)
-    INTEGER,   INTENT(IN)         :: nlen
-    REAL,   INTENT(IN)            :: val(:,:)
-    INTEGER                       :: i,j,k,ndim,nn
-    !REAL(iwp), INTENT(IN)         :: loads(:)
+    INTEGER, INTENT(IN)           :: nlen,nn
+    INTEGER, INTENT(IN)           :: node(:)  !(loaded_nodes)
+    REAL(iwp), INTENT(IN)         :: val(:,:) !(ndim,loaded_nodes)
+    INTEGER                       :: i,j,k,ndim
     CHARACTER(LEN=15), INTENT(IN) :: argv
     CHARACTER(LEN=80)             :: cbuffer
-        
-    REAL                          :: zero
+    REAL(iwp),PARAMETER           :: zero=0.0_iwp
 
-    ndim = UBOUND(val,1)-1  
-    nn   = UBOUND(val,2)
+    ndim = UBOUND(val,1)  
 
   !-----------------------------------------------------------------------------
   ! 1. Write loaded nodes
@@ -862,39 +860,32 @@ SUBROUTINE MESH_ENSI_NDLDS_BIN(argv,nlen,val)
 
     cbuffer = "Alya Ensight Gold --- Vector per-node variable file"
     WRITE(16) cbuffer
-
-    cbuffer = "part"        ; WRITE(16) cbuffer
+    cbuffer = "part"        
+    WRITE(16) cbuffer
     WRITE(16) int(1,kind=c_int)
-    cbuffer = "coordinates" ; WRITE(16) cbuffer
+    cbuffer = "coordinates" 
+    WRITE(16) cbuffer
 
     k=1
-    zero = 0.0
 
     DO i=1,ndim
-    	DO j=1,nn
-	   !IF(j=node(k)) THEN
-           k=k+1
-	   WRITE(16) REAL(val(i,j), kind=c_float)
-
-	   
-		
-           !ELSE
-
-           WRITE(16) REAL(zero, kind=c_float)
-                
-           !END IF
-
-       END DO
+      DO j=1,nn
+        IF(j==node(k)) THEN
+          k=k+1
+          WRITE(16) REAL(val(i,k), kind=c_float)
+        ELSE
+          WRITE(16) REAL(zero, kind=c_float)
+        END IF
+      END DO
     END DO
-
    
-PRINT *, val(i,j)
+    PRINT *, val
 
     CLOSE(16)
   
     RETURN
   
-  END SUBROUTINE MESH_ENSI_NDLDS_BIN
+  END SUBROUTINE MESH_ENSI_NDLDS_BIN2
 
 
 end program cylinder
