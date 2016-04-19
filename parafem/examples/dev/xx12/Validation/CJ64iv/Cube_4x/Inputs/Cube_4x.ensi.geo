@@ -1,11 +1,11 @@
-C Binary                                                                        
+
 Problem name: Cube_4x                                                           
 Geometry files                                                                  
-node id off                                                                     
-element id off                                                                  
+node id given                                                                   
+element id given                                                                
 part                                                                            
 1
-Volume                                                                          
+Volume Mesh                                                                     
 coordinates                                                                     
 125
 2.500000000000E+000
