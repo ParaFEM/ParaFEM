@@ -7387,7 +7387,7 @@ END SUBROUTINE bcast_inputdata_p127
 !------------------------------------------------------------------------------
 !------------------------------------------------------------------------------
 
-  SUBROUTINE MESH_ENSI_MATID_BIN(argv,nlen,nod,element,etype)
+ SUBROUTINE MESH_ENSI_MATID_BIN(argv,nlen,nod,element,etype)
 
    !/****f* input/mesh_ensi_matid_bin
    !*  NAME
@@ -7445,9 +7445,10 @@ END SUBROUTINE bcast_inputdata_p127
 
     cbuffer = "Alya Ensight Gold --- Scalar per-element variable file"
     WRITE(14) cbuffer
-    cbuffer = "part"
+    cbuffer = "part" ;  WRITE(14)
     WRITE(14) cbuffer
     WRITE(14) int(1,kind=c_int)
+    cbuffer = "coordinates" ; WRITE(14)
   
     SELECT CASE(element)
       CASE('triangle')
@@ -7487,7 +7488,7 @@ END SUBROUTINE bcast_inputdata_p127
     END SELECT
    
     WRITE(14) real(etype(:),kind=c_float) 
-  
+    
     CLOSE(14)
   
     RETURN
@@ -7498,7 +7499,7 @@ END SUBROUTINE bcast_inputdata_p127
 !------------------------------------------------------------------------------
 !------------------------------------------------------------------------------
 
-  SUBROUTINE MESH_ENSI_NDBND_BIN(argv,nf,nlen,nod,solid)
+ SUBROUTINE MESH_ENSI_NDBND_BIN(argv,nf,nlen,nod,solid)
 
    !/****f* input/mesh_ensi_ndbnd_bin
    !*  NAME
@@ -7539,19 +7540,25 @@ END SUBROUTINE bcast_inputdata_p127
     INTEGER,PARAMETER             :: iwp=SELECTED_REAL_KIND(15)
     INTEGER,   INTENT(IN)         :: nlen,nod
     INTEGER,   INTENT(IN)         :: nf(:,:)
-    INTEGER                       :: i,nfe,nn,ndim
+    INTEGER                       :: i,nn,ndim
+!   INTEGER                       :: nfe
+    REAL(iwp)                     :: nfe
     CHARACTER(LEN=15), INTENT(IN) :: argv  
     CHARACTER(LEN=80)             :: cbuffer
     LOGICAL, INTENT(IN)           :: solid
     
-  !------------------------------------------------------------------------------
+  !-----------------------------------------------------------------------------
   ! 1. Initialisation
-  !------------------------------------------------------------------------------
+  !-----------------------------------------------------------------------------
   
     ndim = UBOUND(nf,1)-1  
     nn   = UBOUND(nf,2)
-  
-  !------------------------------------------------------------------------------
+ 
+    PRINT *, "ndim=",ndim
+    PRINT *, "nn=",nn
+    PRINT *, "solid=",solid
+ 
+  !-----------------------------------------------------------------------------
   ! 2. Write boundary conditions. Encoded using formula: 4z + 2y + 1x
   !
   !    110 = 1   010 = 2   100 = 3   011 = 4   101 = 5   001 = 6   000 = 7
@@ -7563,18 +7570,19 @@ END SUBROUTINE bcast_inputdata_p127
                  FORM="UNFORMATTED", ACTION="WRITE", ACCESS="STREAM")
 
       cbuffer = "Alya Ensight Gold --- Scalar per-node variable file"
-      WRITE(15)
-      cbuffer = "part"         ; WRITE(15)
+      WRITE(15) cbuffer
+      cbuffer = "part"         ; WRITE(15) cbuffer
       WRITE(15) int(1,kind=c_int)
-      cbuffer = "coordinates"  ; WRITE(15)
+      cbuffer = "coordinates"  ; WRITE(15) cbuffer
 
       IF(ndim==3) THEN
-        DO i=1,nod 
+        DO i=1,nn 
           nfe=0
-          IF(nf(1,i)==0) nfe=nfe+1
-          IF(nf(2,i)==0) nfe=nfe+2
-          IF(nf(3,i)==0) nfe=nfe+4
-          WRITE(15) int(nfe,kind=c_int)
+          IF(nf(2,i)==0) nfe=nfe+1
+          IF(nf(3,i)==0) nfe=nfe+2
+          IF(nf(4,i)==0) nfe=nfe+4
+          WRITE(15) real(nfe,kind=c_float) 
+         !WRITE(15) int(nfe,kind=c_int)
         END DO
       ELSE IF(ndim==2) THEN
         DO i=1,nn
@@ -7588,6 +7596,7 @@ END SUBROUTINE bcast_inputdata_p127
       END IF   
     END IF
   
+	
     CLOSE(15)
   
     RETURN
@@ -7598,7 +7607,7 @@ END SUBROUTINE bcast_inputdata_p127
 !------------------------------------------------------------------------------
 !------------------------------------------------------------------------------
 
-  SUBROUTINE MESH_ENSI_NDLDS_BIN(argv,nlen,nf,loads)
+SUBROUTINE MESH_ENSI_NDLDS_BIN(argv,nlen,nn,val,node)
 
    !/****f* input/mesh_ensi_ndlds_bin
    !*  NAME
@@ -7619,13 +7628,13 @@ END SUBROUTINE bcast_inputdata_p127
    !*    nf               : nodal freedom matrix
    !* 
    !*    Dynamic real arrays
-   !*	 oldlds           : initial loads vector
+   !*	 xxxxx           : initial loads vector
    !*
    !*  OUTPUTS
-   !*  AUTHOR
-   !*    L. Margetts
+   !*  AUTHORS
+   !*    J.D Arregui-Mena &L. Margetts
    !*  COPYRIGHT
-   !*    (c) University of Manchester 2004-2014
+   !*    (c) University of Manchester 2004-2016
    !******
    !*  Place remarks that should not be included in the documentation here.
    !*
@@ -7636,13 +7645,16 @@ END SUBROUTINE bcast_inputdata_p127
     IMPLICIT none
   
     INTEGER,PARAMETER             :: iwp=SELECTED_REAL_KIND(15)
-    INTEGER,   INTENT(IN)         :: nlen
-    INTEGER,   INTENT(IN)         :: nf(:,:)
-    INTEGER                       :: i,j
-    REAL(iwp), INTENT(IN)         :: loads(:)
+    INTEGER, INTENT(IN)           :: nlen,nn
+    INTEGER, INTENT(IN)           :: node(:)  !(loaded_nodes)
+    REAL(iwp), INTENT(IN)         :: val(:,:) !(ndim,loaded_nodes)
+    INTEGER                       :: i,j,k,ndim
     CHARACTER(LEN=15), INTENT(IN) :: argv
     CHARACTER(LEN=80)             :: cbuffer
-    
+    REAL(iwp),PARAMETER           :: zero=0.0_iwp
+
+    ndim = UBOUND(val,1)  
+
   !-----------------------------------------------------------------------------
   ! 1. Write loaded nodes
   !-----------------------------------------------------------------------------
@@ -7651,16 +7663,26 @@ END SUBROUTINE bcast_inputdata_p127
                  FORM="UNFORMATTED", ACTION="WRITE", ACCESS="STREAM")
 
     cbuffer = "Alya Ensight Gold --- Vector per-node variable file"
-    WRITE(16)
-    cbuffer = "part"        ; WRITE(16)
+    WRITE(16) cbuffer
+    cbuffer = "part"        
+    WRITE(16) cbuffer
     WRITE(16) int(1,kind=c_int)
-    cbuffer = "coordinates" ; WRITE(16)
+    cbuffer = "coordinates" 
+    WRITE(16) cbuffer
 
-    DO j=1,UBOUND(nf,1)
-      DO i=1, UBOUND(nf,2)
-        WRITE(16) real(loads(nf(j,i)),kind=c_float)
+   
+    DO i=1,ndim
+     k=1
+      DO j=1,nn
+        IF(j==node(k)) THEN
+          k=k+1
+          WRITE(16) REAL(val(i,k), kind=c_float)
+        ELSE
+          WRITE(16) REAL(zero, kind=c_float)
+        END IF
       END DO
     END DO
+       
     CLOSE(16)
   
     RETURN
