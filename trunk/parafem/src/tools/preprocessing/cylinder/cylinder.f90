@@ -866,9 +866,10 @@ SUBROUTINE MESH_ENSI_NDLDS_BIN2(argv,nlen,nn,val,node)
     cbuffer = "coordinates" 
     WRITE(16) cbuffer
 
-    k=1
+   
 
     DO i=1,ndim
+     k=1
       DO j=1,nn
         IF(j==node(k)) THEN
           k=k+1
