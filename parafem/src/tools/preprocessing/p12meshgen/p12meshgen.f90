@@ -8,7 +8,7 @@ PROGRAM p12meshgen
 !*  AUTHOR
 !*    Lee Margetts
 !*  COPYRIGHT
-!*    (c) University of Manchester 2007-2014
+!*    (c) University of Manchester 2007-2016
 !****
 !*/
 
@@ -27,7 +27,7 @@ PROGRAM p12meshgen
   INTEGER                :: nr,nn,nels,nres,nle,nxe,nye,nze,nlen
   INTEGER                :: nod,ndim,nodof,nip 
   INTEGER                :: nmodes,lalfa,leig,lx,lz
-  INTEGER                :: i,j,iel,l,m,n,iargc,argc
+  INTEGER                :: i,j,k,iel,l,m,n,iargc,argc
   INTEGER                :: plasits,cjits,limit,maxitr,incs
   INTEGER                :: ell
   INTEGER                :: fixed_nodes,fixed_freedoms,loaded_freedoms
@@ -54,6 +54,7 @@ PROGRAM p12meshgen
   CHARACTER(LEN=1)       :: bmat
   CHARACTER(LEN=2)       :: which
   LOGICAL                :: solid=.true.
+  LOGICAL                :: found=.false.
 
 !------------------------------------------------------------------------------
 ! 2. Declare dynamic arrays
@@ -317,7 +318,7 @@ PROGRAM p12meshgen
           END IF
           WRITE(14,'(A)') "1"              ! Internal mesh partitioning
           WRITE(14,'(3I12,2I5,2I9)')nels,nn,nr,nip,nod,loaded_freedoms
-          WRITE(14,'(3E12.4,I8,A)') e,v,tol,limit," 1" 
+          WRITE(14,'(3E12.4,I8)') e,v,tol,limit 
           
           CLOSE(14)
              
@@ -330,9 +331,26 @@ PROGRAM p12meshgen
             ! modify mesh_ensi for optional arguments
 
             ALLOCATE(etype(nels),nf(nodof,nn),oldlds(nn*ndim)) 
-            etype=0; nf=0
+
+            etype  = 1   ! Only one material type in this mesh
+            nf     = 0
+            oldlds = zero
 
             nstep=1; npri=1; dtim=1.0; solid=.true. 
+
+            k=0 
+            DO j=1,loaded_freedoms
+              k=k+1
+              found=.false.
+              DO i=1,nn
+                IF(i==no(k)) THEN
+                  l=i*3
+                  oldlds(l)=val(k)
+                  found=.true.
+                END IF
+                IF(found)CYCLE
+              END DO
+            END DO
 
             CALL rest_to_nf(rest,nf)
 
@@ -598,10 +616,27 @@ PROGRAM p12meshgen
     ! modify mesh_ensi for optional arguments
 
       ALLOCATE(etype(nels),nf(nodof,nn),oldlds(nn*ndim)) 
-      etype=0; nf=0
+
+      etype  = 1
+      nf     = 0
+      oldlds = zero
 
       nstep=incs; npri=1; dtim=1.0; solid=.true. 
-
+    
+      k=1 
+      DO j=1,loaded_freedoms
+        k=k+1
+        found=.false.
+        DO i=1,nn
+          IF(i==no(k)) THEN
+            l=i*3
+            oldlds(l)=val(k)
+            found=.true.
+          END IF
+          IF(found) EXIT
+        END DO
+      END DO
+        
       CALL rest_to_nf(rest,nf)
 
       CALL mesh_ensi(argv,nlen,g_coord,g_num,element,etype,nf,                &
