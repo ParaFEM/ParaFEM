@@ -12,6 +12,7 @@ MODULE choose_solvers
   !*    
   !*    Subroutine             Purpose
   !*
+  !*    get_solvers            Gets the type of solvers to use
   !*    solvers_valid          Test the the solvers string is valid
   !*    solvers_list           Return a list of valid solvers
   !*  AUTHOR
@@ -29,10 +30,67 @@ MODULE choose_solvers
   PUBLIC
   
   ! Parameters
+  INTEGER,PARAMETER          :: choose_solvers_string_length = 1024
   CHARACTER(len=*),PARAMETER :: parafem_solvers   = "parafem"
   CHARACTER(len=*),PARAMETER :: petsc_solvers     = "petsc"
   
 CONTAINS
+
+  FUNCTION get_solvers(numpe)
+
+    !/****if* choose_solvers/get_solvers
+    !*  NAME
+    !*    SUBROUTINE: get_solvers
+    !*  SYNOPSIS
+    !*    Usage:      get_solvers
+    !*  FUNCTION
+    !*      Gets the type of solvers (e.g. ParaFEM or PETSc) to use
+    !*  ARGUMENTS
+    !*    INTENT(IN)
+    !*
+    !*    numpe              : Integer
+    !*                         Number of this process (starting at 1)
+    !*  RESULT
+    !*
+    !*    solvers            : Character
+    !*                         Name of the solvers
+    !*                         If there is an error SHUTDOWN is called.
+    !*  AUTHOR
+    !*    Mark Filipiak
+    !*  CREATION DATE
+    !*    14.04.2016
+    !*  MODIFICATION HISTORY
+    !*    Version 1, 14.04.2016, Mark Filipiak
+    !*  COPYRIGHT
+    !*    (c) University of Edinburgh 2016
+    !******
+    !*  Place remarks that should not be included in the documentation here.
+    !*
+    !*/
+
+    ! get_solvers cannot be CHARACTER(:),ALLOCATABLE because it needs to be
+    ! able to hold any length of string from the command argument.
+    CHARACTER(len=choose_solvers_string_length) :: get_solvers
+    INTEGER,                         INTENT(in) :: numpe
+
+    INTEGER :: argc, status
+
+    ! Default solvers are ParaFEM.
+    get_solvers = parafem_solvers
+    
+    argc = command_argument_count()
+    ! The second argument in the command line is the name of the solvers.
+    IF (argc >= 2) THEN
+      CALL GET_COMMAND_ARGUMENT(2,get_solvers,status=status)
+    END IF
+
+    IF (.NOT. solvers_valid(get_solvers)) THEN
+      IF (numpe == 1) THEN
+        WRITE(*,*) "Solvers can be " // solvers_list()
+      END IF
+      CALL SHUTDOWN
+    END IF
+  END FUNCTION get_solvers
   
   FUNCTION solvers_valid(solvers)
 
@@ -64,13 +122,14 @@ CONTAINS
     !******
     !*  Place remarks that should not be included in the documentation here.
     !*
+    !*  This needs to be kept consistent with solvers_list().
     !*/
 
-    IMPLICIT NONE
     LOGICAL                      :: solvers_valid
     CHARACTER(len=*), INTENT(IN) :: solvers
+
     IF (     solvers == parafem_solvers                                        &
-        .OR. solvers == petsc_solvers  ) THEN
+        .OR. solvers == petsc_solvers   ) THEN
       solvers_valid = .TRUE.
     ELSE
       solvers_valid = .FALSE.
@@ -78,6 +137,7 @@ CONTAINS
   END FUNCTION solvers_valid
   
   FUNCTION solvers_list()
+
     !/****if* choose_solvers/solvers_list
     !*  NAME
     !*    SUBROUTINE: solvers_list
@@ -102,10 +162,11 @@ CONTAINS
     !******
     !*  Place remarks that should not be included in the documentation here.
     !*
+    !*  This needs to be kept consistent with solvers_valid().
     !*/
 
-    IMPLICIT NONE
-    CHARACTER(:),allocatable :: solvers_list
+    CHARACTER(:),ALLOCATABLE :: solvers_list
+
     solvers_list = parafem_solvers                                             &
       // " or " // petsc_solvers
   END FUNCTION solvers_list

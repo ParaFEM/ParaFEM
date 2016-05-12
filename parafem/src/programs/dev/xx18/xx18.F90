@@ -28,8 +28,6 @@ PROGRAM xx18
   
   ! Choice of solvers
   USE choose_solvers
-  ! PETSc interface and modules.  PETSc will always use MPI (unless PETSc itself
-  ! has been compiled without MPI)
   USE parafem_petsc
   USE PRECISION; USE global_variables; USE mp_interface; USE input
   USE output; USE loading; USE timing; USE maths; USE gather_scatter
@@ -37,9 +35,6 @@ PROGRAM xx18
 
   IMPLICIT NONE
 
-  ! PETSc types
-#include <petsc/finclude/petscdef.h>
-  
   ! neq,ntot are now global variables - must not be declared
   
   INTEGER,PARAMETER   :: nodof=3,ndim=3,nst=6
@@ -56,31 +51,7 @@ PROGRAM xx18
   CHARACTER(LEN=15)   :: element
   CHARACTER(LEN=6)    :: ch 
 
-  ! Default solvers are ParaFEM.  parafem_solvers is defined in choose_solvers
-  CHARACTER(len=50) :: solvers = parafem_solvers
-  ! Temporarily use these variables until the solver argument reading is ina a
-  ! choose_solvers subroutine.
-  INTEGER             :: argc, iargc
-  CHARACTER(len=50)   :: fname_base
-
-  ! PETSc variables
-  CHARACTER(len=1024) :: p_fname
-  LOGICAL             :: p_exist
-  PetscErrorCode      :: p_ierr
-  ! The PETSc objects cannot be initialised here because PETSC_NULL_OBJECT is a
-  ! common-block-object and not a constant.
-  Vec                 :: p_x,p_b,p_r
-  Mat                 :: p_A
-  KSP                 :: p_ksp
-  PetscScalar         :: p_pr_n2,p_r_n2,p_b_n2
-  PetscInt,ALLOCATABLE    :: p_rows(:),p_cols(:)
-  PetscScalar,ALLOCATABLE :: p_values(:)
-  PetscScalar,POINTER :: p_varray(:)
-  PetscInt            :: p_its,p_nnz
-  PetscReal           :: p_rtol
-  DOUBLE PRECISION    :: p_info(MAT_INFO_SIZE)
-  KSPConvergedReason  :: p_reason
-  CHARACTER(LEN=p_max_string_length) :: p_description
+  CHARACTER(len=choose_solvers_string_length) :: solvers
   
   !-----------------------------------------------------------------------------
   ! 1. Dynamic arrays
@@ -99,35 +70,11 @@ PROGRAM xx18
   
   ALLOCATE(timest(20)); timest=zero; timest(1)=elap_time()
   CALL find_pe_procs(numpe,npes)
-  argc = IARGC()
   CALL getname(argv,nlen) 
   CALL read_p121(argv,numpe,e,element,limit,loaded_nodes,meshgen,nels,         &
                  nip,nn,nod,nr,partitioner,tol,v)
 
-! Input:  2: The second argument in the command line (arg2)
-  IF (argc >= 2) THEN
-    CALL GETARG(2,solvers)
-  END IF
-
-  IF (.NOT. solvers_valid(solvers)) THEN
-    IF (numpe == 1) THEN
-      WRITE(*,*) "Solvers can be " // solvers_list()
-    END IF
-    CALL SHUTDOWN
-    STOP
-  END IF
-
-  fname_base = argv
-  IF(solvers == petsc_solvers) THEN
-    IF(numpe == 1) THEN
-      p_fname = TRIM(fname_base) // ".petsc"
-      INQUIRE(file=TRIM(p_fname),exist=p_exist)
-      IF (.NOT. p_exist) THEN
-        p_fname = ""
-      END IF
-    END IF
-    CALL MPI_BCAST(p_fname,LEN(p_fname),MPI_CHARACTER,0,MPI_COMM_WORLD,ier)
-  END IF
+  solvers = get_solvers(numpe)
 
   CALL calc_nels_pp(argv,nels,npes,numpe,partitioner,nels_pp)
   ndof=nod*nodof; ntot=ndof
@@ -146,12 +93,7 @@ PROGRAM xx18
   ! 3. Start up PETSc after MPI has been started
   !-----------------------------------------------------------------------------
   IF (solvers == petsc_solvers) THEN
-    CALL PetscInitialize(p_fname,p_ierr)
-    p_x   = PETSC_NULL_OBJECT
-    p_b   = PETSC_NULL_OBJECT
-    p_r   = PETSC_NULL_OBJECT
-    p_A   = PETSC_NULL_OBJECT
-    p_ksp = PETSC_NULL_OBJECT
+    CALL p_initialize(numpe,argv)
   END IF
   
   !-----------------------------------------------------------------------------
@@ -173,40 +115,11 @@ PROGRAM xx18
   !-----------------------------------------------------------------------------
   
   IF (solvers == petsc_solvers) THEN
-    ! PETSc 64-bit indices and 64-bit reals.  In most (all?) places, passing a
-    ! 32-bit integer where an intent(in) 64-integer is required is safe, because
-    ! the PETSc Fortran-C interface de-references the pointer that is actually
-    ! passed, even though it does not specify any intent in the Fortran
-    ! interface.  This is not safe when passing arrays, they need to be copied
-    ! to PetscInt arrays.  And for safety the same should be done for the
-    ! PetscScalar arrays.
-    CALL MatCreate(PETSC_COMM_WORLD,p_A,p_ierr)
-    CALL MatSetSizes(p_A,neq_pp,neq_pp,PETSC_DETERMINE,PETSC_DETERMINE,p_ierr)
-    CALL MatSetType(p_A,MATAIJ,p_ierr)
-    !- Block size fixed to 1 for just now - this cannot be set to nodof until
-    !- the restraints are handled block-wise in ParaFEM.  CALL
-    !- MatSetBlockSize(p_A,nodof,p_ierr)
-    
-    ! Find an approximate number of zeroes per row for the matrix size
-    ! pre-allocation.
-    CALL p_row_nnz(nodof,ndim,nod,p_over_allocation,p_nnz)
-    CALL MatSeqAIJSetPreallocation(p_A,p_nnz,PETSC_NULL_INTEGER,p_ierr)
-    CALL MatMPIAIJSetPreallocation(p_A,p_nnz,PETSC_NULL_INTEGER,              &
-      p_nnz,PETSC_NULL_INTEGER,p_ierr)
-    ! If the allocation is too small, PETSc will produce reams of information
-    ! and not construct the matrix properly.  We output some information at the
-    ! end if p_over_allocation should be increased.
-    CALL MatSetOption(p_A,MAT_NEW_NONZERO_ALLOCATION_ERR,PETSC_FALSE,p_ierr)
-
-    ! Arrays of PETSc types to be proof against changes in index and scalar sizes.
-    ALLOCATE(p_rows(ntot),p_cols(ntot),p_values(ntot*ntot))
+    CALL p_create_matrix(neq_pp,nodof,ndim,nod,ntot)
   END IF
 
   dee=zero; CALL deemat(dee,e,v); CALL sample(element,points,weights)
   storkm_pp=zero
-  IF (solvers == petsc_solvers) THEN
-    CALL MatZeroEntries(p_A,p_ierr)
-  END IF
 
   elements_1: DO iel=1,nels_pp
     gauss_pts_1: DO i=1,nip
@@ -218,6 +131,7 @@ PROGRAM xx18
     END DO gauss_pts_1
 
     IF (solvers == petsc_solvers) THEN
+      CALL p_add_element_matrix(g_g_pp(:,iel),storkm_pp(:,:,iel))
       ! 1/ Use ubound(g_g_pp,1) instead of ntot? 2/ The following depends on
       ! g_g_pp holding 0 for erased rows/columns, and MatSetValues ignoring
       ! negative indices (PETSc always uses zero-based indexing). 3/ PETSc uses
