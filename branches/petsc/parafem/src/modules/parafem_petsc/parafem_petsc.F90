@@ -49,40 +49,254 @@ MODULE parafem_petsc
 #include <petsc/finclude/petscpc.h>
 #include <petsc/finclude/petscpc.h90>
   
-  ! PETSc parameters
-  INTEGER,PARAMETER   :: p_max_string_length=1024
-  ! p_over_allocation should be a run time setting with a default set in the
-  ! program.  Choosing too small a value (e.g. 0.99) slows MatSetValues to a
-  ! crawl.
-  REAL,PARAMETER      :: p_over_allocation=1.3
-
-  ! PETSc variables
-
-  ! the following will become a global data structure variable (not p_ierr)
-!!$  PetscErrorCode      :: p_ierr
-!!$  ! The PETSc objects cannot be initialised here because PETSC_NULL_OBJECT is a
-!!$  ! common-block-object and not a constant.
-!!$  Vec                 :: p_x,p_b,p_r
-!!$  Mat                 :: p_A
-!!$  KSP                 :: p_ksp
-!!$  PetscScalar         :: p_pr_n2,p_r_n2,p_b_n2
-!!$  PetscInt,ALLOCATABLE    :: p_rows(:),p_cols(:)
-!!$  PetscScalar,ALLOCATABLE :: p_values(:)
-!!$  PetscScalar,POINTER :: p_varray(:)
-!!$  PetscInt            :: p_its,p_nnz
-!!$  DOUBLE PRECISION    :: p_info(MAT_INFO_SIZE)
-!!$  KSPConvergedReason  :: p_reason
-!!$  CHARACTER(LEN=p_max_string_length) :: p_description
+  ! Private parameters
+  INTEGER,PARAMETER,PRIVATE :: string_length=1024
   
+  ! Variables collected as one derived type
+  TYPE p_type
+    ! The PETSc objects cannot be initialised here because PETSC_NULL_OBJECT is
+    ! a common-block-object and not a constant.
+    ! over_allocation should be a run time setting with a default set in the
+    ! program, e.g. as an option.  Choosing too small a value (e.g. 0.99) slows
+    ! MatSetValues to a crawl.
+    REAL                :: over_allocation=1.3
+    Vec                 :: x,b,r
+    Mat                 :: A
+    KSP                 :: ksp
+    PetscScalar         :: pr_n2,r_n2,b_n2
+    PetscInt,ALLOCATABLE    :: rows(:),cols(:)
+    PetscScalar,ALLOCATABLE :: values(:)
+    PetscScalar,POINTER :: varray(:)
+    PetscInt            :: its,nnz
+    PetscReal           :: rtol
+    DOUBLE PRECISION    :: info(MAT_INFO_SIZE)
+    KSPConvergedReason  :: reason
+    CHARACTER(len=string_length) :: description
+    PetscErrorCode      :: ierr
+  END TYPE p_type
+
+  TYPE(p_type) :: p_object
+ 
 CONTAINS
   
-  SUBROUTINE p_describe_reason(p_reason,p_description)
+  SUBROUTINE p_initialize(numpe,fname_base)
+
+    !/****if* petsc/p_initialize
+    !*  NAME
+    !*    SUBROUTINE: p_initialize
+    !*  SYNOPSIS
+    !*    Usage:      p_initialize(numpe,argv)
+    !*  FUNCTION
+    !*      Initialises PETSc and its matrices, vectors and solvers
+    !*  ARGUMENTS
+    !*    INTENT(IN)
+    !*
+    !*    numpe              : Integer
+    !*                         Number of this process (starting at 1)
+    !*    fname_base         : Character
+    !*                         Base name of the data file
+    !*  AUTHOR
+    !*    Mark Filipiak
+    !*  CREATION DATE
+    !*    19.02.2016
+    !*  MODIFICATION HISTORY
+    !*    Version 1, 19.02.2016, Mark Filipiak
+    !*  COPYRIGHT
+    !*    (c) University of Edinburgh 2016
+    !******
+    !*  Place remarks that should not be included in the documentation here.
+    !*
+    !*/
+
+    INTEGER,          INTENT(in) :: numpe
+    CHARACTER(len=*), INTENT(in) :: fname_base
+
+    CHARACTER(len=string_length) :: fname
+    LOGICAL :: exist
+    INTEGER :: ierr
+
+    IF(numpe == 1) THEN
+      fname = TRIM(fname_base) // ".petsc"
+      INQUIRE(file=TRIM(fname),exist=exist)
+      IF (.NOT. exist) THEN
+        fname = ""
+      END IF
+    END IF
+    ! The communicator is MPI_COMM_WORLD, set by find_pe_procs(), and numpe ==
+    ! 1 corresponds to rank == 0.
+    CALL MPI_BCAST(fname,LEN(fname),MPI_CHARACTER,0,MPI_COMM_WORLD,ierr)
+    
+    CALL PetscInitialize(fname,p_object%ierr)
+    p_object%x   = PETSC_NULL_OBJECT
+    p_object%b   = PETSC_NULL_OBJECT
+    p_object%r   = PETSC_NULL_OBJECT
+    p_object%A   = PETSC_NULL_OBJECT
+    p_object%ksp = PETSC_NULL_OBJECT
+  END SUBROUTINE p_initialize
+
+  SUBROUTINE p_create_matrix(neq_pp,nodof,ndim,nod,ntot)
+
+    !/****if* petsc/p_create_matrix
+    !*  NAME
+    !*    SUBROUTINE: p_create_matrix
+    !*  SYNOPSIS
+    !*    Usage:      p_create_matrix(neq_pp,nodof,ndim,nod,ntot)
+    !*  FUNCTION
+    !*      Creates the global matrix (but doesn't assemble it)
+    !*  ARGUMENTS
+    !*    INTENT(IN)
+    !*
+    !*    neq_pp             : Integer
+    !*                         Number of equations on this process = number of
+    !*                         rows in the global matrix on this process
+    !*    nodof              : Integer
+    !*                         Number of dofs per node
+    !*    ndim               : Integer
+    !*                         Number of dimensions of the problem
+    !*    nod                : Integer
+    !*                         Number of nodes per element
+    !*    ntot_max           : Integer
+    !*                         Maximum number of dofs in an element (this will
+    !*                         be ntot if there is only one element type).  This
+    !*                         is used to set the sizes of some workspaces.
+    !*                         
+    !*  AUTHOR
+    !*    Mark Filipiak
+    !*  CREATION DATE
+    !*    28.04.2016
+    !*  MODIFICATION HISTORY
+    !*    Version 1, 28.04.2016, Mark Filipiak
+    !*  COPYRIGHT
+    !*    (c) University of Edinburgh 2016
+    !******
+    !*  Place remarks that should not be included in the documentation here.
+    !*
+    !*  PETSc 64-bit indices and 64-bit reals are used.  In most (all?) places,
+    !*  passing a 32-bit integer where an intent(in) 64-integer is required is
+    !*  safe, because the PETSc Fortran-C interface de-references the pointer
+    !*  that is actually passed, even though it does not specify any intent in
+    !*  the Fortran interface.  This is not safe when passing arrays, they need
+    !*  to be copied to PetscInt arrays.  And for safety the same should be done
+    !*  for the PetscScalar arrays.
+    !*/
+
+    INTEGER :: nnz
+
+    CALL MatCreate(PETSC_COMM_WORLD,p_object%A,p_object%ierr)
+    CALL MatSetSizes(p_object%A,neq_pp,neq_pp,PETSC_DETERMINE,PETSC_DETERMINE, &
+                     p_object%ierr)
+    CALL MatSetType(p_object%A,MATAIJ,p_object%ierr)
+    !- Block size fixed to 1 for just now - this cannot be set to nodof until
+    !- the restraints are handled block-wise in ParaFEM.
+    !- CALL MatSetBlockSize(p_object%A,nodof,p_object%ierr)
+    
+    ! Find an approximate number of zeroes per row for the matrix size
+    ! pre-allocation.
+    nnz = p_row_nnz(nodof,ndim,nod,p_object%over_allocation)
+    CALL MatSeqAIJSetPreallocation(p_object%A,nnz,PETSC_NULL_INTEGER,          &
+                                   p_object%ierr)
+    CALL MatMPIAIJSetPreallocation(p_object%A,nnz,PETSC_NULL_INTEGER,          &
+                                   nnz,PETSC_NULL_INTEGER,p_object%ierr)
+    ! If the allocation is too small, PETSc will produce reams of information
+    ! and not assemble the matrix properly.  We output some information at the
+    ! end of the assembly routine if p_object%over_allocation should be
+    ! increased.
+    CALL MatSetOption(p_object%A,MAT_NEW_NONZERO_ALLOCATION_ERR,PETSC_FALSE,   &
+                      p_object%ierr)
+
+    ! Arrays of PETSc types to be proof against changes in index and scalar
+    ! sizes.
+    ALLOCATE(p_object%rows(ntot),p_object%cols(ntot),p_object%values(ntot*ntot))
+
+    CALL MatZeroEntries(p_object%A,p_object%ierr)
+  END SUBROUTINE p_create_matrix
+
+  SUBROUTINE p_add_element(g,km)
+
+    !/****if* petsc/p_add_element
+    !*  NAME
+    !*    SUBROUTINE: p_add_element
+    !*  SYNOPSIS
+    !*    Usage:      p_add_element(g,km)
+    !*  FUNCTION
+    !*    Adds (assembles) an element matrix into the global matrix.  Once all
+    !*    the element matrices are added on each process, the final assembly
+    !*    (what PETSc calls assembly) is done to get the global, distributed
+    !*    matrix.
+    !*  ARGUMENTS
+    !*    INTENT(IN)
+    !*
+    !*    g(:)               : Integer
+    !*                         Array of shape (ntot)
+    !*                         Gives the global equation number for each dof in
+    !*                         the element. 
+    !*    km(:,:)            : Real
+    !*                         Array of shape (ntot,ntot)
+    !*                         The element matrix.
+    !*  AUTHOR
+    !*    Mark Filipiak
+    !*  CREATION DATE
+    !*    28.04.2016
+    !*  MODIFICATION HISTORY
+    !*    Version 1, 28.04.2016, Mark Filipiak
+    !*  COPYRIGHT
+    !*    (c) University of Edinburgh 2016
+    !******
+    !*  Place remarks that should not be included in the documentation here.
+    !*
+    !*  This depends on g holding 0 for erased rows/columns (i.e. equations),
+    !*  and MatSetValues ignoring negative indices (PETSc always uses zero-based
+    !*  indexing).
+    !*
+    !*  This also depends on the element matrices being shape (ntot,ntot),
+    !*  because rows, cols, values are (ntot), (ntot), (ntot,ntot).  What about
+    !differing elelemtns?
+    !*/
+    
+    p_object%rows   = g - 1
+    p_object%cols   = p_rows
+    ! PETSc uses C array order, so a transpose is needed.
+    p_object%values = RESHAPE(TRANSPOSE(km),SHAPE(p_object%values))
+    CALL MatSetValues(p_object%A,SIZE(p_object%rows),p_object%rows,SIZE(p_object%cols),p_object%cols,p_object%values,ADD_VALUES,p_object%ierr)
+
+    INTEGER :: nnz
+
+    CALL MatCreate(PETSC_COMM_WORLD,p_object%A,p_object%ierr)
+    CALL MatSetSizes(p_object%A,neq_pp,neq_pp,PETSC_DETERMINE,PETSC_DETERMINE, &
+                     p_object%ierr)
+    CALL MatSetType(p_object%A,MATAIJ,p_object%ierr)
+    !- Block size fixed to 1 for just now - this cannot be set to nodof until
+    !- the restraints are handled block-wise in ParaFEM.
+    !- CALL MatSetBlockSize(p_object%A,nodof,p_object%ierr)
+    
+    ! Find an approximate number of zeroes per row for the matrix size
+    ! pre-allocation.
+    nnz = p_row_nnz(nodof,ndim,nod,p_object%over_allocation)
+    CALL MatSeqAIJSetPreallocation(p_object%A,nnz,PETSC_NULL_INTEGER,          &
+                                   p_object%ierr)
+    CALL MatMPIAIJSetPreallocation(p_object%A,nnz,PETSC_NULL_INTEGER,          &
+                                   nnz,PETSC_NULL_INTEGER,p_object%ierr)
+    ! If the allocation is too small, PETSc will produce reams of information
+    ! and not assemble the matrix properly.  We output some information at the
+    ! end of the assembly routine if p_object%over_allocation should be
+    ! increased.
+    CALL MatSetOption(p_object%A,MAT_NEW_NONZERO_ALLOCATION_ERR,PETSC_FALSE,   &
+                      p_object%ierr)
+
+    ! Arrays of PETSc types to be proof against changes in index and scalar
+    ! sizes.
+    ALLOCATE(p_object%rows(ntot),p_object%cols(ntot),p_object%values(ntot*ntot))
+
+    CALL MatZeroEntries(p_object%A,p_object%ierr)
+  END SUBROUTINE p_create_matrix
+
+  FUNCTION p_describe_reason(reason,description)
 
     !/****if* petsc/p_describe_reason
     !*  NAME
     !*    SUBROUTINE: p_describe_reason
     !*  SYNOPSIS
-    !*    Usage:      p_describe_reason(p_reason,p_description)
+    !*    Usage:      p_describe_reason(p_reason)
     !*  FUNCTION
     !*      Returns a description of the reason for convergence in PETSc
     !*  ARGUMENTS
@@ -90,10 +304,6 @@ CONTAINS
     !*
     !*    p_reason           : KSPConvergedReason
     !*                         The PETSc code for the convergence reason
-    !*    INTENT(OUT)
-    !*
-    !*    p_description      : Character
-    !*                         Description of the convergence reason
     !*  AUTHOR
     !*    Mark Filipiak
     !*  CREATION DATE
@@ -110,77 +320,76 @@ CONTAINS
     !*  extended description.
     !*/
 
-    IMPLICIT NONE
-    KSPConvergedReason, INTENT(IN)  :: p_reason
-    CHARACTER(LEN=*),   INTENT(OUT) :: p_description
-
-    ! The string constants in this routine have to be p_max_string_length or
+    CHARACTER(:),ALLOCATABLE        :: p_describe_reason
+    KSPConvergedReason, INTENT(in)  :: reason
+    
+    ! The string constants in this routine have to be p_string_length or
     ! shorter.
     SELECT CASE (p_reason)
     ! Converged.
     ! not in PETSc Fortran CASE (KSP_CONVERGED_RTOL_NORMAL)
-    ! not in PETSc Fortran   p_description = "KSP_CONVERGED_RTOL_NORMAL"
+    ! not in PETSc Fortran   p_describe_reason = "KSP_CONVERGED_RTOL_NORMAL"
     ! not in PETSc Fortran CASE (KSP_CONVERGED_ATOL_NORMAL)
-    ! not in PETSc Fortran   p_description = "KSP_CONVERGED_ATOL_NORMAL"
+    ! not in PETSc Fortran   p_describe_reason = "KSP_CONVERGED_ATOL_NORMAL"
     CASE (KSP_CONVERGED_RTOL)
-      p_description = "KSP_CONVERGED_RTOL "                                    &
+      p_describe_reason = "KSP_CONVERGED_RTOL "                                &
                       //"(residual norm <= rtol * initial residual norm.  "    &
                       //"The default norm for left preconditioning is the "    &
                       //"2-norm of the preconditioned residual.  "             &
                       //"The default norm for right preconditioning is the "   &
                       //"2-norm of the residual.)"
     CASE (KSP_CONVERGED_ATOL)
-      p_description = "KSP_CONVERGED_ATOL (residual norm <= abstol.  "         &
+      p_describe_reason = "KSP_CONVERGED_ATOL (residual norm <= abstol.  "     &
                       //"The default norm for left preconditioning is the "    &
                       //"2-norm of the preconditioned residual.  "             &
                       //"The default norm for right preconditioning is the "   &
                       //"2-norm of the residual.)"
     CASE (KSP_CONVERGED_ITS)
-      p_description = "KSP_CONVERGED_ITS "                                     &
+      p_describe_reason = "KSP_CONVERGED_ITS "                                 &
                       //"(Used by the KSPPREONLY solver after the single "     &
                       //"iteration of the preconditioner is applied.  Also "   &
                       //"used when the KSPConvergedSkip() convergence test "   &
                       //"routine is set in KSP.)"
     CASE (KSP_CONVERGED_CG_NEG_CURVE)
-      p_description = "KSP_CONVERGED_CG_NEG_CURVE"
+      p_describe_reason = "KSP_CONVERGED_CG_NEG_CURVE"
     CASE (KSP_CONVERGED_CG_CONSTRAINED)
-      p_description = "KSP_CONVERGED_CG_CONSTRAINED"
+      p_describe_reason = "KSP_CONVERGED_CG_CONSTRAINED"
     CASE (KSP_CONVERGED_STEP_LENGTH)
-      p_description = "KSP_CONVERGED_STEP_LENGTH"
+      p_describe_reason = "KSP_CONVERGED_STEP_LENGTH"
     CASE (KSP_CONVERGED_HAPPY_BREAKDOWN)
-      p_description = "KSP_CONVERGED_HAPPY_BREAKDOWN"
+      p_describe_reason = "KSP_CONVERGED_HAPPY_BREAKDOWN"
     ! Diverged.
     CASE (KSP_DIVERGED_NULL)
-      p_description = "KSP_DIVERGED_NULL"
+      p_describe_reason = "KSP_DIVERGED_NULL"
     CASE (KSP_DIVERGED_ITS)
-      p_description = "KSP_DIVERGED_ITS "                                      &
+      p_describe_reason = "KSP_DIVERGED_ITS "                                  &
                       //"(Ran out of iterations before any convergence "       &
                       //"criteria was reached"
     CASE (KSP_DIVERGED_DTOL)
-      p_description = "KSP_DIVERGED_DTOL "                                     &
+      p_describe_reason = "KSP_DIVERGED_DTOL "                                 &
                       //"(residual norm >= dtol * initial residual norm.  "    &
                       //"The default norm for left preconditioning is the "    &
                       //"2-norm of the preconditioned residual.  "             &
                       //"The default norm for right preconditioning is the "   &
                       //"2-norm of the residual.)"
     CASE (KSP_DIVERGED_BREAKDOWN)
-      p_description = "KSP_DIVERGED_BREAKDOWN "                                &
+      p_describe_reason = "KSP_DIVERGED_BREAKDOWN "                            &
                       //"(A breakdown in the Krylov method was detected so "   &
                       //"the method could not continue to enlarge the Krylov " &
                       //"space. Could be due to a singular matrix or "         &
                       //"preconditioner.)"
     CASE (KSP_DIVERGED_BREAKDOWN_BICG)
-      p_description = "KSP_DIVERGED_BREAKDOWN_BICG "                           &
+      p_describe_reason = "KSP_DIVERGED_BREAKDOWN_BICG "                       &
                       //"(A breakdown in the KSPBICG method was detected so "  &
                       //"the method could not continue to enlarge the Krylov " &
                       //"space.)"
     CASE (KSP_DIVERGED_NONSYMMETRIC)
-      p_description = "KSP_DIVERGED_NONSYMMETRIC "                             &
+      p_describe_reason = "KSP_DIVERGED_NONSYMMETRIC "                         &
                       //"(It appears the operator or preconditioner is not "   &
                       //"symmetric and this Krylov method (KSPCG, KSPMINRES, " &
                       //"KSPCR) requires symmetry.)"
     CASE (KSP_DIVERGED_INDEFINITE_PC)
-      p_description = "KSP_DIVERGED_INDEFINITE_PC "                            &
+      p_describe_reason = "KSP_DIVERGED_INDEFINITE_PC "                        &
                       //"(It appears the preconditioner is indefinite (has "   &
                       //"both positive and negative eigenvalues) and this "    &
                       //"Krylov method (KSPCG) requires it to be positive "    &
@@ -190,25 +399,25 @@ CONTAINS
                       //"PCICC preconditioner to generate a positive definite "&
                       //"preconditioner.)"
     CASE (KSP_DIVERGED_NANORINF)
-      p_description = "KSP_DIVERGED_NANORINF "                                 &
+      p_describe_reason = "KSP_DIVERGED_NANORINF "                             &
                       //"(residual norm became NaN or Inf likely due to 0/0.)"
     CASE (KSP_DIVERGED_INDEFINITE_MAT)
-      p_description = "KSP_DIVERGED_INDEFINITE_MAT"
+      p_describe_reason = "KSP_DIVERGED_INDEFINITE_MAT"
     ! not in PETSc Fortran CASE (KSP_DIVERGED_PCSETUP_FAILED)
-    ! not in PETSc Fortran   p_description = "KSP_DIVERGED_PCSETUP_FAILED"
+    ! not in PETSc Fortran   p_describe_reason = "KSP_DIVERGED_PCSETUP_FAILED"
     ! Still iterating.
     CASE (KSP_CONVERGED_ITERATING)
-      p_description = "KSP_CONVERGED_ITERATING "                               &
+      p_describe_reason = "KSP_CONVERGED_ITERATING "                           &
                       //"(This flag is returned if you call "                  &
                       //"KSPGetConvergedReason() while KSPSolve() is still "   &
                       //"running.)"
     ! Unknown  
     CASE DEFAULT
-      p_description = "reason not known"
+      p_describe_reason = "reason not known"
     END SELECT
-  END SUBROUTINE p_describe_reason
+  END FUNCTION p_describe_reason
   
-  SUBROUTINE p_row_nnz(nodof,ndim,nod,over_allocation,nnz)
+  FUNCTION p_row_nnz(nodof,ndim,nod,over_allocation)
 
     !/****if* petsc/p_row_nnz
     !*  NAME
@@ -239,12 +448,6 @@ CONTAINS
     !*                         average number of tetrahedra around a point is
     !*                         about 22, so the safety-factor will allow for
     !*                         that as well.
-    !*
-    !*    INTENT(OUT)
-    !*
-    !*    nnz                : PetscInt
-    !*                         Approximate upper estimate of the number of
-    !*                         non-zeroes in a row of the global matrix
     !*  AUTHOR
     !*    Mark Filipiak
     !*  CREATION DATE
@@ -260,14 +463,14 @@ CONTAINS
     !*  (or would have to called for each element and the largest nnz used).
     !*/
 
-    IMPLICIT NONE
-    INTEGER,  INTENT(IN)   :: nodof
-    INTEGER,  INTENT(IN)   :: ndim
-    INTEGER,  INTENT(IN)   :: nod
-    REAL,     INTENT(IN)   :: over_allocation
-    PetscInt, INTENT(OUT)  :: nnz
+    PetscInt               :: nnz
+    INTEGER,  INTENT(in)   :: nodof
+    INTEGER,  INTENT(in)   :: ndim
+    INTEGER,  INTENT(in)   :: nod
+    REAL,     INTENT(in)   :: over_allocation
 
-    INTEGER                :: v,e,f,i,el_per_v,el_per_e,el_per_f,el_per_i
+    INTEGER                :: el_per_v,el_per_e,el_per_f,el_per_i
+    REAL                   :: v,e,f,i,v_factor,e_factor
 
     SELECT CASE (ndim)
 
@@ -367,6 +570,23 @@ CONTAINS
         el_per_v = 20; el_per_e = 5; el_per_f = 2; el_per_i = 1 ! tetrahedron
       ! icosahedron    pentagonal    triangular    tetrahedron
       !                bipyramid     bipyramid
+        ! Note that the average number of tetrahedra per vertex is about 22.79
+        ! based on averaging the solid angles and the average number of
+        ! tetrahedra per edge is 5.1 based on averaging the dihedral angles
+        v_factor=22.70/20; e_factor = 5.1/5
+        ! Note also that there can be many vertices with large numbers of
+        ! tetrahedra depending on how the mesh is constructed, for example if it
+        ! has been refined, see A. Plaza and M-C. Rivera, 'On the adjacencies of
+        ! triangular meshes based on skeleton-regular partitions', Journal of
+        ! Computational and Applied Mathematics 140 (2002) 673-693
+        ! http://dx.doi.org/10.1016/S0377-0427(01)00484-8.  So there can be
+        ! possibly several percent of rows in the global matrix with too small a
+        ! pre-allocation and thus slow assembly in PETSc.  See also Table X of
+        ! M.W. Beall and M.S. Shephard, 'A general topology-based mesh data
+        ! structure', Internatioanl Journal for Numerical Methods in Engineering
+        ! 40 (1997) 1573-1596 for average node-node adjacencies - these closely
+        ! match the values calculated below.
+        !
         ! icosahedron
         !  1 interior vertices
         ! 12 exterior vertices
@@ -399,7 +619,7 @@ CONTAINS
         !  0 interior faces
         !  4 exterior faces
         !  1 interior tetrahedra
-        v = 13; e = 0; f = 0; i = 0
+        v = 13 * v_factor; e = 0 * e_factor; f = 0; i = 0
       CASE(8)
         el_per_v = 8; el_per_e = 4; el_per_f = 2; el_per_i = 1 ! hexahedron
       ! 8 cubes       4 cubes       2 cubes       cube
@@ -441,7 +661,7 @@ CONTAINS
         v = 63; e = 0; f = 23; i = 0
       CASE(20)
         el_per_v = 8; el_per_e = 4; el_per_f = 2; el_per_i = 1 ! hexahedron
-        v = 81; e = 50; f = 0; i = 0
+        v = 81; e = 51; f = 0; i = 0
       CASE DEFAULT
         WRITE(*,'(A)') "wrong number of nodes in p_row_nnz"        
       END SELECT
@@ -449,7 +669,7 @@ CONTAINS
       WRITE(*,'(A)') "wrong number of dimensions in p_row_nnz"
     END SELECT
     
-    nnz = NINT(over_allocation * v) * nodof
-  END SUBROUTINE p_row_nnz
+    p_row_nnz = NINT(over_allocation * v) * nodof
+  END FUNCTION p_row_nnz
 
 END MODULE parafem_petsc
