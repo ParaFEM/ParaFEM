@@ -106,6 +106,9 @@ PROGRAM xx12
 !    Read control data, mesh data, boundary and loading conditions
 !------------------------------------------------------------------------------ 
   
+      !-- To run in SteadyState mode set prog=11, in Transient prog=12   
+      prog=12
+  
   ALLOCATE(timest(25))
   timest    = zero
   timest(1) = elap_time()
@@ -327,6 +330,7 @@ PROGRAM xx12
     
     storka_pp = zero 
     storkb_pp = zero
+    storkc_pp = zero
     
     elements_3: DO iel=1,nels_pp
       
@@ -338,6 +342,7 @@ PROGRAM xx12
       cp        = prop(5,etype_pp(iel))  ! cp
       
       kc = zero ; pm = zero
+      kcx = zero; kcy = zero; kcz = zero
       
       gauss_pts: DO i=1,nip
         CALL shape_der(der,points,i)
@@ -347,33 +352,34 @@ PROGRAM xx12
         det        = determinant(jac)
         CALL invert(jac)
         deriv      = MATMUL(jac,der)
-        kc         = kc + MATMUL(MATMUL(TRANSPOSE(deriv),kay),deriv)*         &
-                                                                 det*weights(i)
-        pm         = pm + MATMUL(TRANSPOSE(funny),funny)*det*weights(i)*rho*cp
-!        !----------------------------------------------------------------------
-!        !- Added to check if storekc_pp would be the same as xx11
-!        row(1,:) = deriv(1,:)
-!        eld      = deriv(1,:)
-!        col(:,1) = eld
-!        kcx      = kcx + MATMUL(col,row)*det*weights(i)
-!        row(1,:) = deriv(2,:)
-!        eld      = deriv(2,:)
-!        col(:,1) = eld
-!        kcy      = kcy + MATMUL(col,row)*det*weights(i)
-!        row(1,:) = deriv(3,:)
-!        eld      = deriv(3,:)
-!        col(:,1) = eld
-!        kcz      = kcz + MATMUL(col,row)*det*weights(i)
-!        !----------------------------------------------------------------------
+        IF(prog==12)THEN
+          kc = kc + MATMUL(MATMUL(TRANSPOSE(deriv),kay),deriv)*det*weights(i)
+          pm = pm + MATMUL(TRANSPOSE(funny),funny)*det*weights(i)*rho*cp
+        END IF
+        IF(prog==11)THEN
+          row(1,:) = deriv(1,:)
+          eld      = deriv(1,:)
+          col(:,1) = eld
+          kcx      = kcx + MATMUL(col,row)*det*weights(i)
+          row(1,:) = deriv(2,:)
+          eld      = deriv(2,:)
+          col(:,1) = eld
+          kcy      = kcy + MATMUL(col,row)*det*weights(i)
+          row(1,:) = deriv(3,:)
+          eld      = deriv(3,:)
+          col(:,1) = eld
+          kcz      = kcz + MATMUL(col,row)*det*weights(i)
+        END IF
       END DO gauss_pts
       
-      storka_pp(:,:,iel)=pm+kc*theta*dtim
-      storkb_pp(:,:,iel)=pm-kc*(1._iwp-theta)*dtim
-!      storkc_pp(:,:,iel) = kcx*kx + kcy*ky + kcz*kz
-!      
-!      !-- To run in xx11 mode set prog=11, in xx12 prog=12   
-!      prog=12
-!      IF(prog==11) storka_pp = storkc_pp
+        IF(prog==12)THEN
+          storka_pp(:,:,iel)=pm+kc*theta*dtim
+          storkb_pp(:,:,iel)=pm-kc*(1._iwp-theta)*dtim
+        END IF
+        IF(prog==11)THEN
+          storkc_pp(:,:,iel) = kcx*kx + kcy*ky + kcz*kz
+          storka_pp = storkc_pp
+        END IF
       
     END DO elements_3
     
@@ -449,9 +455,9 @@ PROGRAM xx12
           OPEN(28,file=fname,status='replace',action='write')
            
           WRITE(28,'(/A)') "Alya Ensight Gold --- Scalar per-node variable file"
-		  WRITE(28,'(/A)') "part"
+          WRITE(28,'(/A)') "part"
           WRITE(28,'(I1)') 1
-		  WRITE(28,'(/A)') "coordinates"
+          WRITE(28,'(/A)') "coordinates"
         END IF
       END IF
     END IF
@@ -528,7 +534,7 @@ PROGRAM xx12
         
         val = zero ; node = 0
         
-        CALL read_amplitude(job_name,numpe,nstep_tot,amp)
+        IF(prog==12) CALL read_amplitude(job_name,numpe,nstep_tot,amp)
         CALL read_loads(job_name,numpe,node,val)
         CALL reindex(ieq_start,node,no_pp_temp,loaded_freedoms_pp,            &
                      loaded_freedoms_start,neq_pp)
@@ -575,63 +581,35 @@ PROGRAM xx12
       
       IF(loaded_freedoms_pp > 0) THEN
         DO i = 1, loaded_freedoms_pp
-          IF(amp(j_loc)==0.0)THEN
-            loads_pp(no_pp(i)-ieq_start+1) = val(loaded_freedoms_start+i-1,1) &
-                                             *dtim*(1.0E-34)
-          ELSE
-            loads_pp(no_pp(i)-ieq_start+1) = val(loaded_freedoms_start+i-1,1) &
-                                             *dtim*amp(j_loc)
+          IF(prog==12)THEN
+            IF(amp(j_loc)==0.0)THEN
+              loads_pp(no_pp(i)-ieq_start+1) = val(loaded_freedoms_start+i-1,1)&
+                                               *dtim*(1.0E-34)
+            ELSE
+              loads_pp(no_pp(i)-ieq_start+1) = val(loaded_freedoms_start+i-1,1)&
+                                               *dtim*amp(j_loc)
+            END IF
+          END IF
+          IF(prog==11)THEN
+              loads_pp(no_pp(i)-ieq_start+1) = val(loaded_freedoms_start+i-1,1)
           END IF
         END DO
       END IF
       
       q = q + SUM_P(loads_pp)
-
+!	  		PRINT *, "loads_pp = ",loads_pp
+      
       IF(numpe==1) PRINT *, "End of 15"
       
 !------------------------------------------------------------------------------
-! 16. Compute RHS of time stepping equation, using storkb_pp, then add 
-!     result to loads
+! 16. Set initial temperature
 !------------------------------------------------------------------------------
-      
+        
       u_pp              = zero
       pmul_pp           = zero
       utemp_pp          = zero
       
-      IF(j_glob/=1) THEN
-        
-        IF(fixed_freedoms_pp > 0) THEN
-          DO i = 1, fixed_freedoms_pp
-            l       = no_f_pp(i) - ieq_start + 1
-            k       = fixed_freedoms_start + i - 1
-            x_pp(l) = val_f(k)
-          END DO
-        END IF
-        
-        CALL gather(x_pp,pmul_pp)
-        elements_2a: DO iel=1,nels_pp
-          utemp_pp(:,iel)=MATMUL(storkb_pp(:,:,iel),pmul_pp(:,iel))
-        END DO elements_2a
-        CALL scatter(u_pp,utemp_pp)
-        
-        IF(fixed_freedoms_pp > 0) THEN
-          DO i = 1, fixed_freedoms_pp
-            l       = no_f_pp(i) - ieq_start + 1
-            k       = fixed_freedoms_start + i - 1
-            u_pp(l) = store_pp(i)*val_f(k)
-          END DO
-        END IF
-        
-        loads_pp = loads_pp + u_pp
-        
-        IF(numpe==1) PRINT *, "End of 16"
-        
-      ELSE
-        
-!------------------------------------------------------------------------------
-! 17. Set initial temperature
-!------------------------------------------------------------------------------
-        
+      IF(j_glob==1) THEN
         x_pp = val0
         
         IF(fixed_freedoms_pp > 0) THEN
@@ -661,10 +639,10 @@ PROGRAM xx12
         
         loads_pp = loads_pp + u_pp
         
-        IF(numpe==1) PRINT *, "End of 17"
+        IF(numpe==1) PRINT *, "End of 16"
         
 !------------------------------------------------------------------------------
-! 18. Output "results" at t=0
+! 17. Output "results" at t=0
 !------------------------------------------------------------------------------
         
         eld_pp   = zero
@@ -712,10 +690,47 @@ PROGRAM xx12
           DEALLOCATE(tempres)
           IF(numpe==1) CLOSE (28)
         END IF
-		
+        
+        IF(numpe==1) PRINT *, "End of 17"
       END IF ! From section 16
       
-      IF(numpe==1) PRINT *, "End of 18"
+!------------------------------------------------------------------------------
+! 18. Compute RHS of time stepping equation, using storkb_pp, then add 
+!     result to loads
+!------------------------------------------------------------------------------
+      
+      !IF(numpe==1) PRINT *, "j_glob = ",j_glob
+      !In steady state this loop shouldn't be entered
+      !Required for transient material properties
+      IF(j_glob/=1) THEN
+        
+        IF(fixed_freedoms_pp > 0) THEN
+          DO i = 1, fixed_freedoms_pp
+            l       = no_f_pp(i) - ieq_start + 1
+            k       = fixed_freedoms_start + i - 1
+            x_pp(l) = val_f(k)
+          END DO
+        END IF
+        
+        CALL gather(x_pp,pmul_pp)
+        elements_2a: DO iel=1,nels_pp
+          utemp_pp(:,iel)=MATMUL(storkb_pp(:,:,iel),pmul_pp(:,iel))
+        END DO elements_2a
+        CALL scatter(u_pp,utemp_pp)
+        
+        IF(fixed_freedoms_pp > 0) THEN
+          DO i = 1, fixed_freedoms_pp
+            l       = no_f_pp(i) - ieq_start + 1
+            k       = fixed_freedoms_start + i - 1
+            u_pp(l) = store_pp(i)*val_f(k)
+          END DO
+        END IF
+        
+        loads_pp = loads_pp + u_pp
+        
+        IF(numpe==1) PRINT *, "End of 18"
+        
+      END IF
       
 !------------------------------------------------------------------------------
 ! 19. Initialize PCG process
@@ -747,6 +762,7 @@ PROGRAM xx12
       p_pp = d_pp
       
       IF(numpe==1) PRINT *, "End of 19"
+      
 !------------------------------------------------------------------------------
 ! 20. Solve simultaneous equations by pcg
 !------------------------------------------------------------------------------
@@ -851,7 +867,7 @@ PROGRAM xx12
           DEALLOCATE(tempres)
           IF(numpe==1) CLOSE (27)
         END IF
-		
+        
         IF(xx12_output==4)THEN !---Write file-temp outputs-ENSIGHT GOLD
           IF(numpe==1)THEN
             WRITE(stepnum,'(I0.6)') j_npri
@@ -859,9 +875,9 @@ PROGRAM xx12
             OPEN(28,file=fname,status='replace',action='write')
           
             WRITE(28,'(/A)') "Alya Ensight Gold --- Scalar per-node variable file"
-		    WRITE(28,'(/A)') "part"
+            WRITE(28,'(/A)') "part"
             WRITE(28,'(I1)') 1
-		    WRITE(28,'(/A)') "coordinates"
+            WRITE(28,'(/A)') "coordinates"
           END IF
           
           ALLOCATE(tempres(nodes_pp))
