@@ -6478,9 +6478,11 @@ END SUBROUTINE bcast_inputdata_p127
   RETURN
   END SUBROUTINE READ_RFEMSOLVE
   
+
 !------------------------------------------------------------------------------
 !------------------------------------------------------------------------------
 !------------------------------------------------------------------------------
+
 
   SUBROUTINE MESH_ENSI(argv,nlen,g_coord,g_num,element,etype,nf,loads,        &
                        nstep,npri,dtim,solid)
@@ -7210,7 +7212,7 @@ END SUBROUTINE bcast_inputdata_p127
 !------------------------------------------------------------------------------
 !------------------------------------------------------------------------------
 
-  SUBROUTINE MESH_ENSI_GEO_BIN(argv,nlen,g_coord,g_num,element)
+ SUBROUTINE MESH_ENSI_GEO_BIN(argv,nlen,g_coord,g_num,element)
 
    !/****f* input/mesh_ensi_geo_bin
    !*  NAME
@@ -7253,10 +7255,10 @@ END SUBROUTINE bcast_inputdata_p127
   
     INTEGER,PARAMETER             :: iwp=SELECTED_REAL_KIND(15)
     INTEGER,   INTENT(IN)         :: nlen
-    INTEGER,   INTENT(IN)         :: g_num(:,:)
+    INTEGER,   INTENT(INOUT)      :: g_num(:,:)
     INTEGER                       :: i,j
     INTEGER                       :: nod,nels,ndim,nn
-    REAL(iwp), INTENT(IN)         :: g_coord(:,:)
+    REAL(iwp), INTENT(INOUT)      :: g_coord(:,:)
     CHARACTER(LEN=15), INTENT(IN) :: argv,element  
     CHARACTER(LEN=80)             :: cbuffer
     
@@ -7294,10 +7296,13 @@ END SUBROUTINE bcast_inputdata_p127
     WRITE(13) int(nn,kind=c_int)
     DO j=1,ndim
       DO i=1,nn  
+        
         WRITE(13) real(g_coord(j,i),kind=c_float)
+	
       END DO
     END DO
-  
+
+
     IF(ndim==2) THEN ! ensight requires zeros for the z-ordinate
       DO i=1,nn
         WRITE(13,'(A)') " 0.00000E+00" ! needs fixing for binary
@@ -7327,6 +7332,8 @@ END SUBROUTINE bcast_inputdata_p127
             DO i = 1,nels
               WRITE(13,'(8I10)')g_num(1,i),g_num(7,i),g_num(5,i),g_num(3,i),  &
                                 g_num(8,i),g_num(6,i),g_num(4,i),g_num(2,i)
+             
+
             END DO
           CASE DEFAULT
             WRITE(13,'(A)')   "# Element type not recognised"
@@ -7341,7 +7348,8 @@ END SUBROUTINE bcast_inputdata_p127
                         int(g_num(8,i),kind=c_int),int(g_num(5,i),kind=c_int),&
                         int(g_num(2,i),kind=c_int),int(g_num(3,i),kind=c_int),&
                         int(g_num(7,i),kind=c_int),int(g_num(6,i),kind=c_int)
-            END DO
+		
+            END DO 
           CASE(20)
             cbuffer = "hexa20"       ; WRITE(13) cbuffer
             WRITE(13) int(nels,kind=c_int)
@@ -7357,7 +7365,8 @@ END SUBROUTINE bcast_inputdata_p127
                 int(g_num(16,i),kind=c_int),int(g_num(10,i),kind=c_int),      &
                 int(g_num(2,i),kind=c_int),int(g_num(6,i),kind=c_int),        &
                 int(g_num(18,i),kind=c_int),int(g_num(14,i),kind=c_int) 
-            END DO
+	
+            END DO		
           CASE DEFAULT
             cbuffer = "# Element type not recognised" ; WRITE(13) cbuffer
         END SELECT
