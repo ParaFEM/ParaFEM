@@ -152,6 +152,7 @@ dtim = 1.0
 solid = .true.
 element1 = 'hexahedron'
 nod_1 = 8
+PRINT *, "NEw"
 
 !Allocation of variables for subroutines 
 ALLOCATE(etype_1(nel3*nel*nel))
@@ -170,7 +171,6 @@ end do
 
 do i = 1, nn
 
-
 	nf_1(1,i) = i
 	nf_1(2,i) = 1
 	nf_1(3,i) = 1
@@ -187,30 +187,37 @@ do i = 1, (nel+1)*(nel+1)
         
 end do
 
-nf_1(2,1) = 0
-nf_1(3,1) = 0
-nf_1(2, (nel+1)+(nel+1)) = 0
+!nf_1(2,1) = 0
+!nf_1(3,1) = 0
+!nf_1(2, (nel+1)+(nel+1)) = 0
 
 
 
 !End automatic 3-2-1 boundary conditions 
 
-ALLOCATE (node_1(1))
+!Loads
 
-node_1(1) = 10 
+ALLOCATE (node_1((nel+1)*(nel+1)))
 
-do i = 1, nn
+PRINT *, "One-1"
 
-        val(1,i) = i
-	val(2,i) = 0
-	val(3,i) = 1
-	val(4,i) = 0
+do i = (nn-(nel+1)*(nel+1))+1, nn
+
+    node_1(i) = i
+    PRINT *,"node_1", node_1(i) 
 
 end do
 
-!Loads
+!do i = 1, nn
 
+!       val(1,i) = i
+!	val(2,i) = 0
+!	val(3,i) = 0
+!	val(4,i) = 0
 
+!end do
+
+PRINT *, "One-1"
 
 !End loads
 
@@ -219,6 +226,6 @@ CALL MESH_ENSI_CASE(filesuff,nlen,nstep,npri,dtim,solid)
 CALL MESH_ENSI_GEO_BIN(filesuff,nlen,g_coord_1,g_num_1,element1)
 CALL MESH_ENSI_MATID_BIN(filesuff,nlen,nod_1,element1,etype_1)
 CALL MESH_ENSI_NDBND_BIN(filesuff,nf_1,nlen,nod_1,solid)
-CALL MESH_ENSI_NDLDS_BIN(filesuff,nlen,nn,val,node_1)
+!CALL MESH_ENSI_NDLDS_BIN(filesuff,nlen,nn,val,node_1)
 
 end program cylinder

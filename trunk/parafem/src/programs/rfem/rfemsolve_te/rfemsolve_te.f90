@@ -295,8 +295,6 @@ PROGRAM rfemsolve_te
 ! 8. Element stiffness integration and storage
 !------------------------------------------------------------------------------
 
-  OPEN(unit = 8, file = "results.txt")
-  
   points = zero
 
   CALL sample(element,points,weights)
