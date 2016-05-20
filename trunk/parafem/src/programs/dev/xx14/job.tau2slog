@@ -1,0 +1,14 @@
+#!/bin/sh
+#$Id: bc3.pbs.mpiifort 235 2016-02-22 14:42:08Z mexas $
+#
+# TAU traces -> SLOG2 format for jumpshot4
+# This is a serial job.
+#
+# submit with e.g.
+#   qsub -q testq -j oe -l walltime=00:10:00,nodes=1:ppn=1
+
+# Switch to current working directory
+cd $PBS_O_WORKDIR
+
+tau_treemerge.pl
+tau2slog2 tau.trc tau.edf -o tau.slog2
