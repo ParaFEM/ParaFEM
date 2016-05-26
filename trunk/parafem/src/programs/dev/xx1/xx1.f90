@@ -101,6 +101,8 @@ PROGRAM xx1
 ! 3. Read job_name from the command line. 
 !    Read control data, mesh data, boundary and loading conditions. 
 !------------------------------------------------------------------------------
+
+
  
   ALLOCATE(timest(20))
   timest    = zero 
@@ -111,6 +113,8 @@ PROGRAM xx1
   IF (argc /= 1) CALL job_name_error(numpe,program_name)
   CALL GETARG(1, job_name) 
 
+
+
   CALL read_xx1(job_name,numpe,e,element,fixed_freedoms,limit,loaded_nodes, &
                  meshgen,nels,nip,nn,nod,nr,partitioner,tol,v)
 
@@ -120,7 +124,9 @@ PROGRAM xx1
 
   nprops   = 2   ! needs to go in .dat file and be read using READ_XX1
   np_types = 1   ! needs to go in .dat file and be read using READ_XX1
- 
+
+
+!
   CALL calc_nels_pp(job_name,nels,npes,numpe,partitioner,nels_pp)
 
   ndof = nod*nodof
@@ -139,18 +145,46 @@ PROGRAM xx1
   prop      = 0
 
   timest(2) = elap_time()
-
+  
   IF(io_binary) THEN
     CALL read_g_num_pp_be(job_name,iel_start,nn,npes,numpe,g_num_pp)
+      PRINT *, "Binary"
+
   ELSE 
     CALL read_g_num_pp(job_name,iel_start,nn,npes,numpe,g_num_pp)
   END IF
 
+
+
+!PRINT details
+
+
+  PRINT *, "job_name", job_name
+  PRINT *, "iel_start", iel_start
+  PRINT *, "nn", nn
+  PRINT *, "npes", npes
+  PRINT *, "numpe", numpe
+  PRINT *, "g_num_pp"
+  PRINT *, "nels_pp", nels_pp
+
+
+
+  do i = 1, nels_pp
+  
+     PRINT *, i, g_num_pp(:,i)
+
+  end do 
+
+!-----------------------  
+
   timest(3) = elap_time()
+
+  PRINT *, "meshgen", meshgen
 
   IF(meshgen == 2) CALL abaqus2sg(element,g_num_pp)
   timest(4) = elap_time()
-
+  
+  PRINT *, "OVER HERE"
   IF(io_binary) THEN
     CALL read_g_coord_pp_be(job_name,g_num_pp,nn,npes,numpe,g_coord_pp)
   ELSE
