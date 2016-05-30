@@ -147,35 +147,13 @@ PROGRAM xx1
   timest(2) = elap_time()
   
   IF(io_binary) THEN
-    CALL read_g_num_pp_be(job_name,iel_start,nn,npes,numpe,g_num_pp)
-      PRINT *, "Binary"
-
+    !CALL read_g_num_pp_be(job_name,iel_start,nn,npes,numpe,g_num_pp)
+    !CALL read_g_coord_pp_be(job_name,g_num_pp,nn,npes,numpe,g_coord_pp)
+    CALL READ_ENSI_GEO_BIN(job_name,g_num_pp,nn,npes,numpe,g_coord_pp,iel_start)
   ELSE 
     CALL read_g_num_pp(job_name,iel_start,nn,npes,numpe,g_num_pp)
+    CALL read_g_coord_pp(job_name,g_num_pp,nn,npes,numpe,g_coord_pp)
   END IF
-
-
-
-!PRINT details
-
-
-  PRINT *, "job_name", job_name
-  PRINT *, "iel_start", iel_start
-  PRINT *, "nn", nn
-  PRINT *, "npes", npes
-  PRINT *, "numpe", numpe
-  PRINT *, "g_num_pp"
-  PRINT *, "nels_pp", nels_pp
-
-
-
-  do i = 1, nels_pp
-  
-     PRINT *, i, g_num_pp(:,i)
-
-  end do 
-
-!-----------------------  
 
   timest(3) = elap_time()
 
@@ -183,13 +161,13 @@ PROGRAM xx1
 
   IF(meshgen == 2) CALL abaqus2sg(element,g_num_pp)
   timest(4) = elap_time()
-  
-  PRINT *, "OVER HERE"
-  IF(io_binary) THEN
-    CALL read_g_coord_pp_be(job_name,g_num_pp,nn,npes,numpe,g_coord_pp)
-  ELSE
-    CALL read_g_coord_pp(job_name,g_num_pp,nn,npes,numpe,g_coord_pp)
-  END IF
+
+ ! IF(io_binary) THEN
+ !   CALL read_g_coord_pp_be(job_name,g_num_pp,nn,npes,numpe,g_coord_pp)
+ !   PRINT *, "Binary"
+ ! ELSE
+ !   CALL read_g_coord_pp(job_name,g_num_pp,nn,npes,numpe,g_coord_pp)
+ ! END IF
 
   timest(5) = elap_time()
 
