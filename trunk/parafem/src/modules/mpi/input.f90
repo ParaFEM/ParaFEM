@@ -8051,5 +8051,47 @@ SUBROUTINE MESH_ENSI_NDLDS_BIN(argv,nlen,nn,val,node)
     RETURN
   
   END SUBROUTINE MESH_ENSI_GEO
+
+
+!------------------------------------------------------------------------------
+!------------------------------------------------------------------------------
+!------------------------------------------------------------------------------
+
+  SUBROUTINE READ_ENSI_GEO_BIN(job_name,g_num_pp,nn,npes,numpe,g_coord_pp,iel_start)
+
+  !/****f* input/read_ensi_geo_bin
+  !*  NAME
+  !*    SUBROUTINE: read_ensi_geo_bin
+  !*  SYNOPSIS
+  !*    Usage:      CALL read_ensi_geo_bin(job_name,g_num_pp,nn,npes,numpe,  &
+  !*                                        g_coord_pp)
+  !*  FUNCTION
+  !*    
+  !*  INPUTS
+  !*
+  !*  AUTHOR
+  !*    Lee Margetts
+  !*  CREATION DATE
+  !*    27 May 2016
+  !*  COPYRIGHT
+  !*    (c) University of Manchester 2007-2014
+  !******
+  !*  THIS SUBROUTINE IS WORK IN PROGRESS
+  !*
+
+  IMPLICIT NONE
+
+  CHARACTER(LEN=50),INTENT(IN) :: job_name
+  INTEGER, INTENT(IN)          :: nn, npes, numpe
+  INTEGER, INTENT(INOUT)       :: g_num_pp(:,:)
+  REAL(iwp), INTENT(INOUT)     :: g_coord_pp(:,:,:) 
+  INTEGER, INTENT(IN)          :: iel_start
+
+  CALL READ_G_NUM_PP_BE(job_name,iel_start,nn,npes,numpe,g_num_pp)
+  CALL READ_G_COORD_PP_BE(job_name,g_num_pp,nn,npes,numpe,g_coord_pp)
+    
+  RETURN  
+
+  END SUBROUTINE READ_ENSI_GEO_BIN
     
 END MODULE INPUT
