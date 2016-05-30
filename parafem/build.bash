@@ -9,10 +9,15 @@ if [[ $# == 1 && $1 == 'xx' ]]; then
     export build=xx log=xx.log
 elif [[ $# == 1 && $1 == 'modules' ]]; then
     export build=modules log=modules.log
+elif [[ $# == 1 && $1 == 'clean' ]]; then
+    export build=clean log=clean.log
+elif [[ $# == 1 && $1 == 'execlean' ]]; then
+    export build=execlean log=execlean.log
 else
     echo 'Usage:
-build.bash xx to build xx15 and xx18 only
-build.bash modules to re-build the ParaFEM modules and p12meshgen'
+build.bash clean to clean everything
+build.bash modules to re-build the ParaFEM modules and p12meshgen
+build.bash xx to build xx15 and xx18 only'
     exit 2 # incorrect usage
 fi
 
@@ -70,12 +75,19 @@ EOF
 	sleep 1 # TDS and /home are sleepy
     elif [[ $build == 'modules' ]]; then
 	sleep 1 # TDS and /home are sleepy
-	./make-parafem MACHINE=xc30 clean execlean &> clean.log
-	rm -f $modulefile
-	sleep 1 # TDS and /home are sleepy
 	./make-parafem MACHINE=xc30 --no-libs --no-tools -mpi -parafem_petsc --install-mpi-parafem_petsc-only --only-modules >> $log 2>&1
 	sleep 1 # TDS and /home are sleepy
 	./make-parafem MACHINE=xc30 --no-libs -mpi -parafem_petsc --install-mpi-parafem_petsc-only --only-tools -preproc >> $log 2>&1
+	sleep 1 # TDS and /home are sleepy
+    elif [[ $build == 'clean' ]]; then
+	sleep 1 # TDS and /home are sleepy
+	./make-parafem MACHINE=xc30 clean execlean >> $log 2>&1
+	rm -f $modulefile
+	sleep 1 # TDS and /home are sleepy
+    elif [[ $build == 'execlean' ]]; then
+	sleep 1 # TDS and /home are sleepy
+	./make-parafem MACHINE=xc30 execlean >> $log 2>&1
+	rm -f $modulefile
 	sleep 1 # TDS and /home are sleepy
     fi
 )
