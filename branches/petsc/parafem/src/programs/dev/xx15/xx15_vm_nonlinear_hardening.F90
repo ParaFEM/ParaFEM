@@ -644,7 +644,7 @@ PROGRAM xx15_vm_nonlinear_hardening
         END DO
 
         IF (solvers == petsc_solvers) THEN
-          CALL p_add_element(g_g_pp(:,iel),storkm_pp(:,:,iel))
+          CALL p_add_element(g_g_pp(:,iel),storekm_pp(:,:,iel))
         END IF
       END DO
 

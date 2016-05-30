@@ -209,6 +209,9 @@ PROGRAM xx18
 
   DEALLOCATE(p_pp,r_pp,x_pp,u_pp,d_pp,diag_precon_pp,storkm_pp,pmul_pp) 
   
+  WRITE(11,'(A,F10.4)')"Time to solve equations was :",elap_time()-timest(3)
+  WRITE(11,'(A,E12.4)')"The central nodal displacement is :",xnew_pp(1)
+
   !-----------------------------------------------------------------------------
   ! 9. Recover stresses at centroidal gauss point
   !-----------------------------------------------------------------------------

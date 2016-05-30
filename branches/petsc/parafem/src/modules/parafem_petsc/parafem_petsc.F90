@@ -21,10 +21,15 @@ MODULE parafem_petsc
   !*  Place remarks that should not be included in the documentation here.
   !*  If you contribute to this module, add your author name.
   !*
+  !*  PETSc will always use MPI (unless PETSc itself has been compiled without
+  !*  MPI).
+  !*
+  !*  The arguments for PETSc routines are mostly PetscInt and PetscScalar.
+  !*  Arguments with INTENT(in) are copied to local variables of the correct
+  !*  TYPE to PASS to the PETSc routines.  (An alternative would have been to
+  !*  pass them as expressions by enclosing them in brackets.)
   !*/
   
-  ! PETSc will always use MPI (unless PETSc itself has been compiled without
-  ! MPI)
   USE mp_interface
 
   IMPLICIT NONE
@@ -213,11 +218,14 @@ CONTAINS
 
     INTEGER, INTENT(in) :: neq_pp
 
+    PetscInt :: p_neq_pp
+
+    p_neq_pp = neq_pp
+
     CALL MatCreate(PETSC_COMM_WORLD,p_object%A,p_object%ierr)
-    CALL MatSetSizes(p_object%A,neq_pp,neq_pp,PETSC_DETERMINE,PETSC_DETERMINE, &
-                     p_object%ierr)
+    CALL MatSetSizes(p_object%A,p_neq_pp,p_neq_pp,                             &
+                     PETSC_DETERMINE,PETSC_DETERMINE,p_object%ierr)
     CALL MatSetType(p_object%A,MATAIJ,p_object%ierr)
-    ! CALL MatSetBlockSize(p_object%A,nodof,p_object%ierr)
     
     CALL MatSeqAIJSetPreallocation(p_object%A,                                 &
                                    p_object%row_nnz,PETSC_NULL_INTEGER,        &
@@ -348,38 +356,28 @@ CONTAINS
     !*  This depends on g holding 0 for erased rows/columns (i.e. equations),
     !*  and MatSetValues ignoring negative indices (PETSc always uses zero-based
     !*  indexing).
+    !*
+    !*  MAT_IGNORE_ZERO_ENTRIES is not set:  for a series of non-linear solves
+    !*  with the same adjacency matrix for the mesh, the matrix non-zero
+    !*  structure will remain fixed.
     !*/
 
     INTEGER, INTENT(in) :: g(:)
     REAL,    INTENT(in) :: km(:,:)
 
     PetscInt :: ntot
-    PetscInt :: rows(60), cols(60)
-    PetscScalar :: values (60*60)
-    
-    ntot = 60
-    rows(1:ntot) = g - 1
-    cols(1:ntot) = rows(1:ntot)
-    ! PETSc uses C array order, so a transpose is needed.  Actually, you can
-    ! get PETSc to use Fortran order for MatSetValues by setting
-    ! MAT_ROW_ORIENTED false.  But other routines might be affected?
-    CALL MatSetOption(p_object%A,MAT_ROW_ORIENTED,PETSC_FALSE,p_object%ierr)
-    values(1:ntot*ntot) = RESHAPE(TRANSPOSE(km),(/ntot*ntot/))
-    WRITE(*,*) ntot, SIZE(g), SIZE(rows), SIZE(cols)
-    WRITE(*,*) ntot*ntot, SIZE(values), SIZE(km)
-    CALL MatSetValues(p_object%A,ntot,rows,ntot,cols,        &
-                      values,ADD_VALUES,p_object%ierr)
 
-!!$    ntot = SIZE(g)
-!!$    p_object%rows(1:ntot) = g - 1
-!!$    p_object%cols(1:ntot) = p_object%rows(1:ntot)
-!!$    ! PETSc uses C array order, so a transpose is needed.  Actually, you can
-!!$    ! get PETSc to use Fortran order for MatSetValues by setting
-!!$    ! MAT_ROW_ORIENTED false.  But other routines might be affected?
-!!$    CALL MatSetOption(p_object%A,MAT_ROW_ORIENTED,PETSC_TRUE,p_object%ierr)
-!!$    p_object%values(1:ntot*ntot) = RESHAPE(TRANSPOSE(km),(/ntot*ntot/))
-!!$    CALL MatSetValues(p_object%A,ntot,p_object%rows,ntot,p_object%cols,        &
-!!$                      p_object%values,ADD_VALUES,p_object%ierr)
+    ntot = SIZE(g)
+    p_object%rows(1:ntot) = g - 1
+    p_object%cols(1:ntot) = p_object%rows(1:ntot)
+    ! PETSc uses C array order, so a transpose would needed, but you can
+    ! get PETSc to use Fortran order for MatSetValues by setting
+    ! MAT_ROW_ORIENTED false (at least for the Mat types used so far:
+    ! SEQAIJ and MPIAIJ).  This needs to be tested.
+    CALL MatSetOption(p_object%A,MAT_ROW_ORIENTED,PETSC_FALSE,p_object%ierr)
+    p_object%values(1:ntot*ntot) = RESHAPE(km,(/ntot*ntot/))
+    CALL MatSetValues(p_object%A,ntot,p_object%rows,ntot,p_object%cols,        &
+                      p_object%values,ADD_VALUES,p_object%ierr)
   END SUBROUTINE p_add_element
 
   SUBROUTINE p_assemble(numpe)
@@ -459,12 +457,15 @@ CONTAINS
 
     INTEGER, INTENT(in) :: neq_pp
 
+    PetscInt :: p_neq_pp
+
+    p_neq_pp = neq_pp
+
     ! RHS vector.  For this particular order (create, set size, set type) the
     ! allocation is done by set type.
     CALL VecCreate(PETSC_COMM_WORLD,p_object%b,p_object%ierr)
-    CALL VecSetSizes(p_object%b,neq_pp,PETSC_DECIDE,p_object%ierr)
+    CALL VecSetSizes(p_object%b,p_neq_pp,PETSC_DECIDE,p_object%ierr)
     CALL VecSetType(p_object%b,VECSTANDARD,p_object%ierr)
-    ! CALL VecSetBlockSize(p_object%b,nodof,p_object%ierr)
 
     ! Solution vector
     CALL VecDuplicate(p_object%b,p_object%x,p_object%ierr)
@@ -548,8 +549,14 @@ CONTAINS
     REAL,    INTENT(in) :: rtol
     INTEGER, INTENT(in) :: max_it
 
-    CALL KSPSetTolerances(p_object%ksp,rtol,PETSC_DEFAULT_REAL,                &
-                          PETSC_DEFAULT_REAL,max_it,p_object%ierr)
+    PetscReal :: p_rtol
+    PetscInt  :: p_max_it
+
+    p_rtol = rtol
+    p_max_it = max_it
+
+    CALL KSPSetTolerances(p_object%ksp,p_rtol,PETSC_DEFAULT_REAL,              &
+                          PETSC_DEFAULT_REAL,p_max_it,p_object%ierr)
     CALL KSPSetFromOptions(p_object%ksp,p_object%ierr)
   END SUBROUTINE p_set_tolerances
   
