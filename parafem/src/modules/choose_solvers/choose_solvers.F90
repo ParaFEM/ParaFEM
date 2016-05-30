@@ -88,7 +88,6 @@ CONTAINS
       IF (numpe == 1) THEN
         WRITE(*,*) "Solvers can be " // solvers_list()
       END IF
-      CALL SHUTDOWN
     END IF
   END FUNCTION get_solvers
   
