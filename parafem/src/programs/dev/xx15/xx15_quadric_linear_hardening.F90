@@ -3,10 +3,7 @@ PROGRAM xx15_quadric_linear_hardening
 !   program xx15:  finite strain elasto-plastic analysis with Newton-Raphson
 !------------------------------------------------------------------------------
 
-  ! Choice of solvers
   USE choose_solvers
-  ! PETSc interface and modules.  PETSc will always use MPI (unless PETSc itself
-  ! has been compiled without MPI)
   USE parafem_petsc
   USE PRECISION
   USE GLOBAL_VARIABLES
@@ -22,9 +19,6 @@ PROGRAM xx15_quadric_linear_hardening
   
   IMPLICIT NONE
 
-  ! PETSc types
-#include <petsc/finclude/petscdef.h>
- 
   INTEGER :: nels, nn, nr, nip, nodof=3, nod, nst=6, loaded_nodes, nn_pp,     &
    nf_start, fmt=1, i, j, k, l, ndim=3, iters, limit, iel, nn_start,          &
    num_load_steps, iload, igauss, dimH, inewton, jump, npes_pp, partitioner=1,&
@@ -51,27 +45,7 @@ PROGRAM xx15_quadric_linear_hardening
   LOGICAL :: converged, timewrite=.TRUE., flag=.FALSE., print_output=.FALSE., &
    tol_inc=.FALSE., lambda_inc=.TRUE., noncon_flag=.FALSE.
 
-! Default solvers are ParaFEM.  parafem_solvers is defined in choose_solvers
-  CHARACTER(len=50) :: solvers = parafem_solvers 
-
-  ! PETSc variables
-  CHARACTER(len=1024) :: p_fname
-  LOGICAL             :: p_exist
-  PetscErrorCode      :: p_ierr
-  ! The PETSc objects cannot be initialised here because PETSC_NULL_OBJECT is a
-  ! common-block-object and not a constant.
-  Vec                 :: p_x,p_b,p_r
-  Mat                 :: p_A
-  KSP                 :: p_ksp
-  PetscScalar         :: p_pr_n2,p_r_n2,p_b_n2
-  PetscInt,ALLOCATABLE    :: p_rows(:),p_cols(:)
-  PetscScalar,ALLOCATABLE :: p_values(:)
-  PetscScalar,POINTER :: p_varray(:)
-  PetscInt            :: p_its,p_nnz
-  PetscReal           :: p_rtol
-  DOUBLE PRECISION    :: p_info(MAT_INFO_SIZE)
-  KSPConvergedReason  :: p_reason
-  CHARACTER(LEN=p_max_string_length) :: p_description
+  CHARACTER(len=choose_solvers_string_length) :: solvers
 
   !-------------------------- dynamic arrays-----------------------------------
   REAL(iwp), ALLOCATABLE:: points(:,:), coord(:,:), weights(:), xnew_pp(:),   &
@@ -129,30 +103,11 @@ PROGRAM xx15_quadric_linear_hardening
   CALL READ_DATA_XX7(fname,numpe,nels,nn,nr,loaded_nodes,fixed_nodes,          &
                      nip,limit,tol,e,v,nod,num_load_steps,jump,tol2)
 
-! Input:  2: The second argument in the command line (arg2)
-  IF (argc >= 2) THEN
-    CALL GETARG(2,solvers)
-  END IF
-
+  solvers = get_solvers(numpe)
   IF (.NOT. solvers_valid(solvers)) THEN
-    IF (numpe == 1) THEN
-      WRITE(*,*) "Solvers can be " // solvers_list()
-    END IF
     CALL SHUTDOWN
-    STOP
   END IF
 
-  IF(solvers == petsc_solvers) THEN
-    IF(numpe == 1) THEN
-      p_fname = TRIM(fname_base) // ".petsc"
-      INQUIRE(file=TRIM(p_fname),exist=p_exist)
-      IF (.NOT. p_exist) THEN
-        p_fname = ""
-      END IF
-    END IF
-    CALL MPI_BCAST(p_fname,LEN(p_fname),MPI_CHARACTER,0,MPI_COMM_WORLD,ier)
-  END IF
-    
   IF (nels < npes) THEN
     IF (numpe==1) THEN
       WRITE(*,*)"Error: fewer elements than processors"
@@ -177,18 +132,6 @@ PROGRAM xx15_quadric_linear_hardening
   ntot = nod * nodof
 
   CALL CALC_NODES_PP(nn,npes,numpe,node_end,node_start,nodes_pp)
-
-!--------------------------------------------------------------------------
-! 1a. Start up PETSc after MPI has been started
-!--------------------------------------------------------------------------
-  IF (solvers == petsc_solvers) THEN
-    CALL PetscInitialize(p_fname,p_ierr)
-    p_x   = PETSC_NULL_OBJECT
-    p_b   = PETSC_NULL_OBJECT
-    p_r   = PETSC_NULL_OBJECT
-    p_A   = PETSC_NULL_OBJECT
-    p_ksp = PETSC_NULL_OBJECT
-  END IF
 
 !------------------------------------------------------------------------------
 ! 2. Get integration Gauss points and weights in the element
@@ -396,53 +339,14 @@ PROGRAM xx15_quadric_linear_hardening
   ALLOCATE(diag_precon_tmp(ntot,nels_pp))
 
 !---------------------------------------------------------------------------
-! 9a. Set up PETSc
+! 9a. Start up PETSc after find_pe_procs (so that MPI has been started)
 !---------------------------------------------------------------------------
   IF (solvers == petsc_solvers) THEN
-    ! PETSc 64-bit indices and 64-bit reals.  In most (all?) places, passing a
-    ! 32-bit integer where an intent(in) 64-integer is required is safe, because
-    ! the PETSc Fortran-C interface de-references the pointer that is actually
-    ! passed, even though it does not specify any intent in the Fortran
-    ! interface.  This is not safe when passing arrays, they need to be copied
-    ! to PetscInt arrays.  And for safety the same should be done for the
-    ! PetscScalar arrays.
-    CALL MatCreate(PETSC_COMM_WORLD,p_A,p_ierr)
-    CALL MatSetSizes(p_A,neq_pp,neq_pp,PETSC_DETERMINE,PETSC_DETERMINE,p_ierr)
-    CALL MatSetType(p_A,MATAIJ,p_ierr)
-    !- Block size fixed to 1 for just now - this cannot be set to nodof until
-    !- the restraints are handled block-wise in ParaFEM.  CALL
-    !- MatSetBlockSize(p_A,nodof,p_ierr)
-    
-    ! Find an approximate number of zeroes per row for the matrix size
+    ! Set the approximate number of zeroes per row for the matrix size
     ! pre-allocation.
-    CALL p_row_nnz(nodof,ndim,nod,p_over_allocation,p_nnz)
-    CALL MatSeqAIJSetPreallocation(p_A,p_nnz,PETSC_NULL_INTEGER,p_ierr)
-    CALL MatMPIAIJSetPreallocation(p_A,p_nnz,PETSC_NULL_INTEGER,              &
-      p_nnz,PETSC_NULL_INTEGER,p_ierr)
-    ! If the allocation is too small, PETSc will produce reams of information
-    ! and not construct the matrix properly.  We output some information at the
-    ! end if p_over_allocation should be increased.
-    CALL MatSetOption(p_A,MAT_NEW_NONZERO_ALLOCATION_ERR,PETSC_FALSE,p_ierr)
-    
-    ! RHS vector.  For this particular order (create, set size, set type) the
-    ! allocation is done by set type.
-    CALL VecCreate(PETSC_COMM_WORLD,p_b,p_ierr)
-    CALL VecSetSizes(p_b,neq_pp,PETSC_DECIDE,p_ierr)
-    CALL VecSetType(p_b,VECSTANDARD,p_ierr)
-    !- Block size fixed to 1 for just now - this cannot be set to nodof until the
-    !- restraints are handled block-wise in ParaFEM.
-    !- CALL VecSetBlockSize(p_b,nodof,p_ierr)
-
-    ! Solution vector
-    CALL VecDuplicate(p_b,p_x,p_ierr) 
-    
-    ! Krylov solver data structures
-    CALL KSPCreate(PETSC_COMM_WORLD,p_ksp,p_ierr)
-    CALL KSPSetOperators(p_ksp,p_A,p_A,p_ierr)
-  
-    ! Arrays of PETSc types to be proof against changes in index and scalar
-    ! sizes.
-    ALLOCATE(p_rows(ntot),p_cols(ntot),p_values(ntot*ntot))
+    CALL p_row_nnz(ndim,nodof,nod)
+    ! Set up PETSc.
+    CALL p_setup(numpe,fname_base,neq_pp,ntot)
   END IF
 
   !----------------------------------------------------------------------------
@@ -591,7 +495,7 @@ PROGRAM xx15_quadric_linear_hardening
       
       storekm_pp = zero
       IF (solvers == petsc_solvers) THEN
-        CALL MatZeroEntries(p_A,p_ierr)
+        CALL p_zero_matrix
       END IF
       
       DO iel = 1,nels_pp
@@ -661,31 +565,12 @@ PROGRAM xx15_quadric_linear_hardening
         END DO
 
         IF (solvers == petsc_solvers) THEN
-          ! 1/ Use ubound(g_g_pp,1) instead of ntot? 2/ The following depends on
-          ! g_g_pp holding 0 for erased rows/columns, and MatSetValues ignoring
-          ! negative indices (PETSc always uses zero-based indexing). 3/ PETSc
-          ! uses C array order, so a transpose is needed.
-          p_rows   = g_g_pp(:,iel) - 1
-          p_cols   = p_rows
-          p_values = RESHAPE(TRANSPOSE(storekm_pp(:,:,iel)),SHAPE(p_values))
-          CALL MatSetValues(p_A,ntot,p_rows,ntot,p_cols,p_values,ADD_VALUES,   &
-                            p_ierr)
+          CALL p_add_element(g_g_pp(:,iel),storekm_pp(:,:,iel))
         END IF
       END DO
 
       IF (solvers == petsc_solvers) THEN
-        CALL MatAssemblyBegin(p_A,MAT_FINAL_ASSEMBLY,p_ierr)
-        CALL MatAssemblyEnd(p_A,MAT_FINAL_ASSEMBLY,p_ierr)
-        
-        CALL MatGetInfo(p_A,MAT_GLOBAL_SUM,p_info,p_ierr)
-        IF(numpe==1)THEN
-          IF(p_info(MAT_INFO_MALLOCS)/=0.0)THEN
-            WRITE(*,'(A,I0,A)') "The matrix assembly required ",               &
-              NINT(p_info(MAT_INFO_MALLOCS)),                                  &
-              " mallocs.  Increase p_over_allocation to speed up "             &
-              //"the assembly."
-          END IF
-        END IF
+        CALL p_assemble(numpe)
       END IF
             
       ! This code deals with the fail of local convergence
@@ -798,39 +683,6 @@ PROGRAM xx15_quadric_linear_hardening
         EXIT
       END IF
 
-      IF (solvers == petsc_solvers) THEN
-        ! The general tolerance and maximum number of linear solver iterations
-        ! come from the value in the ParaFEM control file.  Note that relative
-        ! tolerance for PETSc is for the preconditioned residual.
-        CALL KSPSetTolerances(p_ksp,tol,PETSC_DEFAULT_REAL,PETSC_DEFAULT_REAL, &
-                              limit,p_ierr)
-        ! KSP type, per-KSP tolerances (rtol, abstol, dtol, maxits), KSP
-        ! options, PC type, PC options are set in the xx*.petsc file.  Those
-        ! options are used to set up the preconditioned Krylov solver.  If there
-        ! are several KSP types to be chosen from, then each one will be
-        ! bracketed by -prefix_push and -prefix_pop.  For example
-        !
-        ! -prefix_push abc1_
-        !   -ksp_type minres
-        ! -prefix_pop
-        !
-        ! in the xx*.petsc file and 
-        !
-        ! CALL KSPSetOptionsPrefix(p_ksp,"abc1_",p_ierr)
-        !
-        ! before KSPSetFromOptions before using the 'abc1_' solver.  Thus you
-        ! can switch for CG to GMRES during a simulation.
-        CALL KSPSetFromOptions(p_ksp,p_ierr)
-
-        ! load vector
-        CALL VecGetArrayF90(p_b,p_varray,p_ierr)
-        ! This is OK as long as PetscScalars not smaller than ParaFEM reals.  There
-        ! should be a test for sizes of PetscScalars (and PetscInts) and ParaFEM reals
-        ! (and indices).
-        p_varray = r_pp(1:)
-        CALL VecRestoreArrayF90(p_b,p_varray,p_ierr)
-      END IF
-
 !------------------------------------------------------------------------------
 !----------------- Solve using preconditioned Krylov solver -------------------
 !------------------------------------------------------------------------------
@@ -842,52 +694,10 @@ PROGRAM xx15_quadric_linear_hardening
         CALL PCG_VER1(inewton,limit,tol,storekm_pp,r_pp(1:),                   &
                       diag_precon_pp(1:),rn0,deltax_pp(1:),iters)
       ELSE IF (solvers == petsc_solvers) THEN
-        ! Solution vector
-        ! For non-linear solves, the previous solution will be used as an initial
-        ! guess: copy the ParaFEM solution vector to PETSc.
-        CALL VecGetArrayF90(p_x,p_varray,p_ierr)
-        ! This is OK as long as PetscScalars are not smaller than ParaFEM reals.
-        ! There should be a test for sizes of PetscScalars (and PetscInts) and ParaFEM
-        ! reals (and indices).
-        p_varray = deltax_pp(1:)
-        CALL VecRestoreArrayF90(p_x,p_varray,p_ierr)
-        CALL KSPSetInitialGuessNonzero(p_ksp,PETSC_TRUE,p_ierr)
-
-        CALL KSPSolve(p_ksp,p_b,p_x,p_ierr)
-
-        ! Preconditioned norm tolerance
-        CALL KSPGetTolerances(p_ksp,p_rtol,PETSC_NULL_REAL,PETSC_NULL_REAL,    &
-                              PETSC_NULL_INTEGER,p_ierr)
-        ! True residual L2 norm
-        CALL VecDuplicate(p_b,p_r,p_ierr)
-        CALL KSPBuildResidual(p_ksp,PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,p_r,p_ierr)
-        CALL VecNorm(p_r,NORM_2,p_r_n2,p_ierr)
-        CALL VecDestroy(p_r,p_ierr)
-        ! L2 norm of load
-        CALL VecNorm(p_b,NORM_2,p_b_n2,p_ierr)
-        
-        CALL KSPGetIterationNumber(p_ksp,p_its,p_ierr)
-        CALL KSPGetConvergedReason(p_ksp,p_reason,p_ierr)
-        CALL p_describe_reason(p_reason,p_description)
-        
-        ! Copy PETSc solution vector to ParaFEM
-        CALL VecGetArrayF90(p_x,p_varray,p_ierr)
-        ! This is OK as long as ParaFEM reals not smaller than PetscScalars.  There
-        ! should be a test for sizes of PetscScalars (and PetscInts) and ParaFEM reals
-        ! (and indices).
-        deltax_pp(1:) = p_varray
-        CALL VecRestoreArrayF90(p_x,p_varray,p_ierr)
-
-        IF(numpe == 1)THEN
-          WRITE(11,'(A,I0,A)')                                                 &
-            "The reason for convergence was ",p_reason," "//TRIM(p_description)
-          WRITE(11,'(A,I0)')                                                   &
-            "The number of iterations to convergence was ",p_its
-          WRITE(11,'(A,E17.7)')                                                &
-            "The preconditioned relative error tolerance was ",p_rtol
-          WRITE(11,'(A,E17.7)')                                                &
-            "The relative error ||b-Ax||/||b|| was           ",p_r_n2/p_b_n2
-        END IF
+        ! Note that relative tolerance for PETSc is for the preconditioned
+        ! residual.
+        CALL p_solve(tol,limit,r_pp(1:),deltax_pp(1:))
+        CALL p_print_info(numpe)
       END IF
 
       IF (numpe==1) THEN
@@ -1319,14 +1129,6 @@ PROGRAM xx15_quadric_linear_hardening
 !------------------------------------------------------------------------------
 !------------------------------------------------------------------------------
 
-  IF (solvers == petsc_solvers) THEN
-    DEALLOCATE(p_rows,p_cols,p_values)
-    CALL KSPDestroy(p_ksp,p_ierr)
-    CALL VecDestroy(p_x,p_ierr)
-    CALL VecDestroy(p_b,p_ierr)
-    CALL MatDestroy(p_A,p_ierr)
-  END IF
-
   IF (numpe==1) THEN
     WRITE(11,'(a,i5,a)') "This job ran on ",npes," processors"
     WRITE(11,'(A,3(I8,A))')"There are ",nn," nodes",nels," elements and ",&
@@ -1349,9 +1151,11 @@ PROGRAM xx15_quadric_linear_hardening
   END IF
 
 !---------------------------------- shutdown ----------------------------------
+
   IF (solvers == petsc_solvers) THEN
-    CALL PetscFinalize(p_ierr)
+    CALL p_shutdown
   END IF
+
   CALL SHUTDOWN()
 
 CONTAINS

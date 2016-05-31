@@ -344,18 +344,14 @@ PROGRAM xx15_vm_nonlinear_hardening
   ALLOCATE(diag_precon_tmp(ntot,nels_pp))
 
 !---------------------------------------------------------------------------
-! 9a. Set up PETSc find_pe_procs (so that MPI has been started)
+! 9a. Start up PETSc after find_pe_procs (so that MPI has been started)
 !---------------------------------------------------------------------------
   IF (solvers == petsc_solvers) THEN
-    CALL p_initialize(numpe,fname_base)
     ! Set the approximate number of zeroes per row for the matrix size
-    ! pre-allocation then create the pre-allocated matrix.
+    ! pre-allocation.
     CALL p_row_nnz(ndim,nodof,nod)
-    CALL p_create_matrix(neq_pp)
-    ! Create the other PETSc data structures needed
-    CALL p_create_vectors(neq_pp) ! RHS and solution
-    CALL p_create_ksp() ! Krylov solver
-    CALL p_create_workspace(ntot)
+    ! Set up PETSc.
+    CALL p_setup(numpe,fname_base,neq_pp,ntot)
   END IF
 
   !----------------------------------------------------------------------------
@@ -558,7 +554,7 @@ PROGRAM xx15_vm_nonlinear_hardening
       
       storekm_pp = zero
       IF (solvers == petsc_solvers) THEN
-        CALL p_zero_matrix()
+        CALL p_zero_matrix
       END IF
       
       DO iel = 1,nels_pp
@@ -1218,7 +1214,7 @@ PROGRAM xx15_vm_nonlinear_hardening
   END IF
 
   IF (solvers == petsc_solvers) THEN
-    CALL p_finalize()
+    CALL p_shutdown
   END IF
 
   CALL SHUTDOWN()
