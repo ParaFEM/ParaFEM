@@ -26,8 +26,7 @@ MODULE parafem_petsc
   !*
   !*  The arguments for PETSc routines are mostly PetscInt and PetscScalar.
   !*  Arguments with INTENT(in) are copied to local variables of the correct
-  !*  TYPE to PASS to the PETSc routines.  (An alternative would have been to
-  !*  pass them as expressions by enclosing them in brackets.)
+  !*  TYPE to PASS to the PETSc routines.
   !*/
   
   USE mp_interface
@@ -39,6 +38,13 @@ MODULE parafem_petsc
   ! PETSc types
 #include <petsc/finclude/petscdef.h>
 
+  ! Use Fortran interfaces for the PETSc routines:  this helps infinitely in
+  ! catching errors, so you get compile time errors like
+  ! The kind (4) of this actual argument does not match that of its associated
+  ! dummy argument (8).
+  ! instead of run time segmentation violations, usually in a place marginally
+  ! related to where the cause of the error is.
+#define PETSC_USE_FORTRAN_INTERFACES
   ! PETSc modules could be used, but the ParaFEM mp_interface module INCLUDEs
   ! mpif.h rather than USEing mpi, so there are multiple definitions from the
   ! USE mpi that is in the PETSc modules.  So include the PETSc headers and
