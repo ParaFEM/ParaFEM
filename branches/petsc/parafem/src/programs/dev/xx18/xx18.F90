@@ -112,11 +112,8 @@ PROGRAM xx18
     ! Set the approximate number of zeroes per row for the matrix size
     ! pre-allocation.
     CALL p_row_nnz(ndim,nodof,nod)
-    CALL p_initialize(numpe,argv)
-    CALL p_create_matrix(neq_pp)
-    CALL p_create_vectors(neq_pp) ! RHS and solution
-    CALL p_create_ksp() ! Krylov solver
-    CALL p_create_workspace(ntot)
+    ! Set up PETSc.
+    CALL p_setup(numpe,argv,neq_pp,ntot)
   END IF
 
   !-----------------------------------------------------------------------------
@@ -127,7 +124,7 @@ PROGRAM xx18
 
   storkm_pp=zero
   IF (solvers == petsc_solvers) THEN
-    CALL p_zero_matrix()
+    CALL p_zero_matrix
   END IF
 
   elements_1: DO iel=1,nels_pp
@@ -256,7 +253,7 @@ PROGRAM xx18
   !-----------------------------------------------------------------------------
   
   IF (solvers == petsc_solvers) THEN
-    CALL p_finalize()
+    CALL p_shutdown
   END IF
 
   CALL SHUTDOWN() 

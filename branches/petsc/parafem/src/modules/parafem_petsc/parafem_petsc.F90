@@ -101,9 +101,9 @@ CONTAINS
     !*  NAME
     !*    SUBROUTINE: p_initialize
     !*  SYNOPSIS
-    !*    Usage:      p_initialize(numpe,argv)
+    !*    Usage:      p_initialize(numpe,fname_base)
     !*  FUNCTION
-    !*      Initialises PETSc and its matrices, vectors and solvers
+    !*      Initialises PETSc
     !*  ARGUMENTS
     !*    INTENT(IN)
     !*
@@ -116,7 +116,7 @@ CONTAINS
     !*  CREATION DATE
     !*    19.02.2016
     !*  MODIFICATION HISTORY
-    !*    Version 1, 19.02.2016, Mark Filipiak
+    !*    Version 1, 31.05.2016, Mark Filipiak
     !*  COPYRIGHT
     !*    (c) University of Edinburgh 2016
     !******
@@ -143,22 +143,89 @@ CONTAINS
     CALL MPI_BCAST(fname,LEN(fname),MPI_CHARACTER,0,MPI_COMM_WORLD,ierr)
     
     CALL PetscInitialize(fname,p_object%ierr)
-    p_object%x   = PETSC_NULL_OBJECT
-    p_object%b   = PETSC_NULL_OBJECT
-    p_object%A   = PETSC_NULL_OBJECT
-    p_object%ksp = PETSC_NULL_OBJECT
   END SUBROUTINE p_initialize
 
-  SUBROUTINE p_finalize()
+  SUBROUTINE p_setup(numpe,fname_base,neq_pp,ntot_max)
+
+    !/****if* petsc/p_setup
+    !*  NAME
+    !*    SUBROUTINE: p_setup
+    !*  SYNOPSIS
+    !*    Usage:      p_setup(numpe,fname_base,neq_pp,ntot_max)
+    !*  FUNCTION
+    !*      Initialises PETSc and its matrices, vectors and solvers
+    !*  ARGUMENTS
+    !*    INTENT(IN)
+    !*
+    !*    numpe              : Integer
+    !*                         Number of this process (starting at 1)
+    !*    fname_base         : Character
+    !*                         Base name of the data file
+    !*    neq_pp             : Integer
+    !*                         Number of equations on this process = number of
+    !*                         rows in the global matrix on this process
+    !*    ntot_max           : Integer
+    !*                         Maximum number of dofs in an element.  This will
+    !*                         be ntot if there is only one element type.  If
+    !*                         there are various types of element (including
+    !*                         variations between different fields if there are
+    !*                         several fields), this will be the maximum over
+    !*                         these.  If the elements are combined to give one
+    !*                         matrix, as in p126, then this will be ntot of
+    !*                         this 'element'.  This is used to set the sizes of
+    !*                         the workspaces.
+    !*  AUTHOR
+    !*    Mark Filipiak
+    !*  CREATION DATE
+    !*    31.05.2016
+    !*  MODIFICATION HISTORY
+    !*    Version 1, 31.05.2016, Mark Filipiak
+    !*  COPYRIGHT
+    !*    (c) University of Edinburgh 2016
+    !******
+    !*  Place remarks that should not be included in the documentation here.
+    !*
+    !*/
+
+    INTEGER,          INTENT(in) :: numpe
+    CHARACTER(len=*), INTENT(in) :: fname_base
+    INTEGER,          INTENT(in) :: neq_pp
+    INTEGER,          INTENT(in) :: ntot_max
+
+    CHARACTER(len=string_length) :: fname
+    LOGICAL :: exist
+    INTEGER :: ierr
+
+    ! Initialize
+    IF(numpe == 1) THEN
+      fname = TRIM(fname_base) // ".petsc"
+      INQUIRE(file=TRIM(fname),exist=exist)
+      IF (.NOT. exist) THEN
+        fname = ""
+      END IF
+    END IF
+    ! The communicator is MPI_COMM_WORLD, set by find_pe_procs(), and numpe ==
+    ! 1 corresponds to rank == 0.
+    CALL MPI_BCAST(fname,LEN(fname),MPI_CHARACTER,0,MPI_COMM_WORLD,ierr)
+    
+    CALL p_initialize(numpe,fname_base)
+
+    ! Create the objects
+    CALL p_create_matrix(neq_pp)
+    CALL p_create_vectors(neq_pp) ! RHS and solution
+    CALL p_create_ksp() ! Krylov solver
+    CALL p_create_workspace(ntot_max)
+  END SUBROUTINE p_setup
+
+  SUBROUTINE p_finalize
 
     !/****if* petsc/p_finalize
     !*  NAME
     !*    SUBROUTINE: p_finalize
     !*  SYNOPSIS
-    !*    Usage:      p_finalize()
+    !*    Usage:      p_finalize
     !*  FUNCTION
-    !*      Destroys matrices, vectors, solvers and workspace, then finalizes
-    !*      (i.e., tidies up) PETSc.
+    !*      Finalizes (i.e., tidies up) PETSc.
     !*  ARGUMENTS
     !*    None
     !*  AUTHOR
@@ -166,7 +233,35 @@ CONTAINS
     !*  CREATION DATE
     !*    18.05.2016
     !*  MODIFICATION HISTORY
-    !*    Version 1, 29.05.2016, Mark Filipiak
+    !*    Version 1, 31.05.2016, Mark Filipiak
+    !*  COPYRIGHT
+    !*    (c) University of Edinburgh 2016
+    !******
+    !*  Place remarks that should not be included in the documentation here.
+    !*
+    !*/
+
+    CALL PetscFinalize(p_object%ierr)
+  END SUBROUTINE p_finalize
+
+  SUBROUTINE p_shutdown
+
+    !/****if* petsc/p_shutdown
+    !*  NAME
+    !*    SUBROUTINE: p_shutdown
+    !*  SYNOPSIS
+    !*    Usage:      p_shutdown
+    !*  FUNCTION
+    !*      Destroys matrices, vectors, solvers and workspace, then finalizes
+    !*      PETSc.
+    !*  ARGUMENTS
+    !*    None
+    !*  AUTHOR
+    !*    Mark Filipiak
+    !*  CREATION DATE
+    !*    31.05.2016
+    !*  MODIFICATION HISTORY
+    !*    Version 1, 31.05.2016, Mark Filipiak
     !*  COPYRIGHT
     !*    (c) University of Edinburgh 2016
     !******
@@ -175,13 +270,12 @@ CONTAINS
     !*  There should be a p_destroy routine for each p_create routine
     !*/
 
-    DEALLOCATE(p_object%rows,p_object%cols,p_object%values)
-    CALL KSPDestroy(p_object%ksp,p_object%ierr)
-    CALL VecDestroy(p_object%x,p_object%ierr)
-    CALL VecDestroy(p_object%b,p_object%ierr)
-    CALL MatDestroy(p_object%A,p_object%ierr)
-    CALL PetscFinalize(p_object%ierr)
-  END SUBROUTINE p_finalize
+    CALL p_destroy_workspace
+    CALL p_destroy_ksp
+    CALL p_destroy_vectors
+    CALL p_destroy_matrix
+    CALL p_finalize
+  END SUBROUTINE p_shutdown
 
   SUBROUTINE p_create_matrix(neq_pp)
 
@@ -209,13 +303,7 @@ CONTAINS
     !******
     !*  Place remarks that should not be included in the documentation here.
     !*
-    !*  PETSc 64-bit indices and 64-bit reals are used.  In most (all?) places,
-    !*  passing a 32-bit integer where an intent(in) 64-integer is required is
-    !*  safe, because the PETSc Fortran-C interface de-references the pointer
-    !*  that is actually passed, even though it does not specify any intent in
-    !*  the Fortran interface.  This is not safe when passing arrays, they need
-    !*  to be copied to PetscInt arrays.  And for safety the same should be done
-    !*  for the PetscScalar arrays.
+    !*  PETSc 64-bit indices and 64-bit reals are used.
     !*
     !*  Block size fixed to 1 for just now - this cannot be set to nodof until
     !*  the restraints are handled block-wise in ParaFEM.
@@ -247,8 +335,197 @@ CONTAINS
     CALL MatSetOption(p_object%A,MAT_NEW_NONZERO_ALLOCATION_ERR,PETSC_FALSE,   &
                       p_object%ierr)
 
+    ! PETSc uses C array order, so a transpose would be needed when adding
+    ! elements, but you can get PETSc to use Fortran order for MatSetValues by
+    ! setting MAT_ROW_ORIENTED false (at least for the Mat types used so far:
+    ! SEQAIJ and MPIAIJ).  This needs to be tested.
+    CALL MatSetOption(p_object%A,MAT_ROW_ORIENTED,PETSC_FALSE,p_object%ierr)
   END SUBROUTINE p_create_matrix
 
+  SUBROUTINE p_destroy_matrix
+
+    !/****if* petsc/p_destroy_matrix
+    !*  NAME
+    !*    SUBROUTINE: p_destroy_matrix
+    !*  SYNOPSIS
+    !*    Usage:      p_destroy_matrix
+    !*  FUNCTION
+    !*      Destroys the global matrix
+    !*  ARGUMENTS
+    !*    None.
+    !*  AUTHOR
+    !*    Mark Filipiak
+    !*  CREATION DATE
+    !*    31.05.2016
+    !*  MODIFICATION HISTORY
+    !*    Version 1, 31.05.2016, Mark Filipiak
+    !*  COPYRIGHT
+    !*    (c) University of Edinburgh 2016
+    !******
+    !*  Place remarks that should not be included in the documentation here.
+    !*
+    !*/
+
+    CALL MatDestroy(p_object%A,p_object%ierr)
+  END SUBROUTINE p_destroy_matrix
+
+  SUBROUTINE p_zero_matrix()
+
+    !/****if* petsc/p_zero_matrix
+    !*  NAME
+    !*    SUBROUTINE: p_zero_matrix
+    !*  SYNOPSIS
+    !*    Usage:      p_zero_matrix()
+    !*  FUNCTION
+    !*      Zeroes the global matrix
+    !*  ARGUMENTS
+    !*    None.
+    !*  AUTHOR
+    !*    Mark Filipiak
+    !*  CREATION DATE
+    !*    28.05.2016
+    !*  MODIFICATION HISTORY
+    !*    Version 1, 28.05.2016, Mark Filipiak
+    !*  COPYRIGHT
+    !*    (c) University of Edinburgh 2016
+    !******
+    !*  Place remarks that should not be included in the documentation here.
+    !*
+    !*/
+
+    CALL MatZeroEntries(p_object%A,p_object%ierr)
+  END SUBROUTINE p_zero_matrix
+
+  SUBROUTINE p_create_vectors(neq_pp)
+
+    !/****if* petsc/p_create_vectors
+    !*  NAME
+    !*    SUBROUTINE: p_create_vectors
+    !*  SYNOPSIS
+    !*    Usage:      p_create_vectors(neq_pp)
+    !*  FUNCTION
+    !*    Create the global RHS and solution vectors
+    !*  ARGUMENTS
+    !*    INTENT(IN)
+    !*
+    !*    neq_pp             : Integer
+    !*                         Number of equations on this process = number of
+    !*                         rows in the global matrix on this process
+    !*  AUTHOR
+    !*    Mark Filipiak
+    !*  CREATION DATE
+    !*    28.05.2016
+    !*  MODIFICATION HISTORY
+    !*    Version 1, 28.05.2016, Mark Filipiak
+    !*  COPYRIGHT
+    !*    (c) University of Edinburgh 2016
+    !******
+    !*  Place remarks that should not be included in the documentation here.
+    !*
+    !*  Block size fixed to 1 for just now - this cannot be set to nodof until
+    !*  the restraints are handled block-wise in ParaFEM.
+    !*  What about multi-field?
+    !*/
+
+    INTEGER, INTENT(in) :: neq_pp
+
+    PetscInt :: p_neq_pp
+
+    p_neq_pp = neq_pp
+
+    ! RHS vector.  For this particular order (create, set size, set type) the
+    ! allocation is done by set type.
+    CALL VecCreate(PETSC_COMM_WORLD,p_object%b,p_object%ierr)
+    CALL VecSetSizes(p_object%b,p_neq_pp,PETSC_DECIDE,p_object%ierr)
+    CALL VecSetType(p_object%b,VECSTANDARD,p_object%ierr)
+
+    ! Solution vector
+    CALL VecDuplicate(p_object%b,p_object%x,p_object%ierr)
+  END SUBROUTINE p_create_vectors
+  
+  SUBROUTINE p_destroy_vectors
+
+    !/****if* petsc/p_destroy_vectors
+    !*  NAME
+    !*    SUBROUTINE: p_destroy_vectors
+    !*  SYNOPSIS
+    !*    Usage:      p_destroy_vectors
+    !*  FUNCTION
+    !*    Destroy the global RHS and solution vectors
+    !*  ARGUMENTS
+    !*    None.
+    !*  AUTHOR
+    !*    Mark Filipiak
+    !*  CREATION DATE
+    !*    31.05.2016
+    !*  MODIFICATION HISTORY
+    !*    Version 1, 31.05.2016, Mark Filipiak
+    !*  COPYRIGHT
+    !*    (c) University of Edinburgh 2016
+    !******
+    !*  Place remarks that should not be included in the documentation here.
+    !*
+    !*/
+
+    CALL VecDestroy(p_object%x,p_object%ierr)
+    CALL VecDestroy(p_object%b,p_object%ierr)
+  END SUBROUTINE p_destroy_vectors
+  
+  SUBROUTINE p_create_ksp
+
+    !/****if* petsc/p_create_ksp
+    !*  NAME
+    !*    SUBROUTINE: p_create_ksp
+    !*  SYNOPSIS
+    !*    Usage:      p_create_ksp
+    !*  FUNCTION
+    !*    Create the Krylov solver and preconditioner
+    !*  ARGUMENTS
+    !*    None.
+    !*  AUTHOR
+    !*    Mark Filipiak
+    !*  CREATION DATE
+    !*    28.05.2016
+    !*  MODIFICATION HISTORY
+    !*    Version 1, 28.05.2016, Mark Filipiak
+    !*  COPYRIGHT
+    !*    (c) University of Edinburgh 2016
+    !******
+    !*  Place remarks that should not be included in the documentation here.
+    !*
+    !*/
+
+    CALL KSPCreate(PETSC_COMM_WORLD,p_object%ksp,p_object%ierr)
+    CALL KSPSetOperators(p_object%ksp,p_object%A,p_object%A,p_object%ierr)
+  END SUBROUTINE p_create_ksp
+  
+  SUBROUTINE p_destroy_ksp
+
+    !/****if* petsc/p_destroy_ksp
+    !*  NAME
+    !*    SUBROUTINE: p_destroy_ksp
+    !*  SYNOPSIS
+    !*    Usage:      p_destroy_ksp
+    !*  FUNCTION
+    !*    Destroy the Krylov solver and preconditioner
+    !*  ARGUMENTS
+    !*    None.
+    !*  AUTHOR
+    !*    Mark Filipiak
+    !*  CREATION DATE
+    !*    31.05.2016
+    !*  MODIFICATION HISTORY
+    !*    Version 1, 31.05.2016, Mark Filipiak
+    !*  COPYRIGHT
+    !*    (c) University of Edinburgh 2016
+    !******
+    !*  Place remarks that should not be included in the documentation here.
+    !*
+    !*/
+
+    CALL KSPDestroy(p_object%ksp,p_object%ierr)
+  END SUBROUTINE p_destroy_ksp
+  
   SUBROUTINE p_create_workspace(ntot_max)
 
     !/****if* petsc/p_create_workspace
@@ -282,13 +559,7 @@ CONTAINS
     !******
     !*  Place remarks that should not be included in the documentation here.
     !*
-    !*  PETSc 64-bit indices and 64-bit reals are used.  In most (all?) places,
-    !*  passing a 32-bit integer where an intent(in) 64-integer is required is
-    !*  safe, because the PETSc Fortran-C interface de-references the pointer
-    !*  that is actually passed, even though it does not specify any intent in
-    !*  the Fortran interface.  This is not safe when passing arrays, they need
-    !*  to be copied to PetscInt arrays.  And for safety the same should be done
-    !*  for the PetscScalar arrays.
+    !*  PETSc 64-bit indices and 64-bit reals are used.
     !*/
 
     INTEGER, INTENT(in) :: ntot_max
@@ -299,23 +570,23 @@ CONTAINS
              p_object%values(ntot_max*ntot_max))
   END SUBROUTINE p_create_workspace
 
-  SUBROUTINE p_zero_matrix()
+  SUBROUTINE p_destroy_workspace
 
-    !/****if* petsc/p_zero_matrix
+    !/****if* petsc/p_destroy_workspace
     !*  NAME
-    !*    SUBROUTINE: p_zero_matrix
+    !*    SUBROUTINE: p_destroy_workspace
     !*  SYNOPSIS
-    !*    Usage:      p_zero_matrix()
+    !*    Usage:      p_destroy_workspace
     !*  FUNCTION
-    !*      Zeroes the global matrix
+    !*      Destroys some workspace
     !*  ARGUMENTS
     !*    None.
     !*  AUTHOR
     !*    Mark Filipiak
     !*  CREATION DATE
-    !*    28.05.2016
+    !*    31.05.2016
     !*  MODIFICATION HISTORY
-    !*    Version 1, 28.05.2016, Mark Filipiak
+    !*    Version 1, 31.05.2016, Mark Filipiak
     !*  COPYRIGHT
     !*    (c) University of Edinburgh 2016
     !******
@@ -323,8 +594,8 @@ CONTAINS
     !*
     !*/
 
-    CALL MatZeroEntries(p_object%A,p_object%ierr)
-  END SUBROUTINE p_zero_matrix
+    DEALLOCATE(p_object%rows,p_object%cols,p_object%values)
+  END SUBROUTINE p_destroy_workspace
 
   SUBROUTINE p_add_element(g,km)
 
@@ -376,11 +647,9 @@ CONTAINS
     ntot = SIZE(g)
     p_object%rows(1:ntot) = g - 1
     p_object%cols(1:ntot) = p_object%rows(1:ntot)
-    ! PETSc uses C array order, so a transpose would needed, but you can
-    ! get PETSc to use Fortran order for MatSetValues by setting
-    ! MAT_ROW_ORIENTED false (at least for the Mat types used so far:
-    ! SEQAIJ and MPIAIJ).  This needs to be tested.
-    CALL MatSetOption(p_object%A,MAT_ROW_ORIENTED,PETSC_FALSE,p_object%ierr)
+    ! PETSc uses C array order, so normally a transpose would be needed, but
+    ! MAT_ROW_ORIENTED is set to false in p_create_matrix to make MatSetValues
+    ! work with Fortran-order arrays.
     p_object%values(1:ntot*ntot) = RESHAPE(km,(/ntot*ntot/))
     CALL MatSetValues(p_object%A,ntot,p_object%rows,ntot,p_object%cols,        &
                       p_object%values,ADD_VALUES,p_object%ierr)
@@ -430,81 +699,6 @@ CONTAINS
     END IF
   END SUBROUTINE p_assemble
 
-  SUBROUTINE p_create_vectors(neq_pp)
-
-    !/****if* petsc/p_create_vectors
-    !*  NAME
-    !*    SUBROUTINE: p_create_vectors
-    !*  SYNOPSIS
-    !*    Usage:      p_create_vectors(neq_pp)
-    !*  FUNCTION
-    !*    Create the global RHS and solution vectors
-    !*  ARGUMENTS
-    !*    INTENT(IN)
-    !*
-    !*    neq_pp             : Integer
-    !*                         Number of equations on this process = number of
-    !*                         rows in the global matrix on this process
-    !*  AUTHOR
-    !*    Mark Filipiak
-    !*  CREATION DATE
-    !*    28.05.2016
-    !*  MODIFICATION HISTORY
-    !*    Version 1, 28.05.2016, Mark Filipiak
-    !*  COPYRIGHT
-    !*    (c) University of Edinburgh 2016
-    !******
-    !*  Place remarks that should not be included in the documentation here.
-    !*
-    !*  Block size fixed to 1 for just now - this cannot be set to nodof until
-    !*  the restraints are handled block-wise in ParaFEM.
-    !*  What about multi-field?
-    !*/
-
-    INTEGER, INTENT(in) :: neq_pp
-
-    PetscInt :: p_neq_pp
-
-    p_neq_pp = neq_pp
-
-    ! RHS vector.  For this particular order (create, set size, set type) the
-    ! allocation is done by set type.
-    CALL VecCreate(PETSC_COMM_WORLD,p_object%b,p_object%ierr)
-    CALL VecSetSizes(p_object%b,p_neq_pp,PETSC_DECIDE,p_object%ierr)
-    CALL VecSetType(p_object%b,VECSTANDARD,p_object%ierr)
-
-    ! Solution vector
-    CALL VecDuplicate(p_object%b,p_object%x,p_object%ierr)
-  END SUBROUTINE p_create_vectors
-  
-  SUBROUTINE p_create_ksp()
-
-    !/****if* petsc/p_create_ksp
-    !*  NAME
-    !*    SUBROUTINE: p_create_ksp
-    !*  SYNOPSIS
-    !*    Usage:      p_create_ksp()
-    !*  FUNCTION
-    !*    Create the Krylov solver and preconditioner
-    !*  ARGUMENTS
-    !*    None.
-    !*  AUTHOR
-    !*    Mark Filipiak
-    !*  CREATION DATE
-    !*    28.05.2016
-    !*  MODIFICATION HISTORY
-    !*    Version 1, 28.05.2016, Mark Filipiak
-    !*  COPYRIGHT
-    !*    (c) University of Edinburgh 2016
-    !******
-    !*  Place remarks that should not be included in the documentation here.
-    !*
-    !*/
-
-    CALL KSPCreate(PETSC_COMM_WORLD,p_object%ksp,p_object%ierr)
-    CALL KSPSetOperators(p_object%ksp,p_object%A,p_object%A,p_object%ierr)
-  END SUBROUTINE p_create_ksp
-  
   SUBROUTINE p_set_tolerances(rtol,max_it)
 
     !/****if* petsc/p_set_tolerances
@@ -741,7 +935,7 @@ CONTAINS
     ! residual.
     CALL p_set_tolerances(rtol,max_it)
     
-    ! load vector
+    ! RHS vector
     CALL p_set_rhs(r_pp)
 
     ! Solution vector
@@ -803,7 +997,7 @@ CONTAINS
     CALL VecNorm(r,NORM_2,p_object%r_n2,p_object%ierr)
     CALL VecDestroy(r,p_object%ierr)
 
-    ! L2 norm of load
+    ! L2 norm of RHS
     CALL VecNorm(p_object%b,NORM_2,p_object%b_n2,p_object%ierr)
     
     CALL KSPGetIterationNumber(p_object%ksp,p_object%its,p_object%ierr)
