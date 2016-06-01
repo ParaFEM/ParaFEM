@@ -171,25 +171,31 @@ PROGRAM xx1
 
   timest(5) = elap_time()
 
-  CALL read_rest(job_name,numpe,rest)
+  !CALL read_rest(job_name,numpe,rest)
 
   timest(6) = elap_time()
 
-  fname = job_name(1:LEN_TRIM(job_name)) // ".mat"
-  CALL read_materialValue(prop,fname,numpe,npes)
+  !fname = job_name(1:LEN_TRIM(job_name)) // ".mat"
+  !CALL read_materialValue(prop,fname,numpe,npes)
 
+
+ PRINT *, "Read before material properties"
 !
 ! This part required if there is more than one type of material in the mesh
-!
-! IF(io_binary) THEN
-!   CALL read_etype_pp_be(job_name,npes,numpe,etype_pp)
-! ELSE
-!   PRINT *, "Different material types not supported for ASCII files"
-!   CALL shutdown()
-! END IF
-!
 
-  etype_pp = 1  ! all elements have the material ID "1"
+ IF(io_binary) THEN
+   CALL READ_ENSI_MATID_BIN
+   !CALL read_etype_pp_be(job_name,npes,numpe,etype_pp)
+ ELSE
+   PRINT *, "Different material types not supported for ASCII files"
+   CALL shutdown()
+ END IF
+!
+ PRINT *, "Read until material properties"
+
+ !PRINT *, "etype_pp" ,etype_pp
+
+  !etype_pp = 1  ! all elements have the material ID "1"
 
   timest(7) = elap_time()
    
