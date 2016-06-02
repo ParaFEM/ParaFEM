@@ -68,18 +68,24 @@ MODULE parafem_petsc
     ! The PETSc objects cannot be initialised here because PETSC_NULL_OBJECT is
     ! a common-block-object and not a constant.
     PetscInt            :: row_nnz=-1
-    ! over_allocation should be a run time setting with a default set in the
-    ! program, e.g. as an option.  Choosing too small a value (e.g. 0.99) slows
-    ! MatSetValues to a crawl.
-    REAL                :: over_allocation=1.3
+    ! over_allocation is a safety factor and allows for distorted grids with
+    ! more than the simple number of elements around a point or edge.  Chose
+    ! this to be larger than 1.25, which would correspond to 5 hexahedra about
+    ! an edge (this is safe, but excessive for regular grids).  over_allocation
+    ! can be changed at run time.  Choosing too small a value slows MatSetValues
+    ! to a crawl.
+    PetscReal           :: over_allocation=1.3
     Vec                 :: x,b
     Mat                 :: A
+    DOUBLE PRECISION    :: info(MAT_INFO_SIZE)
+    PetscInt            :: nsolvers=1
     KSP                 :: ksp
+!!$    KSP,ALLOCATABLE     :: ksp(:)
+    CHARACTER(len=string_length),ALLOCATABLE :: prefix
     PetscInt,ALLOCATABLE    :: rows(:),cols(:)
     PetscScalar,ALLOCATABLE :: values(:)
     PetscInt            :: its
     PetscReal           :: rtol,r_n2,b_n2
-    DOUBLE PRECISION    :: info(MAT_INFO_SIZE)
     KSPConvergedReason  :: reason
     CHARACTER(len=string_length) :: description=""
     PetscErrorCode      :: ierr
@@ -116,7 +122,7 @@ CONTAINS
     !*  CREATION DATE
     !*    19.02.2016
     !*  MODIFICATION HISTORY
-    !*    Version 1, 31.05.2016, Mark Filipiak
+    !*    Version 1, 02.06.2016, Mark Filipiak
     !*  COPYRIGHT
     !*    (c) University of Edinburgh 2016
     !******
@@ -145,22 +151,18 @@ CONTAINS
     CALL PetscInitialize(fname,p_object%ierr)
   END SUBROUTINE p_initialize
 
-  SUBROUTINE p_setup(numpe,fname_base,neq_pp,ntot_max)
+  SUBROUTINE p_setup(neq_pp,ntot_max)
 
     !/****if* petsc/p_setup
     !*  NAME
     !*    SUBROUTINE: p_setup
     !*  SYNOPSIS
-    !*    Usage:      p_setup(numpe,fname_base,neq_pp,ntot_max)
+    !*    Usage:      p_setup(neq_pp,ntot_max)
     !*  FUNCTION
     !*      Initialises PETSc and its matrices, vectors and solvers
     !*  ARGUMENTS
     !*    INTENT(IN)
     !*
-    !*    numpe              : Integer
-    !*                         Number of this process (starting at 1)
-    !*    fname_base         : Character
-    !*                         Base name of the data file
     !*    neq_pp             : Integer
     !*                         Number of equations on this process = number of
     !*                         rows in the global matrix on this process
@@ -179,7 +181,7 @@ CONTAINS
     !*  CREATION DATE
     !*    31.05.2016
     !*  MODIFICATION HISTORY
-    !*    Version 1, 31.05.2016, Mark Filipiak
+    !*    Version 1, 02.06.2016, Mark Filipiak
     !*  COPYRIGHT
     !*    (c) University of Edinburgh 2016
     !******
@@ -187,33 +189,13 @@ CONTAINS
     !*
     !*/
 
-    INTEGER,          INTENT(in) :: numpe
-    CHARACTER(len=*), INTENT(in) :: fname_base
     INTEGER,          INTENT(in) :: neq_pp
     INTEGER,          INTENT(in) :: ntot_max
-
-    CHARACTER(len=string_length) :: fname
-    LOGICAL :: exist
-    INTEGER :: ierr
-
-    ! Initialize
-    IF(numpe == 1) THEN
-      fname = TRIM(fname_base) // ".petsc"
-      INQUIRE(file=TRIM(fname),exist=exist)
-      IF (.NOT. exist) THEN
-        fname = ""
-      END IF
-    END IF
-    ! The communicator is MPI_COMM_WORLD, set by find_pe_procs(), and numpe ==
-    ! 1 corresponds to rank == 0.
-    CALL MPI_BCAST(fname,LEN(fname),MPI_CHARACTER,0,MPI_COMM_WORLD,ierr)
-    
-    CALL p_initialize(numpe,fname_base)
 
     ! Create the objects
     CALL p_create_matrix(neq_pp)
     CALL p_create_vectors(neq_pp) ! RHS and solution
-    CALL p_create_ksp ! Krylov solver(s)
+    CALL p_create_ksps ! Krylov solver(s)
     CALL p_create_workspace(ntot_max)
   END SUBROUTINE p_setup
 
@@ -271,7 +253,7 @@ CONTAINS
     !*/
 
     CALL p_destroy_workspace
-    CALL p_destroy_ksp
+    CALL p_destroy_ksps
     CALL p_destroy_vectors
     CALL p_destroy_matrix
     CALL p_finalize
@@ -476,15 +458,15 @@ CONTAINS
     CALL VecDestroy(p_object%b,p_object%ierr)
   END SUBROUTINE p_destroy_vectors
   
-  SUBROUTINE p_create_ksp
+  SUBROUTINE p_create_ksps
 
-    !/****if* petsc/p_create_ksp
+    !/****if* petsc/p_create_ksps
     !*  NAME
-    !*    SUBROUTINE: p_create_ksp
+    !*    SUBROUTINE: p_create_ksps
     !*  SYNOPSIS
-    !*    Usage:      p_create_ksp
+    !*    Usage:      p_create_ksps
     !*  FUNCTION
-    !*    Create the Krylov solver and preconditioner
+    !*    Create the Krylov solvers and preconditioners
     !*  ARGUMENTS
     !*    None.
     !*  AUTHOR
@@ -492,7 +474,7 @@ CONTAINS
     !*  CREATION DATE
     !*    28.05.2016
     !*  MODIFICATION HISTORY
-    !*    Version 1, 01.06.2016, Mark Filipiak
+    !*    Version 1, 02.06.2016, Mark Filipiak
     !*  COPYRIGHT
     !*    (c) University of Edinburgh 2016
     !******
@@ -516,17 +498,23 @@ CONTAINS
     !*  can switch from CG to GMRES (for example) during a simulation.
     !*/
 
-    CALL KSPCreate(PETSC_COMM_WORLD,p_object%ksp,p_object%ierr)
-    CALL KSPSetFromOptions(p_object%ksp,p_object%ierr)
-  END SUBROUTINE p_create_ksp
-  
-  SUBROUTINE p_destroy_ksp
+    PetscBool :: set
 
-    !/****if* petsc/p_destroy_ksp
+    CALL PetscOptionsGetInt(PETSC_NULL_CHARACTER,"-nsolvers",p_object%nsolvers,&
+                            set,p_object%ierr)
+
+    CALL KSPCreate(PETSC_COMM_WORLD,p_object%ksp,p_object%ierr)
+!!$    CALL KSPSetOptionsPrefix(p_object%ksp,"solver_1_",p_object%ierr)
+    CALL KSPSetFromOptions(p_object%ksp,p_object%ierr)
+  END SUBROUTINE p_create_ksps
+  
+  SUBROUTINE p_destroy_ksps
+
+    !/****if* petsc/p_destroy_ksps
     !*  NAME
-    !*    SUBROUTINE: p_destroy_ksp
+    !*    SUBROUTINE: p_destroy_ksps
     !*  SYNOPSIS
-    !*    Usage:      p_destroy_ksp
+    !*    Usage:      p_destroy_ksps
     !*  FUNCTION
     !*    Destroy the Krylov solver and preconditioner
     !*  ARGUMENTS
@@ -536,7 +524,7 @@ CONTAINS
     !*  CREATION DATE
     !*    31.05.2016
     !*  MODIFICATION HISTORY
-    !*    Version 1, 31.05.2016, Mark Filipiak
+    !*    Version 1, 02.06.2016, Mark Filipiak
     !*  COPYRIGHT
     !*    (c) University of Edinburgh 2016
     !******
@@ -545,7 +533,7 @@ CONTAINS
     !*/
 
     CALL KSPDestroy(p_object%ksp,p_object%ierr)
-  END SUBROUTINE p_destroy_ksp
+  END SUBROUTINE p_destroy_ksps
   
   SUBROUTINE p_create_workspace(ntot_max)
 
@@ -717,10 +705,11 @@ CONTAINS
     CALL MatGetInfo(p_object%A,MAT_GLOBAL_SUM,p_object%info,p_object%ierr)
     IF (p_object%info(MAT_INFO_MALLOCS)/=0.0) THEN
       IF (numpe==1) THEN
-        WRITE(*,'(A,I0,A)') "The matrix assembly required ",                   &
-                            NINT(p_object%info(MAT_INFO_MALLOCS)),             &
-                            " mallocs.  Increase p_object%over_allocation to " &
-                            //"speed up the assembly."
+        WRITE(*,'(A,I0,A,F0.1,A)') "The matrix assembly required ",            &
+          NINT(p_object%info(MAT_INFO_MALLOCS)),                               &
+          " mallocs.  Use the option '-over_allocation n' with n > ",          &
+          p_object%over_allocation,                                            &
+          " to speed up the assembly."
       END IF
     END IF
   END SUBROUTINE p_assemble
@@ -1186,13 +1175,13 @@ CONTAINS
     END SELECT
   END FUNCTION p_describe_reason
   
-  FUNCTION nnod(ndim,nod,over_allocation)
+  FUNCTION nnod(ndim,nod)
 
     !/****if* petsc/nnod
     !*  NAME
     !*    SUBROUTINE: nnod
     !*  SYNOPSIS
-    !*    Usage:      nnod(ndim,nod,over_allocation)
+    !*    Usage:      nnod(ndim,nod)
     !*  FUNCTION
 
     !*    Returns an approximate upper estimate of the number of nodes in all
@@ -1208,19 +1197,13 @@ CONTAINS
     !*                         Number of dimensions of the problem
     !*    nod                : Integer
     !*                         Number of nodes per element
-    !*    over_allocation    : Real
-    !*                         over_allocation is a safety factor and allows for
-    !*                         distorted grids with more than the simple number
-    !*                         of elements around a point or edge.  Chose this
-    !*                         to be larger than 1.25, which would correspond to
-    !*                         5 hexahedra about an edge.
     !*  AUTHOR
     !*    Mark Filipiak
     !*  CREATION DATE
     !*    19.02.2016
     !*  MODIFICATION HISTORY
     !*    Version 1, 19.02.2016, Mark Filipiak
-    !*    Version 2 (was p_row_nnz), 16.05.2016, Mark Filipiak
+    !*    Version 2 (was p_row_nnz), 02.06.2016, Mark Filipiak
     !*  COPYRIGHT
     !*    (c) University of Edinburgh 2016
     !******
@@ -1237,13 +1220,13 @@ CONTAINS
     !*  Appendix B
     !*/
 
-    INTEGER                :: nnod
-    INTEGER,  INTENT(in)   :: ndim
-    INTEGER,  INTENT(in)   :: nod
-    REAL,     INTENT(in)   :: over_allocation
+    INTEGER                 :: nnod
+    INTEGER,   INTENT(in)   :: ndim
+    INTEGER,   INTENT(in)   :: nod
 
     INTEGER                :: el_per_v,el_per_e,el_per_f,el_per_i
     REAL                   :: v=0,e=0,f=0,i=0,v_factor,e_factor
+    PetscBool              :: set
 
     SELECT CASE (ndim)
 
@@ -1442,16 +1425,24 @@ CONTAINS
       WRITE(*,'(A)') "wrong number of dimensions in nnod"
     END SELECT
     
-    nnod = NINT(over_allocation * v)
+    ! over_allocation is a safety factor and allows for distorted grids with
+    ! more than the simple number of elements around a point or edge.  Chose
+    ! this to be larger than 1.25, which would correspond to 5 hexahedra about
+    ! an edge.  The over allocation can be changed at run time but the default
+    ! value of 1.3 probably safe (for regular grids it will be excessive).
+    CALL PetscOptionsGetReal(PETSC_NULL_CHARACTER,"-over_allocation",          &
+                             p_object%over_allocation,set,p_object%ierr)
+
+    nnod = NINT(p_object%over_allocation * v)
   END FUNCTION nnod
 
-  FUNCTION row_nnz_2(ndim,nfield,nodof,ntype,nod,over_allocation)
+  FUNCTION row_nnz_2(ndim,nfield,nodof,ntype,nod)
 
     !/****if* petsc/row_nnz_2
     !*  NAME
     !*    SUBROUTINE: row_nnz_2
     !*  SYNOPSIS
-    !*    Usage:      row_nnz_2(ndim,nfield,nodof,ntype,nod,over_allocation)
+    !*    Usage:      row_nnz_2(ndim,nfield,nodof,ntype,nod)
     !*  FUNCTION
     !*    Returns an approximate upper estimate of the number of non-zeroes in a
     !*    row of the global matrix.  The number of non-zeroes in a row is used
@@ -1483,18 +1474,12 @@ CONTAINS
     !*                         Number of nodes per element for each element
     !*                         type for each field.  Only
     !*                         nod(1:ntype(field),field) is used.
-    !*    over_allocation    : Real
-    !*                         over_allocation is a safety factor and allows for
-    !*                         distorted grids with more than the simple number
-    !*                         of elements around a point or edge.  Chose this
-    !*                         to be larger than 1.25, which would correspond to
-    !*                         5 hexahedra about an edge.
     !*  AUTHOR
     !*    Mark Filipiak
     !*  CREATION DATE
     !*    16.05.2016
     !*  MODIFICATION HISTORY
-    !*    Version 1, 16.05.2016, Mark Filipiak
+    !*    Version 1, 02.06.2016, Mark Filipiak
     !*  COPYRIGHT
     !*    (c) University of Edinburgh 2016
     !******
@@ -1502,13 +1487,12 @@ CONTAINS
     !*
     !*/
 
-    INTEGER                :: row_nnz_2
-    INTEGER,  INTENT(in)   :: ndim
-    INTEGER,  INTENT(in)   :: nfield
-    INTEGER,  INTENT(in)   :: nodof(:)
-    INTEGER,  INTENT(in)   :: ntype(:)
-    INTEGER,  INTENT(in)   :: nod(:,:)
-    REAL,     INTENT(in)   :: over_allocation
+    INTEGER                 :: row_nnz_2
+    INTEGER,   INTENT(in)   :: ndim
+    INTEGER,   INTENT(in)   :: nfield
+    INTEGER,   INTENT(in)   :: nodof(:)
+    INTEGER,   INTENT(in)   :: ntype(:)
+    INTEGER,   INTENT(in)   :: nod(:,:)
 
     INTEGER                :: field,etype
     INTEGER                :: sum,n,max_nnod
@@ -1541,7 +1525,7 @@ CONTAINS
     DO field = 1, nfield
       max_nnod = 0
       DO etype = 1, ntype(field)
-        n = nnod(ndim,nod(etype,field),over_allocation)
+        n = nnod(ndim,nod(etype,field))
         IF (n <= 0) THEN
           WRITE(*,'(A)') "Unknown element type"
           row_nnz_2 = 0
@@ -1598,7 +1582,7 @@ CONTAINS
     !*  CREATION DATE
     !*    16.05.2016
     !*  MODIFICATION HISTORY
-    !*    Version 1, 16.05.2016, Mark Filipiak
+    !*    Version 1, 02.06.2016, Mark Filipiak
     !*  COPYRIGHT
     !*    (c) University of Edinburgh 2016
     !******
@@ -1612,17 +1596,16 @@ CONTAINS
     INTEGER,  INTENT(in)   :: ntype(:)
     INTEGER,  INTENT(in)   :: nod(:,:)
 
-    p_object%row_nnz = row_nnz_2(ndim,nfield,nodof,ntype,nod,                  &
-                                 p_object%over_allocation)
+    p_object%row_nnz = row_nnz_2(ndim,nfield,nodof,ntype,nod)
   END SUBROUTINE p_row_nnz_2
 
-  FUNCTION row_nnz_1(ndim,nodof,ntype,nod,over_allocation)
+  FUNCTION row_nnz_1(ndim,nodof,ntype,nod)
 
     !/****if* petsc/row_nnz_1
     !*  NAME
     !*    SUBROUTINE: row_nnz_1
     !*  SYNOPSIS
-    !*    Usage:      row_nnz_1(ndim,nodof,ntype,nod,over_allocation)
+    !*    Usage:      row_nnz_1(ndim,nodof,ntype,nod)
     !*  FUNCTION
     !*    This is for a single field and multiple types of element for that
     !*    field.
@@ -1641,18 +1624,12 @@ CONTAINS
     !*    nod                : Integer rank 1 array
     !*                         Number of nodes per element for each element
     !*                         type.
-    !*    over_allocation    : Real
-    !*                         over_allocation is a safety factor and allows for
-    !*                         distorted grids with more than the simple number
-    !*                         of elements around a point or edge.  Chose this
-    !*                         to be larger than 1.25, which would correspond to
-    !*                         5 hexahedra about an edge.
     !*  AUTHOR
     !*    Mark Filipiak
     !*  CREATION DATE
     !*    16.05.2016
     !*  MODIFICATION HISTORY
-    !*    Version 1, 16.05.2016, Mark Filipiak
+    !*    Version 1, 02.06.2016, Mark Filipiak
     !*  COPYRIGHT
     !*    (c) University of Edinburgh 2016
     !******
@@ -1660,12 +1637,11 @@ CONTAINS
     !*
     !*/
 
-    INTEGER                :: row_nnz_1
-    INTEGER,  INTENT(in)   :: ndim
-    INTEGER,  INTENT(in)   :: nodof
-    INTEGER,  INTENT(in)   :: ntype
-    INTEGER,  INTENT(in)   :: nod(:)
-    REAL,     INTENT(in)   :: over_allocation
+    INTEGER                 :: row_nnz_1
+    INTEGER,   INTENT(in)   :: ndim
+    INTEGER,   INTENT(in)   :: nodof
+    INTEGER,   INTENT(in)   :: ntype
+    INTEGER,   INTENT(in)   :: nod(:)
 
     IF (SIZE(nod) /= ntype) THEN
       WRITE(*,'(A)') "size of nod /= ntype"
@@ -1674,7 +1650,7 @@ CONTAINS
     END IF
     
     row_nnz_1 = row_nnz_2(ndim,1,(/nodof/),(/ntype/),                          &
-                          RESHAPE(nod,(/SIZE(nod),1/)),over_allocation)
+                          RESHAPE(nod,(/SIZE(nod),1/)))
   END FUNCTION row_nnz_1
 
   SUBROUTINE p_row_nnz_1(ndim,nodof,ntype,nod)
@@ -1713,7 +1689,7 @@ CONTAINS
     !*  CREATION DATE
     !*    16.05.2016
     !*  MODIFICATION HISTORY
-    !*    Version 1, 16.05.2016, Mark Filipiak
+    !*    Version 1, 02.06.2016, Mark Filipiak
     !*  COPYRIGHT
     !*    (c) University of Edinburgh 2016
     !******
@@ -1726,16 +1702,16 @@ CONTAINS
     INTEGER,  INTENT(in)   :: ntype
     INTEGER,  INTENT(in)   :: nod(:)
     
-    p_object%row_nnz = row_nnz_1(ndim,nodof,ntype,nod,p_object%over_allocation)
+    p_object%row_nnz = row_nnz_1(ndim,nodof,ntype,nod)
   END SUBROUTINE p_row_nnz_1
 
-  FUNCTION row_nnz(ndim,nodof,nod,over_allocation)
+  FUNCTION row_nnz(ndim,nodof,nod)
 
     !/****if* petsc/row_nnz
     !*  NAME
     !*    SUBROUTINE: row_nnz
     !*  SYNOPSIS
-    !*    Usage:      row_nnz(ndim,nodof,nod,over_allocation)
+    !*    Usage:      row_nnz(ndim,nodof,nod)
     !*  FUNCTION
     !*    Returns an approximate upper estimate of the number of non-zeroes in a
     !*    row of the global matrix.  The number of non-zeroes in a row is used
@@ -1755,18 +1731,12 @@ CONTAINS
     !*                         Number of dofs per node
     !*    nod                : Integer
     !*                         Number of nodes per element
-    !*    over_allocation    : Real
-    !*                         over_allocation is a safety factor and allows for
-    !*                         distorted grids with more than the simple number
-    !*                         of elements around a point or edge.  Chose this
-    !*                         to be larger than 1.25, which would correspond to
-    !*                         5 hexahedra about an edge.
     !*  AUTHOR
     !*    Mark Filipiak
     !*  CREATION DATE
     !*    16.05.2016
     !*  MODIFICATION HISTORY
-    !*    Version 1, 16.05.2016, Mark Filipiak
+    !*    Version 1, 02.06.2016, Mark Filipiak
     !*  COPYRIGHT
     !*    (c) University of Edinburgh 2016
     !******
@@ -1774,13 +1744,12 @@ CONTAINS
     !*
     !*/
 
-    INTEGER                :: row_nnz
-    INTEGER,  INTENT(in)   :: ndim
-    INTEGER,  INTENT(in)   :: nodof
-    INTEGER,  INTENT(in)   :: nod
-    REAL,     INTENT(in)   :: over_allocation
+    INTEGER                 :: row_nnz
+    INTEGER,   INTENT(in)   :: ndim
+    INTEGER,   INTENT(in)   :: nodof
+    INTEGER,   INTENT(in)   :: nod
 
-    row_nnz = row_nnz_1(ndim,nodof,1,(/nod/),over_allocation)
+    row_nnz = row_nnz_1(ndim,nodof,1,(/nod/))
   END FUNCTION row_nnz
 
   SUBROUTINE p_row_nnz(ndim,nodof,nod)
@@ -1826,7 +1795,7 @@ CONTAINS
     INTEGER,  INTENT(in)   :: nodof
     INTEGER,  INTENT(in)   :: nod
 
-    p_object%row_nnz = row_nnz(ndim,nodof,nod,p_object%over_allocation)
+    p_object%row_nnz = row_nnz(ndim,nodof,nod)
   END SUBROUTINE p_row_nnz
 
 END MODULE parafem_petsc

@@ -347,11 +347,12 @@ PROGRAM xx15_vm_nonlinear_hardening
 ! 9a. Start up PETSc after find_pe_procs (so that MPI has been started)
 !---------------------------------------------------------------------------
   IF (solvers == petsc_solvers) THEN
+    CALL p_initialize(numpe,fname_base)
     ! Set the approximate number of zeroes per row for the matrix size
     ! pre-allocation.
     CALL p_row_nnz(ndim,nodof,nod)
     ! Set up PETSc.
-    CALL p_setup(numpe,fname_base,neq_pp,ntot)
+    CALL p_setup(neq_pp,ntot)
   END IF
 
   !----------------------------------------------------------------------------
