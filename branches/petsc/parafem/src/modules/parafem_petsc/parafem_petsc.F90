@@ -213,7 +213,7 @@ CONTAINS
     ! Create the objects
     CALL p_create_matrix(neq_pp)
     CALL p_create_vectors(neq_pp) ! RHS and solution
-    CALL p_create_ksp() ! Krylov solver
+    CALL p_create_ksp ! Krylov solver(s)
     CALL p_create_workspace(ntot_max)
   END SUBROUTINE p_setup
 
@@ -319,7 +319,10 @@ CONTAINS
     CALL MatCreate(PETSC_COMM_WORLD,p_object%A,p_object%ierr)
     CALL MatSetSizes(p_object%A,p_neq_pp,p_neq_pp,                             &
                      PETSC_DETERMINE,PETSC_DETERMINE,p_object%ierr)
-    CALL MatSetType(p_object%A,MATAIJ,p_object%ierr)
+    ! The default matrix type set by MatSetFromOptions is MATAIJ, which is what
+    ! we want.  MatSetFromOptions is called before specific options are set
+    ! here, so that the user cannot override the specific options set here.
+    CALL MatSetFromOptions(p_object%A,p_object%ierr)
     
     CALL MatSeqAIJSetPreallocation(p_object%A,                                 &
                                    p_object%row_nnz,PETSC_NULL_INTEGER,        &
@@ -433,11 +436,13 @@ CONTAINS
 
     p_neq_pp = neq_pp
 
-    ! RHS vector.  For this particular order (create, set size, set type) the
-    ! allocation is done by set type.
+    ! RHS vector.  For this particular order (create, set size, set from
+    ! options) the allocation is done by set from options.
     CALL VecCreate(PETSC_COMM_WORLD,p_object%b,p_object%ierr)
     CALL VecSetSizes(p_object%b,p_neq_pp,PETSC_DECIDE,p_object%ierr)
-    CALL VecSetType(p_object%b,VECSTANDARD,p_object%ierr)
+    ! The default vector type set by VecSetFromOptions is VECSEQ for one
+    ! process and VECMPI for more than one process.
+    CALL VecSetFromOptions(p_object%b,p_object%ierr)
 
     ! Solution vector
     CALL VecDuplicate(p_object%b,p_object%x,p_object%ierr)
@@ -487,16 +492,32 @@ CONTAINS
     !*  CREATION DATE
     !*    28.05.2016
     !*  MODIFICATION HISTORY
-    !*    Version 1, 28.05.2016, Mark Filipiak
+    !*    Version 1, 01.06.2016, Mark Filipiak
     !*  COPYRIGHT
     !*    (c) University of Edinburgh 2016
     !******
     !*  Place remarks that should not be included in the documentation here.
     !*
+    !*  KSP type, per-KSP tolerances (rtol, abstol, dtol, maxits), KSP
+    !*  options, PC type, PC options are set in the xxx.petsc file.  Those
+    !*  options are used to set up the preconditioned Krylov solver.  If there
+    !*  are several KSP types to be chosen from, then each one will be
+    !*  bracketed by -prefix_push and -prefix_pop.  For example
+    !* 
+    !*  -prefix_push solver_1_
+    !*    -ksp_type minres
+    !*  -prefix_pop
+    !* 
+    !*  in the xxx.petsc file and 
+    !* 
+    !*  CALL KSPSetOptionsPrefix(p_object%ksp,"solver_1_",p_object%ierr)
+    !* 
+    !*  before KSPSetFromOptions before using the 'solver_1_' solver.  Thus you
+    !*  can switch from CG to GMRES (for example) during a simulation.
     !*/
 
     CALL KSPCreate(PETSC_COMM_WORLD,p_object%ksp,p_object%ierr)
-    CALL KSPSetOperators(p_object%ksp,p_object%A,p_object%A,p_object%ierr)
+    CALL KSPSetFromOptions(p_object%ksp,p_object%ierr)
   END SUBROUTINE p_create_ksp
   
   SUBROUTINE p_destroy_ksp
@@ -688,9 +709,14 @@ CONTAINS
     CALL MatAssemblyBegin(p_object%A,MAT_FINAL_ASSEMBLY,p_object%ierr)
     CALL MatAssemblyEnd(p_object%A,MAT_FINAL_ASSEMBLY,p_object%ierr)
     
+    ! All subsequent assemblies SHOULD not create any new entries: fail with an
+    ! error message if they do.
+    CALL MatSetOption(p_object%A,MAT_NEW_NONZERO_LOCATION_ERR,PETSC_TRUE,      &
+                      p_object%ierr)
+
     CALL MatGetInfo(p_object%A,MAT_GLOBAL_SUM,p_object%info,p_object%ierr)
-    IF (numpe==1) THEN
-      IF (p_object%info(MAT_INFO_MALLOCS)/=0.0) THEN
+    IF (p_object%info(MAT_INFO_MALLOCS)/=0.0) THEN
+      IF (numpe==1) THEN
         WRITE(*,'(A,I0,A)') "The matrix assembly required ",                   &
                             NINT(p_object%info(MAT_INFO_MALLOCS)),             &
                             " mallocs.  Increase p_object%over_allocation to " &
@@ -728,22 +754,6 @@ CONTAINS
     !******
     !*  Place remarks that should not be included in the documentation here.
     !*
-    !*  KSP type, per-KSP tolerances (rtol, abstol, dtol, maxits), KSP
-    !*  options, PC type, PC options are set in the xx*.petsc file.  Those
-    !*  options are used to set up the preconditioned Krylov solver.  If there
-    !*  are several KSP types to be chosen from, then each one will be
-    !*  bracketed by -prefix_push and -prefix_pop.  For example
-    !* 
-    !*  -prefix_push abc1_
-    !*    -ksp_type minres
-    !*  -prefix_pop
-    !* 
-    !*  in the xx*.petsc file and 
-    !* 
-    !*  CALL KSPSetOptionsPrefix(p_object%ksp,"abc1_",p_object%ierr)
-    !* 
-    !*  before KSPSetFromOptions before using the 'abc1_' solver.  Thus you
-    !*  can switch from CG to GMRES during a simulation.
     !*/
 
     REAL,    INTENT(in) :: rtol
@@ -755,9 +765,12 @@ CONTAINS
     p_rtol = rtol
     p_max_it = max_it
 
+    ! These override the settings in the xxx.petsc file (and command line).  The
+    ! tolerances from the ParaFEM control file are the ones to be used, so that
+    ! the same values are used when comparing ParaFEM and PETSc solvers.  And
+    ! during non-linear iterations the linear solver tolerance may be adjusted.
     CALL KSPSetTolerances(p_object%ksp,p_rtol,PETSC_DEFAULT_REAL,              &
                           PETSC_DEFAULT_REAL,p_max_it,p_object%ierr)
-    CALL KSPSetFromOptions(p_object%ksp,p_object%ierr)
   END SUBROUTINE p_set_tolerances
   
   SUBROUTINE p_set_rhs(r_pp)
@@ -883,13 +896,15 @@ CONTAINS
     CALL VecRestoreArrayF90(p_object%x,varray,p_object%ierr)
   END SUBROUTINE p_get_solution
 
-  SUBROUTINE p_solve(rtol,max_it,r_pp,x_pp,initial_guess_nonzero)
+  SUBROUTINE p_solve(rtol,max_it,r_pp,x_pp,                                    &
+                     initial_guess_nonzero,reuse_preconditioner)
 
     !/****if* petsc/p_solve
     !*  NAME
     !*    SUBROUTINE: p_solve
     !*  SYNOPSIS
-    !*    Usage:      p_solve(rtol,max_it,r_pp,x_pp,initial_guess_nonzero)
+    !*    Usage:      p_solve(rtol,max_it,r_pp,x_pp,
+    !*                        initial_guess_nonzero,reuse_preconditioner)
     !*  FUNCTION
     !*    Solve using PETSc.
     !*  ARGUMENTS
@@ -912,12 +927,28 @@ CONTAINS
     !*    initial_guess_nonzero : Logical
     !*                            x_pp contains the initial guess for the
     !*                            solution.
+    !*    reuse_preconditioner  : Logical
+    !*                            Normally the preconditioner is recalculated
+    !*                            before each solve because in non-linear
+    !*                            problems the matrix will change for each
+    !*                            solve.  You may want to save time (usually
+    !*                            at the cost of more linear solver iterations)
+    !*                            by recalculating the preconditioner less
+    !*                            frequently than every non-linear iteration.
+    !*                            Set this flag to .true. to reuse the existing
+    !*                            preconditioner (obviously the very first
+    !*                            solve cannot have this flag set to .true.).
+    !*
+    !*                            You don't need to use this argument if you
+    !*                            are doing several linear solves with the same
+    !*                            matrix:  if the matrix hasn't changed, the
+    !*                            preconditioner is not recalculated.
     !*  AUTHOR
     !*    Mark Filipiak
     !*  CREATION DATE
     !*    17.05.2016
     !*  MODIFICATION HISTORY
-    !*    Version 1, 17.05.2016, Mark Filipiak
+    !*    Version 1, 1.06.2016, Mark Filipiak
     !*  COPYRIGHT
     !*    (c) University of Edinburgh 2016
     !******
@@ -930,6 +961,7 @@ CONTAINS
     REAL,    INTENT(in)           :: r_pp(:)
     REAL,    INTENT(inout)        :: x_pp(:)
     LOGICAL, INTENT(in), OPTIONAL :: initial_guess_nonzero
+    LOGICAL, INTENT(in), OPTIONAL :: reuse_preconditioner
 
     ! Note that relative tolerance for PETSc is for the preconditioned
     ! residual.
@@ -938,7 +970,7 @@ CONTAINS
     ! RHS vector
     CALL p_set_rhs(r_pp)
 
-    ! Solution vector
+    ! Solution vector 
     CALL KSPSetInitialGuessNonzero(p_object%ksp,PETSC_FALSE,p_object%ierr)
     IF (PRESENT(initial_guess_nonzero)) THEN
       IF (initial_guess_nonzero) THEN
@@ -946,6 +978,15 @@ CONTAINS
         ! initial guess: copy the ParaFEM solution vector to PETSc.
         CALL KSPSetInitialGuessNonzero(p_object%ksp,PETSC_TRUE,p_object%ierr)
         CALL p_set_solution(x_pp)
+      END IF
+    END IF
+
+    CALL KSPSetOperators(p_object%ksp,p_object%A,p_object%A,p_object%ierr)
+
+    CALL KSPSetReusePreconditioner(p_object%ksp,PETSC_FALSE,p_object%ierr)
+    IF (PRESENT(reuse_preconditioner)) THEN
+      IF (reuse_preconditioner) THEN
+        CALL KSPSetReusePreconditioner(p_object%ksp,PETSC_TRUE,p_object%ierr)
       END IF
     END IF
 
