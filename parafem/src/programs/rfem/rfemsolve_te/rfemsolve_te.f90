@@ -77,8 +77,7 @@ PROGRAM rfemsolve_te
   INTEGER(iwp),ALLOCATABLE :: num(:)
   REAL(iwp),ALLOCATABLE :: etl_pp(:,:)
   REAL(iwp),ALLOCATABLE :: tload_pp(:) 
-
-   
+ 
   
 !------------------------------------------------------------------------------
 ! 2a. Definition of variable names not listed in the 5th edition
@@ -295,24 +294,22 @@ PROGRAM rfemsolve_te
 ! 8. Element stiffness integration and storage
 !------------------------------------------------------------------------------
 
-  OPEN(unit = 8, file = "results.txt")
-  
   points = zero
 
   CALL sample(element,points,weights)
 
   teps      = zero
   storkm_pp = zero
-  
   etl_pp    = zero
-  
   cte       = zero
 
-!
-! need to remove constant from the program to make it more generic
-!  
+! The relationship between CTE and Young's modulus was removed for the Hartree
+! summer school 2016. For more information of this code please search for the 
+! journal paper: Spatial variability in the coefficient of thermal expansion 
+! induces pre-service stresses in computer models of virgin Gilsocarbon bricks
+! doi:10.1016/j.jnucmat.2015.05.058
 
-  constant  = 0.0435
+!  constant  = 0.0435
    
   elements_3: DO iel=1,nels_pp
                 
@@ -321,15 +318,10 @@ PROGRAM rfemsolve_te
     cte (3)   = prop(1,etype_pp(iel))
     dee = zero
    
-    !Relationship between CTE and Young's modulus
-    
+!Relationship between CTE and Young's modulus
+    !e = constant/prop(1,etype_pp(iel))
     v = prop(2,etype_pp(iel))
-
-!
-! need to move this outside of the program to make it more generic
-!
-
-    e = constant/prop(1,etype_pp(iel))
+    e = 10000
          
     CALL deemat(dee,e,v)
          
@@ -536,7 +528,7 @@ PROGRAM rfemsolve_te
     beta    = DOT_PRODUCT_P(r_pp,d_pp)/up
     p_pp    = d_pp + p_pp*beta  
 
-    IF(numpe==1) PRINT *, "ITERATION", iters
+    !IF(numpe==1) PRINT *, "ITERATION", iters
 
     CALL checon_par(xnew_pp,tol,converged,x_pp)    
     IF(converged.OR.iters==limit)EXIT
@@ -609,9 +601,15 @@ PROGRAM rfemsolve_te
   reacnodes_pp          = zero
   utemp_pp              = zero
 
-  e = 0
   v = 0
   
+! The relationship between CTE and Young's modulus was removed for the Hartree
+! summer school 2016. For more information of this code please search for the 
+! journal paper: Spatial variability in the coefficient of thermal expansion 
+! induces pre-service stresses in computer models of virgin Gilsocarbon bricks
+! doi:10.1016/j.jnucmat.2015.05.058
+
+
   DO iel = 1,nels_pp
               
     cte (1)   = prop(1,etype_pp(iel))
@@ -619,8 +617,8 @@ PROGRAM rfemsolve_te
     cte (3)   = prop(1,etype_pp(iel))
     v   = prop(2,etype_pp(iel))
     
-    e = constant/prop(1,etype_pp(iel))
-    
+    !e = constant/prop(1,etype_pp(iel))
+    e = 10000
     dee = zero
     CALL deemat(dee,e,v)
 

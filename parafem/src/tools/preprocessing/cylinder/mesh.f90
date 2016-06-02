@@ -27,6 +27,9 @@ subroutine brickel( fname , el1, el2 , el3, g_num)
 character( len=* ), intent(in) :: fname
 integer, intent(in) :: el1, el2, el3
 
+
+
+
 integer :: funit, errstat, i, j, k , elnum, nd1, nd2, nd3, nd12,       &
  full_lay, full_row, fullt, node1, node2, node3, node4, node5,         &
  node6, node7, node8
@@ -87,6 +90,8 @@ do i = 1 , el1
 end do
 end do
 end do
+
+
 
 close( funit, iostat=errstat )
 if ( errstat .ne. 0 ) then
@@ -185,7 +190,7 @@ end subroutine cyldmp
 
 !***************************************************************
 
-subroutine cyldmp_err( fname, nbot, nmid, ntop, rad, dist, err, array, g_coord_1 )
+subroutine cyldmp_err( fname, nbot, nmid, ntop, rad, dist, err, array, g_coord_1, nn_1 )
 
 ! - replicate circle nodes along 3. First "nbot" times a perfect
 !   circle, then "nmid" times with a random error of +- "err" in
@@ -210,6 +215,8 @@ double precision :: coord1, coord2, coord3, rnderr(2)
 
 
 !New Variables
+integer, intent(out)   :: nn_1
+
 double precision :: storagecoord(3)
 double precision, Allocatable, intent(inout) :: g_coord_1(:,:)
 INTEGER  :: findex
@@ -307,6 +314,8 @@ do i = 1 , arrlen
 end do
 end do
  
+nn_1 = nn
+
 close( funit, iostat=errstat )
 if ( errstat .ne. 0 ) then
   stop "ERROR: cirep: close"

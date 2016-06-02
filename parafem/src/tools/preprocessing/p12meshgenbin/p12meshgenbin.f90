@@ -8,7 +8,7 @@ PROGRAM p12meshgenbin
 !*  AUTHOR
 !*    Lee Margetts
 !*  COPYRIGHT
-!*    (c) University of Manchester 2007-2014
+!*    (c) University of Manchester 2007-2016
 !****
 !*/
 
@@ -62,7 +62,7 @@ PROGRAM p12meshgenbin
   INTEGER, ALLOCATABLE   :: g_num(:,:),rest(:,:),nf(:,:),no(:),no_f(:)
   INTEGER, ALLOCATABLE   :: num(:)
   REAL(iwp), ALLOCATABLE :: g_coord(:,:),coord(:,:),val(:),val_f(:),qinc(:)
-  REAL(iwp), ALLOCATABLE :: oldlds(:),etype(:)
+  REAL(iwp), ALLOCATABLE :: oldlds(:),etype(:),value(:,:)
 
 !------------------------------------------------------------------------------
 ! 3. Read data file base name "argv" from the command line
@@ -340,7 +340,11 @@ PROGRAM p12meshgenbin
  
             DEALLOCATE(g_num,g_coord)
            
-            ALLOCATE(etype(nels),nf(nodof,nn),oldlds(nn*ndim)) 
+            ALLOCATE(etype(nels),nf(nodof,nn),oldlds(nn*ndim))
+            ALLOCATE(value(ndim,loaded_freedoms)) 
+
+            value      = zero 
+            value(3,:) = val(:)
 
             etype = 1.0_iwp  ! all elements are of the same type 
 
@@ -352,7 +356,7 @@ PROGRAM p12meshgenbin
 
             CALL mesh_ensi_ndbnd_bin(argv,nf,nlen,nod,solid)
 
-            CALL mesh_ensi_ndlds_bin(argv,nlen,nf,oldlds)
+            CALL mesh_ensi_ndlds_bin(argv,nlen,nn,value,no)
 
           CASE DEFAULT
 

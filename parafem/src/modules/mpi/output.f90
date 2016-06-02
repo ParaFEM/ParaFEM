@@ -9,20 +9,28 @@ MODULE OUTPUT
   !*    Contains subroutines that write out the results. These subroutines are 
   !*    parallel and require MPI.
   !*    
-  !*    Subroutine             Purpose
-  !*    WRITE_P121             Writes out basic program data and timing info
-  !*    WRITE_P123             Writes out basic program data and timing info
-  !*    WRITE_P125             Writes out basic program data and timing info 
-  !*    WRITE_P126             Writes out basic program data and timing info  
-  !*    WRITE_P129             Writes out basic program data and timing info
-  !*    WRITE_XX1              Writes out basic program data and timing info
-  !*    WRITE_XX12             Writes out basic program data and timing info
-  !*    WRITE_NODAL_VARIABLE   Writes out results computed at the nodes
-  !*    JOB_NAME_ERROR         Writes error message if job_name is missing
-  !*    GETFILENUMBER          Returns the next file number
-  !*    DISMSH_ENSI            ASCII Ensight Gold output for Paraview
-  !*    DISMSH_ENSI_PB         Fortran binary Ensight Gold output for Paraview
-  !*	DISMSH_ENSI_PB2	       C binary Ensight Gold output for Paraview
+  !*    Subroutine                   Purpose
+  !*    WRITE_P121                   Writes out basic program data and timing info
+  !*    WRITE_P123                   Writes out basic program data and timing info
+  !*    WRITE_P125                   Writes out basic program data and timing info 
+  !*    WRITE_P126                   Writes out basic program data and timing info  
+  !*    WRITE_P129                   Writes out basic program data and timing info
+  !*    WRITE_P1210                   
+  !*    WRITE_XX1                    Writes out basic program data and timing info
+  !*    WRITE_XX12                   Writes out basic program data and timing info
+  !*    WRITE_NODAL_VARIABLE         Writes out results computed at the nodes
+  !*    WRITE_NODAL_VARIABLE2
+  !*    WRITE_NODAL_VARIABLE_BINARY  Write the values of a nodal variable to a file
+  !*    WRITE_X_PP                   Write the values of a nodal variable to a file
+  !*    JOB_NAME_ERROR               Writes error message if job_name is missing
+  !*    GETFILENUMBER                Returns the next file number
+  !*    DISMSH_ENSI                  ASCII Ensight Gold output for Paraview
+  !*    DISMSH_ENSI_PB               Fortran binary Ensight Gold output for Paraview
+  !*	DISMSH_ENSI_PB2	             C binary Ensight Gold output for Paraview
+  !*    DISMSH_ENSI_PB3              Write the values of a nodal variable to a 
+  !*                                 binary file
+  !*    DISMSH_ENSI_PB2_INT          Write the values of a nodal variable to a 
+  !*                                 binary file
   !*
   !*  AUTHOR
   !*    L. Margetts
