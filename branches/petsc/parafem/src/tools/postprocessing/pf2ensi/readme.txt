@@ -16,6 +16,10 @@
   o Development is not yet complete but this is a working version
   o Partial data such as Bound Nodes, Loaded Nodes and Fixed Nodes is handled but
     the standard ParaView application fails to correctly load such data
+  o If the script do not work property please install or update your Unix of Linux     
+    version of gawk with the command
+
+    sudo apt_get install gawk 
     
   AUTHOR
 

@@ -101,6 +101,8 @@ PROGRAM xx1
 ! 3. Read job_name from the command line. 
 !    Read control data, mesh data, boundary and loading conditions. 
 !------------------------------------------------------------------------------
+
+
  
   ALLOCATE(timest(20))
   timest    = zero 
@@ -111,6 +113,8 @@ PROGRAM xx1
   IF (argc /= 1) CALL job_name_error(numpe,program_name)
   CALL GETARG(1, job_name) 
 
+
+
   CALL read_xx1(job_name,numpe,e,element,fixed_freedoms,limit,loaded_nodes, &
                  meshgen,nels,nip,nn,nod,nr,partitioner,tol,v)
 
@@ -120,7 +124,9 @@ PROGRAM xx1
 
   nprops   = 2   ! needs to go in .dat file and be read using READ_XX1
   np_types = 1   ! needs to go in .dat file and be read using READ_XX1
- 
+
+
+!
   CALL calc_nels_pp(job_name,nels,npes,numpe,partitioner,nels_pp)
 
   ndof = nod*nodof
@@ -139,45 +145,57 @@ PROGRAM xx1
   prop      = 0
 
   timest(2) = elap_time()
-
+  
   IF(io_binary) THEN
-    CALL read_g_num_pp_be(job_name,iel_start,nn,npes,numpe,g_num_pp)
+    !CALL read_g_num_pp_be(job_name,iel_start,nn,npes,numpe,g_num_pp)
+    !CALL read_g_coord_pp_be(job_name,g_num_pp,nn,npes,numpe,g_coord_pp)
+    CALL READ_ENSI_GEO_BIN(job_name,g_num_pp,nn,npes,numpe,g_coord_pp,iel_start)
   ELSE 
     CALL read_g_num_pp(job_name,iel_start,nn,npes,numpe,g_num_pp)
+    CALL read_g_coord_pp(job_name,g_num_pp,nn,npes,numpe,g_coord_pp)
   END IF
 
   timest(3) = elap_time()
 
+  PRINT *, "meshgen", meshgen
+
   IF(meshgen == 2) CALL abaqus2sg(element,g_num_pp)
   timest(4) = elap_time()
 
-  IF(io_binary) THEN
-    CALL read_g_coord_pp_be(job_name,g_num_pp,nn,npes,numpe,g_coord_pp)
-  ELSE
-    CALL read_g_coord_pp(job_name,g_num_pp,nn,npes,numpe,g_coord_pp)
-  END IF
+ ! IF(io_binary) THEN
+ !   CALL read_g_coord_pp_be(job_name,g_num_pp,nn,npes,numpe,g_coord_pp)
+ !   PRINT *, "Binary"
+ ! ELSE
+ !   CALL read_g_coord_pp(job_name,g_num_pp,nn,npes,numpe,g_coord_pp)
+ ! END IF
 
   timest(5) = elap_time()
 
-  CALL read_rest(job_name,numpe,rest)
+  !CALL read_rest(job_name,numpe,rest)
 
   timest(6) = elap_time()
 
-  fname = job_name(1:LEN_TRIM(job_name)) // ".mat"
-  CALL read_materialValue(prop,fname,numpe,npes)
+  !fname = job_name(1:LEN_TRIM(job_name)) // ".mat"
+  !CALL read_materialValue(prop,fname,numpe,npes)
 
+
+ PRINT *, "Read before material properties"
 !
 ! This part required if there is more than one type of material in the mesh
-!
-! IF(io_binary) THEN
-!   CALL read_etype_pp_be(job_name,npes,numpe,etype_pp)
-! ELSE
-!   PRINT *, "Different material types not supported for ASCII files"
-!   CALL shutdown()
-! END IF
-!
 
-  etype_pp = 1  ! all elements have the material ID "1"
+ IF(io_binary) THEN
+   CALL READ_ENSI_MATID_BIN
+   !CALL read_etype_pp_be(job_name,npes,numpe,etype_pp)
+ ELSE
+   PRINT *, "Different material types not supported for ASCII files"
+   CALL shutdown()
+ END IF
+!
+ PRINT *, "Read until material properties"
+
+ !PRINT *, "etype_pp" ,etype_pp
+
+  !etype_pp = 1  ! all elements have the material ID "1"
 
   timest(7) = elap_time()
    
