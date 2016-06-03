@@ -44,6 +44,9 @@ PROGRAM xx15_elastic
 
   CHARACTER(len=choose_solvers_string_length) :: solvers
 
+  LOGICAL                  :: error
+  CHARACTER(:),ALLOCATABLE :: message
+
   !-------------------------- dynamic arrays-----------------------------------
   REAL(iwp), ALLOCATABLE:: points(:,:), coord(:,:), weights(:), xnew_pp(:),   &
    diag_precon_pp(:), r_pp(:), bee(:,:), load_value(:,:), g_coord_pp(:,:),    &
@@ -340,7 +343,12 @@ PROGRAM xx15_elastic
     CALL p_initialize(numpe,fname_base)
     ! Set the approximate number of zeroes per row for the matrix size
     ! pre-allocation.
-    CALL p_row_nnz(ndim,nodof,nod)
+    CALL p_row_nnz(ndim,nodof,nod,error,message)
+    IF (error) THEN
+      WRITE(*,'(A)') message
+      CALL p_finalize
+      CALL shutdown
+    END IF
     ! Set up PETSc.
     CALL p_setup(neq_pp,ntot)
   END IF
@@ -637,6 +645,7 @@ PROGRAM xx15_elastic
         CALL PCG_VER1(inewton,limit,tol,storekm_pp,r_pp(1:),                   &
                       diag_precon_pp(1:),rn0,deltax_pp(1:),iters)
       ELSE IF (solvers == petsc_solvers) THEN
+        CALL p_use_solver(1)
         ! Note that relative tolerance for PETSc is for the preconditioned
         ! residual.
         CALL p_solve(tol,limit,r_pp(1:),deltax_pp(1:))
