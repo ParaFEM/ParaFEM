@@ -61,37 +61,39 @@ MODULE parafem_petsc
 #include <petsc/finclude/petscpc.h90>
   
   ! Private parameters
-  INTEGER,PARAMETER,PRIVATE :: string_length=1024
-  
+  INTEGER,PARAMETER,PRIVATE  :: string_length = 1024
+  CHARACTER(len=*),PARAMETER :: pre_prefix = "solver"
+
   ! Variables collected as one derived type
   TYPE p_type
     ! The PETSc objects cannot be initialised here because PETSC_NULL_OBJECT is
     ! a common-block-object and not a constant.
-    PetscInt            :: row_nnz=-1
+    PetscInt            :: row_nnz = -1
     ! over_allocation is a safety factor and allows for distorted grids with
     ! more than the simple number of elements around a point or edge.  Chose
     ! this to be larger than 1.25, which would correspond to 5 hexahedra about
     ! an edge (this is safe, but excessive for regular grids).  over_allocation
     ! can be changed at run time.  Choosing too small a value slows MatSetValues
     ! to a crawl.
-    PetscReal           :: over_allocation=1.3
+    PetscReal           :: over_allocation = 1.3
     Vec                 :: x,b
     Mat                 :: A
     DOUBLE PRECISION    :: info(MAT_INFO_SIZE)
-    PetscInt            :: nsolvers=1
-    KSP                 :: ksp
-!!$    KSP,ALLOCATABLE     :: ksp(:)
-    CHARACTER(len=string_length),ALLOCATABLE :: prefix
+    PetscInt            :: solver   = 1
+    PetscInt            :: nsolvers = 1
+    KSP,ALLOCATABLE                          :: ksp(:)
+    CHARACTER(len=string_length),ALLOCATABLE :: prefix(:)
     PetscInt,ALLOCATABLE    :: rows(:),cols(:)
     PetscScalar,ALLOCATABLE :: values(:)
     PetscInt            :: its
     PetscReal           :: rtol,r_n2,b_n2
     KSPConvergedReason  :: reason
-    CHARACTER(len=string_length) :: description=""
+    CHARACTER(len=string_length) :: description = ""
     PetscErrorCode      :: ierr
   END TYPE p_type
 
-  TYPE(p_type) :: p_object
+  ! Only p_object%ksp is used as a target.
+  TYPE(p_type),TARGET :: p_object
 
   ! Private functions
   PRIVATE :: nnod
@@ -138,7 +140,7 @@ CONTAINS
     INTEGER :: ierr
 
     IF(numpe == 1) THEN
-      fname = TRIM(fname_base) // ".petsc"
+      fname = TRIM(fname_base)//".petsc"
       INQUIRE(file=TRIM(fname),exist=exist)
       IF (.NOT. exist) THEN
         fname = ""
@@ -498,14 +500,25 @@ CONTAINS
     !*  can switch from CG to GMRES (for example) during a simulation.
     !*/
 
+    PetscInt                     :: s
+    CHARACTER(len=string_length) :: s_string
     PetscBool :: set
 
     CALL PetscOptionsGetInt(PETSC_NULL_CHARACTER,"-nsolvers",p_object%nsolvers,&
                             set,p_object%ierr)
 
-    CALL KSPCreate(PETSC_COMM_WORLD,p_object%ksp,p_object%ierr)
-!!$    CALL KSPSetOptionsPrefix(p_object%ksp,"solver_1_",p_object%ierr)
-    CALL KSPSetFromOptions(p_object%ksp,p_object%ierr)
+    ! Something here to handle a plain xxx.petsc file, with one one solver and
+    ! no -nsolvers option nor prefix_push/pop.  Use set to test for this.
+
+    ALLOCATE(p_object%ksp(p_object%nsolvers),                                  &
+             p_object%prefix(p_object%nsolvers))
+    DO s = 1, p_object%nsolvers
+      CALL KSPCreate(PETSC_COMM_WORLD,p_object%ksp(s),p_object%ierr)
+      WRITE(s_string,'(I0)') s
+      p_object%prefix(s) = pre_prefix//"_"//TRIM(s_string)//"_"
+      CALL KSPSetOptionsPrefix(p_object%ksp(s),p_object%prefix(s),p_object%ierr)
+      CALL KSPSetFromOptions(p_object%ksp(s),p_object%ierr)
+    END DO
   END SUBROUTINE p_create_ksps
   
   SUBROUTINE p_destroy_ksps
@@ -532,7 +545,12 @@ CONTAINS
     !*
     !*/
 
-    CALL KSPDestroy(p_object%ksp,p_object%ierr)
+    PetscInt :: s
+
+    DO s = 1, p_object%nsolvers
+      CALL KSPDestroy(p_object%ksp(s),p_object%ierr)
+    END DO
+    DEALLOCATE(p_object%ksp,p_object%prefix)
   END SUBROUTINE p_destroy_ksps
   
   SUBROUTINE p_create_workspace(ntot_max)
@@ -743,6 +761,7 @@ CONTAINS
     !******
     !*  Place remarks that should not be included in the documentation here.
     !*
+    !* Is this needed any more?  The tolerances are always set in p_solve.
     !*/
 
     REAL,    INTENT(in) :: rtol
@@ -758,8 +777,9 @@ CONTAINS
     ! tolerances from the ParaFEM control file are the ones to be used, so that
     ! the same values are used when comparing ParaFEM and PETSc solvers.  And
     ! during non-linear iterations the linear solver tolerance may be adjusted.
-    CALL KSPSetTolerances(p_object%ksp,p_rtol,PETSC_DEFAULT_REAL,              &
-                          PETSC_DEFAULT_REAL,p_max_it,p_object%ierr)
+    CALL KSPSetTolerances(p_object%ksp(p_object%solver),p_rtol,                &
+                          PETSC_DEFAULT_REAL,PETSC_DEFAULT_REAL,p_max_it,      &
+                          p_object%ierr)
   END SUBROUTINE p_set_tolerances
   
   SUBROUTINE p_set_rhs(r_pp)
@@ -885,6 +905,41 @@ CONTAINS
     CALL VecRestoreArrayF90(p_object%x,varray,p_object%ierr)
   END SUBROUTINE p_get_solution
 
+  SUBROUTINE p_use_solver(solver)
+
+    !/****if* petsc/p_use_solver
+    !*  NAME
+    !*    SUBROUTINE: p_use_solver
+    !*  SYNOPSIS
+    !*    Usage:      p_use_solver(solver)
+    !*  FUNCTION
+    !*    Choose one of the PETSc solvers specified by options and read in by
+    !*    p_create_ksps (which is called by p_setup).
+    !*  ARGUMENTS
+    !*    INTENT(IN)
+    !*
+    !*    solver                : Integer
+    !*                            The number of the solver to use.  This allows
+    !*                            you to use different solvers at different
+    !*                            stages of a calculation.
+    !*  AUTHOR
+    !*    Mark Filipiak
+    !*  CREATION DATE
+    !*    02.06.2016
+    !*  MODIFICATION HISTORY
+    !*    Version 1, 02.06.2016, Mark Filipiak
+    !*  COPYRIGHT
+    !*    (c) University of Edinburgh 2016
+    !******
+    !*  Place remarks that should not be included in the documentation here.
+    !*
+    !*/
+
+    INTEGER, INTENT(in) :: solver
+
+    p_object%solver = solver
+  END SUBROUTINE p_use_solver
+
   SUBROUTINE p_solve(rtol,max_it,r_pp,x_pp,                                    &
                      initial_guess_nonzero,reuse_preconditioner)
 
@@ -895,7 +950,8 @@ CONTAINS
     !*    Usage:      p_solve(rtol,max_it,r_pp,x_pp,
     !*                        initial_guess_nonzero,reuse_preconditioner)
     !*  FUNCTION
-    !*    Solve using PETSc.
+    !*    Solve using PETSc, using the only solver, or the current solver
+    !*    chosen using p_use_solver.
     !*  ARGUMENTS
     !*    INTENT(IN)
     !*
@@ -937,7 +993,7 @@ CONTAINS
     !*  CREATION DATE
     !*    17.05.2016
     !*  MODIFICATION HISTORY
-    !*    Version 1, 1.06.2016, Mark Filipiak
+    !*    Version 1, 02.06.2016, Mark Filipiak
     !*  COPYRIGHT
     !*    (c) University of Edinburgh 2016
     !******
@@ -952,36 +1008,116 @@ CONTAINS
     LOGICAL, INTENT(in), OPTIONAL :: initial_guess_nonzero
     LOGICAL, INTENT(in), OPTIONAL :: reuse_preconditioner
 
-    ! Note that relative tolerance for PETSc is for the preconditioned
-    ! residual.
+!!$    INTEGER :: s
+!!$    
+!!$    ! Solver number
+!!$    s = 1
+!!$    IF (PRESENT(solver_number)) THEN
+!!$      s = solver_number
+!!$    END IF
+!!$
+!!$    ! Note that relative tolerance for PETSc is for the preconditioned
+!!$    ! residual.
+!!$    CALL p_set_tolerances(s,rtol,max_it)
+!!$    
+!!$    ! RHS vector
+!!$    CALL p_set_rhs(r_pp)
+!!$
+!!$    ! Solution vector 
+!!$    CALL KSPSetInitialGuessNonzero(p_object%ksp(s),PETSC_FALSE,p_object%ierr)
+!!$    IF (PRESENT(initial_guess_nonzero)) THEN
+!!$      IF (initial_guess_nonzero) THEN
+!!$        ! For non-linear solves, the previous solution is usually used as an
+!!$        ! initial guess: copy the ParaFEM solution vector to PETSc.
+!!$        CALL KSPSetInitialGuessNonzero(p_object%ksp(s),PETSC_TRUE,p_object%ierr)
+!!$        CALL p_set_solution(x_pp)
+!!$      END IF
+!!$    END IF
+!!$
+!!$    CALL KSPSetOperators(p_object%ksp(s),p_object%A,p_object%A,p_object%ierr)
+!!$
+!!$    CALL KSPSetReusePreconditioner(p_object%ksp(s),PETSC_FALSE,p_object%ierr)
+!!$    IF (PRESENT(reuse_preconditioner)) THEN
+!!$      IF (reuse_preconditioner) THEN
+!!$        CALL KSPSetReusePreconditioner(p_object%ksp(s),PETSC_TRUE,p_object%ierr)
+!!$      END IF
+!!$    END IF
+!!$
+!!$    CALL KSPSolve(p_object%ksp(s),p_object%b,p_object%x,p_object%ierr)
+!!$
+!!$    CALL p_get_solution(x_pp)
+
+    ! not sure if the following works in Fortran
+    KSP,POINTER :: ksp
+
+    ksp => p_object%ksp(p_object%solver)
+    
+    ! This sets the tolerances in p_object%ksp(p_object%solver), i.e. ksp.  Note
+    ! that relative tolerance for PETSc is for the preconditioned residual.
     CALL p_set_tolerances(rtol,max_it)
     
     ! RHS vector
     CALL p_set_rhs(r_pp)
 
     ! Solution vector 
-    CALL KSPSetInitialGuessNonzero(p_object%ksp,PETSC_FALSE,p_object%ierr)
+    CALL KSPSetInitialGuessNonzero(ksp,PETSC_FALSE,p_object%ierr)
     IF (PRESENT(initial_guess_nonzero)) THEN
       IF (initial_guess_nonzero) THEN
         ! For non-linear solves, the previous solution is usually used as an
         ! initial guess: copy the ParaFEM solution vector to PETSc.
-        CALL KSPSetInitialGuessNonzero(p_object%ksp,PETSC_TRUE,p_object%ierr)
+        CALL KSPSetInitialGuessNonzero(ksp,PETSC_TRUE,p_object%ierr)
         CALL p_set_solution(x_pp)
       END IF
     END IF
 
-    CALL KSPSetOperators(p_object%ksp,p_object%A,p_object%A,p_object%ierr)
+    CALL KSPSetOperators(ksp,p_object%A,p_object%A,p_object%ierr)
 
-    CALL KSPSetReusePreconditioner(p_object%ksp,PETSC_FALSE,p_object%ierr)
+    CALL KSPSetReusePreconditioner(ksp,PETSC_FALSE,p_object%ierr)
     IF (PRESENT(reuse_preconditioner)) THEN
       IF (reuse_preconditioner) THEN
-        CALL KSPSetReusePreconditioner(p_object%ksp,PETSC_TRUE,p_object%ierr)
+        CALL KSPSetReusePreconditioner(ksp,PETSC_TRUE,p_object%ierr)
       END IF
     END IF
 
-    CALL KSPSolve(p_object%ksp,p_object%b,p_object%x,p_object%ierr)
+    CALL KSPSolve(ksp,p_object%b,p_object%x,p_object%ierr)
 
     CALL p_get_solution(x_pp)
+
+!!$    ! not sure if the following works in Fortran (or even in C)
+!!$    KSP :: ksp
+!!$
+!!$    ksp = p_object%ksp(p_object%solver)
+!!$    
+!!$    ! Note that relative tolerance for PETSc is for the preconditioned
+!!$    ! residual.
+!!$    CALL p_set_tolerances(rtol,max_it)
+!!$    
+!!$    ! RHS vector
+!!$    CALL p_set_rhs(r_pp)
+!!$
+!!$    ! Solution vector 
+!!$    CALL KSPSetInitialGuessNonzero(ksp,PETSC_FALSE,p_object%ierr)
+!!$    IF (PRESENT(initial_guess_nonzero)) THEN
+!!$      IF (initial_guess_nonzero) THEN
+!!$        ! For non-linear solves, the previous solution is usually used as an
+!!$        ! initial guess: copy the ParaFEM solution vector to PETSc.
+!!$        CALL KSPSetInitialGuessNonzero(ksp,PETSC_TRUE,p_object%ierr)
+!!$        CALL p_set_solution(x_pp)
+!!$      END IF
+!!$    END IF
+!!$
+!!$    CALL KSPSetOperators(ksp,p_object%A,p_object%A,p_object%ierr)
+!!$
+!!$    CALL KSPSetReusePreconditioner(ksp,PETSC_FALSE,p_object%ierr)
+!!$    IF (PRESENT(reuse_preconditioner)) THEN
+!!$      IF (reuse_preconditioner) THEN
+!!$        CALL KSPSetReusePreconditioner(ksp,PETSC_TRUE,p_object%ierr)
+!!$      END IF
+!!$    END IF
+!!$
+!!$    CALL KSPSolve(ksp,p_object%b,p_object%x,p_object%ierr)
+!!$
+!!$    CALL p_get_solution(x_pp)
   END SUBROUTINE p_solve
 
   SUBROUTINE p_print_info(numpe)
@@ -1014,15 +1150,19 @@ CONTAINS
 
     INTEGER, INTENT(in) :: numpe
 
-    Vec                 :: r
+    Vec         :: r
+    ! not sure if the following works in Fortran
+    KSP,POINTER :: ksp
 
+    ksp => p_object%ksp(p_object%solver)
+    
     ! Preconditioned residual norm tolerance
-    CALL KSPGetTolerances(p_object%ksp,p_object%rtol,PETSC_NULL_REAL,          &
+    CALL KSPGetTolerances(ksp,p_object%rtol,PETSC_NULL_REAL,                   &
                           PETSC_NULL_REAL,PETSC_NULL_INTEGER,p_object%ierr)
 
     ! True residual L2 norm
     CALL VecDuplicate(p_object%b,r,p_object%ierr)
-    CALL KSPBuildResidual(p_object%ksp,PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,r,  &
+    CALL KSPBuildResidual(ksp,PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,r,           &
                           p_object%ierr)
     CALL VecNorm(r,NORM_2,p_object%r_n2,p_object%ierr)
     CALL VecDestroy(r,p_object%ierr)
@@ -1030,8 +1170,8 @@ CONTAINS
     ! L2 norm of RHS
     CALL VecNorm(p_object%b,NORM_2,p_object%b_n2,p_object%ierr)
     
-    CALL KSPGetIterationNumber(p_object%ksp,p_object%its,p_object%ierr)
-    CALL KSPGetConvergedReason(p_object%ksp,p_object%reason,p_object%ierr)
+    CALL KSPGetIterationNumber(ksp,p_object%its,p_object%ierr)
+    CALL KSPGetConvergedReason(ksp,p_object%reason,p_object%ierr)
     p_object%description = p_describe_reason(p_object%reason)
   
     IF(numpe == 1)THEN
@@ -1175,13 +1315,13 @@ CONTAINS
     END SELECT
   END FUNCTION p_describe_reason
   
-  FUNCTION nnod(ndim,nod)
+  FUNCTION nnod(ndim,nod,error,message)
 
     !/****if* petsc/nnod
     !*  NAME
     !*    SUBROUTINE: nnod
     !*  SYNOPSIS
-    !*    Usage:      nnod(ndim,nod)
+    !*    Usage:      nnod(ndim,nod,error,message)
     !*  FUNCTION
 
     !*    Returns an approximate upper estimate of the number of nodes in all
@@ -1197,13 +1337,19 @@ CONTAINS
     !*                         Number of dimensions of the problem
     !*    nod                : Integer
     !*                         Number of nodes per element
+    !*    INTENT(OUT)
+    !*
+    !*    error              : Logical
+    !*                         .TRUE. if an error occurred
+    !*    message            : Character
+    !*                         Error message if an error occurred
     !*  AUTHOR
     !*    Mark Filipiak
     !*  CREATION DATE
     !*    19.02.2016
     !*  MODIFICATION HISTORY
     !*    Version 1, 19.02.2016, Mark Filipiak
-    !*    Version 2 (was p_row_nnz), 02.06.2016, Mark Filipiak
+    !*    Version 2 (was p_row_nnz), 03.06.2016, Mark Filipiak
     !*  COPYRIGHT
     !*    (c) University of Edinburgh 2016
     !******
@@ -1220,13 +1366,18 @@ CONTAINS
     !*  Appendix B
     !*/
 
-    INTEGER                 :: nnod
-    INTEGER,   INTENT(in)   :: ndim
-    INTEGER,   INTENT(in)   :: nod
+    INTEGER                              :: nnod
+    INTEGER,                  INTENT(in)  :: ndim
+    INTEGER,                  INTENT(in)  :: nod
+    LOGICAL,                  INTENT(out) :: error
+    CHARACTER(:),ALLOCATABLE, INTENT(out) :: message
 
     INTEGER                :: el_per_v,el_per_e,el_per_f,el_per_i
     REAL                   :: v=0,e=0,f=0,i=0,v_factor,e_factor
     PetscBool              :: set
+
+    error = .FALSE.
+    message = ""
 
     SELECT CASE (ndim)
 
@@ -1254,7 +1405,8 @@ CONTAINS
         el_per_v = 2; el_per_i = 1
         v = 9; i = 5
       CASE DEFAULT
-        WRITE(*,'(A)') "wrong number of nodes in nnod"        
+        error = .TRUE.
+        message = "wrong number of nodes in nnod"        
       END SELECT
     CASE(2)      ! two dimensional elements
       SELECT CASE (nod)
@@ -1318,7 +1470,8 @@ CONTAINS
         el_per_v = 4; el_per_e = 2; el_per_i = 1 ! quadrilateral
         v = 25; e = 15; i = 9
       CASE DEFAULT
-        WRITE(*,'(A)') "wrong number of nodes in nnod"        
+        error = .TRUE.
+        message = "wrong number of nodes in nnod"        
       END SELECT
     CASE(3)  ! three dimensional elements
       SELECT CASE (nod)
@@ -1419,10 +1572,12 @@ CONTAINS
         el_per_v = 8; el_per_e = 4; el_per_f = 2; el_per_i = 1 ! hexahedron
         v = 81; e = 51; f = 32; i = 20
       CASE DEFAULT
-        WRITE(*,'(A)') "wrong number of nodes in nnod"        
+        error = .TRUE.
+        message = "wrong number of nodes in nnod"        
       END SELECT
     CASE DEFAULT
-      WRITE(*,'(A)') "wrong number of dimensions in nnod"
+      error = .TRUE.
+      message = "wrong number of dimensions in nnod"
     END SELECT
     
     ! over_allocation is a safety factor and allows for distorted grids with
@@ -1436,13 +1591,13 @@ CONTAINS
     nnod = NINT(p_object%over_allocation * v)
   END FUNCTION nnod
 
-  FUNCTION row_nnz_2(ndim,nfield,nodof,ntype,nod)
+  FUNCTION row_nnz_2(ndim,nfield,nodof,ntype,nod,error,message)
 
     !/****if* petsc/row_nnz_2
     !*  NAME
     !*    SUBROUTINE: row_nnz_2
     !*  SYNOPSIS
-    !*    Usage:      row_nnz_2(ndim,nfield,nodof,ntype,nod)
+    !*    Usage:      row_nnz_2(ndim,nfield,nodof,ntype,nod,error,message)
     !*  FUNCTION
     !*    Returns an approximate upper estimate of the number of non-zeroes in a
     !*    row of the global matrix.  The number of non-zeroes in a row is used
@@ -1474,12 +1629,18 @@ CONTAINS
     !*                         Number of nodes per element for each element
     !*                         type for each field.  Only
     !*                         nod(1:ntype(field),field) is used.
+    !*    INTENT(OUT)
+    !*
+    !*    error              : Logical
+    !*                         .true. if an error occurred
+    !*    message            : Character
+    !*                         Error message if an error occurred
     !*  AUTHOR
     !*    Mark Filipiak
     !*  CREATION DATE
     !*    16.05.2016
     !*  MODIFICATION HISTORY
-    !*    Version 1, 02.06.2016, Mark Filipiak
+    !*    Version 1, 03.06.2016, Mark Filipiak
     !*  COPYRIGHT
     !*    (c) University of Edinburgh 2016
     !******
@@ -1487,34 +1648,43 @@ CONTAINS
     !*
     !*/
 
-    INTEGER                 :: row_nnz_2
-    INTEGER,   INTENT(in)   :: ndim
-    INTEGER,   INTENT(in)   :: nfield
-    INTEGER,   INTENT(in)   :: nodof(:)
-    INTEGER,   INTENT(in)   :: ntype(:)
-    INTEGER,   INTENT(in)   :: nod(:,:)
+    INTEGER                               :: row_nnz_2
+    INTEGER,                  INTENT(in)  :: ndim
+    INTEGER,                  INTENT(in)  :: nfield
+    INTEGER,                  INTENT(in)  :: nodof(:)
+    INTEGER,                  INTENT(in)  :: ntype(:)
+    INTEGER,                  INTENT(in)  :: nod(:,:)
+    LOGICAL,                  INTENT(out) :: error
+    CHARACTER(:),ALLOCATABLE, INTENT(out) :: message
 
     INTEGER                :: field,etype
     INTEGER                :: sum,n,max_nnod
 
+    error = .FALSE.
+    message = ""
+
     ! Test for arrays of the wrong size or of too small a size.
     IF (SIZE(nodof) /= nfield) THEN
-      WRITE(*,'(A)') "size of nodof /= nfield"
+      error = .TRUE.
+      message = "size of nodof /= nfield"
       row_nnz_2 = -1
       RETURN
     END IF
     IF (SIZE(ntype) /= nfield) THEN
-      WRITE(*,'(A)') "size of ntype /= nfield"
+      error = .TRUE.
+      message = "size of ntype /= nfield"
       row_nnz_2 = -1
       RETURN
     END IF
     IF (SIZE(nod,2) /= nfield) THEN
-      WRITE(*,'(A)') "size of 2nd dimension of nod /= nfield"
+      error = .TRUE.
+      message = "size of 2nd dimension of nod /= nfield"
       row_nnz_2 = -1
       RETURN
     END IF
     IF (SIZE(nod,1) < MAXVAL(ntype)) THEN
-      WRITE(*,'(A)') "size of 1st dimension of nod too small"
+      error = .TRUE.
+      message = "size of 1st dimension of nod too small"
       row_nnz_2 = -1
       RETURN
     END IF
@@ -1525,9 +1695,9 @@ CONTAINS
     DO field = 1, nfield
       max_nnod = 0
       DO etype = 1, ntype(field)
-        n = nnod(ndim,nod(etype,field))
-        IF (n <= 0) THEN
-          WRITE(*,'(A)') "Unknown element type"
+        n = nnod(ndim,nod(etype,field),error,message)
+        IF (error) THEN
+          message = message//": unknown element type"
           row_nnz_2 = 0
           RETURN
         END IF
@@ -1539,13 +1709,13 @@ CONTAINS
     row_nnz_2 = sum    
   END FUNCTION row_nnz_2
 
-  SUBROUTINE p_row_nnz_2(ndim,nfield,nodof,ntype,nod)
+  SUBROUTINE p_row_nnz_2(ndim,nfield,nodof,ntype,nod,error,message)
 
     !/****if* petsc/p_row_nnz_2
     !*  NAME
     !*    SUBROUTINE: p_row_nnz_2
     !*  SYNOPSIS
-    !*    Usage:      p_row_nnz_2(ndim,nfield,nodof,ntype,nod)
+    !*    Usage:      p_row_nnz_2(ndim,nfield,nodof,ntype,nod,error,message)
     !*  FUNCTION
     !*    Sets p_object%row_nnz to an approximate upper estimate of the number
     !*    of non-zeroes in a row of the global matrix.  The number of non-zeroes
@@ -1577,12 +1747,18 @@ CONTAINS
     !*                         Number of nodes per element for each element
     !*                         type for each field.  Only
     !*                         nod(1:ntype(field),field) is used.
+    !*    INTENT(OUT)
+    !*
+    !*    error              : Logical
+    !*                         .true. if an error occurred
+    !*    message            : Character
+    !*                         Error message if an error occurred
     !*  AUTHOR
     !*    Mark Filipiak
     !*  CREATION DATE
     !*    16.05.2016
     !*  MODIFICATION HISTORY
-    !*    Version 1, 02.06.2016, Mark Filipiak
+    !*    Version 1, 03.06.2016, Mark Filipiak
     !*  COPYRIGHT
     !*    (c) University of Edinburgh 2016
     !******
@@ -1590,22 +1766,27 @@ CONTAINS
     !*
     !*/
 
-    INTEGER,  INTENT(in)   :: ndim
-    INTEGER,  INTENT(in)   :: nfield
-    INTEGER,  INTENT(in)   :: nodof(:)
-    INTEGER,  INTENT(in)   :: ntype(:)
-    INTEGER,  INTENT(in)   :: nod(:,:)
+    INTEGER,                  INTENT(in)  :: ndim
+    INTEGER,                  INTENT(in)  :: nfield
+    INTEGER,                  INTENT(in)  :: nodof(:)
+    INTEGER,                  INTENT(in)  :: ntype(:)
+    INTEGER,                  INTENT(in)  :: nod(:,:)
+    LOGICAL,                  INTENT(out) :: error
+    CHARACTER(:),ALLOCATABLE, INTENT(out) :: message
 
-    p_object%row_nnz = row_nnz_2(ndim,nfield,nodof,ntype,nod)
+    error = .FALSE.
+    message = ""
+
+    p_object%row_nnz = row_nnz_2(ndim,nfield,nodof,ntype,nod,error,message)
   END SUBROUTINE p_row_nnz_2
 
-  FUNCTION row_nnz_1(ndim,nodof,ntype,nod)
+  FUNCTION row_nnz_1(ndim,nodof,ntype,nod,error,message)
 
     !/****if* petsc/row_nnz_1
     !*  NAME
     !*    SUBROUTINE: row_nnz_1
     !*  SYNOPSIS
-    !*    Usage:      row_nnz_1(ndim,nodof,ntype,nod)
+    !*    Usage:      row_nnz_1(ndim,nodof,ntype,nod,error,message)
     !*  FUNCTION
     !*    This is for a single field and multiple types of element for that
     !*    field.
@@ -1624,12 +1805,18 @@ CONTAINS
     !*    nod                : Integer rank 1 array
     !*                         Number of nodes per element for each element
     !*                         type.
+    !*    INTENT(OUT)
+    !*
+    !*    error              : Logical
+    !*                         .true. if an error occurred
+    !*    message            : Character
+    !*                         Error message if an error occurred
     !*  AUTHOR
     !*    Mark Filipiak
     !*  CREATION DATE
     !*    16.05.2016
     !*  MODIFICATION HISTORY
-    !*    Version 1, 02.06.2016, Mark Filipiak
+    !*    Version 1, 03.06.2016, Mark Filipiak
     !*  COPYRIGHT
     !*    (c) University of Edinburgh 2016
     !******
@@ -1637,29 +1824,35 @@ CONTAINS
     !*
     !*/
 
-    INTEGER                 :: row_nnz_1
-    INTEGER,   INTENT(in)   :: ndim
-    INTEGER,   INTENT(in)   :: nodof
-    INTEGER,   INTENT(in)   :: ntype
-    INTEGER,   INTENT(in)   :: nod(:)
+    INTEGER                               :: row_nnz_1
+    INTEGER,                  INTENT(in)  :: ndim
+    INTEGER,                  INTENT(in)  :: nodof
+    INTEGER,                  INTENT(in)  :: ntype
+    INTEGER,                  INTENT(in)  :: nod(:)
+    LOGICAL,                  INTENT(out) :: error
+    CHARACTER(:),ALLOCATABLE, INTENT(out) :: message
+
+    error = .FALSE.
+    message = ""
 
     IF (SIZE(nod) /= ntype) THEN
-      WRITE(*,'(A)') "size of nod /= ntype"
+      error = .TRUE.
+      message = "size of nod /= ntype"
       row_nnz_1 = -1
       RETURN
     END IF
     
     row_nnz_1 = row_nnz_2(ndim,1,(/nodof/),(/ntype/),                          &
-                          RESHAPE(nod,(/SIZE(nod),1/)))
+                          RESHAPE(nod,(/SIZE(nod),1/)),error,message)
   END FUNCTION row_nnz_1
 
-  SUBROUTINE p_row_nnz_1(ndim,nodof,ntype,nod)
+  SUBROUTINE p_row_nnz_1(ndim,nodof,ntype,nod,error,message)
 
     !/****if* petsc/p_row_nnz_1
     !*  NAME
     !*    SUBROUTINE: p_row_nnz_1
     !*  SYNOPSIS
-    !*    Usage:      p_row_nnz_1(ndim,nodof,ntype,nod)
+    !*    Usage:      p_row_nnz_1(ndim,nodof,ntype,nod,error,message)
     !*  FUNCTION
     !*    Sets p_object%row_nnz to an approximate upper estimate of the number
     !*    of non-zeroes in a row of the global matrix.  The number of non-zeroes
@@ -1684,12 +1877,18 @@ CONTAINS
     !*    nod                : Integer rank 1 array
     !*                         Number of nodes per element for each element
     !*                         type.
+    !*    INTENT(OUT)
+    !*
+    !*    error              : Logical
+    !*                         .true. if an error occurred
+    !*    message            : Character
+    !*                         Error message if an error occurred
     !*  AUTHOR
     !*    Mark Filipiak
     !*  CREATION DATE
     !*    16.05.2016
     !*  MODIFICATION HISTORY
-    !*    Version 1, 02.06.2016, Mark Filipiak
+    !*    Version 1, 03.06.2016, Mark Filipiak
     !*  COPYRIGHT
     !*    (c) University of Edinburgh 2016
     !******
@@ -1697,21 +1896,26 @@ CONTAINS
     !*
     !*/
 
-    INTEGER,  INTENT(in)   :: ndim
-    INTEGER,  INTENT(in)   :: nodof
-    INTEGER,  INTENT(in)   :: ntype
-    INTEGER,  INTENT(in)   :: nod(:)
-    
-    p_object%row_nnz = row_nnz_1(ndim,nodof,ntype,nod)
+    INTEGER,                  INTENT(in)  :: ndim
+    INTEGER,                  INTENT(in)  :: nodof
+    INTEGER,                  INTENT(in)  :: ntype
+    INTEGER,                  INTENT(in)  :: nod(:)
+    LOGICAL,                  INTENT(out) :: error
+    CHARACTER(:),ALLOCATABLE, INTENT(out) :: message
+
+    error = .FALSE.
+    message = ""
+
+    p_object%row_nnz = row_nnz_1(ndim,nodof,ntype,nod,error,message)
   END SUBROUTINE p_row_nnz_1
 
-  FUNCTION row_nnz(ndim,nodof,nod)
+  FUNCTION row_nnz(ndim,nodof,nod,error,message)
 
     !/****if* petsc/row_nnz
     !*  NAME
     !*    SUBROUTINE: row_nnz
     !*  SYNOPSIS
-    !*    Usage:      row_nnz(ndim,nodof,nod)
+    !*    Usage:      row_nnz(ndim,nodof,nod,error,message)
     !*  FUNCTION
     !*    Returns an approximate upper estimate of the number of non-zeroes in a
     !*    row of the global matrix.  The number of non-zeroes in a row is used
@@ -1731,12 +1935,18 @@ CONTAINS
     !*                         Number of dofs per node
     !*    nod                : Integer
     !*                         Number of nodes per element
+    !*    INTENT(OUT)
+    !*
+    !*    error              : Logical
+    !*                         .true. if an error occurred
+    !*    message            : Character
+    !*                         Error message if an error occurred
     !*  AUTHOR
     !*    Mark Filipiak
     !*  CREATION DATE
     !*    16.05.2016
     !*  MODIFICATION HISTORY
-    !*    Version 1, 02.06.2016, Mark Filipiak
+    !*    Version 1, 03.06.2016, Mark Filipiak
     !*  COPYRIGHT
     !*    (c) University of Edinburgh 2016
     !******
@@ -1744,21 +1954,26 @@ CONTAINS
     !*
     !*/
 
-    INTEGER                 :: row_nnz
-    INTEGER,   INTENT(in)   :: ndim
-    INTEGER,   INTENT(in)   :: nodof
-    INTEGER,   INTENT(in)   :: nod
+    INTEGER                               :: row_nnz
+    INTEGER,                  INTENT(in)  :: ndim
+    INTEGER,                  INTENT(in)  :: nodof
+    INTEGER,                  INTENT(in)  :: nod
+    LOGICAL,                  INTENT(out) :: error
+    CHARACTER(:),ALLOCATABLE, INTENT(out) :: message
 
-    row_nnz = row_nnz_1(ndim,nodof,1,(/nod/))
+    error = .FALSE.
+    message = ""
+
+    row_nnz = row_nnz_1(ndim,nodof,1,(/nod/),error,message)
   END FUNCTION row_nnz
 
-  SUBROUTINE p_row_nnz(ndim,nodof,nod)
+  SUBROUTINE p_row_nnz(ndim,nodof,nod,error,message)
 
     !/****if* petsc/p_row_nnz
     !*  NAME
     !*    SUBROUTINE: p_row_nnz
     !*  SYNOPSIS
-    !*    Usage:      p_row_nnz(ndim,nodof,nod)
+    !*    Usage:      p_row_nnz(ndim,nodof,nod,error,message)
     !*  FUNCTION
     !*    Sets p_object%row_nnz to an approximate upper estimate of the number
     !*    of non-zeroes in a row of the global matrix.  The number of non-zeroes
@@ -1778,12 +1993,18 @@ CONTAINS
     !*                         Number of dofs per node
     !*    nod                : Integer
     !*                         Number of nodes per element
+    !*    INTENT(OUT)
+    !*
+    !*    error              : Logical
+    !*                         .true. if an error occurred
+    !*    message            : Character
+    !*                         Error message if an error occurred
     !*  AUTHOR
     !*    Mark Filipiak
     !*  CREATION DATE
     !*    16.05.2016
     !*  MODIFICATION HISTORY
-    !*    Version 1, 16.05.2016, Mark Filipiak
+    !*    Version 1, 03.06.2016, Mark Filipiak
     !*  COPYRIGHT
     !*    (c) University of Edinburgh 2016
     !******
@@ -1791,11 +2012,16 @@ CONTAINS
     !*
     !*/
 
-    INTEGER,  INTENT(in)   :: ndim
-    INTEGER,  INTENT(in)   :: nodof
-    INTEGER,  INTENT(in)   :: nod
+    INTEGER,                  INTENT(in)  :: ndim
+    INTEGER,                  INTENT(in)  :: nodof
+    INTEGER,                  INTENT(in)  :: nod
+    LOGICAL,                  INTENT(out) :: error
+    CHARACTER(:),ALLOCATABLE, INTENT(out) :: message
 
-    p_object%row_nnz = row_nnz(ndim,nodof,nod)
+    error = .FALSE.
+    message = ""
+
+    p_object%row_nnz = row_nnz(ndim,nodof,nod,error,message)
   END SUBROUTINE p_row_nnz
 
 END MODULE parafem_petsc

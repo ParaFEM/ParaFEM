@@ -51,6 +51,9 @@ PROGRAM xx18
   CHARACTER(LEN=6)    :: ch 
 
   CHARACTER(len=choose_solvers_string_length) :: solvers
+
+  LOGICAL                  :: error
+  CHARACTER(:),ALLOCATABLE :: message
   
   !-----------------------------------------------------------------------------
   ! 1. Dynamic arrays
@@ -112,7 +115,12 @@ PROGRAM xx18
     CALL p_initialize(numpe,argv)
     ! Set the approximate number of zeroes per row for the matrix size
     ! pre-allocation.
-    CALL p_row_nnz(ndim,nodof,nod)
+    CALL p_row_nnz(ndim,nodof,nod,error,message)
+    IF (error) THEN
+      WRITE(*,'(A)') message
+      CALL p_finalize
+      CALL shutdown
+    END IF
     ! Set up PETSc.
     CALL p_setup(neq_pp,ntot)
   END IF
@@ -199,6 +207,7 @@ PROGRAM xx18
       WRITE(11,'(A,I6)') "The number of iterations to convergence was ",iters
     END IF
   ELSE IF (solvers == petsc_solvers) THEN
+    CALL p_use_solver(1)
     ! Note that relative tolerance for PETSc is for the preconditioned
     ! residual.
     CALL p_solve(tol,limit,r_pp,xnew_pp)
