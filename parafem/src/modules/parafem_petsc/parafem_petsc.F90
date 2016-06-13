@@ -61,8 +61,12 @@ MODULE parafem_petsc
 #include <petsc/finclude/petscpc.h90>
   
   ! Private parameters
-  INTEGER,PARAMETER,PRIVATE  :: string_length = 1024
-  CHARACTER(len=*),PARAMETER :: pre_prefix = "solver"
+  INTEGER,PARAMETER,PRIVATE          :: string_length = 1024
+  CHARACTER(len=*),PARAMETER,PRIVATE :: pre_prefix = "solver"
+  ! max_nsolvers is used only for warning about options set for solvers outside
+  ! the range 1:p_object%nsolvers.  There is no limit on the number solvers, so
+  ! there willl be no warning for options set for solvers > max_nsolvers.
+  INTEGER,PARAMETER,PRIVATE          :: max_nsolvers = 99
 
   ! Variables collected as one derived type
   TYPE p_type
@@ -103,22 +107,22 @@ MODULE parafem_petsc
  
 CONTAINS
   
-  SUBROUTINE p_initialize(numpe,fname_base)
+  SUBROUTINE p_initialize(fname_base,numpe)
 
     !/****if* petsc/p_initialize
     !*  NAME
     !*    SUBROUTINE: p_initialize
     !*  SYNOPSIS
-    !*    Usage:      p_initialize(numpe,fname_base)
+    !*    Usage:      p_initialize(fname_base,numpe)
     !*  FUNCTION
     !*      Initialises PETSc
     !*  ARGUMENTS
     !*    INTENT(IN)
     !*
-    !*    numpe              : Integer
-    !*                         Number of this process (starting at 1)
     !*    fname_base         : Character
     !*                         Base name of the data file
+    !*    numpe              : Integer
+    !*                         Number of this process (starting at 1)
     !*  AUTHOR
     !*    Mark Filipiak
     !*  CREATION DATE
@@ -132,8 +136,8 @@ CONTAINS
     !*
     !*/
 
-    INTEGER,          INTENT(in) :: numpe
     CHARACTER(len=*), INTENT(in) :: fname_base
+    INTEGER,          INTENT(in) :: numpe
 
     CHARACTER(len=string_length) :: fname
     LOGICAL :: exist
@@ -153,13 +157,13 @@ CONTAINS
     CALL PetscInitialize(fname,p_object%ierr)
   END SUBROUTINE p_initialize
 
-  SUBROUTINE p_setup(neq_pp,ntot_max)
+  SUBROUTINE p_setup(neq_pp,ntot_max,numpe)
 
     !/****if* petsc/p_setup
     !*  NAME
     !*    SUBROUTINE: p_setup
     !*  SYNOPSIS
-    !*    Usage:      p_setup(neq_pp,ntot_max)
+    !*    Usage:      p_setup(neq_pp,ntot_max,numpe)
     !*  FUNCTION
     !*      Initialises PETSc and its matrices, vectors and solvers
     !*  ARGUMENTS
@@ -178,12 +182,15 @@ CONTAINS
     !*                         matrix, as in p126, then this will be ntot of
     !*                         this 'element'.  This is used to set the sizes of
     !*                         the workspaces.
+    !*    numpe              : Integer
+    !*                         This processer's number.  Only processor 1
+    !*                         prints information.
     !*  AUTHOR
     !*    Mark Filipiak
     !*  CREATION DATE
     !*    31.05.2016
     !*  MODIFICATION HISTORY
-    !*    Version 1, 02.06.2016, Mark Filipiak
+    !*    Version 1, 07.06.2016, Mark Filipiak
     !*  COPYRIGHT
     !*    (c) University of Edinburgh 2016
     !******
@@ -191,13 +198,14 @@ CONTAINS
     !*
     !*/
 
-    INTEGER,          INTENT(in) :: neq_pp
-    INTEGER,          INTENT(in) :: ntot_max
+    INTEGER, INTENT(in) :: neq_pp
+    INTEGER, INTENT(in) :: ntot_max
+    INTEGER, INTENT(in) :: numpe
 
     ! Create the objects
     CALL p_create_matrix(neq_pp)
     CALL p_create_vectors(neq_pp) ! RHS and solution
-    CALL p_create_ksps ! Krylov solver(s)
+    CALL p_create_ksps(numpe) ! Krylov solver(s)
     CALL p_create_workspace(ntot_max)
   END SUBROUTINE p_setup
 
@@ -460,23 +468,27 @@ CONTAINS
     CALL VecDestroy(p_object%b,p_object%ierr)
   END SUBROUTINE p_destroy_vectors
   
-  SUBROUTINE p_create_ksps
+  SUBROUTINE p_create_ksps(numpe)
 
     !/****if* petsc/p_create_ksps
     !*  NAME
     !*    SUBROUTINE: p_create_ksps
     !*  SYNOPSIS
-    !*    Usage:      p_create_ksps
+    !*    Usage:      p_create_ksps(numpe)
     !*  FUNCTION
     !*    Create the Krylov solvers and preconditioners
     !*  ARGUMENTS
-    !*    None.
+    !*    INTENT(IN)
+    !*
+    !*    numpe              : Integer
+    !*                         This processer's number.  Only processor 1
+    !*                         prints information.
     !*  AUTHOR
     !*    Mark Filipiak
     !*  CREATION DATE
     !*    28.05.2016
     !*  MODIFICATION HISTORY
-    !*    Version 1, 02.06.2016, Mark Filipiak
+    !*    Version 1, 13.06.2016, Mark Filipiak
     !*  COPYRIGHT
     !*    (c) University of Edinburgh 2016
     !******
@@ -500,9 +512,13 @@ CONTAINS
     !*  can switch from CG to GMRES (for example) during a simulation.
     !*/
 
+    INTEGER, INTENT(in) :: numpe
+
     PetscInt                     :: s
     CHARACTER(len=string_length) :: s_string
     PetscBool :: set
+    PC :: p
+    CHARACTER(len=string_length) :: type
 
     CALL PetscOptionsGetInt(PETSC_NULL_CHARACTER,"-nsolvers",p_object%nsolvers,&
                             set,p_object%ierr)
@@ -518,7 +534,48 @@ CONTAINS
       p_object%prefix(s) = pre_prefix//"_"//TRIM(s_string)//"_"
       CALL KSPSetOptionsPrefix(p_object%ksp(s),p_object%prefix(s),p_object%ierr)
       CALL KSPSetFromOptions(p_object%ksp(s),p_object%ierr)
+
+      ! Warn if the KSP or PC has not been set.
+      CALL PetscOptionsHasName(p_object%prefix(s),"-ksp_type",set,p_object%ierr)
+      IF (.NOT. set) THEN
+        CALL KSPGetType(p_object%ksp(s),type,p_object%ierr)
+        IF (numpe==1) THEN
+          WRITE(*,'(A)') "Warning: -"//TRIM(p_object%prefix(s))//"ksp_type "   &
+                         //"not set.  Solver "//TRIM(s_string)//" will have "  &
+                         //"KSP type "//TRIM(TYPE)
+        END IF
+      END IF
+      CALL PetscOptionsHasName(p_object%prefix(s),"-pc_type",set,p_object%ierr)
+      IF (.NOT. set) THEN
+        CALL KSPGetPC(p_object%ksp(s),p,p_object%ierr)
+        CALL PCGetType(p,type,p_object%ierr)
+        IF (numpe==1) THEN
+          WRITE(*,'(A)') "Warning: -"//TRIM(p_object%prefix(s))//"pc_type "    &
+                         //"not set.  Solver "//TRIM(s_string)//" will have "  &
+                         //"PC type "//TRIM(type)
+        END IF
+      END IF
     END DO
+
+    ! Warn about options that have been set for solvers > nsolvers.  This isn't
+    ! perfect, there are no warnings for solvers > max_nsolvers.
+    DO s = p_object%nsolvers+1, max_nsolvers
+      WRITE(s_string,'(I0)') s
+      ! Warn if the KSP or PC has been set.
+      CALL PetscOptionsHasName(pre_prefix//"_"//TRIM(s_string)//"_",           &
+                               "-ksp_type",set,p_object%ierr)
+      IF (.NOT. set) THEN
+        CALL PetscOptionsHasName(pre_prefix//"_"//TRIM(s_string)//"_",         &
+                                 "-pc_type",set,p_object%ierr)
+      END IF
+      IF (set) THEN
+        IF (numpe==1) THEN
+          WRITE(*,'(A,I0)') "Warning: options set for solver "//TRIM(s_string) &
+                            //" but nsolvers is ",p_object%nsolvers
+        END IF
+      END IF
+    END DO
+
   END SUBROUTINE p_create_ksps
   
   SUBROUTINE p_destroy_ksps
@@ -755,13 +812,14 @@ CONTAINS
     !*  CREATION DATE
     !*    28.05.2016
     !*  MODIFICATION HISTORY
-    !*    Version 1, 28.05.2016, Mark Filipiak
+    !*    Version 1, 13.06.2016, Mark Filipiak
     !*  COPYRIGHT
     !*    (c) University of Edinburgh 2016
     !******
     !*  Place remarks that should not be included in the documentation here.
     !*
-    !* Is this needed any more?  The tolerances are always set in p_solve.
+    !* Is this needed any more?  The tolerance and maximum number of iterations
+    !* come from the PETSc control file (xxxx.petsc).
     !*/
 
     REAL,    INTENT(in) :: rtol
@@ -773,10 +831,8 @@ CONTAINS
     p_rtol = rtol
     p_max_it = max_it
 
-    ! These override the settings in the xxx.petsc file (and command line).  The
-    ! tolerances from the ParaFEM control file are the ones to be used, so that
-    ! the same values are used when comparing ParaFEM and PETSc solvers.  And
-    ! during non-linear iterations the linear solver tolerance may be adjusted.
+    ! These would override the settings in the xxxx.petsc file (and command
+    ! line).
     CALL KSPSetTolerances(p_object%ksp(p_object%solver),p_rtol,                &
                           PETSC_DEFAULT_REAL,PETSC_DEFAULT_REAL,p_max_it,      &
                           p_object%ierr)
@@ -905,13 +961,13 @@ CONTAINS
     CALL VecRestoreArrayF90(p_object%x,varray,p_object%ierr)
   END SUBROUTINE p_get_solution
 
-  SUBROUTINE p_use_solver(solver)
+  SUBROUTINE p_use_solver(solver,numpe,error)
 
     !/****if* petsc/p_use_solver
     !*  NAME
     !*    SUBROUTINE: p_use_solver
     !*  SYNOPSIS
-    !*    Usage:      p_use_solver(solver)
+    !*    Usage:      p_use_solver(solver,numpe,error)
     !*  FUNCTION
     !*    Choose one of the PETSc solvers specified by options and read in by
     !*    p_create_ksps (which is called by p_setup).
@@ -922,12 +978,18 @@ CONTAINS
     !*                            The number of the solver to use.  This allows
     !*                            you to use different solvers at different
     !*                            stages of a calculation.
+    !*    numpe              : Integer
+    !*                         This processer's number.  Only processor 1
+    !*                         prints information.
+    !*    error              : Logical
+    !*                         error = .false. if no error occurred
+    !*                         error = .true.  if an error occurred
     !*  AUTHOR
     !*    Mark Filipiak
     !*  CREATION DATE
     !*    02.06.2016
     !*  MODIFICATION HISTORY
-    !*    Version 1, 02.06.2016, Mark Filipiak
+    !*    Version 1, 13.06.2016, Mark Filipiak
     !*  COPYRIGHT
     !*    (c) University of Edinburgh 2016
     !******
@@ -935,32 +997,39 @@ CONTAINS
     !*
     !*/
 
-    INTEGER, INTENT(in) :: solver
+    INTEGER, INTENT(in)  :: solver
+    INTEGER, INTENT(in)  :: numpe
+    LOGICAL, INTENT(out) :: error
+
+    error = .FALSE.
+
+    IF (solver < 1 .OR. solver > p_object%nsolvers) THEN
+      IF (numpe==1) THEN
+        WRITE(*,'(A,I0,A,I0)') "Error: p_use_solver uses solver ",solver,      &
+                               " but nsolvers is ",p_object%nsolvers
+      END IF
+      error = .TRUE.
+      RETURN
+    END IF
 
     p_object%solver = solver
   END SUBROUTINE p_use_solver
 
-  SUBROUTINE p_solve(rtol,max_it,r_pp,x_pp,                                    &
-                     initial_guess_nonzero,reuse_preconditioner)
+  SUBROUTINE p_solve(r_pp,x_pp,initial_guess_nonzero,reuse_preconditioner)
 
     !/****if* petsc/p_solve
     !*  NAME
     !*    SUBROUTINE: p_solve
     !*  SYNOPSIS
-    !*    Usage:      p_solve(rtol,max_it,r_pp,x_pp,
+    !*    Usage:      p_solve(r_pp,x_pp,
     !*                        initial_guess_nonzero,reuse_preconditioner)
     !*  FUNCTION
     !*    Solve using PETSc, using the only solver, or the current solver
-    !*    chosen using p_use_solver.
+    !*    chosen using p_use_solver.  Tolerance and maximum number of
+    !*    iterations are set in the PETSc control file (xxxx.petsc).
     !*  ARGUMENTS
     !*    INTENT(IN)
     !*
-    !*    rtol               : Real
-    !*                         Relative tolerance for the preconditioned
-    !*                         residual (in ParaFEM the relative tolerance
-    !*                         is for the true residual).
-    !*    max_it             : Integer
-    !*                         Maximum number of Krylov solver iterations.
     !*    r_pp(:)            : Real
     !*                         RHS on this process.
     !*    INTENT(INOUT)
@@ -993,7 +1062,7 @@ CONTAINS
     !*  CREATION DATE
     !*    17.05.2016
     !*  MODIFICATION HISTORY
-    !*    Version 1, 02.06.2016, Mark Filipiak
+    !*    Version 1, 13.06.2016, Mark Filipiak
     !*  COPYRIGHT
     !*    (c) University of Edinburgh 2016
     !******
@@ -1001,64 +1070,19 @@ CONTAINS
     !*
     !*/
 
-    REAL,    INTENT(in)           :: rtol
-    INTEGER, INTENT(in)           :: max_it
     REAL,    INTENT(in)           :: r_pp(:)
     REAL,    INTENT(inout)        :: x_pp(:)
     LOGICAL, INTENT(in), OPTIONAL :: initial_guess_nonzero
     LOGICAL, INTENT(in), OPTIONAL :: reuse_preconditioner
 
-!!$    INTEGER :: s
-!!$    
-!!$    ! Solver number
-!!$    s = 1
-!!$    IF (PRESENT(solver_number)) THEN
-!!$      s = solver_number
-!!$    END IF
-!!$
-!!$    ! Note that relative tolerance for PETSc is for the preconditioned
-!!$    ! residual.
-!!$    CALL p_set_tolerances(s,rtol,max_it)
-!!$    
-!!$    ! RHS vector
-!!$    CALL p_set_rhs(r_pp)
-!!$
-!!$    ! Solution vector 
-!!$    CALL KSPSetInitialGuessNonzero(p_object%ksp(s),PETSC_FALSE,p_object%ierr)
-!!$    IF (PRESENT(initial_guess_nonzero)) THEN
-!!$      IF (initial_guess_nonzero) THEN
-!!$        ! For non-linear solves, the previous solution is usually used as an
-!!$        ! initial guess: copy the ParaFEM solution vector to PETSc.
-!!$        CALL KSPSetInitialGuessNonzero(p_object%ksp(s),PETSC_TRUE,p_object%ierr)
-!!$        CALL p_set_solution(x_pp)
-!!$      END IF
-!!$    END IF
-!!$
-!!$    CALL KSPSetOperators(p_object%ksp(s),p_object%A,p_object%A,p_object%ierr)
-!!$
-!!$    CALL KSPSetReusePreconditioner(p_object%ksp(s),PETSC_FALSE,p_object%ierr)
-!!$    IF (PRESENT(reuse_preconditioner)) THEN
-!!$      IF (reuse_preconditioner) THEN
-!!$        CALL KSPSetReusePreconditioner(p_object%ksp(s),PETSC_TRUE,p_object%ierr)
-!!$      END IF
-!!$    END IF
-!!$
-!!$    CALL KSPSolve(p_object%ksp(s),p_object%b,p_object%x,p_object%ierr)
-!!$
-!!$    CALL p_get_solution(x_pp)
-
-    ! not sure if the following works in Fortran
     KSP,POINTER :: ksp
 
-    ksp => p_object%ksp(p_object%solver)
-    
-    ! This sets the tolerances in p_object%ksp(p_object%solver), i.e. ksp.  Note
-    ! that relative tolerance for PETSc is for the preconditioned residual.
-    CALL p_set_tolerances(rtol,max_it)
-    
     ! RHS vector
     CALL p_set_rhs(r_pp)
 
+    ! Reduce typing
+    ksp => p_object%ksp(p_object%solver)
+    
     ! Solution vector 
     CALL KSPSetInitialGuessNonzero(ksp,PETSC_FALSE,p_object%ierr)
     IF (PRESENT(initial_guess_nonzero)) THEN
@@ -1082,51 +1106,15 @@ CONTAINS
     CALL KSPSolve(ksp,p_object%b,p_object%x,p_object%ierr)
 
     CALL p_get_solution(x_pp)
-
-!!$    ! not sure if the following works in Fortran (or even in C)
-!!$    KSP :: ksp
-!!$
-!!$    ksp = p_object%ksp(p_object%solver)
-!!$    
-!!$    ! Note that relative tolerance for PETSc is for the preconditioned
-!!$    ! residual.
-!!$    CALL p_set_tolerances(rtol,max_it)
-!!$    
-!!$    ! RHS vector
-!!$    CALL p_set_rhs(r_pp)
-!!$
-!!$    ! Solution vector 
-!!$    CALL KSPSetInitialGuessNonzero(ksp,PETSC_FALSE,p_object%ierr)
-!!$    IF (PRESENT(initial_guess_nonzero)) THEN
-!!$      IF (initial_guess_nonzero) THEN
-!!$        ! For non-linear solves, the previous solution is usually used as an
-!!$        ! initial guess: copy the ParaFEM solution vector to PETSc.
-!!$        CALL KSPSetInitialGuessNonzero(ksp,PETSC_TRUE,p_object%ierr)
-!!$        CALL p_set_solution(x_pp)
-!!$      END IF
-!!$    END IF
-!!$
-!!$    CALL KSPSetOperators(ksp,p_object%A,p_object%A,p_object%ierr)
-!!$
-!!$    CALL KSPSetReusePreconditioner(ksp,PETSC_FALSE,p_object%ierr)
-!!$    IF (PRESENT(reuse_preconditioner)) THEN
-!!$      IF (reuse_preconditioner) THEN
-!!$        CALL KSPSetReusePreconditioner(ksp,PETSC_TRUE,p_object%ierr)
-!!$      END IF
-!!$    END IF
-!!$
-!!$    CALL KSPSolve(ksp,p_object%b,p_object%x,p_object%ierr)
-!!$
-!!$    CALL p_get_solution(x_pp)
   END SUBROUTINE p_solve
 
-  SUBROUTINE p_print_info(numpe)
+  SUBROUTINE p_print_info(numpe,unit)
 
     !/****if* petsc/p_print_info
     !*  NAME
     !*    SUBROUTINE: p_print_info
     !*  SYNOPSIS
-    !*    Usage:      p_print_info(numpe)
+    !*    Usage:      p_print_info(numpe,unit)
     !*  FUNCTION
     !*    Prints the convergence information
     !*  ARGUMENTS
@@ -1135,12 +1123,14 @@ CONTAINS
     !*    numpe              : Integer
     !*                         This processer's number.  Only processor 1
     !*                         prints information.
+    !*    unit               : Integer
+    !*                         File unit to print to.
     !*  AUTHOR
     !*    Mark Filipiak
     !*  CREATION DATE
     !*    29.05.2016
     !*  MODIFICATION HISTORY
-    !*    Version 1, 29.05.2016, Mark Filipiak
+    !*    Version 1, 06.06.2016, Mark Filipiak
     !*  COPYRIGHT
     !*    (c) University of Edinburgh 2016
     !******
@@ -1149,9 +1139,10 @@ CONTAINS
     !*/
 
     INTEGER, INTENT(in) :: numpe
+    INTEGER, INTENT(in) :: unit
 
     Vec         :: r
-    ! not sure if the following works in Fortran
+
     KSP,POINTER :: ksp
 
     ksp => p_object%ksp(p_object%solver)
@@ -1175,14 +1166,14 @@ CONTAINS
     p_object%description = p_describe_reason(p_object%reason)
   
     IF(numpe == 1)THEN
-      WRITE(11,'(A,I0,A)')                                                     &
+      WRITE(unit,'(A,I0,A)')                                                     &
         "The reason for convergence was ",p_object%reason," "                  &
         //TRIM(p_object%description)
-      WRITE(11,'(A,I0)')                                                       &
+      WRITE(unit,'(A,I0)')                                                       &
         "The number of iterations to convergence was ",p_object%its
-      WRITE(11,'(A,E17.7)')                                                    &
+      WRITE(unit,'(A,E17.7)')                                                    &
         "The preconditioned relative error tolerance was ",p_object%rtol
-      WRITE(11,'(A,E17.7)')                                                    &
+      WRITE(unit,'(A,E17.7)')                                                    &
         "The relative error ||b-Ax||/||b|| was           ",                    &
         p_object%r_n2/p_object%b_n2
     END IF
