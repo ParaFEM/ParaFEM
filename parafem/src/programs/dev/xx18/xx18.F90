@@ -70,7 +70,11 @@ PROGRAM xx18
   ! 2. Input and initialisation
   !-----------------------------------------------------------------------------
   
-  ALLOCATE(timest(20)); timest=zero; timest(1)=elap_time()
+  ALLOCATE(timest(20))
+  timest=zero
+
+  timest(1)=elap_time()
+
   CALL find_pe_procs(numpe,npes)
   CALL getname(argv,nlen) 
   CALL read_p121(argv,numpe,e,element,limit,loaded_nodes,meshgen,nels,         &
@@ -88,7 +92,10 @@ PROGRAM xx18
   CALL read_g_num_pp(argv,iel_start,nn,npes,numpe,g_num_pp)
   IF(meshgen == 2) CALL abaqus2sg(element,g_num_pp)
   CALL read_g_coord_pp(argv,g_num_pp,nn,npes,numpe,g_coord_pp)
-  CALL read_rest(argv,numpe,rest); timest(2)=elap_time()
+  CALL read_rest(argv,numpe,rest)
+
+  timest(2)=elap_time()
+
   ALLOCATE(points(nip,ndim),dee(nst,nst),jac(ndim,ndim),der(ndim,nod),         &
     deriv(ndim,nod),bee(nst,ntot),weights(nip),eps(nst),sigma(nst),            &
     storkm_pp(ntot,ntot,nels_pp),pmul_pp(ntot,nels_pp),                        &
@@ -127,6 +134,12 @@ PROGRAM xx18
     CALL p_setup(neq_pp,ntot,numpe)
   END IF
 
+  IF(numpe==1)THEN
+    OPEN(11,FILE=argv(1:nlen)//".res",STATUS='REPLACE',ACTION='WRITE')
+  END IF
+
+  timest(3) = elap_time()
+
   !-----------------------------------------------------------------------------
   ! 5. Element stiffness integration and global stiffness matrix creation
   !-----------------------------------------------------------------------------
@@ -155,6 +168,8 @@ PROGRAM xx18
   IF (solvers == petsc_solvers) THEN
     CALL p_assemble(numpe)
   END IF
+
+  timest(4) = elap_time()
   
   !-----------------------------------------------------------------------------
   ! 6. Build and invert the preconditioner (ParaFEM only)
@@ -169,15 +184,8 @@ PROGRAM xx18
     diag_precon_pp = 1._iwp/diag_precon_pp
   END IF
 
-  IF(numpe==1)THEN
-    OPEN(11,FILE=argv(1:nlen)//".res",STATUS='REPLACE',ACTION='WRITE')
-    WRITE(11,'(A,I7,A)') "This job ran on ",npes," processes"
-    WRITE(11,'(A,3(I12,A))') "There are ",nn," nodes", nr,                     &
-                             " restrained and ",neq," equations"
-    WRITE(11,'(A,F10.4)') "Time to read input is:",timest(2)-timest(1)
-    WRITE(11,'(A,F10.4)') "Time after setup is:",elap_time()-timest(1)
-  END IF
-  
+  timest(5) = elap_time()
+
   !-----------------------------------------------------------------------------
   ! 7. Get starting r
   !-----------------------------------------------------------------------------
@@ -186,19 +194,20 @@ PROGRAM xx18
     ALLOCATE(node(loaded_nodes),val(ndim,loaded_nodes)); node=0; val=zero
     CALL read_loads(argv,numpe,node,val)
     CALL load(g_g_pp,g_num_pp,node,val,r_pp); q=SUM_P(r_pp)
-    IF(numpe==1) WRITE(11,'(A,E12.4)') "The total load is:",q
+    IF(numpe==1) WRITE(11,'(A,E12.4)') "The total load is: ",q
     DEALLOCATE(node,val)
   END IF
   
   DEALLOCATE(g_g_pp)
-  
+
   !-----------------------------------------------------------------------------
   ! 8. Preconditioned Krylov solver
   !-----------------------------------------------------------------------------
   
-  timest(3) = elap_time()
   x_pp      = zero
   
+  timest(6) = elap_time()
+
   IF (solvers == parafem_solvers) THEN
     iters     = 0
     inewton   = 1    ! must be one in this program
@@ -218,13 +227,16 @@ PROGRAM xx18
     CALL p_print_info(numpe,11)
   END IF
 
-  DEALLOCATE(p_pp,r_pp,x_pp,u_pp,d_pp,diag_precon_pp,storkm_pp,pmul_pp) 
+  timest(7) = elap_time()
   
   IF(numpe==1)THEN
-    WRITE(11,'(A,F10.4)') "Time to solve equations was :",                     &
-                         elap_time()-timest(3)  
+    WRITE(11,'(A,I7,A)') "This job ran on ",npes," processes"
+    WRITE(11,'(A,3(I12,A))') "There are ",nn," nodes", nr,                     &
+                             " restrained and ",neq," equations"
     WRITE(11,'(A,E12.4)') "The central nodal displacement is :",xnew_pp(1)
   END IF
+
+  DEALLOCATE(p_pp,r_pp,x_pp,u_pp,d_pp,diag_precon_pp,storkm_pp,pmul_pp) 
 
   !-----------------------------------------------------------------------------
   ! 9. Recover stresses at centroidal gauss point
@@ -262,8 +274,20 @@ PROGRAM xx18
     END DO
     CALL dismsh_ensi_p(12,1,nodes_pp,npes,numpe,1,temp)
   END DO; IF(numpe==1) CLOSE(12)
-  IF(numpe==1) WRITE(11,'(A,F10.4)') "This analysis took  :",                  &
-                                     elap_time()-timest(1)  
+
+  timest(8) = elap_time()
+  
+  IF(numpe==1)THEN
+    WRITE(11,'(A,F10.4)') "Time to read input:       ",                        &
+                          timest(2)-timest(1) + timest(6)-timest(5)
+    WRITE(11,'(A,F10.4)') "Time for setup:           ",timest(3)-timest(2)
+    WRITE(11,'(A,F10.4)') "Time for matrix assemble: ",timest(4)-timest(3)
+    WRITE(11,'(A,F10.4)') "Time to solve equations:  ",                        &
+                          timest(5)-timest(4) + timest(7)-timest(6)
+    WRITE(11,'(A,F10.4)') "Time to write results:    ",timest(8)-timest(7)
+    WRITE(11,'(A)')       "                          ----------"
+    WRITE(11,'(A,F10.4)') "This analysis took:       ",elap_time()-timest(1)
+  END IF
   
   !-----------------------------------------------------------------------------
   ! 11. Shut down PETSc and ParaEFM
