@@ -83,7 +83,10 @@ PROGRAM xx15_vm_nonlinear_hardening
   ! 1. Input and initialisation
   !----------------------------------------------------------------------------
 
-  timest(1) = ELAP_TIME()
+  timest = zero
+
+  timest(1) = elap_time()
+  timest(2) = elap_time()
 
   CALL FIND_PE_PROCS(numpe,npes)
 
@@ -153,29 +156,22 @@ PROGRAM xx15_vm_nonlinear_hardening
 
   CALL CALC_NELS_PP(fname_base,nels,npes,numpe,partitioner,nels_pp)
   
-  timest(2) = ELAP_TIME()
-
   ALLOCATE(g_num_pp(nod, nels_pp)) 
   
   fname = fname_base(1:INDEX(fname_base," ")-1) // ".d"
   CALL READ_ELEMENTS_2(fname,npes,nn,numpe,g_num_pp)
   
-  timest(3) = ELAP_TIME()
-
   CALL CALC_NN_PP(g_num_pp,nn_pp,nn_start)
   
-  timest(4) = ELAP_TIME()
-
   ALLOCATE(g_coord_pp(ndim, nn_pp))
   CALL READ_NODES(fname,nn,nn_start,numpe,g_coord_pp)
-  
-  timest(5) = ELAP_TIME()
   
   ALLOCATE(rest(nr,nodof+1))
   fname = fname_base(1:INDEX(fname_base," ")-1) // ".bnd"
   CALL READ_RESTRAINTS(fname,numpe,rest)
   
-  timest(6) = ELAP_TIME()
+  timest(30) = timest(30) + elap_time()-timest(2) ! 30 = read
+  timest(2) = elap_time()
 
 !------------------------------------------------------------------------------
 ! 4. Allocate dynamic arrays used in the main program  
@@ -233,8 +229,6 @@ PROGRAM xx15_vm_nonlinear_hardening
 
   CALL CALC_NEQ(nn,rest,neq)
   
-  timest(7) = ELAP_TIME()
-
 !------------------------------------------------------------------------------
 ! 6. Create interprocessor communications tables
 !------------------------------------------------------------------------------  
@@ -245,7 +239,8 @@ PROGRAM xx15_vm_nonlinear_hardening
 
   CALL MAKE_GGL(npes_pp,npes,g_g_pp)
 
-  timest(8) = ELAP_TIME()
+  timest(31) = timest(31) + elap_time()-timest(2) ! 31 = setup
+  timest(2) = elap_time()
   
 !------------------------------------------------------------------------------
 ! 7. Read and distribute essential boundary conditions
@@ -300,8 +295,6 @@ PROGRAM xx15_vm_nonlinear_hardening
 
   END IF
   
-  timest(9) = ELAP_TIME()
-
   !----------------------------------------------------------------------------
   ! 8. Read and distribute natural boundary conditions
   !----------------------------------------------------------------------------
@@ -324,7 +317,8 @@ PROGRAM xx15_vm_nonlinear_hardening
 
   END IF
   
-  timest(10) = ELAP_TIME()
+  timest(30) = timest(30) + elap_time()-timest(2) ! 30 = read
+  timest(2) = elap_time()
 
   !----------------------------------------------------------------------------
   ! 9. Allocate arrays dimensioned by neq_pp
@@ -346,9 +340,9 @@ PROGRAM xx15_vm_nonlinear_hardening
 
   ALLOCATE(diag_precon_tmp(ntot,nels_pp))
 
-!---------------------------------------------------------------------------
-! 9a. Start up PETSc after find_pe_procs (so that MPI has been started)
-!---------------------------------------------------------------------------
+  !---------------------------------------------------------------------------
+  ! 9a. Start up PETSc after find_pe_procs (so that MPI has been started)
+  !---------------------------------------------------------------------------
   IF (solvers == petsc_solvers) THEN
     CALL p_initialize(fname_base,numpe)
     ! Set the approximate number of zeroes per row for the matrix size
@@ -410,8 +404,6 @@ PROGRAM xx15_vm_nonlinear_hardening
   unload_ip_pp=0
   yield_ip_pp=0
   
-  timest(11) = ELAP_TIME()
-
 !------------------------------------------------------------------------------
 !------------------------------------------------------------------------------
 !------------------------------------------------------------------------------
@@ -422,8 +414,13 @@ PROGRAM xx15_vm_nonlinear_hardening
 
   sum_force=zero
 
+  timest(31) = timest(31) + elap_time()-timest(2) ! 31 = setup
+  timest(2) = elap_time()
+
   DO iload = 1,max_inc
     converged = .FALSE.
+
+    timest(2) = elap_time()
 
     ! Increase the stage control by 50% if the number of iterations of the two 
     ! previously converged full increments (not affected by the output  
@@ -440,32 +437,26 @@ PROGRAM xx15_vm_nonlinear_hardening
     !  GOTO 200
     !END IF
 
+    timest(32) = timest(32) + elap_time()-timest(2) ! 32 = other work in load loop
+    timest(2) = elap_time()
+
     100 CONTINUE
 
+    timest(2) = elap_time()
+
     IF (lambda_total>=(1-tol_increment)) THEN
-    !IF (lambda_total>=(0.1_iwp-tol_increment)) THEN
+
+      timest(32) = timest(32) + elap_time()-timest(2) ! 32 = other work in load loop
+      timest(2) = elap_time()
+      
       EXIT
     END IF
 
-    
-    
-    
-    
-    
-    
     !IF ((iload==9).AND.(flag_load)) THEN
     !  lambda=0.01_iwp
     !  flag_load=.FALSE.
     !END IF
-    
-    
-    
-    
-    
-    
-    
-    
-    
+
     ! Update the load increments
     lambda_prev=lambda_total
     lambda_total=lambda_total+lambda
@@ -500,6 +491,10 @@ PROGRAM xx15_vm_nonlinear_hardening
       IF(numpe==1) THEN
         WRITE(*,*) 'The load increment is too small'
       END IF
+
+      timest(32) = timest(32) + elap_time()-timest(2) ! 32 = other work in load loop
+      timest(2) = elap_time()
+      
       EXIT
     END IF
 
@@ -530,7 +525,13 @@ PROGRAM xx15_vm_nonlinear_hardening
     deltax_pp_temp = zero
     inewton = 0
     
+    timest(32) = timest(32) + elap_time()-timest(2) ! 32 = other work in load loop
+    timest(2) = elap_time()
+
     iterations: DO
+
+      timest(2) = elap_time()
+
       inewton = inewton + 1
 
       storefint_pp = zero
@@ -562,7 +563,8 @@ PROGRAM xx15_vm_nonlinear_hardening
 ! 11. Element stiffness integration and storage
 !------------------------------------------------------------------------------
       
-      timest(12) = ELAP_TIME()
+      timest(32) = timest(32) + elap_time()-timest(2) ! 32 = other work in load loop
+      timest(2) = elap_time()
       
       storekm_pp = zero
       IF (solvers == petsc_solvers) THEN
@@ -590,8 +592,6 @@ PROGRAM xx15_vm_nonlinear_hardening
         coord = TRANSPOSE(g_coord_pp(:,num))
         upd_coord=coord+auxm_previous
         
-        timest(13) = ELAP_TIME()
-
         DO igauss = 1,nip
 
           ! Initialise the state variables to the same converged value of     
@@ -603,11 +603,6 @@ PROGRAM xx15_vm_nonlinear_hardening
           CALL DEFGRA(igauss,auxm,coord,points,det,detF,beeF,geeF,jacF,ndim,  &
            nod)
           CALL DEFGRAINC(igauss,auxm_inc,upd_coord,points,jacFinc,ndim,nod)
-          
-          timest(14) = ELAP_TIME()
-
-          
-          
           
           IF ((iel==1).AND.(igauss==1)) THEN
             det_max=det
@@ -621,16 +616,11 @@ PROGRAM xx15_vm_nonlinear_hardening
           IF (det<=det_min) THEN
             det_min=det
           END IF
-          
 
-          
-          
           CALL PLASTICITY(deeF,jacF,jacFinc,sigma1C,statev,lnstrainelas,sigma, &
                           detF,statevar_num,iel,igauss,noncon_flag,            &
                           umat_vm_nonlinear_hardening)
            
-          timest(15) = ELAP_TIME()
-
           ! During the first Newton-Raphson iteration, retrieve the previous  
           ! converged stress and stiffness tensor
           IF ((iload>1).AND.(inewton==1)) THEN
@@ -660,16 +650,14 @@ PROGRAM xx15_vm_nonlinear_hardening
         CALL p_assemble(numpe)
       END IF
       
-      ! Time is accumulated over all load increments
-      timest(16) = timest(16) + (ELAP_TIME() - timest(12))
+      timest(33) = timest(33) + elap_time()-timest(2) ! 33 = matrix assemble
+      timest(2) = elap_time()
       
 !------------------------------------------------------------------------------
 ! 12. Build and invert the preconditioner (ParaFEM only)
 !------------------------------------------------------------------------------
 
       IF (solvers == parafem_solvers) THEN
-        timest(17) = ELAP_TIME()
-        
         diag_precon_tmp = zero
         
         DO iel = 1,nels_pp
@@ -685,11 +673,12 @@ PROGRAM xx15_vm_nonlinear_hardening
         diag_precon_pp(0)  = zero
       END IF
 
+      timest(34) = timest(34) + elap_time()-timest(2) ! 34 = solve
+      timest(2) = elap_time()
+
 !------------------------------------------------------------------------------
 ! 13. Initialize PCG
 !------------------------------------------------------------------------------
-      
-      timest(18) = ELAP_TIME()
       
       ! During the first Newton-Raphson iteration, the incremental 
       ! displacements are applied through a linear mapping of these 
@@ -720,6 +709,10 @@ PROGRAM xx15_vm_nonlinear_hardening
         IF(numpe==1) THEN
           WRITE(*,*) "maxdiff = zero and now exiting loop"
         END IF
+
+        timest(32) = timest(32) + elap_time()-timest(2) ! 32 = other work in load loop
+        timest(2) = elap_time()
+      
         EXIT
       END IF
 
@@ -729,6 +722,9 @@ PROGRAM xx15_vm_nonlinear_hardening
       
       deltax_pp = zero
       res_pp    = r_pp
+
+      timest(32) = timest(32) + elap_time()-timest(2) ! 32 = other work in load loop
+      timest(2) = elap_time()
 
       IF (solvers == parafem_solvers) THEN
         CALL PCG_VER1(inewton,limit,tol,storekm_pp,r_pp(1:),                   &
@@ -751,12 +747,16 @@ PROGRAM xx15_vm_nonlinear_hardening
         CALL p_print_info(numpe,11)
       END IF
 
+      timest(34) = timest(34) + elap_time()-timest(2) ! 34 = solve
+      timest(2) = elap_time()
+
       IF (numpe==1) THEN
         WRITE(91,*)iload,inewton,iters
         CALL FLUSH(91)
       END IF
 
-      timest(19) = timest(19) + (ELAP_TIME() - timest(18))
+      timest(35) = timest(35) + elap_time()-timest(2) ! 35 = write
+      timest(2) = elap_time()
 
       ! Total displacements
       xnew_pp(1:) = xnew_pp(1:) + deltax_pp(1:)
@@ -786,6 +786,9 @@ PROGRAM xx15_vm_nonlinear_hardening
         END IF 
       END IF
 
+      timest(32) = timest(32) + elap_time()-timest(2) ! 32 = other work in load loop
+      timest(2) = elap_time()
+
       ! The time increment is cut in half if one of the following situations
       ! happen:
       ! - The maximum number of iterations has been met
@@ -804,11 +807,7 @@ PROGRAM xx15_vm_nonlinear_hardening
         !ELSE
         lambda_total=lambda_total-lambda
         !END IF
-        
-      
         lambda=0.25_iwp*lambda
-        
-
         
         xnew_pp=xnewprev_pp
         flag=.FALSE.
@@ -822,6 +821,10 @@ PROGRAM xx15_vm_nonlinear_hardening
         ! iteration counter
         prev_iter=7
         iter=7
+
+        timest(32) = timest(32) + elap_time()-timest(2) ! 32 = other work in load loop
+        timest(2) = elap_time()
+
         GOTO 100
       END IF
  
@@ -830,8 +833,6 @@ PROGRAM xx15_vm_nonlinear_hardening
       ! it because we are interested in a fully precise solution)
       IF (converged) THEN 
 
-        timest(20) = ELAP_TIME()
-      
         ! If the current increment is not an output request increment, save the  
         ! current and previous increment number of iterations to allow for   
         ! for lambda increment to be increased
@@ -885,8 +886,6 @@ PROGRAM xx15_vm_nonlinear_hardening
           
           coord = TRANSPOSE(g_coord_pp(:,num))
           upd_coord=coord+auxm_previous
-
-          timest(21) = ELAP_TIME()
 
           DO igauss = 1,nip
 
@@ -948,10 +947,18 @@ PROGRAM xx15_vm_nonlinear_hardening
         ! Save the converged displacement
         xnew_pp_previous=xnew_pp
 
+        timest(32) = timest(32) + elap_time()-timest(2) ! 32 = other work in load loop
+        timest(2) = elap_time()
+
         EXIT
       END IF
 
+      timest(32) = timest(32) + elap_time()-timest(2) ! 32 = other work in load loop
+      timest(2) = elap_time()
+
     END DO iterations
+
+    timest(2) = elap_time()
 
 !------------------------------------------------------------------------------
 !------------------------- End Newton-Raphson iterations ----------------------
@@ -973,6 +980,7 @@ PROGRAM xx15_vm_nonlinear_hardening
 !------------------------------------------------------------------------------
 !-----------------------------print out results -------------------------------
 !------------------------------------------------------------------------------
+
     IF (numpe==1) THEN
       IF (iload==1) THEN
         ! Displacement and total strain
@@ -1058,9 +1066,6 @@ PROGRAM xx15_vm_nonlinear_hardening
       
       
       writetimes = writetimes + 1
-      IF(timewrite) THEN
-        timest(4) = ELAP_TIME( )
-      END IF
       
       ALLOCATE(xnewnodes_pp(nodes_pp*nodof))
       ALLOCATE(shape_integral_pp(nod,nels_pp))
@@ -1155,11 +1160,6 @@ PROGRAM xx15_vm_nonlinear_hardening
       DEALLOCATE(strain_integral_pp,strainnodes_pp)
       DEALLOCATE(shape_integral_pp)
 
-      IF(timewrite) THEN
-        timest(5) = elap_time( )
-        timewrite = .FALSE.
-      END IF
-
       ! Outputting unloading
       CALL MPI_ALLREDUCE(yield_ip_pp,yield_tot,1,MPI_INT,MPI_SUM,             &
        MPI_COMM_WORLD,ier) 
@@ -1183,17 +1183,14 @@ PROGRAM xx15_vm_nonlinear_hardening
       print_output=.false.
 
     !END IF  !printing
+
+      timest(35) = timest(35) + elap_time()-timest(2) ! 35 = write
+      timest(2) = elap_time()
+      
   END DO !iload
   
-  
-  
-  
-  
+  timest(2) = elap_time()
 
-  
-  
-  
-  
   IF(numpe==1) THEN
     !CLOSE(24)
     !CLOSE(25)
@@ -1213,12 +1210,16 @@ PROGRAM xx15_vm_nonlinear_hardening
     WRITE(11,'(a,i5,a)') "This job ran on ",npes," processors"
     WRITE(11,'(A,3(I8,A))')"There are ",nn," nodes",nels," elements and ",&
                            neq," equations"
-    WRITE(11,*) "Time after the mesh   :", timest(2) - timest(1)
-    WRITE(11,*) "Time after boundary conditions  :", timest(3) - timest(1)
-    WRITE(11,*) "This analysis took  :", elap_time( ) - timest(1)
-    WRITE(11,*) "Time to write results (each time) :", timest(5) - timest(4)
-    WRITE(11,*) "Time inside the load loop  :", elap_time( ) - timest(3) - &
-                                        writetimes*(timest(5)-timest(4))
+    WRITE(11,'(A,F10.4)') "Time to read input:       ", timest(30)
+    WRITE(11,'(A,F10.4)') "Time for setup:           ", timest(31)
+    WRITE(11,'(A,F10.4)') "Time for matrix assemble: ", timest(33)
+    WRITE(11,'(A,F10.4)') "Time for linear solve:    ", timest(34)
+    WRITE(11,'(A,F10.4)') "Other time in load loop:  ", timest(32)
+    WRITE(11,'(A,F10.4)') "Time to write results:    ", timest(35)
+    WRITE(11,'(A)')       "                          ----------"
+    WRITE(11,'(A,F10.4)') "Total:                    ", SUM(timest(30:35))
+    WRITE(11,'(A)')       "                          ----------"
+    WRITE(11,'(A,F10.4)') "This analysis took:       ", elap_time()-timest(1)
 !   CALL FLUSH(11)
     CLOSE(11)
   END IF
