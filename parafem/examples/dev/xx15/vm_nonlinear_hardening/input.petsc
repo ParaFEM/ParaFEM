@@ -15,7 +15,7 @@
 #  -pc_view
 -prefix_pop
 -prefix_push solver_2_
-  -ksp_type bcgs
+  -ksp_type bcgsl
   -ksp_rtol 1.0e-5
   -ksp_max_it 10000
 #  -ksp_view
