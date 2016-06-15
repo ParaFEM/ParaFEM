@@ -35,7 +35,7 @@ CGPACK=	$(HOME)/lib/libcgpack.a
 
 SRC:=	xx14std.f90 xx14rot_std.f90
 ifeq ($(FC),ftn)
-  SRC:=	$(SRC) xx14.f90 xx14noio.f90 xx14rot.f90 xx14rot_noio.f90
+  SRC:=	$(SRC) xx14.f90 xx14noio.f90 xx14rot.f90 xx14rot_noio.f90 xx14ins.f90
 endif
 
 OBJ=	$(SRC:.f90=.o)
@@ -49,8 +49,8 @@ release:
 	@echo
 	@echo "Building XX14 RELEASE"
 	$(MAKE) $(EXE) \
-	FFLAGS="-c -I$(MODULE) $(XX14_MPI_REL_FFLAGS)" \
-	LDFLAGS="-L$(LIB) -lParaFEM_mpi.$(VERSION) $(XX14_MPI_REL_LDFLAGS)"
+	FFLAGS="-c -I$(MODULE) $(XX14_MPI_REL_FFLAGS) -hpl=xx14.pl -hwp" \
+	LDFLAGS="-L$(LIB) -lParaFEM_mpi.$(VERSION) $(XX14_MPI_REL_LDFLAGS) -hpl=xx14.pl -hwp"
 	@echo "Done" $(EXE) "RELEASE"
 
 debug:
