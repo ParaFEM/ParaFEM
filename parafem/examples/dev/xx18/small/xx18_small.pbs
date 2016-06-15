@@ -12,4 +12,10 @@ cd $PBS_O_WORKDIR
 module use $HOME/modulefiles
 module load parafem
 
-aprun -n 24 xx18 xx18_small
+mkdir -p parafem
+aprun -n 24 xx18 xx18_small &> parafem/log
+cp -p *.res parafem
+
+mkdir -p petsc
+aprun -n 24 xx18 xx18_small petsc &> petsc/log
+cp -p *.res petsc
