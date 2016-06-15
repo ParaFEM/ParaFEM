@@ -1,7 +1,13 @@
-# BUILD INCLUDE build/sp6.inc
-# Author: Louise M. Lever
+# BUILD INCLUDE build/wonder.inc
+# Authors: Louise M. Lever, Lee Margetts
 # ------------------------------------------------------------------------------
-# Include file for Joule the IBM BlueGene/Q at the Hartree Centre
+# Include file for Wonder at the Hartree Centre
+# 
+# First run commands:
+# 
+#  $module load intel/15.2.164
+#  $module load intel_mpi/5.1.3
+#
 # ------------------------------------------------------------------------------
 
 # ------------------------------------------------------------------------------
