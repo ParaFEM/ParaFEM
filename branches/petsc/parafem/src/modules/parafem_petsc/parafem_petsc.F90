@@ -64,8 +64,8 @@ MODULE parafem_petsc
   INTEGER,PARAMETER,PRIVATE          :: string_length = 1024
   CHARACTER(len=*),PARAMETER,PRIVATE :: pre_prefix = "solver"
   ! max_nsolvers is used only for warning about options set for solvers outside
-  ! the range 1:p_object%nsolvers.  There is no limit on the number solvers, so
-  ! there willl be no warning for options set for solvers > max_nsolvers.
+  ! the range 1:p_object%nsolvers.  There is no limit on the number of solvers,
+  ! so there will be no warning for options set for solvers > max_nsolvers.
   INTEGER,PARAMETER,PRIVATE          :: max_nsolvers = 99
 
   ! Variables collected as one derived type
@@ -1166,6 +1166,7 @@ CONTAINS
     p_object%description = p_describe_reason(p_object%reason)
   
     IF(numpe == 1)THEN
+      WRITE(unit,'(A)') TRIM(p_object%prefix(p_object%solver))
       WRITE(unit,'(A,I0,A)')                                                     &
         "The reason for convergence was ",p_object%reason," "                  &
         //TRIM(p_object%description)
