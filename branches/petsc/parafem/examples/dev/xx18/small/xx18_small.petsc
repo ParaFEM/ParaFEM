@@ -7,7 +7,7 @@
 -prefix_push solver_1_
   -ksp_type minres
   -ksp_rtol 1.0e-5
-  -ksp_max_it 2000
+  -ksp_max_it 1000
 #  -ksp_view
   -pc_type jacobi
   -pc_jacobi_abs

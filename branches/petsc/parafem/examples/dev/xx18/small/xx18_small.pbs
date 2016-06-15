@@ -3,7 +3,8 @@
 #PBS -N xx18
 #PBS -l select=1
 #PBS -l walltime=00:20:00
-#PBS -A z01-csetds
+#PBS -A z01-cse
+#PBS -q short
 
 export PBS_O_WORKDIR=$(readlink -f $PBS_O_WORKDIR)
 cd $PBS_O_WORKDIR
