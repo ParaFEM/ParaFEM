@@ -1,5 +1,5 @@
 !$Id$
-PROGRAM xx14
+PROGRAM xx14std
 !-----------------------------------------------------------------------
 ! Anton Shterenlikht (University of Bristol)
 ! Luis Cebamanos (EPCC, University of Edinburgh)
@@ -757,4 +757,4 @@ call cgca_pfem_integdalloc
 
 !*** ParaFEM part ****************************************************72
 !CALL SHUTDOWN() ! cannot call MPI_FINALIZE with coarrays with Intel 15.
-END PROGRAM xx14
+END PROGRAM xx14std
