@@ -12,4 +12,10 @@ cd $PBS_O_WORKDIR
 module use $HOME/modulefiles
 module load parafem
 
-aprun -n 24 xx15_vm_nonlinear_hardening input
+mkdir -p parafem
+aprun -n 24 xx15_vm_nonlinear_hardening input &> parafem/log
+cp -p *.res parafem
+
+mkdir -p petsc
+aprun -n 24 xx15_vm_nonlinear_hardening input petsc &> petsc/log
+cp -p *.res petsc
