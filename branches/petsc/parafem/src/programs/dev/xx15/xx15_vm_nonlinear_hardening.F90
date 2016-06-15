@@ -352,7 +352,6 @@ PROGRAM xx15_vm_nonlinear_hardening
       IF (numpe == 1) THEN
         WRITE(*,'(A)') message
       END IF
-      WRITE(*,'(A)') message
       CALL p_finalize
       CALL shutdown
     END IF
@@ -418,6 +417,7 @@ PROGRAM xx15_vm_nonlinear_hardening
   timest(2) = elap_time()
 
   DO iload = 1,max_inc
+  
     converged = .FALSE.
 
     timest(2) = elap_time()
@@ -444,6 +444,7 @@ PROGRAM xx15_vm_nonlinear_hardening
 
     timest(2) = elap_time()
 
+    ! If lambda is larger than unity, the simulation is finished
     IF (lambda_total>=(1-tol_increment)) THEN
 
       timest(32) = timest(32) + elap_time()-timest(2) ! 32 = other work in load loop
@@ -730,7 +731,7 @@ PROGRAM xx15_vm_nonlinear_hardening
         CALL PCG_VER1(inewton,limit,tol,storekm_pp,r_pp(1:),                   &
                       diag_precon_pp(1:),rn0,deltax_pp(1:),iters)
       ELSE IF (solvers == petsc_solvers) THEN
-        IF (inewton <= 1) THEN
+        IF (iload <= 3) THEN
           CALL p_use_solver(1,numpe,error)
           IF (error) THEN
             CALL p_finalize
