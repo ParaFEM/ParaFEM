@@ -12,4 +12,10 @@ cd $PBS_O_WORKDIR
 module use $HOME/modulefiles
 module load parafem
 
-aprun -n 24 xx15_quadric_linear_hardening xx15
+mkdir -p parafem
+aprun -n 24 xx15_quadric_linear_hardening xx15 &> parafem/log
+cp -p *.res parafem
+
+mkdir -p petsc
+aprun -n 24 xx15_quadric_linear_hardening xx15 petsc &> petsc/log
+cp -p *.res petsc
