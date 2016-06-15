@@ -1,5 +1,5 @@
 !$Id$
-PROGRAM xx14rnoio
+PROGRAM xx14ins
 !-----------------------------------------------------------------------
 ! Anton Shterenlikht (University of Bristol)
 ! Luis Cebamanos (EPCC, University of Edinburgh)
@@ -15,6 +15,9 @@ PROGRAM xx14rnoio
 ! This version uses Cray extensions, which are all in TS 18508
 ! "Additional Parallel Features in Fortran", WG5/N2074.
 ! I think it's just CO_SUM.
+!
+! The CA CS is aligned with the FE CS, but not the same origin.
+! Anyway, all cells are within the FE model, so mapping is easy.
 !-----------------------------------------------------------------------
 !USE mpi_wrapper  !remove comment for serial compilation
 
@@ -185,7 +188,7 @@ ntot = ndof
 
 ! g_num_pp(nod,nels_pp) - integer, elements connectivity
 ! g_coord_pp - global coord?
-!https://code.google.com/p/parafem/source/browse/trunk/parafem/src/modules/mpi/input.f90
+!https://sourceforge.net/p/parafem/code/HEAD/tree/trunk/parafem/src/modules/mpi/input.f90
 ALLOCATE( g_num_pp( nod, nels_pp ) )
 allocate( g_coord_pp( nod, ndim, nels_pp ) )
 allocate( rest( nr,nodof+1) )
@@ -194,7 +197,7 @@ g_num_pp = 0
 g_coord_pp = zero
 rest = 0
 
-!https://code.google.com/p/parafem/source/browse/trunk/parafem/src/modules/mpi/input.f90
+!https://sourceforge.net/p/parafem/code/HEAD/tree/trunk/parafem/src/modules/mpi/input.f90
 CALL read_g_num_pp( argv, iel_start, nn, npes, numpe, g_num_pp )
 
 IF ( meshgen == 2 ) CALL abaqus2sg( element, g_num_pp )
@@ -236,14 +239,18 @@ END IF
   cgca_img = this_image()
 cgca_nimgs = num_images()
 
-! Initialise random number seed.
+! Initialise random number seed. In this program call a routine
+! which sets reproducible seeds (cgca_ins). Multiple runs of this
+! programs *on the same number of cores (images)* should produce
+! reproducible results.
+!
 ! Need to do this before cgca_pfem_cenc, where there order of comms
 ! is chosen at *random* to even the remote access pattern.
 !
 ! Argument:
 ! .false. - no debug output
 !  .true. - with debug output
-call cgca_irs( .false. )
+call cgca_ins( .true. )
 
 ! dump CGPACK parameters and some ParaFEM settings
 if ( cgca_img .eq. 1 ) then
@@ -256,7 +263,7 @@ end if
 ! Must be fully within the FE model, which for xx14
 ! is a cube with lower bound at (0,0,-10), and the
 ! upper bound at (10,10,0)
-cgca_bsz = (/ 20.0, 10.0, 10.0 /)
+cgca_bsz = (/ 10.0, 10.0, 10.0 /)
 
 ! Origin of the box cs, in the same units.
 ! This gives the upper limits of the box at 0+10=10, 0+10=10, -10+10=0
@@ -265,16 +272,13 @@ cgca_origin = (/ 0.0, 0.0, -10.0 /)
 
 ! Rotation tensor *from* FE cs *to* CA cs.
 ! The box cs is aligned with the box.
-! Rotate by pi/10 about axis 2 counter clockwise
 cgca_rot         = cgca_zero
-cgca_rot( 1, 1 ) = cos( 0.1 * cgca_pi )
-cgca_rot( 3, 1 ) = sin( 0.1 * cgca_pi )
-cgca_rot( 2, 2 ) = cgca_one
-cgca_rot( 1, 3 ) = - cgca_rot( 3, 1 )
-cgca_rot( 3, 3 ) = cgca_rot( 1, 1 )
+cgca_rot( 1, 1 ) = 1.0
+cgca_rot( 2, 2 ) = 1.0
+cgca_rot( 3, 3 ) = 1.0
 
 ! mean grain size, also mm
-cgca_dm = 1.0e0_rdef
+cgca_dm = 1.0_rdef
 
 ! resolution, cells per grain
 cgca_res = 1.0e5_rdef
@@ -283,6 +287,10 @@ cgca_res = 1.0e5_rdef
 ! Equivalent to crack propagation distance per unit of time,
 ! i.e. per second. Let's say 1 km/s = 1.0e3 m/s = 1.0e6 mm/s. 
 cgca_length = 1.0e6_rdef
+
+! In p121_medium, each element is 0.25 x 0.25 x 0.25 mm,
+! the charlen must be bigger than that.
+cgca_charlen = 0.4
 
 ! each image calculates the coarray grid dimensions
 call cgca_gdim( cgca_nimgs, cgca_ir, cgca_qual )
@@ -317,15 +325,15 @@ call cgca_as( 1, cgca_c(1),  1, cgca_c(2),  1, cgca_c(3),              &
 call cgca_imco( cgca_space, cgca_lres, cgca_bcol, cgca_bcou )
 
 ! dump box lower and upper corners from every image
-write ( *,"(a,i0,2(a,3(g0,tr1)),a)" ) "img: ", cgca_img,               &
-       " bcol: (", cgca_bcol, ") bcou: (", cgca_bcou, ")"
+write ( *,"(a,i0,2(a,3(es9.2,tr1)))" ) "img ", cgca_img,               &
+       " bcol: ", cgca_bcol, "bcou: ", cgca_bcou
 
 ! and now in FE cs:
-write ( *,"(a,i0,2(a,3(g0,tr1)),a)" ) "img: ", cgca_img,               &
-   " FE bcol: (",                                                      &
-    matmul( transpose( cgca_rot ),cgca_bcol ) + cgca_origin,           &
-  ") FE bcou: (",                                                      &
-    matmul( transpose( cgca_rot ),cgca_bcou ) + cgca_origin, ")"
+!write ( *,"(a,i0,2(a,3(es9.2,tr1)),a)" ) "img: ", cgca_img,            &
+!   " FE bcol: (",                                                      &
+!    matmul( transpose( cgca_rot ),cgca_bcol ) + cgca_origin,           &
+!  ") FE bcou: (",                                                      &
+!    matmul( transpose( cgca_rot ),cgca_bcou ) + cgca_origin, ")"
 
 ! confirm that image number .eq. MPI process number
 write (*,*) "img",cgca_img," <-> MPI proc", numpe
@@ -344,12 +352,17 @@ cgca_pfem_centroid_tmp%r = sum( g_coord_pp(:,:,:), dim=1 ) / nod
 sync all ! must add execution segment
          ! use cgca_pfem_centroid_tmp[*]%r
 
-!subroutine cgca_pfem_cenc( origin, rot, bcol, bcou )
+! Set lcentr private arrays on every image. Choose one of the two
+! routines that do this:
+! - cgca_pfem_cenc - uses all-to-all algorithm.
+! - cgca_pfem_map  - uses CO_SUM, CO_MAX and *large* tmp arrays
+! Both routines have identical sets of input arguments.
 call cgca_pfem_cenc( cgca_origin, cgca_rot, cgca_bcol, cgca_bcou )
+!call cgca_pfem_map( cgca_origin, cgca_rot, cgca_bcol, cgca_bcou )
 
-         ! use cgca_pfem_centroid_tmp[*]%r
-sync all ! must add execution segment
-         ! deallocate cgca_pfem_centroid_tmp[*]%r
+! Dump lcentr for debug
+! *** a lot *** of data
+!call cgca_pfem_lcentr_dump
 
 ! Allocate cgca_pfem_integrity%i(:), array component of a coarray of
 ! derived type. Allocating *local* array.
@@ -385,11 +398,12 @@ call cgca_nr( cgca_space, cgca_ng, .false. )
 ! assign rotation tensors, sync all inside
 call cgca_rt( cgca_grt )
 
-! solidify, implicit sync all inside
+! solidify
 !subroutine cgca_sld( coarray, periodicbc, iter, heartbeat, solid )
 ! second argument:
 !  .true. - periodic BC
 ! .false. - no periodic BC
+! ===>>> implicit sync all inside <<<===
 call cgca_sld( cgca_space, .false., 0, 10, cgca_solid )
 
 ! initiate grain boundaries
@@ -400,9 +414,12 @@ call cgca_igb( cgca_space )
 ! sync needed following halo exchange
 call cgca_gbs( cgca_space )
 call cgca_hxi( cgca_space )
+
 sync all
+
 call cgca_gbs( cgca_space )
 call cgca_hxi( cgca_space )
+
 sync all
 
 ! update grain connectivity, local routine, no sync needed
@@ -414,52 +431,20 @@ if ( cgca_img .eq. 1 ) then
               [ 1, 1, cgca_ir(3)/2 ] = cgca_clvg_state_100_edge
 end if
 
-sync all
-
-!subroutine cgca_pfem_cellin( lc, lres, bcol, rot, origin, charlen,    &
-! flag )
-! set some trial values for cell coordinates
-!cgca_lc = (/ 1 , 1 , 1 /)
-!call cgca_pfem_cellin( cgca_lc, cgca_lres, cgca_bcol, cgca_rot,        &
-!  cgca_origin, cgca_charlen, cgca_flag )
-!write (*,*) "img:", cgca_img, "flag:", cgca_flag
-
-!subroutine cgca_pfem_wholein( coarray )
-!call cgca_pfem_wholein( cgca_space )
-
-!subroutine cgca_pfem_boxin( lowr, uppr, lres, bcol, rot, origin, &
-!  charlen, iflag )
-! set some trial values for cell coordinates
-!cgca_lowr = (/ 1 , 1 , 1 /)
-!cgca_uppr = cgca_c/2
-
-!call cgca_pfem_boxin( cgca_lowr, cgca_uppr, cgca_lres,                 &
-! cgca_bcol, cgca_rot, cgca_origin, cgca_charlen, cgca_yesdebug,        &
-! cgca_iflag )
-!write (*,*) "img:", cgca_img, "iflag:", cgca_iflag
-
-! In p121_medium, each element is 0.25 x 0.25 x 0.25 mm, so
-! the charlen must be bigger than that.
-cgca_charlen = 0.4
-
-! Each image will update its own cgca_space coarray.
-!subroutine cgca_pfem_partin( coarray, cadim, lres, bcol, charlen, &
-! debug )
-call cgca_pfem_partin( cgca_space, cgca_c, cgca_lres, cgca_bcol,       &
-  cgca_charlen, cgca_yesdebug )
-
          ! cgca_space changed locally on every image
 sync all !
          ! cgca_space used
 
 ! Now can deallocate the temp array cgca_pfem_centroid_tmp%r.
+! Could've done this earlier, but best to wait until sync all is
+! required, to avoid extra sync.
 call cgca_pfem_ctdalloc
 
 ! img 1 dumps space arrays to files
-!if ( cgca_img .eq. 1 ) write (*,*) "dumping model to files"
-!call cgca_pswci( cgca_space, cgca_state_type_grain, "zg0.raw" )
-!call cgca_pswci( cgca_space, cgca_state_type_frac,  "zf0.raw" )
-!if ( cgca_img .eq. 1 ) write (*,*) "finished dumping model to files"
+if ( cgca_img .eq. 1 ) write (*,*) "dumping model to files"
+call cgca_swci( cgca_space, cgca_state_type_grain, 10, "zg0.raw" )
+call cgca_swci( cgca_space, cgca_state_type_frac,  10, "zf0.raw" )
+if ( cgca_img .eq. 1 ) write (*,*) "finished dumping model to files"
 
 ! debug
 !sync all
@@ -690,11 +675,11 @@ call cgca_clvgp( cgca_space, cgca_grt, cgca_stress,                    &
      0.01_rdef * cgca_scrit, cgca_clvgsd, cgca_gcupdn, .false.,        &
      cgca_clvg_iter, 10, cgca_yesdebug )
 
-!if ( cgca_img .eq. 1 ) write (*,*) "dumping model to file"
+if ( cgca_img .eq. 1 ) write (*,*) "dumping model to file"
 write ( cgca_citer, "(i0)" ) cgca_liter
-!call cgca_pswci( cgca_space, cgca_state_type_frac,                     &
-!                 "zf"//trim( cgca_citer )//".raw" )
-!if ( cgca_img .eq. 1 ) write (*,*) "finished dumping model to file"
+call cgca_swci( cgca_space, cgca_state_type_frac, 10,                  &
+                 "zf"//trim( cgca_citer )//".raw" )
+if ( cgca_img .eq. 1 ) write (*,*) "finished dumping model to file"
      
 ! Calculate number (volume) of fractured cells on each image.
 ! cgca_fracvol is a local, non-coarray, array, so no sync needed.
@@ -706,7 +691,7 @@ write (*,*) "img:", cgca_img, "fracvol:", cgca_fracvol
 call cgca_pfem_intcalc1( cgca_c, cgca_fracvol )
 
 ! dump min integrity for all FE stored on this image
-write (*,*) "img:", cgca_img, "min. integrity:",                            &
+write (*,*) "img:", cgca_img, "min. integrity:",                       &
   minval( cgca_pfem_integrity % i )
 
 ! wait for integrity on all images to be calculated
@@ -788,4 +773,4 @@ call cgca_pfem_integdalloc
 
 !*** ParaFEM part ****************************************************72
 CALL SHUTDOWN()
-END PROGRAM xx14rnoio
+END PROGRAM xx14ins

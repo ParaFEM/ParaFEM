@@ -1,5 +1,5 @@
 !$Id$
-PROGRAM xx14
+PROGRAM xx14noio
 !-----------------------------------------------------------------------
 ! Anton Shterenlikht (University of Bristol)
 ! Luis Cebamanos (EPCC, University of Edinburgh)
@@ -769,4 +769,4 @@ call cgca_pfem_integdalloc
 
 !*** ParaFEM part ****************************************************72
 CALL SHUTDOWN()
-END PROGRAM xx14
+END PROGRAM xx14noio
