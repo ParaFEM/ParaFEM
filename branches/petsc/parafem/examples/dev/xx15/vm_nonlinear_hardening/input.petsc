@@ -5,20 +5,18 @@
 # 
 -nsolvers 2
 -prefix_push solver_1_
-  -ksp_type minres
+  -ksp_type gmres
   -ksp_rtol 1.0e-5
   -ksp_max_it 2000
-#  -ksp_view
+  -ksp_view
   -pc_type jacobi
-  -pc_jacobi_abs
-#  -pc_view
+  -pc_view
 -prefix_pop
 -prefix_push solver_2_
-  -ksp_type bcgsl
+  -ksp_type gmres
   -ksp_rtol 1.0e-5
   -ksp_max_it 2000
-#  -ksp_view
+  -ksp_view
   -pc_type jacobi
-  -pc_jacobi_abs
-#  -pc_view
+  -pc_view
 -prefix_pop
