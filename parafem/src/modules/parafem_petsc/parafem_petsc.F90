@@ -90,7 +90,7 @@ MODULE parafem_petsc
     PetscInt,ALLOCATABLE    :: rows(:),cols(:)
     PetscScalar,ALLOCATABLE :: values(:)
     PetscInt            :: its
-    PetscReal           :: rtol,r_n2,b_n2
+    PetscReal           :: rtol,p_n2,r_n2,b_n2
     KSPConvergedReason  :: reason
     CHARACTER(len=string_length) :: description = ""
     PetscErrorCode      :: ierr
@@ -1141,10 +1141,10 @@ CONTAINS
     INTEGER, INTENT(in) :: numpe
     INTEGER, INTENT(in) :: unit
 
-    Vec         :: r
-
+    Vec         :: w,y
     KSP,POINTER :: ksp
 
+    ! Reduce typing
     ksp => p_object%ksp(p_object%solver)
     
     ! Preconditioned residual norm tolerance
@@ -1152,13 +1152,19 @@ CONTAINS
                           PETSC_NULL_REAL,PETSC_NULL_INTEGER,p_object%ierr)
 
     ! True residual L2 norm
-    CALL VecDuplicate(p_object%b,r,p_object%ierr)
-    CALL KSPBuildResidual(ksp,PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,r,           &
-                          p_object%ierr)
-    CALL VecNorm(r,NORM_2,p_object%r_n2,p_object%ierr)
-    CALL VecDestroy(r,p_object%ierr)
+    CALL VecDuplicate(p_object%b,y,p_object%ierr)
+    CALL VecDuplicate(y,w,p_object%ierr)
+    ! y = Ax
+    CALL MatMult(p_object%A,p_object%x,y,p_object%ierr)
+    ! w = b - y == b - Ax
+    CALL VecWAXPY(w,-1.0,y,p_object%b,p_object%ierr)
+    ! ||b - Ax||
+    CALL VecNorm(w,NORM_2,p_object%r_n2,p_object%ierr)
+    CALL VecDestroy(w,p_object%ierr)
+    CALL VecDestroy(y,p_object%ierr)
 
     ! L2 norm of RHS
+    ! ||b||
     CALL VecNorm(p_object%b,NORM_2,p_object%b_n2,p_object%ierr)
     
     CALL KSPGetIterationNumber(ksp,p_object%its,p_object%ierr)
@@ -1167,14 +1173,14 @@ CONTAINS
   
     IF(numpe == 1)THEN
       WRITE(unit,'(A)') TRIM(p_object%prefix(p_object%solver))
-      WRITE(unit,'(A,I0,A)')                                                     &
+      WRITE(unit,'(A,I0,A)')                                                   &
         "The reason for convergence was ",p_object%reason," "                  &
         //TRIM(p_object%description)
-      WRITE(unit,'(A,I0)')                                                       &
+      WRITE(unit,'(A,I0)')                                                     &
         "The number of iterations to convergence was ",p_object%its
-      WRITE(unit,'(A,E17.7)')                                                    &
+      WRITE(unit,'(A,E17.7)')                                                  &
         "The preconditioned relative error tolerance was ",p_object%rtol
-      WRITE(unit,'(A,E17.7)')                                                    &
+      WRITE(unit,'(A,E17.7)')                                                  &
         "The relative error ||b-Ax||/||b|| was           ",                    &
         p_object%r_n2/p_object%b_n2
     END IF
