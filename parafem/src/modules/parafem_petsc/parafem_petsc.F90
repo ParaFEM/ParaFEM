@@ -152,8 +152,9 @@ CONTAINS
         fname = ""
       END IF
     END IF
-    ! No broadcast of fname is needed because, in PetscOptionsInsertFile (called
-    ! in PetscInitialize), only rank 0 opens fname.
+    ! The communicator is MPI_COMM_WORLD, set by find_pe_procs(), and numpe ==
+    ! 1 corresponds to rank == 0.
+    CALL MPI_BCAST(fname,LEN(fname),MPI_CHARACTER,0,MPI_COMM_WORLD,ierr)
     
     CALL PetscInitialize(fname,p_object%ierr)
   END SUBROUTINE p_initialize
