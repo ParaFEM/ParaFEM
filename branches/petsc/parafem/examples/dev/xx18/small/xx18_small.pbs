@@ -3,8 +3,7 @@
 #PBS -N xx18
 #PBS -l select=1
 #PBS -l walltime=00:20:00
-#PBS -A z01-cse
-#PBS -q short
+#PBS -A z01-csetds
 
 export PBS_O_WORKDIR=$(readlink -f $PBS_O_WORKDIR)
 cd $PBS_O_WORKDIR
@@ -13,9 +12,9 @@ module use $HOME/modulefiles
 module load parafem
 
 mkdir -p parafem
-aprun -n 24 xx18 xx18_small &> parafem/log
-cp -p *.res parafem
+aprun -n 24 xx18 xx18_small &> log
+cp -p log *.res parafem
 
 mkdir -p petsc
-aprun -n 24 xx18 xx18_small petsc &> petsc/log
-cp -p *.res petsc
+aprun -n 24 xx18 xx18_small petsc &> log
+cp -p log *.res petsc
