@@ -74,8 +74,7 @@ clean:
 
 execlean:
 	rm -f $(EXECUTABLES)
-	cd ../../../../bin
-	rm -f $(EXECUTABLES)
+	cd ../../../../bin; rm -f $(EXECUTABLES)
 
 relink: $(EXECUTABLES)
 

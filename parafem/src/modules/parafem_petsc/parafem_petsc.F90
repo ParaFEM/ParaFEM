@@ -40,8 +40,10 @@ MODULE parafem_petsc
 
   ! Use Fortran interfaces for the PETSc routines:  this helps infinitely in
   ! catching errors, so you get compile time errors like
+  !
   ! The kind (4) of this actual argument does not match that of its associated
   ! dummy argument (8).
+  !
   ! instead of run time segmentation violations, usually in a place marginally
   ! related to where the cause of the error is.
 #define PETSC_USE_FORTRAN_INTERFACES
@@ -150,9 +152,8 @@ CONTAINS
         fname = ""
       END IF
     END IF
-    ! The communicator is MPI_COMM_WORLD, set by find_pe_procs(), and numpe ==
-    ! 1 corresponds to rank == 0.
-    CALL MPI_BCAST(fname,LEN(fname),MPI_CHARACTER,0,MPI_COMM_WORLD,ierr)
+    ! No broadcast of fname is needed because, in PetscOptionsInsertFile (called
+    ! in PetscInitialize), only rank 0 opens fname.
     
     CALL PetscInitialize(fname,p_object%ierr)
   END SUBROUTINE p_initialize

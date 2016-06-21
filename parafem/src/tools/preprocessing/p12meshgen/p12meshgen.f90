@@ -115,7 +115,7 @@ PROGRAM p12meshgen
 !------------------------------------------------------------------------------
 !------------------------------------------------------------------------------
 
-  CASE('p121')
+  CASE('p121','xx18')
   
     READ(10,*) iotype,nels,nxe,nze,nod,nip,aa,bb,cc,e,v,tol,limit
 
@@ -1774,7 +1774,7 @@ PROGRAM p12meshgen
 
     PRINT*
     PRINT*, "Mesh only generated for programs: "
-    PRINT*, "  p121, p122, p123, p124, p125, p126"
+    PRINT*, "  p121, xx18, p122, p123, p124, p125, p126"
     PRINT*, "  p128, p129 and p1210"
     PRINT*
 
