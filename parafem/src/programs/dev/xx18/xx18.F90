@@ -18,7 +18,7 @@ PROGRAM xx18
   !*    02.01.2007
   !*  MODIFICATION HISTORY
   !*    Version 2, 19.02.2016, Mark Filipiak
-  !*    Version 3, 01.04.2016, Mark Filipiak
+  !*    Version 3, 23.06.2016, Mark Filipiak
   !*  COPYRIGHT
   !*    (c) University of Manchester 2007-2010, University of Edinburgh 2016
   !******
@@ -63,7 +63,7 @@ PROGRAM xx18
     disp_pp(:),g_coord_pp(:,:,:),jac(:,:),der(:,:),deriv(:,:),bee(:,:),        &
     storkm_pp(:,:,:),eps(:),sigma(:),diag_precon_pp(:),p_pp(:),                &
     r_pp(:),x_pp(:),xnew_pp(:),u_pp(:),pmul_pp(:,:),utemp_pp(:,:),d_pp(:),     &
-    timest(:),diag_precon_tmp(:,:),eld_pp(:,:),temp(:)
+    timest(:),diag_precon_tmp(:,:),eld_pp(:,:),temp(:),km(:,:)
   INTEGER,ALLOCATABLE :: rest(:,:),g_num_pp(:,:),g_g_pp(:,:),node(:)
   
   !-----------------------------------------------------------------------------
@@ -98,8 +98,12 @@ PROGRAM xx18
 
   ALLOCATE(points(nip,ndim),dee(nst,nst),jac(ndim,ndim),der(ndim,nod),         &
     deriv(ndim,nod),bee(nst,ntot),weights(nip),eps(nst),sigma(nst),            &
-    storkm_pp(ntot,ntot,nels_pp),pmul_pp(ntot,nels_pp),                        &
-    utemp_pp(ntot,nels_pp),g_g_pp(ntot,nels_pp))
+    km(ntot,ntot),pmul_pp(ntot,nels_pp),utemp_pp(ntot,nels_pp),                &
+    g_g_pp(ntot,nels_pp))
+
+  IF (solvers == parafem_solvers) THEN
+    ALLOCATE(storkm_pp(ntot,ntot,nels_pp))
+  END IF
 
   !-----------------------------------------------------------------------------
   ! 3. Find the steering array and equations per process
@@ -146,22 +150,25 @@ PROGRAM xx18
   
   dee=zero; CALL deemat(dee,e,v); CALL sample(element,points,weights)
 
-  storkm_pp=zero
-  IF (solvers == petsc_solvers) THEN
+  IF (solvers == parafem_solvers) THEN
+    storkm_pp=zero
+  ELSE IF (solvers == petsc_solvers) THEN
     CALL p_zero_matrix
   END IF
 
   elements_1: DO iel=1,nels_pp
+    km = zero
     gauss_pts_1: DO i=1,nip
       CALL shape_der(der,points,i); jac=MATMUL(der,g_coord_pp(:,:,iel))
       det=determinant(jac); CALL invert(jac); deriv=MATMUL(jac,der)
       CALL beemat(bee,deriv)
-      storkm_pp(:,:,iel) = storkm_pp(:,:,iel)                                  &
-        + MATMUL(MATMUL(TRANSPOSE(bee),dee),bee)*det*weights(i)
+      km = km + MATMUL(MATMUL(TRANSPOSE(bee),dee),bee)*det*weights(i)
     END DO gauss_pts_1
 
-    IF (solvers == petsc_solvers) THEN
-      CALL p_add_element(g_g_pp(:,iel),storkm_pp(:,:,iel))
+    IF (solvers == parafem_solvers) THEN
+      storkm_pp(:,:,iel) = km
+    ELSE IF (solvers == petsc_solvers) THEN
+      CALL p_add_element(g_g_pp(:,iel),km)
     END IF
   END DO elements_1
 
@@ -236,7 +243,10 @@ PROGRAM xx18
     WRITE(11,'(A,E12.4)') "The central nodal displacement is :",xnew_pp(1)
   END IF
 
-  DEALLOCATE(p_pp,r_pp,x_pp,u_pp,d_pp,diag_precon_pp,storkm_pp,pmul_pp) 
+  DEALLOCATE(p_pp,r_pp,x_pp,u_pp,d_pp,diag_precon_pp,km,pmul_pp)
+  IF (solvers == parafem_solvers) THEN
+    DEALLOCATE(storkm_pp)
+  END IF
 
   !-----------------------------------------------------------------------------
   ! 9. Recover stresses at centroidal gauss point
