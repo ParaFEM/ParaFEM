@@ -16,7 +16,7 @@ CACONFILE="$PROG".conf
 MODEL=p121_medium
 FABRIC="I_MPI_FABRICS=shm:dapl"
 
-TIME=/usr/bin/time
+TIME="/usr/bin/time -f %E"
 
 export CONFILE=nodes
 cat $PBS_NODEFILE > $CONFILE
@@ -25,6 +25,5 @@ export NNODES=`cat $PBS_NODEFILE | wc -l`
 
 # Prepare conf file
 echo -genvall -genv $FABRIC -machinefile ./$CONFILE -n $NNODES ./$EXECUTABLE $MODEL > $CACONFILE
-cat $CACONFILE
 
 $TIME $EXECUTABLE
