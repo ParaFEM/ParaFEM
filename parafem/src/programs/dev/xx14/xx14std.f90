@@ -239,14 +239,19 @@ END IF
   cgca_img = this_image()
 cgca_nimgs = num_images()
 
-! Initialise random number seed.
-! Need to do this before cgca_pfem_cenc, where there order of comms
+! Need to init RND before cgca_pfem_cenc, where there order of comms
 ! is chosen at *random* to even the remote access pattern.
+
+! Initialise random number seed. Choose either a routine with
+! reproducible seeds (cgca_ins), or random seeds (cgca_irs).
+! Multiple runs with cgca_ins *on the same number of cores (images)*
+! on the same platform should produce reproducible results.
 !
 ! Argument:
 ! .false. - no debug output
 !  .true. - with debug output
-call cgca_irs( .false. )
+!call cgca_ins( .true. )
+call cgca_irs( .true. )
 
 ! dump CGPACK parameters and some ParaFEM settings
 if ( cgca_img .eq. 1 ) then
