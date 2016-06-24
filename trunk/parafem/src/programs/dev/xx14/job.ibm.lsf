@@ -3,7 +3,7 @@
 #BSUB -eo zzz.err
 #BSUB -R "span[ptile=24]"
 #BSUB -W 0:19
-#BSUB -n 48
+#BSUB -n 72
 
 #$Id: job.ibm.lsf 293 2016-06-20 11:30:58Z mexas $
 #  AUTHOR
@@ -32,8 +32,8 @@ module list
 
 # Specify the desired Intel MPI fabric here, or leave empty for default
 # See https://software.intel.com/en-us/node/535585
-#FABRIC="I_MPI_FABRICS=shm:dapl"
-FABRIC=
+FABRIC="I_MPI_FABRICS=shm:dapl"
+#FABRIC=
 
 # How many processors are allocated.
 # Save all nodes to file $NODES
