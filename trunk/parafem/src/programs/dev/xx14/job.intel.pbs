@@ -14,18 +14,17 @@ PROG=xx14
 EXECUTABLE="$PROG"std.x
 CACONFILE="$PROG".conf
 MODEL=p121_medium
+FABRIC="I_MPI_FABRICS=shm:dapl"
 
 TIME=/usr/bin/time
 
-export confile=nodes
-cat $PBS_NODEFILE > $confile
+export CONFILE=nodes
+cat $PBS_NODEFILE > $CONFILE
 
-export nnodes=`cat $PBS_NODEFILE | wc -l`
+export NNODES=`cat $PBS_NODEFILE | wc -l`
 
 # Prepare conf file
-echo -genvall -genv I_MPI_FABRICS=shm:dapl \
-	-machinefile ./$confile \
-	-n $nnodes ./$EXECUTABLE $MODEL > $CACONFILE
+echo -genvall -genv $FABRIC -machinefile ./$CONFILE -n $NNODES ./$EXECUTABLE $MODEL > $CACONFILE
 cat $CACONFILE
 
 $TIME $EXECUTABLE
