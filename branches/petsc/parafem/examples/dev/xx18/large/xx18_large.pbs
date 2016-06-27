@@ -1,8 +1,8 @@
 #!/bin/bash
 
 #PBS -N xx18
-#PBS -l select=1
-#PBS -l walltime=00:20:00
+#PBS -l select=4
+#PBS -l walltime=12:00:00
 #PBS -A z01-csetds
 
 export PBS_O_WORKDIR=$(readlink -f $PBS_O_WORKDIR)
@@ -11,10 +11,19 @@ cd $PBS_O_WORKDIR
 module use $HOME/modulefiles
 module load parafem
 
-mkdir -p parafem
-aprun -n 24 xx18 xx18_large &> log
-cp -p log *.res parafem
 
-mkdir -p petsc
-aprun -n 24 xx18 xx18_large petsc &> log
-cp -p log *.res petsc
+s=4 # 4 nodes
+# Maximum number of partitions is 100 (1-D partitioning) so don't go up to 96.
+#for N in 24 12 6 3 2 1; do
+for N in 12 6 3 2 1; do
+    n=$((s*N))
+    d=$((24/N))
+
+    mkdir -p parafem_$n
+    aprun -n $n -N $N -d $d xx18 xx18_large &> log
+    cp -p log *.res parafem_$n
+    
+    mkdir -p petsc_$n
+    aprun -n $n -N $N -d $d xx18 xx18_large petsc &> log
+    cp -p log *.res petsc_$n
+done
