@@ -303,7 +303,7 @@ PROGRAM xx18
     WRITE(11,*)
     WRITE(11,'(A,F10.2,A)') "Peak memory use: ",peak_memory_use," GB"
     WRITE(11,*)
-    WRITE(11,'(2(I0,A),3(F0.2,A),F0.2)') npes,tab,neq,tab,                     &
+    WRITE(11,'(3(I0,A),3(F0.2,A),F0.2)') npes,tab,neq,tab,iters,tab,           &
       timest(3)-timest(2),tab,timest(4)-timest(3),tab,                         &
       timest(5)-timest(4) + timest(7)-timest(6),tab,peak_memory_use
   END IF
