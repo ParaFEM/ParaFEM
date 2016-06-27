@@ -11,13 +11,14 @@ elif [[ $# == 1 && $1 == 'modules' ]]; then
     export build=modules log=modules.log
 elif [[ $# == 1 && $1 == 'clean' ]]; then
     export build=clean log=clean.log
-elif [[ $# == 1 && $1 == 'execlean' ]]; then
-    export build=execlean log=execlean.log
+elif [[ $# == 1 && $1 == 'xxclean' ]]; then
+    export build=xxclean log=xxclean.log
 else
     echo 'Usage:
 build.bash clean to clean everything
 build.bash modules to re-build the ParaFEM modules and p12meshgen
-build.bash xx to build xx15 and xx18 only'
+build.bash xx to build xx15 and xx18 only
+build.bash xxclean to clean xx15 and xx18 only'
     exit 2 # incorrect usage
 fi
 
@@ -40,7 +41,7 @@ module load cray-tpsl-64/16.03.1
 module load cray-petsc-64/3.6.3.0
 
 module list -t 2>&1 | head -n 1 > $log
-module list -t 2>&1 | tail -n +2 | sort >> $log
+module list -t 2>&1 | tail -n +2 | LC_ALL=POSIX sort >> $log
 echo >> $log
 
 # There is clock skew between TDS and /home so sleeps are needed.
@@ -84,9 +85,9 @@ EOF
 	./make-parafem MACHINE=xc30 clean execlean >> $log 2>&1
 	rm -f $modulefile
 	sleep 1 # TDS and /home are sleepy
-    elif [[ $build == 'execlean' ]]; then
+    elif [[ $build == 'xxclean' ]]; then
 	sleep 1 # TDS and /home are sleepy
-	./make-parafem MACHINE=xc30 execlean >> $log 2>&1
+	./make-parafem MACHINE=xc30 --only-programs -xx clean execlean >> $log 2>&1
 	rm -f $modulefile
 	sleep 1 # TDS and /home are sleepy
     fi
