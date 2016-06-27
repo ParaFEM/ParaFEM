@@ -1,0 +1,29 @@
+#!/bin/sh
+#$Id$
+#
+# A template job submission script for PBS with Intel compiler.
+#
+# Submit with something like:
+#   qsub -q testq -j oe -l walltime=01:00:00,nodes=2:ppn=16 -N xx14 job
+
+# Switch to current working directory
+cd $PBS_O_WORKDIR
+
+# Set the executable name and input data file to use
+PROG=xx14
+EXECUTABLE="$PROG"std.x
+CACONFILE="$PROG".conf
+MODEL=p121_medium
+FABRIC="I_MPI_FABRICS=shm:dapl"
+
+TIME="/usr/bin/time -f %E"
+
+export CONFILE=nodes
+cat $PBS_NODEFILE > $CONFILE
+
+export NNODES=`cat $PBS_NODEFILE | wc -l`
+
+# Prepare conf file
+echo -genvall -genv $FABRIC -machinefile ./$CONFILE -n $NNODES ./$EXECUTABLE $MODEL > $CACONFILE
+
+$TIME $EXECUTABLE

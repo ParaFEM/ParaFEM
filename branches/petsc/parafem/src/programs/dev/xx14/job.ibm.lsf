@@ -1,0 +1,52 @@
+#BSUB -J zzz
+#BSUB -oo zzz.out
+#BSUB -eo zzz.err
+#BSUB -R "span[ptile=24]"
+#BSUB -W 0:19
+#BSUB -n 72
+
+#$Id: job.ibm.lsf 293 2016-06-20 11:30:58Z mexas $
+#  AUTHOR
+#    Anton Shterenlikht
+#  COPYRIGHT
+#    See LICENSE
+#  DESCRIPTION
+#    A job submission script for the IBM LSF scheduler
+
+# Change to the submission directory
+cd $LS_SUBCWD
+echo $LS_SUBCWD
+
+EXECUTABLE=xx14std.x
+CACONFILE=xx14.conf
+MODEL=p121_medium
+NODES=nodes
+
+# Load Intel modules
+. /etc/profile.d/modules.sh
+module purge
+module add intel/16.0.047 intel_mpi/5.1.1
+# intel/license - need to load only for a non-default intel module.
+# A check
+module list
+
+# Specify the desired Intel MPI fabric here, or leave empty for default
+# See https://software.intel.com/en-us/node/535585
+FABRIC="I_MPI_FABRICS=shm:dapl"
+#FABRIC=
+
+# How many processors are allocated.
+# Save all nodes to file $NODES
+rm $NODES
+NP=0
+for TOKEN in $LSB_HOSTS
+do
+	(( NP++ ))
+	echo $TOKEN >> $NODES
+done 
+
+# Prepare conf file
+echo -genvall -genv $FABRIC -machinefile ./$NODES -n $NP ./$EXECUTABLE $MODEL > $CACONFILE
+
+# Use the full path name
+$LS_SUBCWD/$EXECUTABLE

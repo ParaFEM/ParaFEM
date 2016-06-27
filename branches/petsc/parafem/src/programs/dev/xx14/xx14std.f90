@@ -15,6 +15,9 @@ PROGRAM xx14std
 ! This version must conform to F2008 standard.
 ! This mainly means none of the routines using Cray extensions
 ! can be used.
+!
+! The CA CS is aligned with the FE CS, but not the same origin.
+! Anyway, all cells are within the FE model, so mapping is easy.
 !-----------------------------------------------------------------------
 !USE mpi_wrapper  !remove comment for serial compilation
 
@@ -185,7 +188,7 @@ ntot = ndof
 
 ! g_num_pp(nod,nels_pp) - integer, elements connectivity
 ! g_coord_pp - global coord?
-!https://code.google.com/p/parafem/source/browse/trunk/parafem/src/modules/mpi/input.f90
+!https://sourceforge.net/p/parafem/code/HEAD/tree/trunk/parafem/src/modules/mpi/input.f90
 ALLOCATE( g_num_pp( nod, nels_pp ) )
 allocate( g_coord_pp( nod, ndim, nels_pp ) )
 allocate( rest( nr,nodof+1) )
@@ -194,7 +197,7 @@ g_num_pp = 0
 g_coord_pp = zero
 rest = 0
 
-!https://code.google.com/p/parafem/source/browse/trunk/parafem/src/modules/mpi/input.f90
+!https://sourceforge.net/p/parafem/code/HEAD/tree/trunk/parafem/src/modules/mpi/input.f90
 CALL read_g_num_pp( argv, iel_start, nn, npes, numpe, g_num_pp )
 
 IF ( meshgen == 2 ) CALL abaqus2sg( element, g_num_pp )
@@ -236,14 +239,19 @@ END IF
   cgca_img = this_image()
 cgca_nimgs = num_images()
 
-! Initialise random number seed.
-! Need to do this before cgca_pfem_cenc, where there order of comms
+! Need to init RND before cgca_pfem_cenc, where there order of comms
 ! is chosen at *random* to even the remote access pattern.
+
+! Initialise random number seed. Choose either a routine with
+! reproducible seeds (cgca_ins), or random seeds (cgca_irs).
+! Multiple runs with cgca_ins *on the same number of cores (images)*
+! on the same platform should produce reproducible results.
 !
 ! Argument:
 ! .false. - no debug output
 !  .true. - with debug output
-call cgca_irs( .false. )
+!call cgca_ins( .true. )
+call cgca_irs( .true. )
 
 ! dump CGPACK parameters and some ParaFEM settings
 if ( cgca_img .eq. 1 ) then
@@ -281,6 +289,10 @@ cgca_res = 1.0e5_rdef
 ! i.e. per second. Let's say 1 km/s = 1.0e3 m/s = 1.0e6 mm/s. 
 cgca_length = 1.0e6_rdef
 
+! In p121_medium, each element is 0.25 x 0.25 x 0.25 mm, so
+! the charlen must be bigger than that.
+cgca_charlen = 0.4
+
 ! each image calculates the coarray grid dimensions
 call cgca_gdim( cgca_nimgs, cgca_ir, cgca_qual )
 
@@ -314,11 +326,11 @@ call cgca_as( 1, cgca_c(1),  1, cgca_c(2),  1, cgca_c(3),              &
 call cgca_imco( cgca_space, cgca_lres, cgca_bcol, cgca_bcou )
 
 ! dump box lower and upper corners from every image
-write ( *,"(a,i0,2(a,3(g0,tr1)),a)" ) "img: ", cgca_img,               &
-       " bcol: (", cgca_bcol, ") bcou: (", cgca_bcou, ")"
+write ( *,"(a,i0,2(a,3(es9.2,tr1)))" ) "img ", cgca_img,               &
+       " bcol: ", cgca_bcol, "bcou: ", cgca_bcou
 
 ! and now in FE cs:
-write ( *,"(a,i0,2(a,3(g0,tr1)),a)" ) "img: ", cgca_img,               &
+write ( *,"(a,i0,2(a,3(es9.2,tr1)),a)" ) "img: ", cgca_img,            &
    " FE bcol: (",                                                      &
     matmul( transpose( cgca_rot ),cgca_bcol ) + cgca_origin,           &
   ") FE bcou: (",                                                      &
@@ -327,11 +339,11 @@ write ( *,"(a,i0,2(a,3(g0,tr1)),a)" ) "img: ", cgca_img,               &
 ! confirm that image number .eq. MPI process number
 write (*,*) "img",cgca_img," <-> MPI proc", numpe
 
-! allocate the tmp centroids array: cgca_pfem_centroid_tmp%r ,
-! an allocatable array component of a coarray variable of derived type
+! Allocate the tmp centroids array: cgca_pfem_centroid_tmp%r ,
+! an allocatable array component of a coarray variable of derived type.
 call cgca_pfem_ctalloc( ndim, nels_pp )
 
-! set the centroids array component on this image, no remote calls.
+! Set the centroids array component on this image, no remote calls.
 ! first dim - coord, 1,2,3
 ! second dim - element number, always starting from 1
 ! g_coord_pp is allocated as g_coord_pp( nod, ndim, nels_pp )
@@ -341,12 +353,17 @@ cgca_pfem_centroid_tmp%r = sum( g_coord_pp(:,:,:), dim=1 ) / nod
 sync all ! must add execution segment
          ! use cgca_pfem_centroid_tmp[*]%r
 
-!subroutine cgca_pfem_cenc( origin, rot, bcol, bcou )
+! Set lcentr private arrays on every image. Choose one of the two
+! routines that do this:
+! - cgca_pfem_cenc - uses all-to-all algorithm.
+! - cgca_pfem_map  - uses CO_SUM, CO_MAX and *large* tmp arrays
+! Both routines have identical sets of input arguments.
 call cgca_pfem_cenc( cgca_origin, cgca_rot, cgca_bcol, cgca_bcou )
+!call cgca_pfem_map( cgca_origin, cgca_rot, cgca_bcol, cgca_bcou )
 
-         ! use cgca_pfem_centroid_tmp[*]%r
-sync all ! must add execution segment
-         ! deallocate cgca_pfem_centroid_tmp[*]%r
+! Dump lcentr for debug
+! *** a lot *** of data
+!call cgca_pfem_lcentr_dump
 
 ! Allocate cgca_pfem_integrity%i(:), array component of a coarray of
 ! derived type. Allocating *local* array.
@@ -382,11 +399,12 @@ call cgca_nr( cgca_space, cgca_ng, .false. )
 ! assign rotation tensors, sync all inside
 call cgca_rt( cgca_grt )
 
-! solidify, implicit sync all inside
+! solidify
 !subroutine cgca_sld( coarray, periodicbc, iter, heartbeat, solid )
 ! second argument:
 !  .true. - periodic BC
 ! .false. - no periodic BC
+! ===>>> implicit sync all inside <<<===
 call cgca_sld( cgca_space, .false., 0, 10, cgca_solid )
 
 ! initiate grain boundaries
@@ -397,9 +415,12 @@ call cgca_igb( cgca_space )
 ! sync needed following halo exchange
 call cgca_gbs( cgca_space )
 call cgca_hxi( cgca_space )
+
 sync all
+
 call cgca_gbs( cgca_space )
 call cgca_hxi( cgca_space )
+
 sync all
 
 ! update grain connectivity, local routine, no sync needed
@@ -411,17 +432,13 @@ if ( cgca_img .eq. 1 ) then
               [ 1, 1, cgca_ir(3)/2 ] = cgca_clvg_state_100_edge
 end if
 
-sync all
-
-! In p121_medium, each element is 0.25 x 0.25 x 0.25 mm, so
-! the charlen must be bigger than that.
-cgca_charlen = 0.4
-
          ! cgca_space changed locally on every image
 sync all !
          ! cgca_space used
 
 ! Now can deallocate the temp array cgca_pfem_centroid_tmp%r.
+! Could've done this earlier, but best to wait until sync all is
+! required, to avoid extra sync.
 call cgca_pfem_ctdalloc
 
 ! img 1 dumps space arrays to files
@@ -429,10 +446,6 @@ if ( cgca_img .eq. 1 ) write (*,*) "dumping model to files"
 call cgca_pswci( cgca_space, cgca_state_type_grain, "zg0.raw" )
 call cgca_pswci( cgca_space, cgca_state_type_frac,  "zf0.raw" )
 if ( cgca_img .eq. 1 ) write (*,*) "finished dumping model to files"
-
-! debug
-!sync all
-!stop
 
 ! allocate the stress array component of cgca_pfem_stress coarray
 ! subroutine cgca_pfem_salloc( nels_pp, intp, comp )
@@ -650,11 +663,11 @@ cgca_clvg_iter = nint( cgca_length * cgca_lres * cgca_time_inc )
 if ( cgca_img .eq. 1 ) write (*,*) "load inc:", cgca_liter,            &
                                    "clvg iter:", cgca_clvg_iter
 
-! ifort 15 doesn't support CO_SUM yet, so use _nocosum.
-! subroutine cgca_clvgp_nocosum( coarray, rt, t, scrit, sub, gcus, &
-!   periodicbc, iter, heartbeat, debug )
-! sync all inside
+! ===>>> sync all inside <<<===
 ! lower the crit stresses by a factor of 100.
+! On Intel 16: no support for CO_SUM yet, so use _nocosum.
+! On Intel 16: subroutine cgca_clvgp_nocosum( coarray, rt, t, scrit, &
+!                     sub, gcus, periodicbc, iter, heartbeat, debug )
 call cgca_clvgp_nocosum( cgca_space, cgca_grt, cgca_stress,            &
      0.01_rdef * cgca_scrit, cgca_clvgsd, cgca_gcupdn, .false. ,       &
      cgca_clvg_iter, 10, cgca_yesdebug )
@@ -756,5 +769,5 @@ call cgca_pfem_integdalloc
 
 
 !*** ParaFEM part ****************************************************72
-!CALL SHUTDOWN() ! cannot call MPI_FINALIZE with coarrays with Intel 15.
+!CALL SHUTDOWN() ! cannot call MPI_FINALIZE with coarrays with Intel 16.
 END PROGRAM xx14std
