@@ -29,6 +29,7 @@ MODULE parafem_petsc
   !*  TYPE to PASS to the PETSc routines.
   !*/
   
+  USE, INTRINSIC :: iso_fortran_env ! for the real64 kind to use with MPI_REAL8
   USE mp_interface
 
   IMPLICIT NONE
@@ -1221,7 +1222,7 @@ CONTAINS
     CHARACTER(:),ALLOCATABLE        :: p_describe_reason
     KSPConvergedReason, INTENT(in)  :: reason
     
-    ! The string constants in this routine have to be p_string_length or
+    ! The string constants in this routine have to be string_length or
     ! shorter.
     SELECT CASE (reason)
     ! Converged.
@@ -1314,6 +1315,65 @@ CONTAINS
       p_describe_reason = "reason not known"
     END SELECT
   END FUNCTION p_describe_reason
+
+  FUNCTION p_memory_use()
+
+    !/****if* petsc/p_memory_use
+    !*  NAME
+    !*    SUBROUTINE: p_memory_use
+    !*  SYNOPSIS
+    !*    Usage:      p_memory_use()
+    !*  FUNCTION
+    !*    Return maximum amount of memory (in GB) used so far in the program.
+    !*  ARGUMENTS
+    !*    None.
+    !*  AUTHOR
+    !*    Mark Filipiak
+    !*  CREATION DATE
+    !*    27.06.2016
+    !*  MODIFICATION HISTORY
+    !*    Version 1, 27.06.2016, Mark Filipiak
+    !*  COPYRIGHT
+    !*    (c) University of Edinburgh 2016
+    !******
+    !*  Place remarks that should not be included in the documentation here.
+    !*
+    !*  Linux only.
+    !*/
+
+    REAL    :: p_memory_use
+
+    INTEGER :: proc,ios,start,finish
+    CHARACTER(len=string_length) :: line
+
+    INTEGER(int64) :: kbytes
+    ! real32 matches MPI_REAL4
+    REAL(real32)   :: VmHWM,sum_VmHWM
+
+    INTEGER :: ierr
+
+    kbytes = 0
+
+    OPEN(newunit=proc,file="/proc/self/status",action='read')
+    DO
+      READ(proc,"(A)",iostat=ios) line
+      IF (ios < 0 ) EXIT ! end of file
+
+      ! test for a line like "VmHWM:       972 kB"
+      IF (INDEX(line,"VmHWM:") == 1 .AND. INDEX(line,"kB") /= 0) THEN
+        start  = LEN("VmHWM:") + 1
+        finish = INDEX(line,"kB") - 1
+        READ(line(start:finish),*) kbytes
+        EXIT
+      END IF
+    END DO
+    CLOSE(proc)
+
+    VmHWM = kbytes / 1048576.0 ! VmHWM in GB
+    ! MPI_REAL4 matches real32
+    CALL MPI_ALLREDUCE(VmHWM,sum_VmHWM,1,MPI_REAL4,MPI_SUM,MPI_COMM_WORLD,ierr)
+    p_memory_use = sum_VmHWM
+  END FUNCTION p_memory_use
   
   FUNCTION nnod(ndim,nod,error,message)
 
@@ -1366,7 +1426,7 @@ CONTAINS
     !*  Appendix B
     !*/
 
-    INTEGER                              :: nnod
+    INTEGER                               :: nnod
     INTEGER,                  INTENT(in)  :: ndim
     INTEGER,                  INTENT(in)  :: nod
     LOGICAL,                  INTENT(out) :: error
