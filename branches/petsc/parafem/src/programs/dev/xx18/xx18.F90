@@ -303,7 +303,9 @@ PROGRAM xx18
     WRITE(11,*)
     WRITE(11,'(A,F10.2,A)') "Peak memory use: ",peak_memory_use," GB"
     WRITE(11,*)
-    WRITE(11,'(2(I0,A),3(F0.2,A),F0.2)') npes,tab,neq,tab,                     &
+    ! REVISION is substituted with a string like "2108" (including the double
+    ! quotes) by the preprocessor, see the makefile.
+    WRITE(11,'(2A,2(I0,A),3(F0.2,A),F0.2)') REVISION,tab,npes,tab,neq,tab,   &
       timest(3)-timest(2),tab,timest(4)-timest(3),tab,                         &
       timest(5)-timest(4) + timest(7)-timest(6),tab,peak_memory_use
   END IF

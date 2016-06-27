@@ -1,6 +1,10 @@
 #!/bin/bash
 
 version="0.1"
+# In subversion:
+export REVISION="$(svnversion --no-newline)"
+# In a release:
+#export REVISION="tag or 'exported'?"
 
 # Don't use the -debug flag.  That would make the comparison between
 # ParaFEM and PETSc unfair.

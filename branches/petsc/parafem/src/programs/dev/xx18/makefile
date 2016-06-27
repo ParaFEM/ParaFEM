@@ -51,8 +51,13 @@ debug:
 xx18: xx18.o
 	$(FC) $(LDFLAGS) -o $@ $+ $(LIBS)
 
-xx18.o: xx18.F90
-	$(FC) $(FFLAGS) -o $@ $<
+xx18.o: xx18.F90 makefile
+# The \"\" are to include "" around the text when it is substituted in
+# the program.  The "" are to expand REVISION correctly even if it has
+# special characters.  The $$ are to escape the make $ to become a
+# shell $.
+	$(FC) $(FFLAGS) -D REVISION=\""$$REVISION"\" -o $@ $<
+
 
 clean:
 	rm -f *.o
