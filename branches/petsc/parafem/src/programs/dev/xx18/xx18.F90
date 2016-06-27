@@ -51,9 +51,10 @@ PROGRAM xx18
   CHARACTER(LEN=6)    :: ch 
 
   CHARACTER(len=choose_solvers_string_length) :: solvers
-
   LOGICAL                  :: error
   CHARACTER(:),ALLOCATABLE :: message
+  CHARACTER,PARAMETER      :: tab = ACHAR(9)
+  REAL                     :: peak_memory_use
   
   !-----------------------------------------------------------------------------
   ! 1. Dynamic arrays
@@ -287,16 +288,24 @@ PROGRAM xx18
 
   timest(8) = elap_time()
   
+  peak_memory_use = p_memory_use()
+
   IF(numpe==1)THEN
-    WRITE(11,'(A,F10.4)') "Time to read input:       ",                        &
+    WRITE(11,'(A,F10.2)') "Time to read input:       ",                        &
                           timest(2)-timest(1) + timest(6)-timest(5)
-    WRITE(11,'(A,F10.4)') "Time for setup:           ",timest(3)-timest(2)
-    WRITE(11,'(A,F10.4)') "Time for matrix assemble: ",timest(4)-timest(3)
-    WRITE(11,'(A,F10.4)') "Time to solve equations:  ",                        &
+    WRITE(11,'(A,F10.2)') "Time for setup:           ",timest(3)-timest(2)
+    WRITE(11,'(A,F10.2)') "Time for matrix assemble: ",timest(4)-timest(3)
+    WRITE(11,'(A,F10.2)') "Time to solve equations:  ",                        &
                           timest(5)-timest(4) + timest(7)-timest(6)
-    WRITE(11,'(A,F10.4)') "Time to write results:    ",timest(8)-timest(7)
+    WRITE(11,'(A,F10.2)') "Time to write results:    ",timest(8)-timest(7)
     WRITE(11,'(A)')       "                          ----------"
-    WRITE(11,'(A,F10.4)') "This analysis took:       ",elap_time()-timest(1)
+    WRITE(11,'(A,F10.2)') "This analysis took:       ",elap_time()-timest(1)
+    WRITE(11,*)
+    WRITE(11,'(A,F10.2,A)') "Peak memory use: ",peak_memory_use," GB"
+    WRITE(11,*)
+    WRITE(11,'(2(I0,A),3(F0.2,A),F0.2)') npes,tab,neq,tab,                     &
+      timest(3)-timest(2),tab,timest(4)-timest(3),tab,                         &
+      timest(5)-timest(4) + timest(7)-timest(6),tab,peak_memory_use
   END IF
   
   !-----------------------------------------------------------------------------
