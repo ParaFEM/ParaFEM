@@ -76,9 +76,9 @@ DEFAULT_5ED_MPI_DBG_LDFLAGS=
 
 # generic XX group FFLAGS and LDFLAGS
 DEFAULT_XX_MPI_REL_FFLAGS=	-V -O3 -em -s real64 -I$(HOME)/lib
-DEFAULT_XX_MPI_DBG_FFLAGS=	-V -g -em -s real64
+DEFAULT_XX_MPI_DBG_FFLAGS=	-V -g -em -s real64 -I$(HOME)/lib
 DEFAULT_XX_MPI_REL_LDFLAGS=	-V -O3 -em -s real64 -L$(HOME)/lib -lcgpack
-DEFAULT_XX_MPI_DBG_LDFLAGS=
+DEFAULT_XX_MPI_DBG_LDFLAGS=	-V -g -em -s real64 -L$(HOME)/lib -lcgpack
 
 # generic PROG8 group FFLAGS and LDFLAGS
 DEFAULT_PROG8_BEM_REL_FFLAGS=
