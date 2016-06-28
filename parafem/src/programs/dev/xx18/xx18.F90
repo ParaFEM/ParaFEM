@@ -305,9 +305,16 @@ PROGRAM xx18
     WRITE(11,*)
     ! REVISION is substituted with a string like "2108" (including the double
     ! quotes) by the preprocessor, see the makefile.
-    WRITE(11,'(2A,2(I0,A),3(F0.2,A),F0.2)') REVISION,tab,npes,tab,neq,tab,   &
-      timest(3)-timest(2),tab,timest(4)-timest(3),tab,                         &
-      timest(5)-timest(4) + timest(7)-timest(6),tab,peak_memory_use
+    WRITE(11,'(2A,2(I0,A),4(F0.2,A),F0.2)')                                    &
+      REVISION,tab,                                                            &
+      npes,tab,                                                                &
+      neq,tab,                                                                 &
+      timest(3)-timest(2),tab,                                                 &
+      timest(4)-timest(3),tab,                         &
+      timest(5)-timest(4) + timest(7)-timest(6),tab,                           &
+      timest(3)-timest(2) + timest(4)-timest(3)                                &
+      + timest(5)-timest(4) + timest(7)-timest(6),tab,                         &
+      peak_memory_use
   END IF
   
   !-----------------------------------------------------------------------------
