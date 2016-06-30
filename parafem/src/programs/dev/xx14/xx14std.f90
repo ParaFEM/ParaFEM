@@ -287,7 +287,7 @@ cgca_rot( 3, 3 ) = 1.0
 cgca_dm = 3.0e0_rdef
 
 ! resolution, cells per grain
-cgca_res = 3.0e4_rdef
+cgca_res = 1.0e5_rdef
 
 ! cgpack length scale, also in mm
 ! Equivalent to crack propagation distance per unit of time,
