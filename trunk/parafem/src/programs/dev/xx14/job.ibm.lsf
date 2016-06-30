@@ -1,6 +1,7 @@
 #BSUB -J zzz
 #BSUB -oo zzz.out
 #BSUB -eo zzz.err
+#BSUB -P HCT00036
 #BSUB -R "span[ptile=24]"
 #BSUB -W 0:19
 #BSUB -n 96
@@ -33,7 +34,7 @@ module list
 #FABRIC=
 #FABRIC="I_MPI_FABRICS=shm:dapl"
 #FABRIC="I_MPI_FABRICS=shm:ofa"
-FABRIC="I_MPI_FABRICS=shm:tcp"
+#FABRIC="I_MPI_FABRICS=shm:tcp"
 
 # How many processors are allocated.
 # Save all nodes to file $NODES
