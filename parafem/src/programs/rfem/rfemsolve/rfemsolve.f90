@@ -130,7 +130,7 @@ PROGRAM rfemsolve
   timest(5) = elap_time()
   IF(numpe==1) PRINT *, "READ_G_COORD_PP COMPLETED"
 
-  CALL read_rest(job_in,numpe,rest)
+  CALL read_rest(inst_in,numpe,rest)
   timest(6) = elap_time()
   IF(numpe==1) PRINT *, "READ_REST COMPLETED"
   
@@ -268,7 +268,7 @@ PROGRAM rfemsolve
 
     node = 0 ; no = 0 ; no_pp_temp = 0 ; sense = 0 ; valf = zero
 
-    CALL read_fixed(job_in,numpe,node,sense,valf)
+    CALL read_fixed(inst_in,numpe,node,sense,valf)
     CALL find_no(node,rest,sense,no)
     CALL reindex(ieq_start,no,no_pp_temp,fixed_freedoms_pp,                   &
                              fixed_freedoms_start,neq_pp)
@@ -299,7 +299,7 @@ PROGRAM rfemsolve
     
     val  = zero ; node = 0
 
-    CALL read_loads(job_in,numpe,node,val)
+    CALL read_loads(inst_in,numpe,node,val)
     CALL load(g_g_pp,g_num_pp,node,val,r_pp(1:))
 
     tload = SUM_P(r_pp(1:))
