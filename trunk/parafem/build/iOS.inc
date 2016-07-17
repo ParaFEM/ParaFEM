@@ -1,8 +1,8 @@
-# BUILD INCLUDE build/linuxdesktop.inc
-# Authors: Louise Lever, Stephen M. Longshaw
+# BUILD INCLUDE build/ios.inc
+# Authors: Louise Lever, Lee Margetts
 # ------------------------------------------------------------------------------
-# Include file for standard linux workstation compilation using gfortran 
-# and OpenMPI. Tested using Ubuntu 14.04 and gfortran 4.8
+# Include file for compilation on Apple iOS platforms using gfortran 
+# and OpenMPI.
 # ------------------------------------------------------------------------------
 
 # ------------------------------------------------------------------------------
