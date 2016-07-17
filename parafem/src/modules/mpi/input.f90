@@ -2515,15 +2515,13 @@ MODULE INPUT
 
     IF(numpe==1)THEN
      OPEN(21,FILE=fname, STATUS='OLD', ACTION='READ')
-     !Read the *MATERIAL keyword, num of materials in file and num values per material line (2)
+     !Read the *MATERIAL keyword, num of materials in file and num values 
+     !per material line (2)
      READ(21,*) keyword, nmats, nvals
      !Read the material labels line
      READ(21,*)                  ! skip line
-
-     PRINT *, "nmats =", nmats
      DO i = 1,nmats
        READ(21,*)k, materialValues(:,i)
- !      PRINT *, "materialValues = ", materialValues(:,i)
      END DO
      CLOSE(21)
     END IF
