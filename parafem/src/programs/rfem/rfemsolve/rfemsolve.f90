@@ -71,14 +71,16 @@ PROGRAM rfemsolve
      PRINT*
      PRINT*, "Usage:  rfemsolve <model_name> <instance-id>"
      PRINT*
-     PRINT*, "        program expects as input:"
+     PRINT*, "       program expects as input:"
      PRINT*, "          <model_name>-<instance-id>.d"
      PRINT*, "          <model_name>-<instance-id>.dat"
      PRINT*, "          <model_name>-<instance-id>.bnd"
-     PRINT*, "          <model_name>-<instance-id>.fix"
      PRINT*, "          <model_name>-<instance-id>.mat"
+     PRINT*, "       and either:"
+     PRINT*, "          <model_name>-<instance-id>.lds"
+     PRINT*, "       or <model_name>-<instance-id>.fix"
      PRINT*
-     PRINT*, "        and outputs:"
+     PRINT*, "       the outputs are:"
      PRINT*, "          <model_name>-<instance-id>.dis" 
      PRINT*, "          <model_name>-<instance-id>.pri" 
      PRINT*, "          <model_name>-<instance-id>.str" 
@@ -119,7 +121,7 @@ PROGRAM rfemsolve
   
   CALL read_elements(inst_in,iel_start,nn,npes,numpe,etype_pp,g_num_pp)
   timest(3) = elap_time()
-  IF(numpe==1) PRINT *, "READ_ELEMENTS COMPLETED"
+  IF(numpe==1) PRINT *, "READ_ELEMENTS completed"
 
 ! CALL read_g_num_pp(job_in,iel_start,nels,nn,numpe,g_num_pp)
 
@@ -128,15 +130,15 @@ PROGRAM rfemsolve
 
   CALL read_g_coord_pp(inst_in,g_num_pp,nn,npes,numpe,g_coord_pp)
   timest(5) = elap_time()
-  IF(numpe==1) PRINT *, "READ_G_COORD_PP COMPLETED"
+  IF(numpe==1) PRINT *, "READ_G_COORD_PP completed"
 
   CALL read_rest(inst_in,numpe,rest)
   timest(6) = elap_time()
-  IF(numpe==1) PRINT *, "READ_REST COMPLETED"
+  IF(numpe==1) PRINT *, "READ_REST completed"
   
   fname = inst_in(1:LEN_TRIM(inst_in)) // ".mat" ! Move to subroutine
   CALL read_materialValue(prop,fname,numpe,npes)       ! CALL read_prop? 
-  IF(numpe==1) PRINT *, "READ_MATERIALVALUE COMPLETED"
+  IF(numpe==1) PRINT *, "READ_MATERIALVALUE completed"
   
 !------------------------------------------------------------------------------
 ! 4. Allocate dynamic arrays used in main program
@@ -154,7 +156,7 @@ PROGRAM rfemsolve
 !------------------------------------------------------------------------------
 
   CALL rearrange(rest)
-  IF(numpe==1) PRINT *, "REARRANGE COMPLETED"
+  IF(numpe==1) PRINT *, "REARRANGE completed"
   
   g_g_pp = 0
 
@@ -163,7 +165,7 @@ PROGRAM rfemsolve
     CALL find_g(g_num_pp(:,iel),g_g_pp(:,iel),rest)
   END DO elements_1
 
-  IF(numpe==1) PRINT *, "FIND_G COMPLETED"
+  IF(numpe==1) PRINT *, "FIND_G completed"
 
   neq = 0
   
@@ -188,7 +190,7 @@ PROGRAM rfemsolve
 
   CALL MPI_BARRIER(MPI_COMM_WORLD,ier)
 
-  IF(numpe==1) PRINT *, "CREATED INTERPROCESSOR COMMUNICATION TABLES"
+  IF(numpe==1) PRINT *, "Created interprocessor communication tables"
 
 !------------------------------------------------------------------------------
 ! 7. Allocate arrays dimensioned by neq_pp 
@@ -234,7 +236,7 @@ PROGRAM rfemsolve
   
   timest(10) = elap_time()
 
-  IF(numpe==1) PRINT *, "COMPLETED ELEMENT STIFFNESS INTEGRATION AND STORAGE"
+  IF(numpe==1) PRINT *, "Completed element stiffness integration and storage"
 
 !------------------------------------------------------------------------------
 ! 9. Build the diagonal preconditioner
@@ -255,7 +257,7 @@ PROGRAM rfemsolve
 
   timest(11) = elap_time()
 
-  IF(numpe==1) PRINT *, "BUILT THE DIAGONAL PRECONDITIONER"
+  IF(numpe==1) PRINT *, "Built the diagonal preconditioner"
 
 !------------------------------------------------------------------------------
 ! 10. Read in fixed nodal displacements and assign to equations
@@ -287,7 +289,7 @@ PROGRAM rfemsolve
 
   DEALLOCATE(rest)
 
-  IF(numpe==1) PRINT *, "READ FIXED NODAL DISPLACEMENTS"
+  IF(numpe==1) PRINT *, "Read fixed nodal displacements"
 
 !------------------------------------------------------------------------------
 ! 11. Read in loaded nodes and get starting r_pp
@@ -380,7 +382,7 @@ PROGRAM rfemsolve
     beta    = DOT_PRODUCT_P(r_pp,d_pp)/up
     p_pp    = d_pp + p_pp*beta  
 
-    IF(numpe==1) PRINT *, "ITERATION", iters
+    IF(numpe==1) PRINT *, "Iteration", iters
 
     CALL checon_par(xnew_pp,tol,converged,x_pp)    
     IF(converged.OR.iters==limit)EXIT
@@ -432,7 +434,7 @@ PROGRAM rfemsolve
 
   IF(numpe==1) CLOSE(24)
 
-  IF(numpe==1) PRINT *, "OUTPUT DISPLACEMENTS"
+  IF(numpe==1) PRINT *, "Output displacements"
 
 !------------------------------------------------------------------------------
 ! 16b. Stresses
