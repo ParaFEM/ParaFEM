@@ -29,9 +29,11 @@ MODULE parafem_petsc
   !*  TYPE to PASS to the PETSc routines.
   !*/
   
-  USE, INTRINSIC :: iso_fortran_env ! for the real64 kind to use with MPI_REAL8
+  USE, INTRINSIC :: iso_fortran_env ! for the real32 kind to use with MPI_REAL4
   USE mp_interface
-
+  USE global_variables, ONLY: ntot, neq, nels_pp, neq_pp, numpe
+  USE gather_scatter, ONLY:   npes, neq_pp1, neq_pp2, num_neq_pp1, threshold,  &
+                              iel_start, ieq_start
   IMPLICIT NONE
 
   PUBLIC
@@ -103,10 +105,10 @@ MODULE parafem_petsc
   TYPE(p_type),TARGET :: p_object
 
   ! Private functions
-  PRIVATE :: nnod
-  PRIVATE :: row_nnz_2
-  PRIVATE :: row_nnz_1
-  PRIVATE :: row_nnz
+  PRIVATE :: collect_elements,row_nnz
+  PRIVATE :: nnod_estimate,row_nnz_2_estimate,row_nnz_1_estimate,              &
+             row_nnz_estimate
+  PRIVATE :: isort ! private to not conflict with isort in gaf77
  
 CONTAINS
   
@@ -160,13 +162,13 @@ CONTAINS
     CALL PetscInitialize(fname,p_object%ierr)
   END SUBROUTINE p_initialize
 
-  SUBROUTINE p_setup(neq_pp,ntot_max,numpe)
+  SUBROUTINE p_setup(neq_pp,ntot_max,g_g_pp,numpe)
 
     !/****if* petsc/p_setup
     !*  NAME
     !*    SUBROUTINE: p_setup
     !*  SYNOPSIS
-    !*    Usage:      p_setup(neq_pp,ntot_max,numpe)
+    !*    Usage:      p_setup(neq_pp,ntot_max,g_g_pp,numpe)
     !*  FUNCTION
     !*      Initialises PETSc and its matrices, vectors and solvers
     !*  ARGUMENTS
@@ -185,6 +187,11 @@ CONTAINS
     !*                         matrix, as in p126, then this will be ntot of
     !*                         this 'element'.  This is used to set the sizes of
     !*                         the workspaces.
+    !*    g_g_pp(:,:)        : Integer
+    !*                         The steering array. g_g_pp(:,iel) are the global
+    !*                         equation numbers for the dofs in element with
+    !*                         local number iel (global number iel_start+iel-1)
+    !*                         Restrained dofs have equation number 0.
     !*    numpe              : Integer
     !*                         This processer's number.  Only processor 1
     !*                         prints information.
@@ -194,19 +201,23 @@ CONTAINS
     !*    31.05.2016
     !*  MODIFICATION HISTORY
     !*    Version 1, 07.06.2016, Mark Filipiak
+    !*    Version 2, 08.08.2016, Mark Filipiak
     !*  COPYRIGHT
     !*    (c) University of Edinburgh 2016
     !******
     !*  Place remarks that should not be included in the documentation here.
     !*
+    !*  Is ntot_max useful?  ntot is a global variable, so multiple element
+    !*  types will require major changes in ParaFEM
     !*/
 
     INTEGER, INTENT(in) :: neq_pp
     INTEGER, INTENT(in) :: ntot_max
+    INTEGER, DIMENSION(:,:), INTENT(in) :: g_g_pp
     INTEGER, INTENT(in) :: numpe
 
     ! Create the objects
-    CALL p_create_matrix(neq_pp)
+    CALL p_create_matrix(neq_pp,g_g_pp)
     CALL p_create_vectors(neq_pp) ! RHS and solution
     CALL p_create_ksps(numpe) ! Krylov solver(s)
     CALL p_create_workspace(ntot_max)
@@ -272,13 +283,13 @@ CONTAINS
     CALL p_finalize
   END SUBROUTINE p_shutdown
 
-  SUBROUTINE p_create_matrix(neq_pp)
+  SUBROUTINE p_create_matrix(neq_pp,g_g_pp)
 
     !/****if* petsc/p_create_matrix
     !*  NAME
     !*    SUBROUTINE: p_create_matrix
     !*  SYNOPSIS
-    !*    Usage:      p_create_matrix(neq_pp)
+    !*    Usage:      p_create_matrix(neq_pp,g_g_pp)
     !*  FUNCTION
     !*      Creates the global matrix (but doesn't assemble it)
     !*  ARGUMENTS
@@ -287,12 +298,17 @@ CONTAINS
     !*    neq_pp             : Integer
     !*                         Number of equations on this process = number of
     !*                         rows in the global matrix on this process
+    !*    g_g_pp(:,:)        : Integer
+    !*                         The steering array. g_g_pp(:,iel) are the global
+    !*                         equation numbers for the dofs in element with
+    !*                         local number iel (global number iel_start+iel-1)
+    !*                         Restrained dofs have equation number 0.
     !*  AUTHOR
     !*    Mark Filipiak
     !*  CREATION DATE
     !*    28.04.2016
     !*  MODIFICATION HISTORY
-    !*    Version 1, 28.05.2016, Mark Filipiak
+    !*    Version 2, 8.08.2016, Mark Filipiak
     !*  COPYRIGHT
     !*    (c) University of Edinburgh 2016
     !******
@@ -306,10 +322,19 @@ CONTAINS
     !*/
 
     INTEGER, INTENT(in) :: neq_pp
+    INTEGER, DIMENSION(:,:), INTENT(in) :: g_g_pp
 
     PetscInt :: p_neq_pp
+    PetscInt, DIMENSION(:), ALLOCATABLE   :: dnz,onz
+    PetscInt, DIMENSION(:,:), ALLOCATABLE :: g_g_all
 
     p_neq_pp = neq_pp
+
+    ! Set the number of zeroes per row for the matrix size
+    ! pre-allocation.
+    CALL collect_elements(g_g_pp,g_g_all) ! g_g_all allocated
+    CALL row_nnz(g_g_all,dnz,onz) ! dnz, onz allocated
+    DEALLOCATE(g_g_all)
 
     CALL MatCreate(PETSC_COMM_WORLD,p_object%A,p_object%ierr)
     CALL MatSetSizes(p_object%A,p_neq_pp,p_neq_pp,                             &
@@ -320,12 +345,13 @@ CONTAINS
     CALL MatSetFromOptions(p_object%A,p_object%ierr)
     
     CALL MatSeqAIJSetPreallocation(p_object%A,                                 &
-                                   p_object%row_nnz,PETSC_NULL_INTEGER,        &
+                                   PETSC_NULL_INTEGER,dnz,                     &
                                    p_object%ierr)
     CALL MatMPIAIJSetPreallocation(p_object%A,                                 &
-                                   p_object%row_nnz,PETSC_NULL_INTEGER,        &
-                                   p_object%row_nnz,PETSC_NULL_INTEGER,        &
+                                   PETSC_NULL_INTEGER,dnz,                     &
+                                   PETSC_NULL_INTEGER,onz,                     &
                                    p_object%ierr)
+    DEALLOCATE(dnz,onz)
     ! If the allocation is too small, PETSc will produce reams of information
     ! and not assemble the matrix properly.  We output some information at the
     ! end of the assembly routine if p_object%over_allocation should be
@@ -336,7 +362,7 @@ CONTAINS
     ! PETSc uses C array order, so a transpose would be needed when adding
     ! elements, but you can get PETSc to use Fortran order for MatSetValues by
     ! setting MAT_ROW_ORIENTED false (at least for the Mat types used so far:
-    ! SEQAIJ and MPIAIJ).  This needs to be tested.
+    ! SEQAIJ and MPIAIJ).
     CALL MatSetOption(p_object%A,MAT_ROW_ORIENTED,PETSC_FALSE,p_object%ierr)
   END SUBROUTINE p_create_matrix
 
@@ -393,6 +419,266 @@ CONTAINS
 
     CALL MatZeroEntries(p_object%A,p_object%ierr)
   END SUBROUTINE p_zero_matrix
+
+  SUBROUTINE collect_elements(g_g_pp,g_g_all)
+
+    !/****if* petsc/collect_elements
+    !*  NAME
+    !*    SUBROUTINE: collect_elements
+    !*  SYNOPSIS
+    !*    Usage:      collect_elements(g_g_pp,g_g_all)
+    !*  FUNCTION
+    !*    Collects onto this process all elements that contain dofs
+    !*    corresponding to the equations on this process.
+    !*  ARGUMENTS
+    !*    INTENT(IN)
+    !*
+    !*    g_g_pp(:,:)        : Integer
+    !*                         The steering array. g_g_pp(:,iel) are the global
+    !*                         equation numbers for the dofs in element with
+    !*                         local number iel (global number iel_start+iel-1)
+    !*                         Restrained dofs have equation number 0.
+    !*    INTENT(OUT)
+    !*
+    !*    g_g_all(:,:)       : PetscInt
+    !*                         The equivalent of g_g_pp, but for all elements
+    !*                         that have dofs corresponding to the equations on
+    !*                         this process.  The element numbers in g_g_all
+    !*                         have no relationship with global or local
+    !*                         element numbers:  the element numbers are not
+    !*                         needed for the row non-zero counting that
+    !*                         g_g_all is used for.
+    !*  AUTHOR
+    !*    Mark Filipiak
+    !*  CREATION DATE
+    !*    08.08.2016
+    !*  MODIFICATION HISTORY
+    !*    Version 1, 08.08.2016, Mark Filipiak
+    !*  COPYRIGHT
+    !*    (c) University of Edinburgh 2016
+    !******
+    !*  Place remarks that should not be included in the documentation here.
+    !*
+    !*  PETSc 64-bit indices are used.
+    !*/
+
+    INTEGER,  DIMENSION(:,:),              INTENT(in)  :: g_g_pp
+    PetscInt, DIMENSION(:,:), ALLOCATABLE, INTENT(out) :: g_g_all
+
+    PetscInt    :: i,n,j,iel,p,s,nels_send,nels_recv,nels_all,r
+    PetscMPIInt :: n_sends,n_recvs,ierr
+    PetscInt,    DIMENSION(:),   ALLOCATABLE :: q
+    PetscInt,    DIMENSION(:,:), ALLOCATABLE :: el_p,p_el,send_buffer
+    ! In theory you could have more than 2**31 - 1 elements on a process, but
+    ! the counts in MPI messages can only be MPI_INTEGER size (usually 32-bit).
+    PetscInt,    DIMENSION(:),   ALLOCATABLE :: send_start,recv_start
+    PetscMPIInt, DIMENSION(:),   ALLOCATABLE :: send_count,recv_count
+
+    PetscMPIInt, DIMENSION(:), ALLOCATABLE :: requests
+    PetscMPIInt                            :: PARAFEM_ELEMENT
+
+    ! el_p defines the element to process mapping
+    ! el_p(:,iel) are the process numbers of equations corresponding to dofs
+    ! contained in element iel
+    ALLOCATE(el_p(LBOUND(g_g_pp,1):UBOUND(g_g_pp,1),                           &
+                  LBOUND(g_g_pp,2):UBOUND(g_g_pp,2)))
+    ALLOCATE(q(ntot)) ! work array
+    ! p_el defines one stage of the mapping (process-element pairs)
+    ! from: process number of equations corresponding to dofs contained in
+    !       elements on this process
+    ! to:   the corresponding local number of the element.
+    ! p_el(:,1) are process numbers
+    ! p_el(:,2) are local element numbers
+    ! Done this way to use Petsc's sort routines.
+    ALLOCATE(p_el(ntot*nels_pp,2))
+
+    ! See the gather_scatter module, especially calc_neq_pp and make_ggl.
+    WHERE (g_g_pp == 0)
+      el_p = 0
+    ELSEWHERE (g_g_pp <= threshold .OR. threshold == 0)
+      el_p = (g_g_pp - 1)/neq_pp1 + 1
+    ELSEWHERE
+      el_p = num_neq_pp1 + (g_g_pp - threshold - 1)/(neq_pp1 - 1) + 1
+    END WHERE
+
+    i = 1
+    DO iel = 1, nels_pp
+      q = el_p(:,iel)
+      n = ntot
+      CALL PetscSortRemoveDupsInt(n,q,p_object%ierr)
+      DO j = 1, n
+        IF (q(j) /= 0 .AND. q(j) /= numpe) THEN
+          p_el(i,1) = q(j)
+          p_el(i,2) = iel
+          i = i + 1
+        END IF
+      END DO
+    END DO
+    DEALLOCATE(el_p,q)
+    n = i - 1
+    ! => p_el(1:n) gives the pairing from process to element, but is unsorted
+
+    CALL PetscSortIntWithArray(n,p_el(1:n,1),p_el(1:n,2),p_object%ierr)
+    ! => p_el(1:n) gives the pairing from process to element, sorted.
+
+    ! Now complete the mapping.
+    ALLOCATE(send_start(npes),send_count(npes))
+    send_count = 0
+    p = 0 ! invalid process number
+    DO i = 1, n
+      IF (p_el(i,1) /= p) THEN
+        ! next process in mapping
+        p = p_el(i,1)
+      END IF
+      send_count(p) = send_count(p) + 1
+    END DO
+    s = 1 ! s for start
+    DO p = 1, npes
+      send_start(p) = s
+      s = s + send_count(p)
+    END DO
+    n_sends = COUNT(send_count /= 0)
+    ! => if send_count(p) /= 0 then the elements to send to process p are
+    !    p_el(send_start(p):send_start(p)+count(p)-1,2)
+    ! => process to element mapping complete and send information complete.
+
+    ! Transpose the send_count to get the receive counts
+    ALLOCATE(recv_start(npes),recv_count(npes))
+    CALL MPI_Alltoall(send_count,1,MPI_INTEGER,recv_count,1,MPI_INTEGER,       &
+                      MPI_COMM_WORLD,ierr)
+    
+    s = 1 ! s for start
+    DO p = 1, npes
+      recv_start(p) = s
+      s = s + recv_count(p)
+    END DO
+    n_recvs = COUNT(recv_count /= 0)
+    ! => process to element mapping complete and send and receive information
+    !    complete
+
+    ! Collect all the elements required by equations that are on this process.
+    ! The elements from other process will be put into the beginning of g_g_all,
+    ! then the elements on this process will be copied from g_g_pp to the end of
+    ! g_g_all.  g_g_all can be the receive buffer becuse it is contiguous, but
+    ! there needs to be a contiguous send buffer to use MPI_Isend.
+    nels_send = SUM(send_count)
+    nels_recv = SUM(recv_count)
+    nels_all = nels_recv + nels_pp
+    ALLOCATE(g_g_all(ntot,nels_all))
+    ALLOCATE(send_buffer(ntot,nels_send))
+    ! TODO: check that zero sizes for arrays and zero counts are OK.
+    ALLOCATE(requests(n_sends + n_recvs))
+
+    ! An MPI datatype to hold an element.  MPIU_INTEGER is the MPI type for a
+    ! PetscInt, correctly set to be 32- or 64-bit depending on how PETSc was
+    ! built.
+    CALL MPI_Type_contiguous(ntot,MPIU_INTEGER,PARAFEM_ELEMENT,ierr)
+    CALL MPI_Type_commit(PARAFEM_ELEMENT,ierr)
+
+    ! Copy the elements to the send buffer, in the correct order.
+    ! No, you don't need
+    ! FORALL (p=1,npes)
+    !   send_buffer(:,send_start(p):send_start(p)+send_count(p)-1)               &
+    !     = g_g_pp(:,p_el(send_start(p):send_start(p)+send_count(p)-1,2))
+    ! END FORALL
+    ! isn't Fortran wonderful!
+    send_buffer = g_g_pp(:,p_el(:,2))
+    DEALLOCATE(p_el)
+
+    ! If you swap the order of the receive and send loops, then make sure r is
+    ! handled correctly.
+    r = 1 ! r for requests
+    DO p = 1, npes
+      IF (recv_count(p) /= 0) THEN
+        CALL MPI_Irecv(g_g_all(:,recv_start(p):recv_start(p)+recv_count(p)-1), &
+                       recv_count(p),PARAFEM_ELEMENT,p-1,0,                    &
+                       MPI_COMM_WORLD,requests(r),ierr)
+        r = r + 1
+      END IF
+    END DO
+    IF (r - 1 /= n_recvs) THEN ! disaster
+      WRITE(error_unit,'(A,I6)') "r - 1 /= n_recvs on process ", numpe
+      CALL MPI_Abort(MPI_COMM_WORLD,ierr)
+    END IF
+
+    DO p = 1, npes
+      IF (send_count(p) /= 0) THEN
+        CALL MPI_Isend(send_buffer                                             &
+                         (:,send_start(p):send_start(p)+send_count(p)-1),      &
+                       send_count(p),PARAFEM_ELEMENT,p-1,0,                    &
+                       MPI_COMM_WORLD,requests(r),ierr)
+        r = r + 1
+      END IF
+    END DO
+    IF (r - 1 /= n_recvs + n_sends) THEN ! disaster
+      WRITE(error_unit,'(A,I6)') "r - 1 /= n_recvs + n_sends on process ", numpe
+      CALL MPI_Abort(MPI_COMM_WORLD,ierr)
+    END IF
+
+    CALL MPI_Waitall(n_recvs + n_sends,requests,MPI_STATUSES_IGNORE,ierr)
+    IF (ierr /= MPI_SUCCESS) THEN ! disaster
+      WRITE(error_unit,'(A,I6)') "receive/send error on process ", numpe
+      CALL MPI_Abort(MPI_COMM_WORLD,ierr)
+    END IF
+
+    CALL MPI_Type_free(PARAFEM_ELEMENT,ierr)
+    DEALLOCATE(requests,send_buffer,recv_start,recv_count,send_start,send_count)
+    ! => all the off-process elements are in g_g_all
+
+    g_g_all(:,nels_recv+1:) = g_g_pp
+    ! => all the elements needed for the equations that are on this process are
+    !    in g_g_all
+  END SUBROUTINE collect_elements
+
+  SUBROUTINE row_nnz(g_g_all,dnz,onz)
+
+    !/****if* petsc/row_nnz
+    !*  NAME
+    !*    SUBROUTINE: row_nnz
+    !*  SYNOPSIS
+    !*    Usage:      row_nnz(g_g_all,dnz,onz)
+    !*  FUNCTION
+    !*    Calculates the number of on- and off-process non-zeroes in the global
+    !*    matrix for the equations on this process.
+    !*  ARGUMENTS
+    !*    INTENT(IN)
+    !*
+    !*    g_g_all(:,:)       : PetscInt
+    !*                         The equivalent of g_g_pp, but for all elements
+    !*                         that have dofs corresponding to the equations on
+    !*                         this process.  The element numbers in g_g_all
+    !*                         have no relationship with global or local
+    !*                         element numbers:  the element numbers are not
+    !*                         needed for the row non-zero counting that
+    !*                         g_g_all is used for.
+    !*    INTENT(OUT)
+    !*
+    !*    dnz(:)             : PetscInt
+    !*                         dnz(r) is the number of non-zeroes corresponding
+    !*                         to equations on this process in the global
+    !*                         matrix for the equation with local number r.
+    !*    onz(:)             : PetscInt
+    !*                         onz(r) is the number of non-zeroes corresponding
+    !*                         to equations not on this process in the global
+    !*                         matrix for the equation with local number r.
+    !*  AUTHOR
+    !*    Mark Filipiak
+    !*  CREATION DATE
+    !*    08.08.2016
+    !*  MODIFICATION HISTORY
+    !*    Version 1, 08.08.2016, Mark Filipiak
+    !*  COPYRIGHT
+    !*    (c) University of Edinburgh 2016
+    !******
+    !*  Place remarks that should not be included in the documentation here.
+    !*
+    !*  PETSc 64-bit indices are used.
+    !*/
+
+    PetscInt, DIMENSION(:,:),              INTENT(in)  :: g_g_all
+    PetscInt, DIMENSION(:),   ALLOCATABLE, INTENT(out) :: dnz,onz
+
+  END SUBROUTINE row_nnz
 
   SUBROUTINE p_create_vectors(neq_pp)
 
@@ -1375,13 +1661,13 @@ CONTAINS
     p_memory_use = sum_VmHWM
   END FUNCTION p_memory_use
   
-  FUNCTION nnod(ndim,nod,error,message)
+  FUNCTION nnod_estimate(ndim,nod,error,message)
 
-    !/****if* petsc/nnod
+    !/****if* petsc/nnod_estimate
     !*  NAME
-    !*    SUBROUTINE: nnod
+    !*    SUBROUTINE: nnod_estimate
     !*  SYNOPSIS
-    !*    Usage:      nnod(ndim,nod,error,message)
+    !*    Usage:      nnod_estimate(ndim,nod,error,message)
     !*  FUNCTION
 
     !*    Returns an approximate upper estimate of the number of nodes in all
@@ -1426,7 +1712,7 @@ CONTAINS
     !*  Appendix B
     !*/
 
-    INTEGER                               :: nnod
+    INTEGER                               :: nnod_estimate
     INTEGER,                  INTENT(in)  :: ndim
     INTEGER,                  INTENT(in)  :: nod
     LOGICAL,                  INTENT(out) :: error
@@ -1466,7 +1752,7 @@ CONTAINS
         v = 9; i = 5
       CASE DEFAULT
         error = .TRUE.
-        message = "wrong number of nodes in nnod"        
+        message = "wrong number of nodes in nnod_estimate"        
       END SELECT
     CASE(2)      ! two dimensional elements
       SELECT CASE (nod)
@@ -1531,7 +1817,7 @@ CONTAINS
         v = 25; e = 15; i = 9
       CASE DEFAULT
         error = .TRUE.
-        message = "wrong number of nodes in nnod"        
+        message = "wrong number of nodes in nnod_estimate"        
       END SELECT
     CASE(3)  ! three dimensional elements
       SELECT CASE (nod)
@@ -1633,11 +1919,11 @@ CONTAINS
         v = 81; e = 51; f = 32; i = 20
       CASE DEFAULT
         error = .TRUE.
-        message = "wrong number of nodes in nnod"        
+        message = "wrong number of nodes in nnod_estimate"        
       END SELECT
     CASE DEFAULT
       error = .TRUE.
-      message = "wrong number of dimensions in nnod"
+      message = "wrong number of dimensions in nnod_estimate"
     END SELECT
     
     ! over_allocation is a safety factor and allows for distorted grids with
@@ -1648,16 +1934,17 @@ CONTAINS
     CALL PetscOptionsGetReal(PETSC_NULL_CHARACTER,"-over_allocation",          &
                              p_object%over_allocation,set,p_object%ierr)
 
-    nnod = NINT(p_object%over_allocation * v)
-  END FUNCTION nnod
+    nnod_estimate = NINT(p_object%over_allocation * v)
+  END FUNCTION nnod_estimate
 
-  FUNCTION row_nnz_2(ndim,nfield,nodof,ntype,nod,error,message)
+  FUNCTION row_nnz_2_estimate(ndim,nfield,nodof,ntype,nod,error,message)
 
-    !/****if* petsc/row_nnz_2
+    !/****if* petsc/row_nnz_2_estimate
     !*  NAME
-    !*    SUBROUTINE: row_nnz_2
+    !*    SUBROUTINE: row_nnz_2_estimate
     !*  SYNOPSIS
-    !*    Usage:      row_nnz_2(ndim,nfield,nodof,ntype,nod,error,message)
+    !*    Usage:      row_nnz_2_estimate
+    !*                  (ndim,nfield,nodof,ntype,nod,error,message)
     !*  FUNCTION
     !*    Returns an approximate upper estimate of the number of non-zeroes in a
     !*    row of the global matrix.  The number of non-zeroes in a row is used
@@ -1708,7 +1995,7 @@ CONTAINS
     !*
     !*/
 
-    INTEGER                               :: row_nnz_2
+    INTEGER                               :: row_nnz_2_estimate
     INTEGER,                  INTENT(in)  :: ndim
     INTEGER,                  INTENT(in)  :: nfield
     INTEGER,                  INTENT(in)  :: nodof(:)
@@ -1727,25 +2014,25 @@ CONTAINS
     IF (SIZE(nodof) /= nfield) THEN
       error = .TRUE.
       message = "size of nodof /= nfield"
-      row_nnz_2 = -1
+      row_nnz_2_estimate = -1
       RETURN
     END IF
     IF (SIZE(ntype) /= nfield) THEN
       error = .TRUE.
       message = "size of ntype /= nfield"
-      row_nnz_2 = -1
+      row_nnz_2_estimate = -1
       RETURN
     END IF
     IF (SIZE(nod,2) /= nfield) THEN
       error = .TRUE.
       message = "size of 2nd dimension of nod /= nfield"
-      row_nnz_2 = -1
+      row_nnz_2_estimate = -1
       RETURN
     END IF
     IF (SIZE(nod,1) < MAXVAL(ntype)) THEN
       error = .TRUE.
       message = "size of 1st dimension of nod too small"
-      row_nnz_2 = -1
+      row_nnz_2_estimate = -1
       RETURN
     END IF
     
@@ -1755,10 +2042,10 @@ CONTAINS
     DO field = 1, nfield
       max_nnod = 0
       DO etype = 1, ntype(field)
-        n = nnod(ndim,nod(etype,field),error,message)
+        n = nnod_estimate(ndim,nod(etype,field),error,message)
         IF (error) THEN
           message = message//": unknown element type"
-          row_nnz_2 = 0
+          row_nnz_2_estimate = 0
           RETURN
         END IF
         max_nnod = MAX(max_nnod,n)
@@ -1766,16 +2053,17 @@ CONTAINS
       sum = sum + nodof(field) * max_nnod
     END DO
 
-    row_nnz_2 = sum    
-  END FUNCTION row_nnz_2
+    row_nnz_2_estimate = sum    
+  END FUNCTION row_nnz_2_estimate
 
-  SUBROUTINE p_row_nnz_2(ndim,nfield,nodof,ntype,nod,error,message)
+  SUBROUTINE p_row_nnz_2_estimate(ndim,nfield,nodof,ntype,nod,error,message)
 
-    !/****if* petsc/p_row_nnz_2
+    !/****if* petsc/p_row_nnz_2_estimate
     !*  NAME
-    !*    SUBROUTINE: p_row_nnz_2
+    !*    SUBROUTINE: p_row_nnz_2_estimate
     !*  SYNOPSIS
-    !*    Usage:      p_row_nnz_2(ndim,nfield,nodof,ntype,nod,error,message)
+    !*    Usage:      p_row_nnz_2_estimate
+    !*                  (ndim,nfield,nodof,ntype,nod,error,message)
     !*  FUNCTION
     !*    Sets p_object%row_nnz to an approximate upper estimate of the number
     !*    of non-zeroes in a row of the global matrix.  The number of non-zeroes
@@ -1837,16 +2125,17 @@ CONTAINS
     error = .FALSE.
     message = ""
 
-    p_object%row_nnz = row_nnz_2(ndim,nfield,nodof,ntype,nod,error,message)
-  END SUBROUTINE p_row_nnz_2
+    p_object%row_nnz = row_nnz_2_estimate(ndim,nfield,nodof,ntype,nod,         &
+                                          error,message)
+  END SUBROUTINE p_row_nnz_2_estimate
 
-  FUNCTION row_nnz_1(ndim,nodof,ntype,nod,error,message)
+  FUNCTION row_nnz_1_estimate(ndim,nodof,ntype,nod,error,message)
 
-    !/****if* petsc/row_nnz_1
+    !/****if* petsc/row_nnz_1_estimate
     !*  NAME
-    !*    SUBROUTINE: row_nnz_1
+    !*    SUBROUTINE: row_nnz_1_estimate
     !*  SYNOPSIS
-    !*    Usage:      row_nnz_1(ndim,nodof,ntype,nod,error,message)
+    !*    Usage:      row_nnz_1_estimate(ndim,nodof,ntype,nod,error,message)
     !*  FUNCTION
     !*    This is for a single field and multiple types of element for that
     !*    field.
@@ -1884,7 +2173,7 @@ CONTAINS
     !*
     !*/
 
-    INTEGER                               :: row_nnz_1
+    INTEGER                               :: row_nnz_1_estimate
     INTEGER,                  INTENT(in)  :: ndim
     INTEGER,                  INTENT(in)  :: nodof
     INTEGER,                  INTENT(in)  :: ntype
@@ -1898,21 +2187,22 @@ CONTAINS
     IF (SIZE(nod) /= ntype) THEN
       error = .TRUE.
       message = "size of nod /= ntype"
-      row_nnz_1 = -1
+      row_nnz_1_estimate = -1
       RETURN
     END IF
     
-    row_nnz_1 = row_nnz_2(ndim,1,(/nodof/),(/ntype/),                          &
-                          RESHAPE(nod,(/SIZE(nod),1/)),error,message)
-  END FUNCTION row_nnz_1
+    row_nnz_1_estimate = row_nnz_2_estimate(ndim,1,(/nodof/),(/ntype/),        &
+                                            RESHAPE(nod,(/SIZE(nod),1/)),      &
+                                            error,message)
+  END FUNCTION row_nnz_1_estimate
 
-  SUBROUTINE p_row_nnz_1(ndim,nodof,ntype,nod,error,message)
+  SUBROUTINE p_row_nnz_1_estimate(ndim,nodof,ntype,nod,error,message)
 
-    !/****if* petsc/p_row_nnz_1
+    !/****if* petsc/p_row_nnz_1_estimate
     !*  NAME
-    !*    SUBROUTINE: p_row_nnz_1
+    !*    SUBROUTINE: p_row_nnz_1_estimate
     !*  SYNOPSIS
-    !*    Usage:      p_row_nnz_1(ndim,nodof,ntype,nod,error,message)
+    !*    Usage:      p_row_nnz_1_estimate(ndim,nodof,ntype,nod,error,message)
     !*  FUNCTION
     !*    Sets p_object%row_nnz to an approximate upper estimate of the number
     !*    of non-zeroes in a row of the global matrix.  The number of non-zeroes
@@ -1966,16 +2256,16 @@ CONTAINS
     error = .FALSE.
     message = ""
 
-    p_object%row_nnz = row_nnz_1(ndim,nodof,ntype,nod,error,message)
-  END SUBROUTINE p_row_nnz_1
+    p_object%row_nnz = row_nnz_1_estimate(ndim,nodof,ntype,nod,error,message)
+  END SUBROUTINE p_row_nnz_1_estimate
 
-  FUNCTION row_nnz(ndim,nodof,nod,error,message)
+  FUNCTION row_nnz_estimate(ndim,nodof,nod,error,message)
 
-    !/****if* petsc/row_nnz
+    !/****if* petsc/row_nnz_estimate
     !*  NAME
-    !*    SUBROUTINE: row_nnz
+    !*    SUBROUTINE: row_nnz_estimate
     !*  SYNOPSIS
-    !*    Usage:      row_nnz(ndim,nodof,nod,error,message)
+    !*    Usage:      row_nnz_estimate(ndim,nodof,nod,error,message)
     !*  FUNCTION
     !*    Returns an approximate upper estimate of the number of non-zeroes in a
     !*    row of the global matrix.  The number of non-zeroes in a row is used
@@ -2014,7 +2304,7 @@ CONTAINS
     !*
     !*/
 
-    INTEGER                               :: row_nnz
+    INTEGER                               :: row_nnz_estimate
     INTEGER,                  INTENT(in)  :: ndim
     INTEGER,                  INTENT(in)  :: nodof
     INTEGER,                  INTENT(in)  :: nod
@@ -2024,16 +2314,16 @@ CONTAINS
     error = .FALSE.
     message = ""
 
-    row_nnz = row_nnz_1(ndim,nodof,1,(/nod/),error,message)
-  END FUNCTION row_nnz
+    row_nnz_estimate = row_nnz_1_estimate(ndim,nodof,1,(/nod/),error,message)
+  END FUNCTION row_nnz_estimate
 
-  SUBROUTINE p_row_nnz(ndim,nodof,nod,error,message)
+  SUBROUTINE p_row_nnz_estimate(ndim,nodof,nod,error,message)
 
-    !/****if* petsc/p_row_nnz
+    !/****if* petsc/p_row_nnz_estimate
     !*  NAME
-    !*    SUBROUTINE: p_row_nnz
+    !*    SUBROUTINE: p_row_nnz_estimate
     !*  SYNOPSIS
-    !*    Usage:      p_row_nnz(ndim,nodof,nod,error,message)
+    !*    Usage:      p_row_nnz_estimate(ndim,nodof,nod,error,message)
     !*  FUNCTION
     !*    Sets p_object%row_nnz to an approximate upper estimate of the number
     !*    of non-zeroes in a row of the global matrix.  The number of non-zeroes
@@ -2081,7 +2371,334 @@ CONTAINS
     error = .FALSE.
     message = ""
 
-    p_object%row_nnz = row_nnz(ndim,nodof,nod,error,message)
-  END SUBROUTINE p_row_nnz
+    p_object%row_nnz = row_nnz_estimate(ndim,nodof,nod,error,message)
+  END SUBROUTINE p_row_nnz_estimate
+
+      SUBROUTINE ISORT (IX, IY, N, KFLAG, IERR)
+!***BEGIN PROLOGUE  ISORT
+!***PURPOSE  Sort an array and optionally make the same interchanges in
+!            an auxiliary array.  The array may be sorted in increasing
+!            or decreasing order.  A slightly modified QUICKSORT
+!            algorithm is used.
+!***LIBRARY   SLATEC
+!***CATEGORY  N6A2A
+!***TYPE      INTEGER (SSORT-S, DSORT-D, ISORT-I)
+!***KEYWORDS  SINGLETON QUICKSORT, SORT, SORTING
+!***AUTHOR  Jones, R. E., (SNLA)
+!           Kahaner, D. K., (NBS)
+!           Wisniewski, J. A., (SNLA)
+!***DESCRIPTION
+!
+!   ISORT sorts array IX and optionally makes the same interchanges in
+!   array IY.  The array IX may be sorted in increasing order or
+!   decreasing order.  A slightly modified quicksort algorithm is used.
+!
+!   Description of Parameters
+!      IX - integer array of values to be sorted
+!      IY - integer array to be (optionally) carried along
+!      N  - number of values in integer array IX to be sorted
+!      KFLAG - control parameter
+!            =  2  means sort IX in increasing order and carry IY along.
+!            =  1  means sort IX in increasing order (ignoring IY)
+!            = -1  means sort IX in decreasing order (ignoring IY)
+!            = -2  means sort IX in decreasing order and carry IY along.
+!      IERR  - error flag
+!            =  0  means no error occurred
+!            =  1  means an error occurred
+!
+!***REFERENCES  R. C. Singleton, Algorithm 347, An efficient algorithm
+!                 for sorting with minimal storage, Communications of
+!                 the ACM, 12, 3 (1969), pp. 185-187.
+!***ROUTINES CALLED  none
+!***REVISION HISTORY  (YYMMDD)
+!   761118  DATE WRITTEN
+!   810801  Modified by David K. Kahaner.
+!   890531  Changed all specific intrinsics to generic.  (WRB)
+!   890831  Modified array declarations.  (WRB)
+!   891009  Removed unreferenced statement labels.  (WRB)
+!   891009  REVISION DATE from Version 3.2
+!   891214  Prologue converted to Version 4.0 format.  (BAB)
+!   900315  CALLs to XERROR changed to CALLs to XERMSG.  (THJ)
+!   901012  Declared all variables; changed X,Y to IX,IY. (M. McClain)
+!   920501  Reformatted the REFERENCES section.  (DWL, WRB)
+!   920519  Clarified error messages.  (DWL)
+!   920801  Declarations section rebuilt and code restructured to use
+!           IF-THEN-ELSE-ENDIF.  (RWC, WRB)
+!   160802  Removed XERMSG calls, return IERR instead.  (MJF)
+!   160802  C -> !, and intent for arguments.  (MJF)
+!***END PROLOGUE  ISORT
+!     .. Scalar Arguments ..
+      INTEGER, INTENT(in)  :: KFLAG, N
+      INTEGER, INTENT(out) :: IERR
+!     .. Array Arguments ..
+      INTEGER, INTENT(inout) :: IX(*), IY(*)
+!     .. Local Scalars ..
+      REAL R
+      INTEGER I, IJ, J, K, KK, L, M, NN, T, TT, TTY, TY
+!     .. Local Arrays ..
+      INTEGER IL(21), IU(21)
+!     .. External Subroutines ..
+      EXTERNAL XERMSG
+!     .. Intrinsic Functions ..
+      INTRINSIC ABS, INT
+!***FIRST EXECUTABLE STATEMENT  ISORT
+      IERR = 0
+      NN = N
+      IF (NN .LT. 1) THEN
+         IERR = 1
+         RETURN
+      ENDIF
+!
+      KK = ABS(KFLAG)
+      IF (KK.NE.1 .AND. KK.NE.2) THEN
+         IERR = 1
+         RETURN
+      ENDIF
+!
+!     Alter array IX to get decreasing order if needed
+!
+      IF (KFLAG .LE. -1) THEN
+         DO 10 I=1,NN
+            IX(I) = -IX(I)
+   10    CONTINUE
+      ENDIF
+!
+      IF (KK .EQ. 2) GO TO 100
+!
+!     Sort IX only
+!
+      M = 1
+      I = 1
+      J = NN
+      R = 0.375E0
+!
+   20 IF (I .EQ. J) GO TO 60
+      IF (R .LE. 0.5898437E0) THEN
+         R = R+3.90625E-2
+      ELSE
+         R = R-0.21875E0
+      ENDIF
+!
+   30 K = I
+!
+!     Select a central element of the array and save it in location T
+!
+      IJ = I + INT((J-I)*R)
+      T = IX(IJ)
+!
+!     If first element of array is greater than T, interchange with T
+!
+      IF (IX(I) .GT. T) THEN
+         IX(IJ) = IX(I)
+         IX(I) = T
+         T = IX(IJ)
+      ENDIF
+      L = J
+!
+!     If last element of array is less than than T, interchange with T
+!
+      IF (IX(J) .LT. T) THEN
+         IX(IJ) = IX(J)
+         IX(J) = T
+         T = IX(IJ)
+!
+!        If first element of array is greater than T, interchange with T
+!
+         IF (IX(I) .GT. T) THEN
+            IX(IJ) = IX(I)
+            IX(I) = T
+            T = IX(IJ)
+         ENDIF
+      ENDIF
+!
+!     Find an element in the second half of the array which is smaller
+!     than T
+!
+   40 L = L-1
+      IF (IX(L) .GT. T) GO TO 40
+!
+!     Find an element in the first half of the array which is greater
+!     than T
+!
+   50 K = K+1
+      IF (IX(K) .LT. T) GO TO 50
+!
+!     Interchange these elements
+!
+      IF (K .LE. L) THEN
+         TT = IX(L)
+         IX(L) = IX(K)
+         IX(K) = TT
+         GO TO 40
+      ENDIF
+!
+!     Save upper and lower subscripts of the array yet to be sorted
+!
+      IF (L-I .GT. J-K) THEN
+         IL(M) = I
+         IU(M) = L
+         I = K
+         M = M+1
+      ELSE
+         IL(M) = K
+         IU(M) = J
+         J = L
+         M = M+1
+      ENDIF
+      GO TO 70
+!
+!     Begin again on another portion of the unsorted array
+!
+   60 M = M-1
+      IF (M .EQ. 0) GO TO 190
+      I = IL(M)
+      J = IU(M)
+!
+   70 IF (J-I .GE. 1) GO TO 30
+      IF (I .EQ. 1) GO TO 20
+      I = I-1
+!
+   80 I = I+1
+      IF (I .EQ. J) GO TO 60
+      T = IX(I+1)
+      IF (IX(I) .LE. T) GO TO 80
+      K = I
+!
+   90 IX(K+1) = IX(K)
+      K = K-1
+      IF (T .LT. IX(K)) GO TO 90
+      IX(K+1) = T
+      GO TO 80
+!
+!     Sort IX and carry IY along
+!
+  100 M = 1
+      I = 1
+      J = NN
+      R = 0.375E0
+!
+  110 IF (I .EQ. J) GO TO 150
+      IF (R .LE. 0.5898437E0) THEN
+         R = R+3.90625E-2
+      ELSE
+         R = R-0.21875E0
+      ENDIF
+!
+  120 K = I
+!
+!     Select a central element of the array and save it in location T
+!
+      IJ = I + INT((J-I)*R)
+      T = IX(IJ)
+      TY = IY(IJ)
+!
+!     If first element of array is greater than T, interchange with T
+!
+      IF (IX(I) .GT. T) THEN
+         IX(IJ) = IX(I)
+         IX(I) = T
+         T = IX(IJ)
+         IY(IJ) = IY(I)
+         IY(I) = TY
+         TY = IY(IJ)
+      ENDIF
+      L = J
+!
+!     If last element of array is less than T, interchange with T
+!
+      IF (IX(J) .LT. T) THEN
+         IX(IJ) = IX(J)
+         IX(J) = T
+         T = IX(IJ)
+         IY(IJ) = IY(J)
+         IY(J) = TY
+         TY = IY(IJ)
+!
+!        If first element of array is greater than T, interchange with T
+!
+         IF (IX(I) .GT. T) THEN
+            IX(IJ) = IX(I)
+            IX(I) = T
+            T = IX(IJ)
+            IY(IJ) = IY(I)
+            IY(I) = TY
+            TY = IY(IJ)
+         ENDIF
+      ENDIF
+!
+!     Find an element in the second half of the array which is smaller
+!     than T
+!
+  130 L = L-1
+      IF (IX(L) .GT. T) GO TO 130
+!
+!     Find an element in the first half of the array which is greater
+!     than T
+!
+  140 K = K+1
+      IF (IX(K) .LT. T) GO TO 140
+!
+!     Interchange these elements
+!
+      IF (K .LE. L) THEN
+         TT = IX(L)
+         IX(L) = IX(K)
+         IX(K) = TT
+         TTY = IY(L)
+         IY(L) = IY(K)
+         IY(K) = TTY
+         GO TO 130
+      ENDIF
+!
+!     Save upper and lower subscripts of the array yet to be sorted
+!
+      IF (L-I .GT. J-K) THEN
+         IL(M) = I
+         IU(M) = L
+         I = K
+         M = M+1
+      ELSE
+         IL(M) = K
+         IU(M) = J
+         J = L
+         M = M+1
+      ENDIF
+      GO TO 160
+!
+!     Begin again on another portion of the unsorted array
+!
+  150 M = M-1
+      IF (M .EQ. 0) GO TO 190
+      I = IL(M)
+      J = IU(M)
+!
+  160 IF (J-I .GE. 1) GO TO 120
+      IF (I .EQ. 1) GO TO 110
+      I = I-1
+!
+  170 I = I+1
+      IF (I .EQ. J) GO TO 150
+      T = IX(I+1)
+      TY = IY(I+1)
+      IF (IX(I) .LE. T) GO TO 170
+      K = I
+!
+  180 IX(K+1) = IX(K)
+      IY(K+1) = IY(K)
+      K = K-1
+      IF (T .LT. IX(K)) GO TO 180
+      IX(K+1) = T
+      IY(K+1) = TY
+      GO TO 170
+!
+!     Clean up
+!
+  190 IF (KFLAG .LE. -1) THEN
+         DO 200 I=1,NN
+            IX(I) = -IX(I)
+  200    CONTINUE
+      ENDIF
+      RETURN
+      END
 
 END MODULE parafem_petsc
