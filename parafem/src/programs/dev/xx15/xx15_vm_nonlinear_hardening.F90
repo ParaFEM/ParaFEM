@@ -340,23 +340,14 @@ PROGRAM xx15_vm_nonlinear_hardening
 
   ALLOCATE(diag_precon_tmp(ntot,nels_pp))
 
-  !---------------------------------------------------------------------------
-  ! 9a. Start up PETSc after find_pe_procs (so that MPI has been started)
-  !---------------------------------------------------------------------------
+  !-----------------------------------------------------------------------------
+  ! 9a. Start up PETSc after find_pe_procs (so that MPI has been started) and
+  !     after find_g3 so that neq_pp and g_g_pp are set up.
+  !-----------------------------------------------------------------------------
   IF (solvers == petsc_solvers) THEN
     CALL p_initialize(fname_base,numpe)
-    ! Set the approximate number of zeroes per row for the matrix size
-    ! pre-allocation.
-    CALL p_row_nnz(ndim,nodof,nod,error,message)
-    IF (error) THEN
-      IF (numpe == 1) THEN
-        WRITE(*,'(A)') message
-      END IF
-      CALL p_finalize
-      CALL shutdown
-    END IF
     ! Set up PETSc.
-    CALL p_setup(neq_pp,ntot,numpe)
+    CALL p_setup(neq_pp,ntot,g_g_pp,numpe)
   END IF
 
   !----------------------------------------------------------------------------
