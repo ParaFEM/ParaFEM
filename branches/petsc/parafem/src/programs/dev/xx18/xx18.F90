@@ -129,6 +129,8 @@ PROGRAM xx18
     ! Set up PETSc.
     CALL p_setup(neq_pp,ntot,g_g_pp,numpe)
   END IF
+  peak_memory_use = p_memory_use()
+  IF (numpe == 1) WRITE(*,'(A,F7.2,A)') "after setup:             ",peak_memory_use," GB "
 
   IF(numpe==1)THEN
     OPEN(11,FILE=argv(1:nlen)//".res",STATUS='REPLACE',ACTION='WRITE')
@@ -163,10 +165,14 @@ PROGRAM xx18
       CALL p_add_element(g_g_pp(:,iel),km)
     END IF
   END DO elements_1
+  peak_memory_use = p_memory_use()
+  IF (numpe == 1) WRITE(*,'(A,F7.2,A)') "after add elements:      ",peak_memory_use," GB "
 
   IF (solvers == petsc_solvers) THEN
     CALL p_assemble(numpe)
   END IF
+  peak_memory_use = p_memory_use()
+  IF (numpe == 1) WRITE(*,'(A,F7.2,A)') "after assemble:          ",peak_memory_use," GB "
 
   timest(4) = elap_time()
   

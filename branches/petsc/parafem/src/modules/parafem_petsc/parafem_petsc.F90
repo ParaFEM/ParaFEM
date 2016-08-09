@@ -31,9 +31,8 @@ MODULE parafem_petsc
   
   USE, INTRINSIC :: iso_fortran_env ! for the real32 kind to use with MPI_REAL4
   USE mp_interface
-  USE global_variables, ONLY: ntot, neq, nels_pp, neq_pp, numpe
-  USE gather_scatter, ONLY:   npes, neq_pp1, neq_pp2, num_neq_pp1, threshold,  &
-                              iel_start, ieq_start
+  USE global_variables, ONLY: ntot, nels_pp, neq_pp, numpe
+  USE gather_scatter,   ONLY: npes, neq_pp1, num_neq_pp1, threshold, ieq_start
   IMPLICIT NONE
 
   PUBLIC
@@ -316,6 +315,8 @@ CONTAINS
     !*
     !*  PETSc 64-bit indices and 64-bit reals are used.
     !*
+    !*  The slow step is calculating the number of non-zeroes in each row.
+    !*
     !*  Block size fixed to 1 for just now - this cannot be set to nodof until
     !*  the restraints are handled block-wise in ParaFEM.
     !*  What about multi-field?
@@ -325,7 +326,7 @@ CONTAINS
     INTEGER, DIMENSION(:,:), INTENT(in) :: g_g_pp
 
     PetscInt :: p_neq_pp
-    PetscInt, DIMENSION(:), ALLOCATABLE   :: dnz,onz
+    PetscInt, DIMENSION(:),   ALLOCATABLE :: dnz,onz
     PetscInt, DIMENSION(:,:), ALLOCATABLE :: g_g_all
 
     p_neq_pp = neq_pp
@@ -465,7 +466,7 @@ CONTAINS
     INTEGER,  DIMENSION(:,:),              INTENT(in)  :: g_g_pp
     PetscInt, DIMENSION(:,:), ALLOCATABLE, INTENT(out) :: g_g_all
 
-    PetscInt    :: i,n,j,iel,p,s,nels_send,nels_recv,nels_all,r
+    PetscInt    :: i,n,iel,j,low,p,s,nels_send,nels_recv,nels_all,r
     PetscMPIInt :: n_sends,n_recvs,ierr
     PetscInt,    DIMENSION(:),   ALLOCATABLE :: q
     PetscInt,    DIMENSION(:,:), ALLOCATABLE :: el_p,p_el,send_buffer
@@ -480,9 +481,17 @@ CONTAINS
     ! el_p defines the element to process mapping
     ! el_p(:,iel) are the process numbers of equations corresponding to dofs
     ! contained in element iel
-    ALLOCATE(el_p(LBOUND(g_g_pp,1):UBOUND(g_g_pp,1),                           &
-                  LBOUND(g_g_pp,2):UBOUND(g_g_pp,2)))
-    ALLOCATE(q(ntot)) ! work array
+    ALLOCATE(el_p(ntot,nels_pp))
+
+    ! See the gather_scatter module, especially calc_neq_pp and make_ggl.
+    WHERE (g_g_pp == 0) ! restraints
+      el_p = 0
+    ELSEWHERE (g_g_pp <= threshold .OR. threshold == 0)
+      el_p = (g_g_pp - 1)/neq_pp1 + 1
+    ELSEWHERE
+      el_p = num_neq_pp1 + (g_g_pp - threshold - 1)/(neq_pp1 - 1) + 1
+    END WHERE
+
     ! p_el defines one stage of the mapping (process-element pairs)
     ! from: process number of equations corresponding to dofs contained in
     !       elements on this process
@@ -491,31 +500,29 @@ CONTAINS
     ! p_el(:,2) are local element numbers
     ! Done this way to use Petsc's sort routines.
     ALLOCATE(p_el(ntot*nels_pp,2))
-
-    ! See the gather_scatter module, especially calc_neq_pp and make_ggl.
-    WHERE (g_g_pp == 0)
-      el_p = 0
-    ELSEWHERE (g_g_pp <= threshold .OR. threshold == 0)
-      el_p = (g_g_pp - 1)/neq_pp1 + 1
-    ELSEWHERE
-      el_p = num_neq_pp1 + (g_g_pp - threshold - 1)/(neq_pp1 - 1) + 1
-    END WHERE
+    ALLOCATE(q(ntot)) ! work array
 
     i = 1
     DO iel = 1, nels_pp
       q = el_p(:,iel)
-      n = ntot
+      n = ntot ! n becomes the number of unique entries
       CALL PetscSortRemoveDupsInt(n,q,p_object%ierr)
-      DO j = 1, n
-        IF (q(j) /= 0 .AND. q(j) /= numpe) THEN
+      ! remove a possible zero entry (from restraints)
+      IF (q(1) /= 0) THEN
+        low = 1
+      ELSE
+        low = 2
+      END IF
+      DO j = low, n
+        IF (q(j) /= numpe) THEN
           p_el(i,1) = q(j)
           p_el(i,2) = iel
           i = i + 1
         END IF
       END DO
     END DO
-    DEALLOCATE(el_p,q)
     n = i - 1
+    DEALLOCATE(el_p,q)
     ! => p_el(1:n) gives the pairing from process to element, but is unsorted
 
     CALL PetscSortIntWithArray(n,p_el(1:n,1),p_el(1:n,2),p_object%ierr)
@@ -539,7 +546,7 @@ CONTAINS
     END DO
     n_sends = COUNT(send_count /= 0)
     ! => if send_count(p) /= 0 then the elements to send to process p are
-    !    p_el(send_start(p):send_start(p)+count(p)-1,2)
+    !    p_el(send_start(p):send_start(p)+send_count(p)-1,2)
     ! => process to element mapping complete and send information complete.
 
     ! Transpose the send_count to get the receive counts
@@ -559,15 +566,33 @@ CONTAINS
     ! Collect all the elements required by equations that are on this process.
     ! The elements from other process will be put into the beginning of g_g_all,
     ! then the elements on this process will be copied from g_g_pp to the end of
-    ! g_g_all.  g_g_all can be the receive buffer becuse it is contiguous, but
-    ! there needs to be a contiguous send buffer to use MPI_Isend.
-    nels_send = SUM(send_count)
+    ! g_g_all.  g_g_all can be the receive buffer because it is contiguous, but
+    ! there needs to be a contiguous send buffer to use MPI_Isend.  This would
+    ! be a problem if you are sending lots of data but it is expected that the
+    ! ratio of neigbouring elements (or 'surface') to local elements (the
+    ! 'volume') is small - otherwise you have used too many processes for the
+    ! size of problem and/or chosen a poor partitioning of the mesh.  To reduce
+    ! peak memory, allocate g_g_all after send_buffer is set up and p_el is
+    ! freed.
+    nels_send = SUM(send_count) ! = n
     nels_recv = SUM(recv_count)
     nels_all = nels_recv + nels_pp
-    ALLOCATE(g_g_all(ntot,nels_all))
     ALLOCATE(send_buffer(ntot,nels_send))
     ! TODO: check that zero sizes for arrays and zero counts are OK.
     ALLOCATE(requests(n_sends + n_recvs))
+
+    ! Copy the elements to the send buffer, in the correct order.
+    ! You can do
+    send_buffer = g_g_pp(:,p_el(1:n,2))
+    ! instead of
+    ! DO p = 1,npes
+    !   send_buffer(:,send_start(p):send_start(p)+send_count(p)-1)               &
+    !     = g_g_pp(:,p_el(send_start(p):send_start(p)+send_count(p)-1,2))
+    ! END DO
+    ! Isn't Fortran wonderful!
+    DEALLOCATE(p_el)
+
+    ALLOCATE(g_g_all(ntot,nels_all))
 
     ! An MPI datatype to hold an element.  MPIU_INTEGER is the MPI type for a
     ! PetscInt, correctly set to be 32- or 64-bit depending on how PETSc was
@@ -575,21 +600,12 @@ CONTAINS
     CALL MPI_Type_contiguous(ntot,MPIU_INTEGER,PARAFEM_ELEMENT,ierr)
     CALL MPI_Type_commit(PARAFEM_ELEMENT,ierr)
 
-    ! Copy the elements to the send buffer, in the correct order.
-    ! No, you don't need
-    ! FORALL (p=1,npes)
-    !   send_buffer(:,send_start(p):send_start(p)+send_count(p)-1)               &
-    !     = g_g_pp(:,p_el(send_start(p):send_start(p)+send_count(p)-1,2))
-    ! END FORALL
-    ! isn't Fortran wonderful!
-    send_buffer = g_g_pp(:,p_el(:,2))
-    DEALLOCATE(p_el)
-
     ! If you swap the order of the receive and send loops, then make sure r is
     ! handled correctly.
     r = 1 ! r for requests
     DO p = 1, npes
       IF (recv_count(p) /= 0) THEN
+!!$        CALL MPI_Irecv(g_g_all(1,recv_start(p)),                               &
         CALL MPI_Irecv(g_g_all(:,recv_start(p):recv_start(p)+recv_count(p)-1), &
                        recv_count(p),PARAFEM_ELEMENT,p-1,0,                    &
                        MPI_COMM_WORLD,requests(r),ierr)
@@ -597,12 +613,13 @@ CONTAINS
       END IF
     END DO
     IF (r - 1 /= n_recvs) THEN ! disaster
-      WRITE(error_unit,'(A,I6)') "r - 1 /= n_recvs on process ", numpe
+      WRITE(error_unit,'(A,I6)') "Error: r - 1 /= n_recvs on process ", numpe
       CALL MPI_Abort(MPI_COMM_WORLD,ierr)
     END IF
 
     DO p = 1, npes
       IF (send_count(p) /= 0) THEN
+!!$        CALL MPI_Isend(send_buffer(1,send_start(p)),                           &
         CALL MPI_Isend(send_buffer                                             &
                          (:,send_start(p):send_start(p)+send_count(p)-1),      &
                        send_count(p),PARAFEM_ELEMENT,p-1,0,                    &
@@ -611,13 +628,14 @@ CONTAINS
       END IF
     END DO
     IF (r - 1 /= n_recvs + n_sends) THEN ! disaster
-      WRITE(error_unit,'(A,I6)') "r - 1 /= n_recvs + n_sends on process ", numpe
+      WRITE(error_unit,'(A,I6)')                                               &
+        "Error: r - 1 /= n_recvs + n_sends on process ", numpe
       CALL MPI_Abort(MPI_COMM_WORLD,ierr)
     END IF
 
     CALL MPI_Waitall(n_recvs + n_sends,requests,MPI_STATUSES_IGNORE,ierr)
     IF (ierr /= MPI_SUCCESS) THEN ! disaster
-      WRITE(error_unit,'(A,I6)') "receive/send error on process ", numpe
+      WRITE(error_unit,'(A,I6)') "Error: receive/send error on process ", numpe
       CALL MPI_Abort(MPI_COMM_WORLD,ierr)
     END IF
 
@@ -673,11 +691,128 @@ CONTAINS
     !*  Place remarks that should not be included in the documentation here.
     !*
     !*  PETSc 64-bit indices are used.
+    !*
+    !*  The slow steps are the sort of eq_el and the final counting of
+    !*  non-zeroes for each equation.  These two steps take about the same
+    !*  time.  In the counting loop, the sorting takes the most time.
     !*/
 
     PetscInt, DIMENSION(:,:),              INTENT(in)  :: g_g_all
     PetscInt, DIMENSION(:),   ALLOCATABLE, INTENT(out) :: dnz,onz
 
+    PetscInt :: nels_all,ieq_finish,i,n,iel,j,low,ieq,s
+    PetscInt, DIMENSION(:),   ALLOCATABLE :: d,eq_start,eq_count
+    PetscInt, DIMENSION(:,:), ALLOCATABLE :: eq_el
+
+    nels_all = SIZE(g_g_all,2)
+
+    ! eq_el defines one stage of the mapping (equation-element pairs)
+    ! from: local equation number of equations on this process
+    ! to:   the indices in g_g_all of the elements that contain the equation
+    ! eq_el(:,1) are local equation numbers (eventually)
+    ! eq_el(:,2) are element numbers in g_g_all
+    ! Done this way to use Petsc's sort routines.
+    ALLOCATE(eq_el(ntot*nels_all,2))
+    ALLOCATE(d(ntot)) ! work array
+
+    ieq_finish = ieq_start + neq_pp -1
+    i = 1
+    DO iel = 1, nels_all
+      d = g_g_all(:,iel) ! global equation numbers
+#ifdef DUPLICATE_DOFS
+      ! Is there any possibility at all of duplicate dofs in an element?
+      n = ntot ! n becomes the number of unique entries
+      CALL PetscSortRemoveDupsInt(n,d,p_object%ierr)
+      ! There is no need to shift the start of the loop if d(1) == 0, since
+      ! ieq_start > 0
+      DO j = 1, n
+        IF (ieq_start <= d(j) .AND. d(j) <= ieq_finish) then
+          eq_el(i,1) = d(j)
+          eq_el(i,2) = iel
+          i = i + 1
+        END IF
+      END DO
+#else
+      DO j = 1, ntot
+        ! There is no need to test for d(j) /= 0, since ieq_start > 0
+        IF (ieq_start <= d(j) .AND. d(j) <= ieq_finish) THEN
+          eq_el(i,1) = d(j)
+          eq_el(i,2) = iel
+          i = i + 1
+        END IF
+      END DO
+#endif
+    END DO
+    n = i - 1
+    DEALLOCATE(d)
+    ! => eq_el(1:n) gives the pairing from global equation number to element,
+    !    but is unsorted
+
+    ! Sort p_el.  This is slow.
+    CALL PetscSortIntWithArray(n,eq_el(1:n,1),eq_el(1:n,2),p_object%ierr)
+    ! => eq_el(1:n) gives the pairing from global equation number to element,
+    !    sorted.
+
+    eq_el(1:n,1) = eq_el(1:n,1) - ieq_start + 1
+    ! => eq_el(1:n) gives the pairing from local equation number to element,
+    !    sorted.
+
+    ! Now complete the mapping.
+    ALLOCATE(eq_start(neq_pp),eq_count(neq_pp))
+    eq_count = 0
+    ieq = 0 ! invalid equation number
+    DO i = 1, n
+      IF (eq_el(i,1) /= ieq) THEN
+        ! next equation in mapping
+        ieq = eq_el(i,1)
+      END IF
+      eq_count(ieq) = eq_count(ieq) + 1
+    END DO
+
+    ! Will it be at all possible to have an equation with no elements?
+    IF (MINVAL(eq_count) < 1) THEN
+      WRITE(error_unit,'(A,I0,A)')                                             &
+        "Warning: equation ", ieq_start + MINLOC(eq_count),                    &
+        " is not in any element"
+    END IF
+      
+    s = 1 ! s for start
+    DO ieq = 1, neq_pp
+      eq_start(ieq) = s
+      s = s + eq_count(ieq)
+    END DO
+    ! => if eq_count(ieq) /= 0 then the elements to with dofs contain ieq are
+    !    eq_el(eq_start(ieq):eq_start(ieq)+eq_count(ieq)-1,2)
+    ! => equation to element mapping complete
+
+    ! For each equation on this process, count the on- and off-process
+    ! non-zeroes in the corresponding row of the global matrix.  This is slow.
+
+    ALLOCATE(dnz(neq_pp),onz(neq_pp))
+    ALLOCATE(d(ntot*MAXVAL(eq_count))) ! work array
+
+    dnz = 0
+    onz = 0
+    DO ieq = 1, neq_pp
+      IF (eq_count(ieq) /= 0) THEN
+        n = ntot * eq_count(ieq)
+        d(1:n) =                                                               &
+          RESHAPE(g_g_all                                                      &
+                    (:,eq_el(eq_start(ieq):eq_start(ieq)+eq_count(ieq)-1,2)),  &
+                  (/n/))
+        CALL PetscSortRemoveDupsInt(n,d,p_object%ierr)
+        ! remove a possible zero entry (from restraints).
+        IF (d(1) /= 0) THEN
+          low = 1
+        ELSE
+          low = 2
+        END IF
+        dnz(ieq) = COUNT(ieq_start <= d(low:n) .AND. d(low:n) <= ieq_finish)
+        onz(ieq) = n - low + 1 - dnz(ieq) 
+        ! == onz(ieq) = COUNT(d(low:n) < ieq_start .OR. ieq_finish < d(low:n))
+      END IF
+    END DO
+    DEALLOCATE(d,eq_start,eq_count,eq_el)
   END SUBROUTINE row_nnz
 
   SUBROUTINE p_create_vectors(neq_pp)
