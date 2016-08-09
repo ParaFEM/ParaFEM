@@ -700,7 +700,8 @@ CONTAINS
     PetscInt, DIMENSION(:,:),              INTENT(in)  :: g_g_all
     PetscInt, DIMENSION(:),   ALLOCATABLE, INTENT(out) :: dnz,onz
 
-    PetscInt :: nels_all,ieq_finish,i,n,iel,j,low,ieq,s
+    PetscInt :: nels_all,ieq_finish,i,n,iel,j,low,ieq,s,nnz_pp,nnz
+    PetscMPIInt :: ierr
     PetscInt, DIMENSION(:),   ALLOCATABLE :: d,eq_start,eq_count
     PetscInt, DIMENSION(:,:), ALLOCATABLE :: eq_el
 
@@ -793,6 +794,7 @@ CONTAINS
 
     dnz = 0
     onz = 0
+    nnz_pp = 0 ! number of non-zeroes in the global matrix on this process
     DO ieq = 1, neq_pp
       IF (eq_count(ieq) /= 0) THEN
         n = ntot * eq_count(ieq)
@@ -810,9 +812,15 @@ CONTAINS
         dnz(ieq) = COUNT(ieq_start <= d(low:n) .AND. d(low:n) <= ieq_finish)
         onz(ieq) = n - low + 1 - dnz(ieq) 
         ! == onz(ieq) = COUNT(d(low:n) < ieq_start .OR. ieq_finish < d(low:n))
+        nnz_pp = nnz_pp + n - low + 1
       END IF
     END DO
     DEALLOCATE(d,eq_start,eq_count,eq_el)
+    ! number of non-zeroes in the global matrix
+    CALL MPI_Reduce(nnz_pp,nnz,1,MPIU_INTEGER,MPI_SUM,0,MPI_COMM_WORLD,ierr)
+    IF (numpe==1) THEN
+      WRITE(*,'(A,I0)')"Number of non-zeroes in the global matrix = ", nnz
+    END IF
   END SUBROUTINE row_nnz
 
   SUBROUTINE p_create_vectors(neq_pp)
