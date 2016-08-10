@@ -54,7 +54,7 @@ PROGRAM xx18
   LOGICAL                  :: error
   CHARACTER(:),ALLOCATABLE :: message
   CHARACTER,PARAMETER      :: tab = ACHAR(9)
-  REAL                     :: peak_memory_use
+  REAL                     :: memory_use,peak_memory_use
   
   !-----------------------------------------------------------------------------
   ! 1. Dynamic arrays
@@ -129,8 +129,11 @@ PROGRAM xx18
     ! Set up PETSc.
     CALL p_setup(neq_pp,ntot,g_g_pp,numpe)
   END IF
-  peak_memory_use = p_memory_use()
-  IF (numpe == 1) WRITE(*,'(A,F7.2,A)') "after setup:             ",peak_memory_use," GB "
+  memory_use = p_memory_use()
+  peak_memory_use = p_memory_peak()
+  IF (numpe == 1) WRITE(*,'(A,2F7.2,A)')                                       &
+    "current and peak memory use after setup:        ",                        &
+    memory_use,peak_memory_use," GB "
 
   IF(numpe==1)THEN
     OPEN(11,FILE=argv(1:nlen)//".res",STATUS='REPLACE',ACTION='WRITE')
@@ -165,14 +168,20 @@ PROGRAM xx18
       CALL p_add_element(g_g_pp(:,iel),km)
     END IF
   END DO elements_1
-  peak_memory_use = p_memory_use()
-  IF (numpe == 1) WRITE(*,'(A,F7.2,A)') "after add elements:      ",peak_memory_use," GB "
+  memory_use = p_memory_use()
+  peak_memory_use = p_memory_peak()
+  IF (numpe == 1) WRITE(*,'(A,2F7.2,A)')                                       &
+    "current and peak memory use after add elements: ",                        &
+    memory_use,peak_memory_use," GB "
 
   IF (solvers == petsc_solvers) THEN
     CALL p_assemble(numpe)
   END IF
-  peak_memory_use = p_memory_use()
-  IF (numpe == 1) WRITE(*,'(A,F7.2,A)') "after assemble:          ",peak_memory_use," GB "
+  memory_use = p_memory_use()
+  peak_memory_use = p_memory_peak()
+  IF (numpe == 1) WRITE(*,'(A,2F7.2,A)')                                       &
+    "current and peak memory use after assemble:     ",                        &
+    memory_use,peak_memory_use," GB "
 
   timest(4) = elap_time()
   
@@ -285,7 +294,7 @@ PROGRAM xx18
 
   timest(8) = elap_time()
   
-  peak_memory_use = p_memory_use()
+  peak_memory_use = p_memory_peak()
 
   IF(numpe==1)THEN
     WRITE(11,'(A,F10.2)') "Time to read input:       ",                        &
