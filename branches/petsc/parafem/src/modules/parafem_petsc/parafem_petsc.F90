@@ -107,7 +107,6 @@ MODULE parafem_petsc
   PRIVATE :: collect_elements,row_nnz
   PRIVATE :: nnod_estimate,row_nnz_2_estimate,row_nnz_1_estimate,              &
              row_nnz_estimate
-  PRIVATE :: isort ! private to not conflict with isort in gaf77
  
 CONTAINS
   
@@ -1745,6 +1744,53 @@ CONTAINS
     END SELECT
   END FUNCTION p_describe_reason
 
+  SUBROUTINE p_release_memory()
+
+    !/****if* petsc/p_release_memory
+    !*  NAME
+    !*    SUBROUTINE: p_release_memory
+    !*  SYNOPSIS
+    !*    Usage:      p_release_memory()
+    !*  FUNCTION
+    !*    Release all freed memory back to the system.  Maybe not all if there
+    !*    gaps in the heap.
+    !*  ARGUMENTS
+    !*    None.
+    !*  AUTHOR
+    !*    Mark Filipiak
+    !*  CREATION DATE
+    !*    08.08.2016
+    !*  MODIFICATION HISTORY
+    !*    Version 1, 10.08.2016, Mark Filipiak
+    !*  COPYRIGHT
+    !*    (c) University of Edinburgh 2016
+    !******
+    !*  Place remarks that should not be included in the documentation here.
+    !*
+    !*  Linux only.  Cray default malloc only, i.e. Cray compiler and not with
+    !*  -h system_malloc.  For Cray with -h system_malloc, or for other
+    !*  compilers that use glibc (Gnu, Intel), this needs to use malloc_trim(0)
+    !*  instead of MallocExtension_ReleaseFreeMemory().
+    !*/
+
+    USE, INTRINSIC :: iso_c_binding, ONLY: c_int,c_size_t
+
+    INTERFACE
+      SUBROUTINE MallocExtension_ReleaseFreeMemory()                           &
+                   BIND(c,name="MallocExtension_ReleaseFreeMemory")
+      END SUBROUTINE MallocExtension_ReleaseFreeMemory
+      INTEGER(c_int) FUNCTION malloc_trim(pad) BIND(c,name="malloc_trim")
+        USE, INTRINSIC :: iso_c_binding, ONLY: c_int,c_size_t
+        INTEGER(c_size_t), VALUE :: pad
+      END FUNCTION malloc_trim
+    END INTERFACE
+    
+    INTEGER(c_int) :: i
+
+    CALL MallocExtension_ReleaseFreeMemory() ! Cray
+    ! i = malloc_trim(0_c_size_t) ! others
+  END SUBROUTINE p_release_memory
+  
   FUNCTION p_memory_use()
 
     !/****if* petsc/p_memory_use
@@ -1753,7 +1799,7 @@ CONTAINS
     !*  SYNOPSIS
     !*    Usage:      p_memory_use()
     !*  FUNCTION
-    !*    Return maximum amount of memory (in GB) used so far in the program.
+    !*    Return amount of memory (in GB) in use just now in the program.
     !*  ARGUMENTS
     !*    None.
     !*  AUTHOR
@@ -1762,6 +1808,7 @@ CONTAINS
     !*    27.06.2016
     !*  MODIFICATION HISTORY
     !*    Version 1, 27.06.2016, Mark Filipiak
+    !*    Version 2, 10.08.2016, Mark Filipiak
     !*  COPYRIGHT
     !*    (c) University of Edinburgh 2016
     !******
@@ -1771,6 +1818,67 @@ CONTAINS
     !*/
 
     REAL    :: p_memory_use
+
+    INTEGER :: proc,ios,start,finish
+    CHARACTER(len=string_length) :: line
+
+    INTEGER(int64) :: kbytes
+    ! real32 matches MPI_REAL4
+    REAL(real32)   :: VmRSS,sum_VmRSS
+
+    INTEGER :: ierr
+
+    CALL p_release_memory()
+
+    kbytes = 0
+
+    OPEN(newunit=proc,file="/proc/self/status",action='read')
+    DO
+      READ(proc,"(A)",iostat=ios) line
+      IF (ios < 0 ) EXIT ! end of file
+
+      ! test for a line like "VmRSS:       972 kB"
+      IF (INDEX(line,"VmRSS:") == 1 .AND. INDEX(line,"kB") /= 0) THEN
+        start  = LEN("VmRSS:") + 1
+        finish = INDEX(line,"kB") - 1
+        READ(line(start:finish),*) kbytes
+        EXIT
+      END IF
+    END DO
+    CLOSE(proc)
+
+    VmRSS = kbytes / 1048576.0 ! VmRSS in GB
+    ! MPI_REAL4 matches real32
+    CALL MPI_ALLREDUCE(VmRSS,sum_VmRSS,1,MPI_REAL4,MPI_SUM,MPI_COMM_WORLD,ierr)
+    p_memory_use = sum_VmRSS
+  END FUNCTION p_memory_use
+  
+  FUNCTION p_memory_peak()
+
+    !/****if* petsc/p_memory_peak
+    !*  NAME
+    !*    SUBROUTINE: p_memory_peak
+    !*  SYNOPSIS
+    !*    Usage:      p_memory_peak()
+    !*  FUNCTION
+    !*    Return maximum amount of memory (in GB) used so far in the program.
+    !*  ARGUMENTS
+    !*    None.
+    !*  AUTHOR
+    !*    Mark Filipiak
+    !*  CREATION DATE
+    !*    10.08.2016
+    !*  MODIFICATION HISTORY
+    !*    Version 1, 10.08.2016, Mark Filipiak
+    !*  COPYRIGHT
+    !*    (c) University of Edinburgh 2016
+    !******
+    !*  Place remarks that should not be included in the documentation here.
+    !*
+    !*  Linux only.
+    !*/
+
+    REAL    :: p_memory_peak
 
     INTEGER :: proc,ios,start,finish
     CHARACTER(len=string_length) :: line
@@ -1801,8 +1909,8 @@ CONTAINS
     VmHWM = kbytes / 1048576.0 ! VmHWM in GB
     ! MPI_REAL4 matches real32
     CALL MPI_ALLREDUCE(VmHWM,sum_VmHWM,1,MPI_REAL4,MPI_SUM,MPI_COMM_WORLD,ierr)
-    p_memory_use = sum_VmHWM
-  END FUNCTION p_memory_use
+    p_memory_peak = sum_VmHWM
+  END FUNCTION p_memory_peak
   
   FUNCTION nnod_estimate(ndim,nod,error,message)
 
@@ -2516,332 +2624,4 @@ CONTAINS
 
     p_object%row_nnz = row_nnz_estimate(ndim,nodof,nod,error,message)
   END SUBROUTINE p_row_nnz_estimate
-
-      SUBROUTINE ISORT (IX, IY, N, KFLAG, IERR)
-!***BEGIN PROLOGUE  ISORT
-!***PURPOSE  Sort an array and optionally make the same interchanges in
-!            an auxiliary array.  The array may be sorted in increasing
-!            or decreasing order.  A slightly modified QUICKSORT
-!            algorithm is used.
-!***LIBRARY   SLATEC
-!***CATEGORY  N6A2A
-!***TYPE      INTEGER (SSORT-S, DSORT-D, ISORT-I)
-!***KEYWORDS  SINGLETON QUICKSORT, SORT, SORTING
-!***AUTHOR  Jones, R. E., (SNLA)
-!           Kahaner, D. K., (NBS)
-!           Wisniewski, J. A., (SNLA)
-!***DESCRIPTION
-!
-!   ISORT sorts array IX and optionally makes the same interchanges in
-!   array IY.  The array IX may be sorted in increasing order or
-!   decreasing order.  A slightly modified quicksort algorithm is used.
-!
-!   Description of Parameters
-!      IX - integer array of values to be sorted
-!      IY - integer array to be (optionally) carried along
-!      N  - number of values in integer array IX to be sorted
-!      KFLAG - control parameter
-!            =  2  means sort IX in increasing order and carry IY along.
-!            =  1  means sort IX in increasing order (ignoring IY)
-!            = -1  means sort IX in decreasing order (ignoring IY)
-!            = -2  means sort IX in decreasing order and carry IY along.
-!      IERR  - error flag
-!            =  0  means no error occurred
-!            =  1  means an error occurred
-!
-!***REFERENCES  R. C. Singleton, Algorithm 347, An efficient algorithm
-!                 for sorting with minimal storage, Communications of
-!                 the ACM, 12, 3 (1969), pp. 185-187.
-!***ROUTINES CALLED  none
-!***REVISION HISTORY  (YYMMDD)
-!   761118  DATE WRITTEN
-!   810801  Modified by David K. Kahaner.
-!   890531  Changed all specific intrinsics to generic.  (WRB)
-!   890831  Modified array declarations.  (WRB)
-!   891009  Removed unreferenced statement labels.  (WRB)
-!   891009  REVISION DATE from Version 3.2
-!   891214  Prologue converted to Version 4.0 format.  (BAB)
-!   900315  CALLs to XERROR changed to CALLs to XERMSG.  (THJ)
-!   901012  Declared all variables; changed X,Y to IX,IY. (M. McClain)
-!   920501  Reformatted the REFERENCES section.  (DWL, WRB)
-!   920519  Clarified error messages.  (DWL)
-!   920801  Declarations section rebuilt and code restructured to use
-!           IF-THEN-ELSE-ENDIF.  (RWC, WRB)
-!   160802  Removed XERMSG calls, return IERR instead.  (MJF)
-!   160802  C -> !, and intent for arguments.  (MJF)
-!***END PROLOGUE  ISORT
-!     .. Scalar Arguments ..
-      INTEGER, INTENT(in)  :: KFLAG, N
-      INTEGER, INTENT(out) :: IERR
-!     .. Array Arguments ..
-      INTEGER, INTENT(inout) :: IX(*), IY(*)
-!     .. Local Scalars ..
-      REAL R
-      INTEGER I, IJ, J, K, KK, L, M, NN, T, TT, TTY, TY
-!     .. Local Arrays ..
-      INTEGER IL(21), IU(21)
-!     .. External Subroutines ..
-      EXTERNAL XERMSG
-!     .. Intrinsic Functions ..
-      INTRINSIC ABS, INT
-!***FIRST EXECUTABLE STATEMENT  ISORT
-      IERR = 0
-      NN = N
-      IF (NN .LT. 1) THEN
-         IERR = 1
-         RETURN
-      ENDIF
-!
-      KK = ABS(KFLAG)
-      IF (KK.NE.1 .AND. KK.NE.2) THEN
-         IERR = 1
-         RETURN
-      ENDIF
-!
-!     Alter array IX to get decreasing order if needed
-!
-      IF (KFLAG .LE. -1) THEN
-         DO 10 I=1,NN
-            IX(I) = -IX(I)
-   10    CONTINUE
-      ENDIF
-!
-      IF (KK .EQ. 2) GO TO 100
-!
-!     Sort IX only
-!
-      M = 1
-      I = 1
-      J = NN
-      R = 0.375E0
-!
-   20 IF (I .EQ. J) GO TO 60
-      IF (R .LE. 0.5898437E0) THEN
-         R = R+3.90625E-2
-      ELSE
-         R = R-0.21875E0
-      ENDIF
-!
-   30 K = I
-!
-!     Select a central element of the array and save it in location T
-!
-      IJ = I + INT((J-I)*R)
-      T = IX(IJ)
-!
-!     If first element of array is greater than T, interchange with T
-!
-      IF (IX(I) .GT. T) THEN
-         IX(IJ) = IX(I)
-         IX(I) = T
-         T = IX(IJ)
-      ENDIF
-      L = J
-!
-!     If last element of array is less than than T, interchange with T
-!
-      IF (IX(J) .LT. T) THEN
-         IX(IJ) = IX(J)
-         IX(J) = T
-         T = IX(IJ)
-!
-!        If first element of array is greater than T, interchange with T
-!
-         IF (IX(I) .GT. T) THEN
-            IX(IJ) = IX(I)
-            IX(I) = T
-            T = IX(IJ)
-         ENDIF
-      ENDIF
-!
-!     Find an element in the second half of the array which is smaller
-!     than T
-!
-   40 L = L-1
-      IF (IX(L) .GT. T) GO TO 40
-!
-!     Find an element in the first half of the array which is greater
-!     than T
-!
-   50 K = K+1
-      IF (IX(K) .LT. T) GO TO 50
-!
-!     Interchange these elements
-!
-      IF (K .LE. L) THEN
-         TT = IX(L)
-         IX(L) = IX(K)
-         IX(K) = TT
-         GO TO 40
-      ENDIF
-!
-!     Save upper and lower subscripts of the array yet to be sorted
-!
-      IF (L-I .GT. J-K) THEN
-         IL(M) = I
-         IU(M) = L
-         I = K
-         M = M+1
-      ELSE
-         IL(M) = K
-         IU(M) = J
-         J = L
-         M = M+1
-      ENDIF
-      GO TO 70
-!
-!     Begin again on another portion of the unsorted array
-!
-   60 M = M-1
-      IF (M .EQ. 0) GO TO 190
-      I = IL(M)
-      J = IU(M)
-!
-   70 IF (J-I .GE. 1) GO TO 30
-      IF (I .EQ. 1) GO TO 20
-      I = I-1
-!
-   80 I = I+1
-      IF (I .EQ. J) GO TO 60
-      T = IX(I+1)
-      IF (IX(I) .LE. T) GO TO 80
-      K = I
-!
-   90 IX(K+1) = IX(K)
-      K = K-1
-      IF (T .LT. IX(K)) GO TO 90
-      IX(K+1) = T
-      GO TO 80
-!
-!     Sort IX and carry IY along
-!
-  100 M = 1
-      I = 1
-      J = NN
-      R = 0.375E0
-!
-  110 IF (I .EQ. J) GO TO 150
-      IF (R .LE. 0.5898437E0) THEN
-         R = R+3.90625E-2
-      ELSE
-         R = R-0.21875E0
-      ENDIF
-!
-  120 K = I
-!
-!     Select a central element of the array and save it in location T
-!
-      IJ = I + INT((J-I)*R)
-      T = IX(IJ)
-      TY = IY(IJ)
-!
-!     If first element of array is greater than T, interchange with T
-!
-      IF (IX(I) .GT. T) THEN
-         IX(IJ) = IX(I)
-         IX(I) = T
-         T = IX(IJ)
-         IY(IJ) = IY(I)
-         IY(I) = TY
-         TY = IY(IJ)
-      ENDIF
-      L = J
-!
-!     If last element of array is less than T, interchange with T
-!
-      IF (IX(J) .LT. T) THEN
-         IX(IJ) = IX(J)
-         IX(J) = T
-         T = IX(IJ)
-         IY(IJ) = IY(J)
-         IY(J) = TY
-         TY = IY(IJ)
-!
-!        If first element of array is greater than T, interchange with T
-!
-         IF (IX(I) .GT. T) THEN
-            IX(IJ) = IX(I)
-            IX(I) = T
-            T = IX(IJ)
-            IY(IJ) = IY(I)
-            IY(I) = TY
-            TY = IY(IJ)
-         ENDIF
-      ENDIF
-!
-!     Find an element in the second half of the array which is smaller
-!     than T
-!
-  130 L = L-1
-      IF (IX(L) .GT. T) GO TO 130
-!
-!     Find an element in the first half of the array which is greater
-!     than T
-!
-  140 K = K+1
-      IF (IX(K) .LT. T) GO TO 140
-!
-!     Interchange these elements
-!
-      IF (K .LE. L) THEN
-         TT = IX(L)
-         IX(L) = IX(K)
-         IX(K) = TT
-         TTY = IY(L)
-         IY(L) = IY(K)
-         IY(K) = TTY
-         GO TO 130
-      ENDIF
-!
-!     Save upper and lower subscripts of the array yet to be sorted
-!
-      IF (L-I .GT. J-K) THEN
-         IL(M) = I
-         IU(M) = L
-         I = K
-         M = M+1
-      ELSE
-         IL(M) = K
-         IU(M) = J
-         J = L
-         M = M+1
-      ENDIF
-      GO TO 160
-!
-!     Begin again on another portion of the unsorted array
-!
-  150 M = M-1
-      IF (M .EQ. 0) GO TO 190
-      I = IL(M)
-      J = IU(M)
-!
-  160 IF (J-I .GE. 1) GO TO 120
-      IF (I .EQ. 1) GO TO 110
-      I = I-1
-!
-  170 I = I+1
-      IF (I .EQ. J) GO TO 150
-      T = IX(I+1)
-      TY = IY(I+1)
-      IF (IX(I) .LE. T) GO TO 170
-      K = I
-!
-  180 IX(K+1) = IX(K)
-      IY(K+1) = IY(K)
-      K = K-1
-      IF (T .LT. IX(K)) GO TO 180
-      IX(K+1) = T
-      IY(K+1) = TY
-      GO TO 170
-!
-!     Clean up
-!
-  190 IF (KFLAG .LE. -1) THEN
-         DO 200 I=1,NN
-            IX(I) = -IX(I)
-  200    CONTINUE
-      ENDIF
-      RETURN
-      END
-
 END MODULE parafem_petsc
