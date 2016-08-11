@@ -86,7 +86,7 @@ MODULE parafem_petsc
     PetscReal           :: over_allocation = 1.3
     Vec                 :: x,b
     Mat                 :: A
-    DOUBLE PRECISION    :: info(MAT_INFO_SIZE)
+    PetscLogDouble      :: info(MAT_INFO_SIZE)
     PetscInt            :: solver   = 1
     PetscInt            :: nsolvers = 1
     KSP,ALLOCATABLE                          :: ksp(:)
@@ -104,6 +104,7 @@ MODULE parafem_petsc
   TYPE(p_type),TARGET :: p_object
 
   ! Private functions
+  PRIVATE :: release_memory
   PRIVATE :: collect_elements,row_nnz
   PRIVATE :: nnod_estimate,row_nnz_2_estimate,row_nnz_1_estimate,              &
              row_nnz_estimate
@@ -1744,53 +1745,6 @@ CONTAINS
     END SELECT
   END FUNCTION p_describe_reason
 
-  SUBROUTINE p_release_memory()
-
-    !/****if* petsc/p_release_memory
-    !*  NAME
-    !*    SUBROUTINE: p_release_memory
-    !*  SYNOPSIS
-    !*    Usage:      p_release_memory()
-    !*  FUNCTION
-    !*    Release all freed memory back to the system.  Maybe not all if there
-    !*    gaps in the heap.
-    !*  ARGUMENTS
-    !*    None.
-    !*  AUTHOR
-    !*    Mark Filipiak
-    !*  CREATION DATE
-    !*    08.08.2016
-    !*  MODIFICATION HISTORY
-    !*    Version 1, 10.08.2016, Mark Filipiak
-    !*  COPYRIGHT
-    !*    (c) University of Edinburgh 2016
-    !******
-    !*  Place remarks that should not be included in the documentation here.
-    !*
-    !*  Linux only.  Cray default malloc only, i.e. Cray compiler and not with
-    !*  -h system_malloc.  For Cray with -h system_malloc, or for other
-    !*  compilers that use glibc (Gnu, Intel), this needs to use malloc_trim(0)
-    !*  instead of MallocExtension_ReleaseFreeMemory().
-    !*/
-
-    USE, INTRINSIC :: iso_c_binding, ONLY: c_int,c_size_t
-
-    INTERFACE
-      SUBROUTINE MallocExtension_ReleaseFreeMemory()                           &
-                   BIND(c,name="MallocExtension_ReleaseFreeMemory")
-      END SUBROUTINE MallocExtension_ReleaseFreeMemory
-      INTEGER(c_int) FUNCTION malloc_trim(pad) BIND(c,name="malloc_trim")
-        USE, INTRINSIC :: iso_c_binding, ONLY: c_int,c_size_t
-        INTEGER(c_size_t), VALUE :: pad
-      END FUNCTION malloc_trim
-    END INTERFACE
-    
-    INTEGER(c_int) :: i
-
-    CALL MallocExtension_ReleaseFreeMemory() ! Cray
-    ! i = malloc_trim(0_c_size_t) ! others
-  END SUBROUTINE p_release_memory
-  
   FUNCTION p_memory_use()
 
     !/****if* petsc/p_memory_use
@@ -1800,6 +1754,7 @@ CONTAINS
     !*    Usage:      p_memory_use()
     !*  FUNCTION
     !*    Return amount of memory (in GB) in use just now in the program.
+    !*    Linux only.
     !*  ARGUMENTS
     !*    None.
     !*  AUTHOR
@@ -1814,7 +1769,6 @@ CONTAINS
     !******
     !*  Place remarks that should not be included in the documentation here.
     !*
-    !*  Linux only.
     !*/
 
     REAL    :: p_memory_use
@@ -1828,7 +1782,7 @@ CONTAINS
 
     INTEGER :: ierr
 
-    CALL p_release_memory()
+    CALL release_memory()
 
     kbytes = 0
 
@@ -1862,6 +1816,7 @@ CONTAINS
     !*    Usage:      p_memory_peak()
     !*  FUNCTION
     !*    Return maximum amount of memory (in GB) used so far in the program.
+    !*    Linux only.
     !*  ARGUMENTS
     !*    None.
     !*  AUTHOR
@@ -1875,7 +1830,6 @@ CONTAINS
     !******
     !*  Place remarks that should not be included in the documentation here.
     !*
-    !*  Linux only.
     !*/
 
     REAL    :: p_memory_peak
@@ -1911,6 +1865,56 @@ CONTAINS
     CALL MPI_ALLREDUCE(VmHWM,sum_VmHWM,1,MPI_REAL4,MPI_SUM,MPI_COMM_WORLD,ierr)
     p_memory_peak = sum_VmHWM
   END FUNCTION p_memory_peak
+  
+  SUBROUTINE release_memory()
+
+    !/****if* petsc/release_memory
+    !*  NAME
+    !*    SUBROUTINE: release_memory
+    !*  SYNOPSIS
+    !*    Usage:      release_memory()
+    !*  FUNCTION
+    !*    Release all freed memory back to the system.  Maybe not all if there
+    !*    gaps in the heap.  Linux only.  Does not work for the Cray compiler
+    !*    with -h system_malloc.
+    !*  ARGUMENTS
+    !*    None.
+    !*  AUTHOR
+    !*    Mark Filipiak
+    !*  CREATION DATE
+    !*    08.08.2016
+    !*  MODIFICATION HISTORY
+    !*    Version 1, 10.08.2016, Mark Filipiak
+    !*  COPYRIGHT
+    !*    (c) University of Edinburgh 2016
+    !******
+    !*  Place remarks that should not be included in the documentation here.
+    !*
+    !*  For Cray, the default malloc is tcmalloc.  Other compilers (Gnu, Intel)
+    !*  use the malloc in glibc.  The #ifdef _CRAYFTN test can only tell if the
+    !*  Cray compiler is used, not if -h system_malloc is used.
+
+    USE, INTRINSIC :: iso_c_binding, ONLY: c_int,c_size_t
+
+    INTERFACE
+      SUBROUTINE MallocExtension_ReleaseFreeMemory()                           &
+                   BIND(c,name="MallocExtension_ReleaseFreeMemory")
+      END SUBROUTINE MallocExtension_ReleaseFreeMemory
+      FUNCTION malloc_trim(pad) BIND(c,name="malloc_trim")
+        USE, INTRINSIC :: iso_c_binding, ONLY: c_int,c_size_t
+        INTEGER(c_int)           :: malloc_trim
+        INTEGER(c_size_t), VALUE :: pad
+      END FUNCTION malloc_trim
+    END INTERFACE
+    
+    INTEGER(c_int) :: i
+
+#ifdef _CRAYFTN
+    CALL MallocExtension_ReleaseFreeMemory() ! Cray
+#else
+    i = malloc_trim(0_c_size_t) ! others
+#endif
+  END SUBROUTINE release_memory
   
   FUNCTION nnod_estimate(ndim,nod,error,message)
 
