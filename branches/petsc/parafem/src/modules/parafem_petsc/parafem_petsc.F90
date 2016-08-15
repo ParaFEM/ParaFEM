@@ -932,59 +932,94 @@ CONTAINS
     !*  are several KSP types to be chosen from, then each one will be
     !*  bracketed by -prefix_push and -prefix_pop.  For example
     !* 
+    !*  -nsolvers 2
+    !* 
     !*  -prefix_push solver_1_
-    !*    -ksp_type minres
+    !*    -ksp_type cg
+    !*  -prefix_pop
+    !* 
+    !*  -prefix_push solver_2_
+    !*    -ksp_type gmres
     !*  -prefix_pop
     !* 
     !*  in the xxx.petsc file and 
     !* 
     !*  CALL KSPSetOptionsPrefix(p_object%ksp,"solver_1_",p_object%ierr)
     !* 
-    !*  before KSPSetFromOptions before using the 'solver_1_' solver.  Thus you
-    !*  can switch from CG to GMRES (for example) during a simulation.
+    !*  before KSPSetFromOptions before using the 'solver_1_' solver, i.e. CG,
+    !*  and
+    !* 
+    !*  CALL KSPSetOptionsPrefix(p_object%ksp,"solver_2_",p_object%ierr)
+    !* 
+    !*  before KSPSetFromOptions before using the 'solver_2_' solver, i.e.
+    !*  GMRES.  Thus you can switch from CG to GMRES (for example) during a
+    !*  simulation.
+    !* 
+    !*  For the simple case of one solver, -nsolvers and the
+    !*  -prefix_push/-prefix_pop pair can be omitted.  For example
+    !* 
+    !*  -ksp_type minres
+    !* 
+    !*  in the xxx.petsc file and no KSPSetOptionsPrefix used.
     !*/
 
     INTEGER, INTENT(in) :: numpe
 
     PetscInt                     :: s
     CHARACTER(len=string_length) :: s_string
-    PetscBool :: set
-    PC :: p
-    CHARACTER(len=string_length) :: type
+    PetscBool                    :: nsolvers_set,set
+    PC                           :: p
+    KSPType                      :: ksp_type
+    PCType                       :: pc_type
 
+    ! p_object%nsolvers is initialized to 1.  PetscOptionsGetInt does not change
+    ! p_object%nsolvers if -nsolvers is not set in xxx.petsc
     CALL PetscOptionsGetInt(PETSC_NULL_CHARACTER,"-nsolvers",p_object%nsolvers,&
-                            set,p_object%ierr)
-
-    ! Something here to handle a plain xxx.petsc file, with one one solver and
-    ! no -nsolvers option nor prefix_push/pop.  Use set to test for this.
+                            nsolvers_set,p_object%ierr)
 
     ALLOCATE(p_object%ksp(p_object%nsolvers),                                  &
              p_object%prefix(p_object%nsolvers))
-    DO s = 1, p_object%nsolvers
-      CALL KSPCreate(PETSC_COMM_WORLD,p_object%ksp(s),p_object%ierr)
-      WRITE(s_string,'(I0)') s
-      p_object%prefix(s) = pre_prefix//"_"//TRIM(s_string)//"_"
-      CALL KSPSetOptionsPrefix(p_object%ksp(s),p_object%prefix(s),p_object%ierr)
-      CALL KSPSetFromOptions(p_object%ksp(s),p_object%ierr)
 
-      ! Warn if the KSP or PC has not been set.
+    IF (.NOT. nsolvers_set) THEN
+      ! Simple case, one solver, no prefixes needed
+      s = 1 ! p_object%nsolvers == 1
+      CALL KSPCreate(PETSC_COMM_WORLD,p_object%ksp(s),p_object%ierr)
+      p_object%prefix(s) = "" ! for tests and output
+      ! No KSPSetOptionsPrefix
+      CALL KSPSetFromOptions(p_object%ksp(s),p_object%ierr)
+    ELSE
+      ! General case, one or more solvers, prefixes needed
+      DO s = 1, p_object%nsolvers
+        CALL KSPCreate(PETSC_COMM_WORLD,p_object%ksp(s),p_object%ierr)
+        WRITE(s_string,'(I0)') s
+        p_object%prefix(s) = pre_prefix//"_"//TRIM(s_string)//"_"
+        CALL KSPSetOptionsPrefix(p_object%ksp(s),p_object%prefix(s),           &
+                                 p_object%ierr)
+        CALL KSPSetFromOptions(p_object%ksp(s),p_object%ierr)
+      END DO
+    END IF
+
+    ! Warn if the KSP or PC has not been set.
+    ! PetscOptionsHasName("","-ksp_type",...) will look for the option
+    ! "-ksp_type", i.e. as if there were no prefix.
+    DO s = 1, p_object%nsolvers
       CALL PetscOptionsHasName(p_object%prefix(s),"-ksp_type",set,p_object%ierr)
       IF (.NOT. set) THEN
-        CALL KSPGetType(p_object%ksp(s),type,p_object%ierr)
+        CALL KSPGetType(p_object%ksp(s),ksp_type,p_object%ierr)
         IF (numpe==1) THEN
           WRITE(*,'(A)') "Warning: -"//TRIM(p_object%prefix(s))//"ksp_type "   &
                          //"not set.  Solver "//TRIM(s_string)//" will have "  &
-                         //"KSP type "//TRIM(TYPE)
+                         //"KSP type "//TRIM(ksp_type)
         END IF
       END IF
       CALL PetscOptionsHasName(p_object%prefix(s),"-pc_type",set,p_object%ierr)
       IF (.NOT. set) THEN
         CALL KSPGetPC(p_object%ksp(s),p,p_object%ierr)
-        CALL PCGetType(p,type,p_object%ierr)
+        CALL PCGetType(p,pc_type,p_object%ierr)
         IF (numpe==1) THEN
           WRITE(*,'(A)') "Warning: -"//TRIM(p_object%prefix(s))//"pc_type "    &
                          //"not set.  Solver "//TRIM(s_string)//" will have "  &
-                         //"PC type "//TRIM(type)
+                         //"PC type "//TRIM(pc_type)
         END IF
       END IF
     END DO
@@ -1158,16 +1193,16 @@ CONTAINS
     INTEGER, INTENT(in) :: g(:)
     REAL,    INTENT(in) :: km(:,:)
 
-    PetscInt :: ntot
+    PetscInt :: p_ntot
 
-    ntot = SIZE(g)
-    p_object%rows(1:ntot) = g - 1
-    p_object%cols(1:ntot) = p_object%rows(1:ntot)
+    p_ntot = SIZE(g)
+    p_object%rows(1:p_ntot) = g - 1
+    p_object%cols(1:p_ntot) = p_object%rows(1:p_ntot)
     ! PETSc uses C array order, so normally a transpose would be needed, but
     ! MAT_ROW_ORIENTED is set to false in p_create_matrix to make MatSetValues
     ! work with Fortran-order arrays.
-    p_object%values(1:ntot*ntot) = RESHAPE(km,(/ntot*ntot/))
-    CALL MatSetValues(p_object%A,ntot,p_object%rows,ntot,p_object%cols,        &
+    p_object%values(1:p_ntot*p_ntot) = RESHAPE(km,(/p_ntot*p_ntot/))
+    CALL MatSetValues(p_object%A,p_ntot,p_object%rows,p_ntot,p_object%cols,    &
                       p_object%values,ADD_VALUES,p_object%ierr)
   END SUBROUTINE p_add_element
 
@@ -1299,7 +1334,7 @@ CONTAINS
     !*  been distributed in ParaFEM.
     !*/
 
-    REAL,    INTENT(in) :: r_pp(:)
+    REAL, INTENT(in) :: r_pp(:)
 
     PetscScalar,POINTER :: varray(:)
 
@@ -1340,7 +1375,7 @@ CONTAINS
     !*  been distributed in ParaFEM.
     !*/
 
-    REAL,    INTENT(in) :: x_pp(:)
+    REAL, INTENT(in) :: x_pp(:)
 
     PetscScalar,POINTER :: varray(:)
 
@@ -1381,7 +1416,7 @@ CONTAINS
     !*  been distributed in ParaFEM.
     !*/
 
-    REAL,   INTENT(out) :: x_pp(:)
+    REAL, INTENT(out) :: x_pp(:)
 
     PetscScalar,POINTER :: varray(:)
 
@@ -1575,6 +1610,7 @@ CONTAINS
 
     Vec         :: w,y
     KSP,POINTER :: ksp
+    PetscScalar :: s
 
     ! Reduce typing
     ksp => p_object%ksp(p_object%solver)
@@ -1589,7 +1625,8 @@ CONTAINS
     ! y = Ax
     CALL MatMult(p_object%A,p_object%x,y,p_object%ierr)
     ! w = b - y == b - Ax
-    CALL VecWAXPY(w,-1.0,y,p_object%b,p_object%ierr)
+    s = -1.0 ! VecWAXPY needs a PetscScalar
+    CALL VecWAXPY(w,s,y,p_object%b,p_object%ierr)
     ! ||b - Ax||
     CALL VecNorm(w,NORM_2,p_object%r_n2,p_object%ierr)
     CALL VecDestroy(w,p_object%ierr)
