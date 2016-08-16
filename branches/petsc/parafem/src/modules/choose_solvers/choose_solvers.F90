@@ -25,6 +25,7 @@ MODULE choose_solvers
   !*
   !*/
   
+  USE global_variables, ONLY: numpe
   IMPLICIT NONE
   
   PUBLIC
@@ -36,7 +37,7 @@ MODULE choose_solvers
   
 CONTAINS
 
-  FUNCTION get_solvers(numpe)
+  FUNCTION get_solvers()
 
     !/****if* choose_solvers/get_solvers
     !*  NAME
@@ -46,10 +47,7 @@ CONTAINS
     !*  FUNCTION
     !*      Gets the type of solvers (e.g. ParaFEM or PETSc) to use
     !*  ARGUMENTS
-    !*    INTENT(IN)
-    !*
-    !*    numpe              : Integer
-    !*                         Number of this process (starting at 1)
+    !*    None
     !*  RESULT
     !*
     !*    solvers            : Character
@@ -71,7 +69,6 @@ CONTAINS
     ! get_solvers cannot be CHARACTER(:),ALLOCATABLE because it needs to be
     ! able to hold any length of string from the command argument.
     CHARACTER(len=choose_solvers_string_length) :: get_solvers
-    INTEGER,                         INTENT(in) :: numpe
 
     INTEGER :: argc, status
 
