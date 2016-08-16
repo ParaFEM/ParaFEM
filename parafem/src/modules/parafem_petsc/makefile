@@ -43,18 +43,24 @@ lib-debug:	$(PARAFEM_PETSC)
 	ar -r libParaFEM_parafem_petsc_D.$(VERSION).a $(PARAFEM_PETSC)
 
 
-# There is a dependency on the mp_interface module.  The .mod file is
-# not a good choice for the prerequisite because it can be xxx.mod or
-# XXX.mod; use the .o file instead, even if this means that sometimes
-# there is unneeded recompilation.  The compilation of
-# $(MPI)/mp_interface.o can only be done by the makefile in $(MPI), so
-# don't try to compile it here (it would be dangerous if a parallel
-# make was used).  The makefile for all the modules (../makefile)
-# contains the dependency between this directory and $(MPI), and that
-# will ensure that $(MPI)/mp_interface.o is compiled first.
-parafem_petsc.o: parafem_petsc.F90 $(MPI)/mp_interface.o
+# There is a dependency on other modules.  The .mod file is not a good
+# choice for the prerequisite because it can be xxx.mod or XXX.mod;
+# use the .o file instead, even if this means that sometimes there is
+# unneeded recompilation.  The compilation of the modules can only be
+# done by the makefile in other module libraries, so don't try to
+# compile it here (it would be dangerous if a parallel make was used).
+# The makefile for all the modules (../makefile) contains the
+# dependency between this directory and $(MPI), and that will ensure
+# that the other modules (which all go into $(MPI)) are compiled
+# first.
+parafem_petsc.o: parafem_petsc.F90 \
+                 $(MPI)/mp_interface.o \
+                 $(MPI)/global_variables.o \
+                 $(MPI)/gather_scatter.o
 	$(FC) -c $(FFLAGS) $<
 $(MPI)/mp_interface.o: ;
+$(MPI)/global_variables.o: ;
+$(MPI)/gather_scatter.o: ;
 
 clean:
 	rm -f *.o *.mod *.a
