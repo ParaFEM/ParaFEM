@@ -81,9 +81,9 @@ PROGRAM xx18
   CALL read_p121(argv,numpe,e,element,limit,loaded_nodes,meshgen,nels,         &
                  nip,nn,nod,nr,partitioner,tol,v)
 
-  solvers = get_solvers(numpe)
+  solvers = get_solvers()
   IF (.NOT. solvers_valid(solvers)) THEN
-    CALL SHUTDOWN
+    CALL shutdown
   END IF
 
   CALL calc_nels_pp(argv,nels,npes,numpe,partitioner,nels_pp)
@@ -125,9 +125,16 @@ PROGRAM xx18
   !    after find_g3 so that neq_pp and g_g_pp are set up.
   !-----------------------------------------------------------------------------
   IF (solvers == petsc_solvers) THEN
-    CALL p_initialize(argv,numpe)
+    CALL p_initialize(argv,error)
+    IF (error) THEN
+      CALL shutdown
+    END IF
     ! Set up PETSc.
-    CALL p_setup(neq_pp,ntot,g_g_pp,numpe)
+    CALL p_setup(neq_pp,ntot,g_g_pp,error)
+    IF (error) THEN
+      CALL p_finalize
+      CALL shutdown
+    END IF
   END IF
   memory_use = p_memory_use()
   peak_memory_use = p_memory_peak()
@@ -175,7 +182,7 @@ PROGRAM xx18
     memory_use,peak_memory_use," GB "
 
   IF (solvers == petsc_solvers) THEN
-    CALL p_assemble(numpe)
+    CALL p_assemble
   END IF
   memory_use = p_memory_use()
   peak_memory_use = p_memory_peak()
@@ -232,13 +239,13 @@ PROGRAM xx18
       WRITE(11,'(A,I6)') "The number of iterations to convergence was ",iters
     END IF
   ELSE IF (solvers == petsc_solvers) THEN
-    CALL p_use_solver(1,numpe,error)
+    CALL p_use_solver(1,error)
     IF (error) THEN
-      CALL p_finalize
+      CALL p_shutdown
       CALL shutdown
     END IF
     CALL p_solve(r_pp,xnew_pp)
-    CALL p_print_info(numpe,11)
+    CALL p_print_info(11)
   END IF
 
   timest(7) = elap_time()
@@ -331,7 +338,7 @@ PROGRAM xx18
     CALL p_shutdown
   END IF
 
-  CALL SHUTDOWN() 
+  CALL shutdown() 
   
 END PROGRAM xx18
   

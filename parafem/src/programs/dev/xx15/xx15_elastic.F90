@@ -43,9 +43,10 @@ PROGRAM xx15_elastic
    tol_inc=.FALSE., lambda_inc=.TRUE., noncon_flag=.FALSE.
 
   CHARACTER(len=choose_solvers_string_length) :: solvers
-
   LOGICAL                  :: error
   CHARACTER(:),ALLOCATABLE :: message
+  CHARACTER,PARAMETER      :: tab = ACHAR(9)
+  REAL                     :: memory_use,peak_memory_use
   
   !-------------------------- dynamic arrays-----------------------------------
   REAL(iwp), ALLOCATABLE:: points(:,:), coord(:,:), weights(:), xnew_pp(:),   &
@@ -65,7 +66,7 @@ PROGRAM xx15_elastic
    value_shape(:), shape_integral_pp(:,:), stress_integral_pp(:,:),           &
    stressnodes_pp(:), strain_integral_pp(:,:), strainnodes_pp(:),             &
    principal_integral_pp(:,:), princinodes_pp(:), principal(:),               &
-   reacnodes_pp(:), stiffness_mat_con(:,:,:,:)
+   reacnodes_pp(:), stiffness_mat_con(:,:,:,:), km(:,:)
 
   INTEGER, ALLOCATABLE  :: num(:), g_num(:,:), g_num_pp(:,:), g_g_pp(:,:),    &
    load_node(:), rest(:,:), nf_pp(:,:), no_pp(:), comp(:,:), fixed_node(:),   &
@@ -106,7 +107,7 @@ PROGRAM xx15_elastic
   CALL READ_DATA_XX7(fname,numpe,nels,nn,nr,loaded_nodes,fixed_nodes,          &
                      nip,limit,tol,e,v,nod,num_load_steps,jump,tol2)
 
-  solvers = get_solvers(numpe)
+  solvers = get_solvers()
   IF (.NOT. solvers_valid(solvers)) THEN
     CALL SHUTDOWN
   END IF
@@ -178,6 +179,7 @@ PROGRAM xx15_elastic
   ALLOCATE(load_value(ndim,loaded_nodes))
   ALLOCATE(load_node(loaded_nodes))
   ALLOCATE(nf_pp(nodof,nn_pp))
+  ! storekm_pp is always needed, for storefint_pp
   ALLOCATE(storekm_pp(ntot,ntot,nels_pp))
   ALLOCATE(kmat_elem(ntot,ntot))
   ALLOCATE(xnewel_pp(ntot,nels_pp))
@@ -207,6 +209,7 @@ PROGRAM xx15_elastic
   ALLOCATE(auxm_inc(nod,ndim))
   ALLOCATE(auxm_previous(nod,ndim))
   ALLOCATE(stiffness_mat_con(nels_pp,nip,(ndim*ndim),(ndim*ndim)))
+  ALLOCATE(km(ntot,ntot))
 
 !------------------------------------------------------------------------------
 ! 5. Loop the elements to find the steering array and the number of 
@@ -335,10 +338,22 @@ PROGRAM xx15_elastic
   !     after find_g3 so that neq_pp and g_g_pp are set up.
   !-----------------------------------------------------------------------------
   IF (solvers == petsc_solvers) THEN
-    CALL p_initialize(fname_base,numpe)
+    CALL p_initialize(fname_base,error)
+    IF (error) THEN
+      CALL shutdown
+    END IF
     ! Set up PETSc.
-    CALL p_setup(neq_pp,ntot,g_g_pp,numpe)
+    CALL p_setup(neq_pp,ntot,g_g_pp,error)
+    IF (error) THEN
+      CALL p_finalize
+      CALL shutdown
+    END IF
   END IF
+  memory_use = p_memory_use()
+  peak_memory_use = p_memory_peak()
+  IF (numpe == 1) WRITE(*,'(A,2F7.2,A)')                                       &
+    "current and peak memory use after setup:        ",                        &
+    memory_use,peak_memory_use," GB "
 
   !----------------------------------------------------------------------------
   ! 10. Initialise the solution vector to 0.0
@@ -513,6 +528,8 @@ PROGRAM xx15_elastic
       
       DO iel = 1,nels_pp
 
+        km = zero
+
         DO i = 1,nod
           num(i) = g_num_pp(i,iel) - nn_start + 1
         END DO
@@ -563,19 +580,29 @@ PROGRAM xx15_elastic
            
           ! Calculate the stiffness tensor of the element
           geeFT = TRANSPOSE(geeF)
-          storekm_pp(:,:,iel)=storekm_pp(:,:,iel) + (MATMUL(MATMUL(geeFT,     &
-           deeF),geeF)*dw)
+          km = km + (MATMUL(MATMUL(geeFT,deeF),geeF)*dw)
 
         END DO
 
+        storekm_pp(:,:,iel) = km
         IF (solvers == petsc_solvers) THEN
-          CALL p_add_element(g_g_pp(:,iel),storekm_pp(:,:,iel))
+          CALL p_add_element(g_g_pp(:,iel),km)
         END IF
       END DO
+      memory_use = p_memory_use()
+      peak_memory_use = p_memory_peak()
+      IF (numpe == 1) WRITE(*,'(A,2F7.2,A)')                                  &
+        "current and peak memory use after add elements: ",                   &
+         memory_use,peak_memory_use," GB "
 
       IF (solvers == petsc_solvers) THEN
-        CALL p_assemble(numpe)
+        CALL p_assemble
       END IF
+      memory_use = p_memory_use()
+      peak_memory_use = p_memory_peak()
+      IF (numpe == 1) WRITE(*,'(A,2F7.2,A)')                                  &
+        "current and peak memory use after assemble:     ",                   &
+        memory_use,peak_memory_use," GB "
       
       timest(33) = timest(33) + elap_time()-timest(2) ! 33 = matrix assemble
       timest(2) = elap_time()
@@ -656,13 +683,13 @@ PROGRAM xx15_elastic
         CALL PCG_VER1(inewton,limit,tol,storekm_pp,r_pp(1:),                   &
                       diag_precon_pp(1:),rn0,deltax_pp(1:),iters)
       ELSE IF (solvers == petsc_solvers) THEN
-        CALL p_use_solver(1,numpe,error)
+        CALL p_use_solver(1,error)
         IF (error) THEN
-          CALL p_finalize
+          CALL p_shutdown
           CALL shutdown
         END IF
         CALL p_solve(r_pp(1:),deltax_pp(1:))
-        CALL p_print_info(numpe,11)
+        CALL p_print_info(11)
       END IF
 
       timest(34) = timest(34) + elap_time()-timest(2) ! 34 = solve
@@ -1039,6 +1066,8 @@ PROGRAM xx15_elastic
 !------------------------------------------------------------------------------
 !------------------------------------------------------------------------------
 !------------------------------------------------------------------------------
+
+  peak_memory_use = p_memory_peak()
 
   IF (numpe==1) THEN
     WRITE(11,'(a,i5,a)') "This job ran on ",npes," processors"
