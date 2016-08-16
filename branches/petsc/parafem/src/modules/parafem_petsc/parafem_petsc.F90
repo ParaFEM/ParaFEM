@@ -67,10 +67,6 @@ MODULE parafem_petsc
   ! Private parameters
   INTEGER,PARAMETER,PRIVATE          :: string_length = 1024
   CHARACTER(len=*),PARAMETER,PRIVATE :: pre_prefix = "solver"
-  ! max_nsolvers is used only for warning about options set for solvers outside
-  ! the range 1:p_object%nsolvers.  There is no limit on the number of solvers,
-  ! so there will be no warning for options set for solvers > max_nsolvers.
-  INTEGER,PARAMETER,PRIVATE          :: max_nsolvers = 99
 
   ! Variables collected as one derived type
   TYPE p_type
@@ -86,13 +82,16 @@ MODULE parafem_petsc
     PetscReal           :: over_allocation = 1.3
     Vec                 :: x,b
     Mat                 :: A
-    PetscLogDouble      :: info(MAT_INFO_SIZE)
+    PetscLogDouble, DIMENSION(MAT_INFO_SIZE) :: info
     PetscInt            :: solver   = 1
     PetscInt            :: nsolvers = 1
-    KSP,ALLOCATABLE                          :: ksp(:)
-    CHARACTER(len=string_length),ALLOCATABLE :: prefix(:)
-    PetscInt,ALLOCATABLE    :: rows(:),cols(:)
-    PetscScalar,ALLOCATABLE :: values(:)
+    PetscBool           :: nsolvers_set = .false.
+    KSP,                          DIMENSION(:), ALLOCATABLE :: ksp(:)
+    ! KSPGetOptionsPrefix and PCGetOptionsPrefix don't work in Fortran yet
+    ! (PETSc 3.7), so keep a record of the prefixes here.
+    CHARACTER(len=string_length), DIMENSION(:), ALLOCATABLE :: prefix(:)
+    PetscInt,    DIMENSION(:), ALLOCATABLE :: rows,cols
+    PetscScalar, DIMENSION(:), ALLOCATABLE :: values
     PetscInt            :: its
     PetscReal           :: rtol,p_n2,r_n2,b_n2
     KSPConvergedReason  :: reason
@@ -111,13 +110,13 @@ MODULE parafem_petsc
  
 CONTAINS
   
-  SUBROUTINE p_initialize(fname_base,numpe)
+  SUBROUTINE p_initialize(fname_base,error)
 
     !/****if* petsc/p_initialize
     !*  NAME
     !*    SUBROUTINE: p_initialize
     !*  SYNOPSIS
-    !*    Usage:      p_initialize(fname_base,numpe)
+    !*    Usage:      p_initialize(fname_base,error)
     !*  FUNCTION
     !*      Initialises PETSc
     !*  ARGUMENTS
@@ -125,14 +124,18 @@ CONTAINS
     !*
     !*    fname_base         : Character
     !*                         Base name of the data file
-    !*    numpe              : Integer
-    !*                         Number of this process (starting at 1)
+    !*    INTENT(OUT)
+    !*
+    !*    error              : Logical
+    !*                         error = .false. if no error occurred
+    !*                         error = .true.  if an error occurred
     !*  AUTHOR
     !*    Mark Filipiak
     !*  CREATION DATE
     !*    19.02.2016
     !*  MODIFICATION HISTORY
     !*    Version 1, 02.06.2016, Mark Filipiak
+    !*    Version 2, 16.08.2016, Mark Filipiak
     !*  COPYRIGHT
     !*    (c) University of Edinburgh 2016
     !******
@@ -141,33 +144,40 @@ CONTAINS
     !*/
 
     CHARACTER(len=*), INTENT(in) :: fname_base
-    INTEGER,          INTENT(in) :: numpe
+    LOGICAL, INTENT(out)         :: error
 
     CHARACTER(len=string_length) :: fname
     LOGICAL :: exist
     INTEGER :: ierr
 
-    IF(numpe == 1) THEN
-      fname = TRIM(fname_base)//".petsc"
+    error = .false.
+
+    fname = TRIM(fname_base)//".petsc"
+    IF (numpe == 1) THEN
       INQUIRE(file=TRIM(fname),exist=exist)
-      IF (.NOT. exist) THEN
-        fname = ""
-      END IF
     END IF
     ! The communicator is MPI_COMM_WORLD, set by find_pe_procs(), and numpe ==
     ! 1 corresponds to rank == 0.
-    CALL MPI_BCAST(fname,LEN(fname),MPI_CHARACTER,0,MPI_COMM_WORLD,ierr)
-    
+    CALL MPI_BCAST(exist,1,MPI_LOGICAL,0,MPI_COMM_WORLD,ierr)
+
+    IF (.NOT. exist) THEN
+      IF (numpe == 1) THEN
+        WRITE(error_unit,'(A)') "Error:  file "//TRIM(fname)//" not found"
+      END IF
+      error = .TRUE.
+      RETURN
+    END IF
+
     CALL PetscInitialize(fname,p_object%ierr)
   END SUBROUTINE p_initialize
 
-  SUBROUTINE p_setup(neq_pp,ntot_max,g_g_pp,numpe)
+  SUBROUTINE p_setup(neq_pp,ntot_max,g_g_pp,error)
 
     !/****if* petsc/p_setup
     !*  NAME
     !*    SUBROUTINE: p_setup
     !*  SYNOPSIS
-    !*    Usage:      p_setup(neq_pp,ntot_max,g_g_pp,numpe)
+    !*    Usage:      p_setup(neq_pp,ntot_max,g_g_pp,error)
     !*  FUNCTION
     !*      Initialises PETSc and its matrices, vectors and solvers
     !*  ARGUMENTS
@@ -191,9 +201,11 @@ CONTAINS
     !*                         equation numbers for the dofs in element with
     !*                         local number iel (global number iel_start+iel-1)
     !*                         Restrained dofs have equation number 0.
-    !*    numpe              : Integer
-    !*                         This processer's number.  Only processor 1
-    !*                         prints information.
+    !*    INTENT(OUT)
+    !*
+    !*    error              : Logical
+    !*                         error = .false. if no error occurred
+    !*                         error = .true.  if an error occurred
     !*  AUTHOR
     !*    Mark Filipiak
     !*  CREATION DATE
@@ -210,15 +222,22 @@ CONTAINS
     !*  types will require major changes in ParaFEM
     !*/
 
-    INTEGER, INTENT(in) :: neq_pp
-    INTEGER, INTENT(in) :: ntot_max
+    INTEGER, INTENT(in)                 :: neq_pp
+    INTEGER, INTENT(in)                 :: ntot_max
     INTEGER, DIMENSION(:,:), INTENT(in) :: g_g_pp
-    INTEGER, INTENT(in) :: numpe
+    LOGICAL, INTENT(out)                :: error
+
+    error = .FALSE.
 
     ! Create the objects
     CALL p_create_matrix(neq_pp,g_g_pp)
     CALL p_create_vectors(neq_pp) ! RHS and solution
-    CALL p_create_ksps(numpe) ! Krylov solver(s)
+    CALL p_create_ksps(error) ! Krylov solver(s)
+    IF (error) THEN
+      CALL p_destroy_vectors
+      CALL p_destroy_matrix
+      RETURN
+    END IF
     CALL p_create_workspace(ntot_max)
   END SUBROUTINE p_setup
 
@@ -818,7 +837,7 @@ CONTAINS
     DEALLOCATE(d,eq_start,eq_count,eq_el)
     ! number of non-zeroes in the global matrix
     CALL MPI_Reduce(nnz_pp,nnz,1,MPIU_INTEGER,MPI_SUM,0,MPI_COMM_WORLD,ierr)
-    IF (numpe==1) THEN
+    IF (numpe == 1) THEN
       WRITE(*,'(A,I0)')"Number of non-zeroes in the global matrix = ", nnz
     END IF
   END SUBROUTINE row_nnz
@@ -900,27 +919,28 @@ CONTAINS
     CALL VecDestroy(p_object%b,p_object%ierr)
   END SUBROUTINE p_destroy_vectors
   
-  SUBROUTINE p_create_ksps(numpe)
+  SUBROUTINE p_create_ksps(error)
 
     !/****if* petsc/p_create_ksps
     !*  NAME
     !*    SUBROUTINE: p_create_ksps
     !*  SYNOPSIS
-    !*    Usage:      p_create_ksps(numpe)
+    !*    Usage:      p_create_ksps(error)
     !*  FUNCTION
     !*    Create the Krylov solvers and preconditioners
     !*  ARGUMENTS
-    !*    INTENT(IN)
+    !*    INTENT(OUT)
     !*
-    !*    numpe              : Integer
-    !*                         This processer's number.  Only processor 1
-    !*                         prints information.
+    !*    error              : Logical
+    !*                         error = .false. if no error occurred
+    !*                         error = .true.  if an error occurred
     !*  AUTHOR
     !*    Mark Filipiak
     !*  CREATION DATE
     !*    28.05.2016
     !*  MODIFICATION HISTORY
     !*    Version 1, 13.06.2016, Mark Filipiak
+    !*    Version 2, 15.08.2016, Mark Filipiak
     !*  COPYRIGHT
     !*    (c) University of Edinburgh 2016
     !******
@@ -963,28 +983,38 @@ CONTAINS
     !*  in the xxx.petsc file and no KSPSetOptionsPrefix used.
     !*/
 
-    INTEGER, INTENT(in) :: numpe
+    LOGICAL, INTENT(out) :: error
 
     PetscInt                     :: s
     CHARACTER(len=string_length) :: s_string
-    PetscBool                    :: nsolvers_set,set
+    PetscBool                    :: set
     PC                           :: p
     KSPType                      :: ksp_type
     PCType                       :: pc_type
 
+    error = .FALSE.
+
     ! p_object%nsolvers is initialized to 1.  PetscOptionsGetInt does not change
     ! p_object%nsolvers if -nsolvers is not set in xxx.petsc
     CALL PetscOptionsGetInt(PETSC_NULL_CHARACTER,"-nsolvers",p_object%nsolvers,&
-                            nsolvers_set,p_object%ierr)
+                            p_object%nsolvers_set,p_object%ierr)
+
+    IF (p_object%nsolvers < 1) THEN
+      IF (numpe == 1) THEN
+        WRITE(error_unit,'(A)') "Error:  -nsolvers is less than 1"
+      END IF
+      error = .TRUE.
+      RETURN
+    END IF
 
     ALLOCATE(p_object%ksp(p_object%nsolvers),                                  &
              p_object%prefix(p_object%nsolvers))
 
-    IF (.NOT. nsolvers_set) THEN
-      ! Simple case, one solver, no prefixes needed
-      s = 1 ! p_object%nsolvers == 1
+    IF (.NOT. p_object%nsolvers_set) THEN
+      ! Simple case, one solver, no prefix needed in the xxx.petsc file
+      s = 1
       CALL KSPCreate(PETSC_COMM_WORLD,p_object%ksp(s),p_object%ierr)
-      p_object%prefix(s) = "" ! for tests and output
+      p_object%prefix(s) = "" ! for tests
       ! No KSPSetOptionsPrefix
       CALL KSPSetFromOptions(p_object%ksp(s),p_object%ierr)
     ELSE
@@ -999,50 +1029,48 @@ CONTAINS
       END DO
     END IF
 
-    ! Warn if the KSP or PC has not been set.
+    ! Fail if the KSP, tolerance, max iterations, or PC have not been set.
     ! PetscOptionsHasName("","-ksp_type",...) will look for the option
     ! "-ksp_type", i.e. as if there were no prefix.
     DO s = 1, p_object%nsolvers
       CALL PetscOptionsHasName(p_object%prefix(s),"-ksp_type",set,p_object%ierr)
       IF (.NOT. set) THEN
-        CALL KSPGetType(p_object%ksp(s),ksp_type,p_object%ierr)
-        IF (numpe==1) THEN
-          WRITE(*,'(A)') "Warning: -"//TRIM(p_object%prefix(s))//"ksp_type "   &
-                         //"not set.  Solver "//TRIM(s_string)//" will have "  &
-                         //"KSP type "//TRIM(ksp_type)
+        IF (numpe == 1) THEN
+          WRITE(error_unit,'(A)')                                              &
+            "Error:  -"//TRIM(p_object%prefix(s))//"ksp_type not set"
         END IF
+        error = .TRUE.
+      END IF
+      CALL PetscOptionsHasName(p_object%prefix(s),"-ksp_rtol",set,p_object%ierr)
+      IF (.NOT. set) THEN
+        IF (numpe == 1) THEN
+          WRITE(error_unit,'(A)')                                              &
+            "Error:  -"//TRIM(p_object%prefix(s))//"ksp_rtol not set"
+        END IF
+        error = .TRUE.
+      END IF
+      CALL PetscOptionsHasName(p_object%prefix(s),"-ksp_max_it",set,           &
+                               p_object%ierr)
+      IF (.NOT. set) THEN
+        IF (numpe == 1) THEN
+          WRITE(error_unit,'(A)')                                              &
+            "Error:  -"//TRIM(p_object%prefix(s))//"ksp_max_it not set"
+        END IF
+        error = .TRUE.
       END IF
       CALL PetscOptionsHasName(p_object%prefix(s),"-pc_type",set,p_object%ierr)
       IF (.NOT. set) THEN
-        CALL KSPGetPC(p_object%ksp(s),p,p_object%ierr)
-        CALL PCGetType(p,pc_type,p_object%ierr)
-        IF (numpe==1) THEN
-          WRITE(*,'(A)') "Warning: -"//TRIM(p_object%prefix(s))//"pc_type "    &
-                         //"not set.  Solver "//TRIM(s_string)//" will have "  &
-                         //"PC type "//TRIM(pc_type)
+        IF (numpe == 1) THEN
+          WRITE(error_unit,'(A)')                                              &
+            "Error:  -"//TRIM(p_object%prefix(s))//"pc_type not set"
         END IF
+        error = .TRUE.
       END IF
     END DO
-
-    ! Warn about options that have been set for solvers > nsolvers.  This isn't
-    ! perfect, there are no warnings for solvers > max_nsolvers.
-    DO s = p_object%nsolvers+1, max_nsolvers
-      WRITE(s_string,'(I0)') s
-      ! Warn if the KSP or PC has been set.
-      CALL PetscOptionsHasName(pre_prefix//"_"//TRIM(s_string)//"_",           &
-                               "-ksp_type",set,p_object%ierr)
-      IF (.NOT. set) THEN
-        CALL PetscOptionsHasName(pre_prefix//"_"//TRIM(s_string)//"_",         &
-                                 "-pc_type",set,p_object%ierr)
-      END IF
-      IF (set) THEN
-        IF (numpe==1) THEN
-          WRITE(*,'(A,I0)') "Warning: options set for solver "//TRIM(s_string) &
-                            //" but nsolvers is ",p_object%nsolvers
-        END IF
-      END IF
-    END DO
-
+    IF (error) THEN
+      CALL p_destroy_ksps
+      RETURN
+    END IF
   END SUBROUTINE p_create_ksps
   
   SUBROUTINE p_destroy_ksps
@@ -1206,21 +1234,17 @@ CONTAINS
                       p_object%values,ADD_VALUES,p_object%ierr)
   END SUBROUTINE p_add_element
 
-  SUBROUTINE p_assemble(numpe)
+  SUBROUTINE p_assemble
 
     !/****if* petsc/p_assemble
     !*  NAME
     !*    SUBROUTINE: p_assemble
     !*  SYNOPSIS
-    !*    Usage:      p_assemble(numpe)
+    !*    Usage:      p_assemble
     !*  FUNCTION
     !*    Assemble the global matrix.
     !*  ARGUMENTS
-    !*    INTENT(IN)
-    !*
-    !*    numpe              : Integer
-    !*                         This processer's number.  Only processor 1
-    !*                         prints information.
+    !*    None
     !*  AUTHOR
     !*    Mark Filipiak
     !*  CREATION DATE
@@ -1234,8 +1258,6 @@ CONTAINS
     !*
     !*/
 
-    INTEGER, INTENT(in) :: numpe
-
     CALL MatAssemblyBegin(p_object%A,MAT_FINAL_ASSEMBLY,p_object%ierr)
     CALL MatAssemblyEnd(p_object%A,MAT_FINAL_ASSEMBLY,p_object%ierr)
     
@@ -1245,8 +1267,8 @@ CONTAINS
                       p_object%ierr)
 
     CALL MatGetInfo(p_object%A,MAT_GLOBAL_SUM,p_object%info,p_object%ierr)
-    IF (p_object%info(MAT_INFO_MALLOCS)/=0.0) THEN
-      IF (numpe==1) THEN
+    IF (p_object%info(MAT_INFO_MALLOCS) /= 0.0) THEN
+      IF (numpe == 1) THEN
         WRITE(*,'(A,I0,A,F0.1,A)') "The matrix assembly required ",            &
           NINT(p_object%info(MAT_INFO_MALLOCS)),                               &
           " mallocs.  Use the option '-over_allocation n' with n > ",          &
@@ -1256,55 +1278,6 @@ CONTAINS
     END IF
   END SUBROUTINE p_assemble
 
-  SUBROUTINE p_set_tolerances(rtol,max_it)
-
-    !/****if* petsc/p_set_tolerances
-    !*  NAME
-    !*    SUBROUTINE: p_set_tolerances
-    !*  SYNOPSIS
-    !*    Usage:      p_set_tolerances(rtol,max_it)
-    !*  FUNCTION
-    !*    Set the tolerances for the Krylov solver
-    !*  ARGUMENTS
-    !*    INTENT(IN)
-    !*
-    !*    rtol               : Real
-    !*                         Relative tolerance for the preconditioned
-    !*                         residual (in ParaFEM the relative tolerance
-    !*                         is for the true residual).
-    !*    max_it             : Integer
-    !*                         Maximum number of Krylov solver iterations.
-    !*  AUTHOR
-    !*    Mark Filipiak
-    !*  CREATION DATE
-    !*    28.05.2016
-    !*  MODIFICATION HISTORY
-    !*    Version 1, 13.06.2016, Mark Filipiak
-    !*  COPYRIGHT
-    !*    (c) University of Edinburgh 2016
-    !******
-    !*  Place remarks that should not be included in the documentation here.
-    !*
-    !* Is this needed any more?  The tolerance and maximum number of iterations
-    !* come from the PETSc control file (xxxx.petsc).
-    !*/
-
-    REAL,    INTENT(in) :: rtol
-    INTEGER, INTENT(in) :: max_it
-
-    PetscReal :: p_rtol
-    PetscInt  :: p_max_it
-
-    p_rtol = rtol
-    p_max_it = max_it
-
-    ! These would override the settings in the xxxx.petsc file (and command
-    ! line).
-    CALL KSPSetTolerances(p_object%ksp(p_object%solver),p_rtol,                &
-                          PETSC_DEFAULT_REAL,PETSC_DEFAULT_REAL,p_max_it,      &
-                          p_object%ierr)
-  END SUBROUTINE p_set_tolerances
-  
   SUBROUTINE p_set_rhs(r_pp)
 
     !/****if* petsc/p_set_rhs
@@ -1428,13 +1401,13 @@ CONTAINS
     CALL VecRestoreArrayF90(p_object%x,varray,p_object%ierr)
   END SUBROUTINE p_get_solution
 
-  SUBROUTINE p_use_solver(solver,numpe,error)
+  SUBROUTINE p_use_solver(solver,error)
 
     !/****if* petsc/p_use_solver
     !*  NAME
     !*    SUBROUTINE: p_use_solver
     !*  SYNOPSIS
-    !*    Usage:      p_use_solver(solver,numpe,error)
+    !*    Usage:      p_use_solver(solver,error)
     !*  FUNCTION
     !*    Choose one of the PETSc solvers specified by options and read in by
     !*    p_create_ksps (which is called by p_setup).
@@ -1445,12 +1418,9 @@ CONTAINS
     !*                            The number of the solver to use.  This allows
     !*                            you to use different solvers at different
     !*                            stages of a calculation.
-    !*    numpe              : Integer
-    !*                         This processer's number.  Only processor 1
-    !*                         prints information.
-    !*    error              : Logical
-    !*                         error = .false. if no error occurred
-    !*                         error = .true.  if an error occurred
+    !*    error                 : Logical
+    !*                            error = .false. if no error occurred
+    !*                            error = .true.  if an error occurred
     !*  AUTHOR
     !*    Mark Filipiak
     !*  CREATION DATE
@@ -1465,14 +1435,13 @@ CONTAINS
     !*/
 
     INTEGER, INTENT(in)  :: solver
-    INTEGER, INTENT(in)  :: numpe
     LOGICAL, INTENT(out) :: error
 
     error = .FALSE.
 
     IF (solver < 1 .OR. solver > p_object%nsolvers) THEN
-      IF (numpe==1) THEN
-        WRITE(*,'(A,I0,A,I0)') "Error: p_use_solver uses solver ",solver,      &
+      IF (numpe == 1) THEN
+        WRITE(error_unit,'(A,I0,A,I0)') "Error: p_use_solver uses solver ",solver,      &
                                " but nsolvers is ",p_object%nsolvers
       END IF
       error = .TRUE.
@@ -1575,21 +1544,18 @@ CONTAINS
     CALL p_get_solution(x_pp)
   END SUBROUTINE p_solve
 
-  SUBROUTINE p_print_info(numpe,unit)
+  SUBROUTINE p_print_info(unit)
 
     !/****if* petsc/p_print_info
     !*  NAME
     !*    SUBROUTINE: p_print_info
     !*  SYNOPSIS
-    !*    Usage:      p_print_info(numpe,unit)
+    !*    Usage:      p_print_info(unit)
     !*  FUNCTION
     !*    Prints the convergence information
     !*  ARGUMENTS
     !*    INTENT(IN)
     !*
-    !*    numpe              : Integer
-    !*                         This processer's number.  Only processor 1
-    !*                         prints information.
     !*    unit               : Integer
     !*                         File unit to print to.
     !*  AUTHOR
@@ -1605,7 +1571,6 @@ CONTAINS
     !*
     !*/
 
-    INTEGER, INTENT(in) :: numpe
     INTEGER, INTENT(in) :: unit
 
     Vec         :: w,y
@@ -1640,8 +1605,12 @@ CONTAINS
     CALL KSPGetConvergedReason(ksp,p_object%reason,p_object%ierr)
     p_object%description = p_describe_reason(p_object%reason)
   
-    IF(numpe == 1)THEN
-      WRITE(unit,'(A)') TRIM(p_object%prefix(p_object%solver))
+    IF (numpe == 1)THEN
+      IF (.NOT. p_object%nsolvers_set) THEN
+        WRITE(unit,'(A)') "Solver"
+      ELSE
+        WRITE(unit,'(A,I0)') "Solver ",p_object%solver
+      END IF
       WRITE(unit,'(A,I0,A)')                                                   &
         "The reason for convergence was ",p_object%reason," "                  &
         //TRIM(p_object%description)
@@ -1819,7 +1788,7 @@ CONTAINS
 
     INTEGER :: ierr
 
-    CALL release_memory()
+    CALL release_memory
 
     kbytes = 0
 
@@ -1903,13 +1872,13 @@ CONTAINS
     p_memory_peak = sum_VmHWM
   END FUNCTION p_memory_peak
   
-  SUBROUTINE release_memory()
+  SUBROUTINE release_memory
 
     !/****if* petsc/release_memory
     !*  NAME
     !*    SUBROUTINE: release_memory
     !*  SYNOPSIS
-    !*    Usage:      release_memory()
+    !*    Usage:      release_memory
     !*  FUNCTION
     !*    Release all freed memory back to the system.  Maybe not all if there
     !*    gaps in the heap.  Linux only.  Does not work for the Cray compiler
