@@ -66,7 +66,7 @@ PROGRAM xx15_elastic
    value_shape(:), shape_integral_pp(:,:), stress_integral_pp(:,:),           &
    stressnodes_pp(:), strain_integral_pp(:,:), strainnodes_pp(:),             &
    principal_integral_pp(:,:), princinodes_pp(:), principal(:),               &
-   reacnodes_pp(:), stiffness_mat_con(:,:,:,:), km(:,:)
+   reacnodes_pp(:), stiffness_mat_con(:,:,:,:), km(:,:), fixkm_pp(:,:,:)
 
   INTEGER, ALLOCATABLE  :: num(:), g_num(:,:), g_num_pp(:,:), g_g_pp(:,:),    &
    load_node(:), rest(:,:), nf_pp(:,:), no_pp(:), comp(:,:), fixed_node(:),   &
@@ -179,8 +179,9 @@ PROGRAM xx15_elastic
   ALLOCATE(load_value(ndim,loaded_nodes))
   ALLOCATE(load_node(loaded_nodes))
   ALLOCATE(nf_pp(nodof,nn_pp))
-  ! storekm_pp is always needed, for storefint_pp
-  ALLOCATE(storekm_pp(ntot,ntot,nels_pp))
+  IF (solvers == parafem_solvers) THEN
+    ALLOCATE(storekm_pp(ntot,ntot,nels_pp))
+  END IF
   ALLOCATE(kmat_elem(ntot,ntot))
   ALLOCATE(xnewel_pp(ntot,nels_pp))
   ALLOCATE(xnewel_pp_previous(ntot,nels_pp))
@@ -285,6 +286,8 @@ PROGRAM xx15_elastic
     END DO
     
     DEALLOCATE(fixed_node, fixed_dof, fixed_value)
+
+    ALLOCATE(fixkm_pp(ntot,ntot,numfix_pp))
 
   END IF
   
@@ -521,8 +524,9 @@ PROGRAM xx15_elastic
       timest(32) = timest(32) + elap_time()-timest(2) ! 32 = other work in load loop
       timest(2) = elap_time()
       
-      storekm_pp = zero
-      IF (solvers == petsc_solvers) THEN
+      IF (solvers == parafem_solvers) THEN
+        storekm_pp = zero
+      ELSE IF (solvers == petsc_solvers) THEN
         CALL p_zero_matrix
       END IF
       
@@ -584,8 +588,18 @@ PROGRAM xx15_elastic
 
         END DO
 
-        storekm_pp(:,:,iel) = km
-        IF (solvers == petsc_solvers) THEN
+        ! storekm_pp is only used by the ParaFEM solvers but would also be
+        ! needed to convert the fixed displacements to a force.  Use a
+        ! (hopefully small) copy of the elements needed for the fixed
+        ! displacements.  It would better to use PETSc matrix-vector multiplies
+        ! but that would require all the handling of fixed dofs in ParaFEM to be
+        ! changed (right down to changes in gather and scatter I think) to pass
+        ! them through as zeroes in the matrix.
+        FORALL (i = 1:numfix_pp, fixelem_pp(i) == iel) fixkm_pp(:,:,i) = km
+
+        IF (solvers == parafem_solvers) THEN
+          storekm_pp(:,:,iel) = km
+        ELSE IF (solvers == petsc_solvers) THEN
           CALL p_add_element(g_g_pp(:,iel),km)
         END IF
       END DO
@@ -642,7 +656,7 @@ PROGRAM xx15_elastic
           DO j = 1,ntot
             IF (g_g_pp(j,fixelem_pp(i))>0) THEN
               storefint_pp(j,fixelem_pp(i)) = storefint_pp(j,fixelem_pp(i)) + &
-                fixvalpiece_pp(i)*storekm_pp(j,fixdof_pp(i),fixelem_pp(i))
+                fixvalpiece_pp(i)*fixkm_pp(j,fixdof_pp(i),i)
             END IF
           END DO
         END DO
