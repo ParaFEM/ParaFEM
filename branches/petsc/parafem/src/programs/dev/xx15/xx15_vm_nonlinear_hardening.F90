@@ -297,7 +297,16 @@ PROGRAM xx15_vm_nonlinear_hardening
 
     DEALLOCATE(fixed_dof, fixed_value)
 
-    ALLOCATE(fixkm_pp(ntot,ntot,numfix_pp))
+    IF (solvers == petsc_solvers) THEN
+      ! storekm_pp is only used by the ParaFEM solvers but would also be needed
+      ! to convert the fixed displacements to a force.  Use a (hopefully small)
+      ! copy of the elements needed for the fixed displacements.  It would
+      ! better to use PETSc matrix-vector multiplies but that would require all
+      ! the handling of fixed dofs in ParaFEM to be changed (right down to
+      ! changes in gather and scatter I think) to pass them through as zeroes in
+      ! the matrix.
+      ALLOCATE(fixkm_pp(ntot,ntot,numfix_pp))
+    END IF
 
   END IF
   
@@ -653,19 +662,11 @@ PROGRAM xx15_vm_nonlinear_hardening
 
         END DO
 
-        ! storekm_pp is only used by the ParaFEM solvers but would also be
-        ! needed to convert the fixed displacements to a force.  Use a
-        ! (hopefully small) copy of the elements needed for the fixed
-        ! displacements.  It would better to use PETSc matrix-vector multiplies
-        ! but that would require all the handling of fixed dofs in ParaFEM to be
-        ! changed (right down to changes in gather and scatter I think) to pass
-        ! them through as zeroes in the matrix.
-        FORALL (i = 1:numfix_pp, fixelem_pp(i) == iel) fixkm_pp(:,:,i) = km
-
         IF (solvers == parafem_solvers) THEN
           storekm_pp(:,:,iel) = km
         ELSE IF (solvers == petsc_solvers) THEN
           CALL p_add_element(g_g_pp(:,iel),km)
+          FORALL (i = 1:numfix_pp, fixelem_pp(i) == iel) fixkm_pp(:,:,i) = km
         END IF
       END DO
       memory_use = p_memory_use()
@@ -720,8 +721,13 @@ PROGRAM xx15_vm_nonlinear_hardening
         DO i = 1,numfix_pp
           DO j = 1,ntot
             IF (g_g_pp(j,fixelem_pp(i))>0) THEN
-              storefint_pp(j,fixelem_pp(i)) = storefint_pp(j,fixelem_pp(i)) + &
-                fixvalpiece_pp(i)*fixkm_pp(j,fixdof_pp(i),i)
+              IF (solvers == parafem_solvers) THEN
+                storefint_pp(j,fixelem_pp(i)) = storefint_pp(j,fixelem_pp(i))  &
+                  + fixvalpiece_pp(i)*storekm_pp(j,fixdof_pp(i),fixelem_pp(i))
+              ELSE IF (solvers == petsc_solvers) THEN
+                storefint_pp(j,fixelem_pp(i)) = storefint_pp(j,fixelem_pp(i))  &
+                  + fixvalpiece_pp(i)*fixkm_pp(j,fixdof_pp(i),i)
+              END IF
             END IF
           END DO
         END DO
