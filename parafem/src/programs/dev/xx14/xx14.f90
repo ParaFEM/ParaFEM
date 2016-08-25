@@ -252,14 +252,17 @@ cgca_nimgs = num_images()
 ! Argument:
 ! .false. - no debug output
 !  .true. - with debug output
-!call cgca_ins( .true. )
-call cgca_irs( .true. )
+call cgca_ins( .true. )
+!call cgca_irs( .true. )
 
 ! dump CGPACK parameters and some ParaFEM settings
 if ( cgca_img .eq. 1 ) then
   call cgca_pdmp
   write (*,*) "Young's mod:", e, "Poisson's ratio", v
 end if
+
+! Try to separate stdout output
+sync all
 
 ! physical dimensions of the box, must be the same
 ! units as in the ParaFEM.
@@ -281,7 +284,7 @@ cgca_rot( 2, 2 ) = 1.0
 cgca_rot( 3, 3 ) = 1.0
 
 ! mean grain size, also mm
-cgca_dm = 8.0e-1_rdef
+cgca_dm = 2.0e0_rdef
 
 ! resolution, cells per grain
 cgca_res = 1.0e5_rdef
@@ -313,17 +316,18 @@ if (cgca_img .eq. 1 ) then
     cgca_qual, cgca_lres,                                              &
          " (", cgca_bsz(1), ",", cgca_bsz(2), ",", cgca_bsz(3), ")"
   write (*,*) "dataset sizes for ParaView", cgca_c*cgca_ir
-  write (*,"(a,es10.2)") "Total cells in the model",                   &
-              product( real(cgca_c) * real(cgca_ir) )
+  write (*,"(a, es10.2, a, i0)") "Total cells in the model (real): ",  &
+    product( real(cgca_c) * real(cgca_ir) ), " (int): ",               &
+    product( int(cgca_c, kind=ilrg) * int(cgca_ir, kind=ilrg) )
 end if
 
-! allocate space coarray with 2 layers
+! Allocate space coarray with 2 layers, implicit SYNC ALL inside.
 !subroutine cgca_as( l1, u1, l2, u2, l3, u3,                           &
 !             col1, cou1, col2, cou2, col3, props, coarray )
 call cgca_as( 1, cgca_c(1),  1, cgca_c(2),  1, cgca_c(3),              &
               1, cgca_ir(1), 1, cgca_ir(2), 1, 2, cgca_space )
 
-! calculate the phys. dim. of the coarray on each image
+! Calculate the phys. dim. of the coarray on each image
 !subroutine cgca_imco( space, lres, bcol, bcou )
 call cgca_imco( cgca_space, cgca_lres, cgca_bcol, cgca_bcou )
 
@@ -345,7 +349,7 @@ write (*,*) "img",cgca_img," <-> MPI proc", numpe
 ! an allocatable array component of a coarray variable of derived type.
 call cgca_pfem_ctalloc( ndim, nels_pp )
 
-! Set the centroids array component on this image, no remote calls.
+! Set the centroids array component on this image, no remote comms.
 ! first dim - coord, 1,2,3
 ! second dim - element number, always starting from 1
 ! g_coord_pp is allocated as g_coord_pp( nod, ndim, nels_pp )
@@ -385,50 +389,55 @@ cgca_pfem_enew = e
 
 ! Generate microstructure
 
-! allocate rotation tensors
+! Allocate rotation tensors, implicit SYNC ALL inside.
 call cgca_art( 1, cgca_ng, 1, cgca_ir(1), 1, cgca_ir(2), 1, cgca_grt )
 
-! initialise space
+! Set initial values to all layers of the space array.
 cgca_space( :, :, :, cgca_state_type_grain ) = cgca_liquid_state
 cgca_space( :, :, :, cgca_state_type_frac  ) = cgca_intact_state
 
-! nuclei, sync all inside
+! Make sure all images set their space arrays, before calling
+! the grain nucleation routine, which will update the state of
+! the space array.
+sync all
+
+! Set grain nuclei, SYNC ALL inside.
 ! last argument:
 ! .false. - no debug output
 !  .true. - with debug output
 call cgca_nr( cgca_space, cgca_ng, .false. )
 
-! assign rotation tensors, sync all inside
+! Assign rotation tensors, SYNC ALL inside
 call cgca_rt( cgca_grt )
 
-! solidify
+! Solidify, SYNC ALL inside.
 !subroutine cgca_sld( coarray, periodicbc, iter, heartbeat, solid )
 ! second argument:
 !  .true. - periodic BC
 ! .false. - no periodic BC
-! ===>>> implicit sync all inside <<<===
 call cgca_sld( cgca_space, .false., 0, 10, cgca_solid )
 
 ! initiate grain boundaries
 call cgca_igb( cgca_space )
-
-! smoothen the GB, several iterations,
-! halo exchange,
-! sync needed following halo exchange
-call cgca_gbs( cgca_space )
+sync all
 call cgca_hxi( cgca_space )
-
 sync all
 
+! Smoothen the GB, several iterations. cgca_gbs has not remote comms.
+! cgca_hxi has remote comms, so need to sync before and after it.
 call cgca_gbs( cgca_space )
+sync all
 call cgca_hxi( cgca_space )
-
+sync all
+call cgca_gbs( cgca_space )
+sync all
+call cgca_hxi( cgca_space )
 sync all
 
 ! update grain connectivity, local routine, no sync needed
 call cgca_gcu( cgca_space )
 
-! set a single crack nucleus in the centre of the x1=x2=0 edge
+! Set a single crack nucleus in the centre of the x1=x2=0 edge
 if ( cgca_img .eq. 1 ) then
   cgca_space( 1, 1, cgca_c(3)/2, cgca_state_type_frac )                &
               [ 1, 1, cgca_ir(3)/2 ] = cgca_clvg_state_100_edge
@@ -443,18 +452,22 @@ sync all !
 ! required, to avoid extra sync.
 call cgca_pfem_ctdalloc
 
-! img 1 dumps space arrays to files
+! Img 1 dumps space arrays to files.
+! Remote comms, no sync inside, so most likely want to sync afterwards
 if ( cgca_img .eq. 1 ) write (*,*) "dumping model to files"
-call cgca_pswci( cgca_space, cgca_state_type_grain, "zg0.raw" )
-call cgca_pswci( cgca_space, cgca_state_type_frac,  "zf0.raw" )
+call cgca_fwci( cgca_space, cgca_state_type_grain, "zg0text.raw" )
+call cgca_fwci( cgca_space, cgca_state_type_frac,  "zf0text.raw" )
+call cgca_swci( cgca_space, cgca_state_type_grain, 10, "zg0.raw" )
+call cgca_swci( cgca_space, cgca_state_type_frac,  10, "zf0.raw" )
 if ( cgca_img .eq. 1 ) write (*,*) "finished dumping model to files"
 
-! allocate the stress array component of cgca_pfem_stress coarray
+! Allocate the stress array component of cgca_pfem_stress coarray
 ! subroutine cgca_pfem_salloc( nels_pp, intp, comp )
 call cgca_pfem_salloc( nels_pp, nip, nst )
 
-! just in case, not sure what is coming next...
+! Need a sync after file write, because not sure what is coming next...
 sync all
+
 !*** end CGPACK part *************************************************72
 
 
@@ -674,11 +687,14 @@ call cgca_clvgp( cgca_space, cgca_grt, cgca_stress,                    &
      0.01_rdef * cgca_scrit, cgca_clvgsd, cgca_gcupdn, .false. ,       &
      cgca_clvg_iter, 10, cgca_yesdebug )
 
+! dump the model out, no sync inside
 if ( cgca_img .eq. 1 ) write (*,*) "dumping model to file"
 write ( cgca_citer, "(i0)" ) cgca_liter
-call cgca_pswci( cgca_space, cgca_state_type_frac,                     &
+call cgca_swci( cgca_space, cgca_state_type_frac, 10,                  &
                  "zf"//trim( cgca_citer )//".raw" )
 if ( cgca_img .eq. 1 ) write (*,*) "finished dumping model to file"
+
+sync all
      
 ! Calculate number (volume) of fractured cells on each image.
 ! cgca_fracvol is a local, non-coarray, array, so no sync needed.
@@ -690,7 +706,7 @@ write (*,*) "img:", cgca_img, "fracvol:", cgca_fracvol
 call cgca_pfem_intcalc1( cgca_c, cgca_fracvol )
 
 ! dump min integrity for all FE stored on this image
-write (*,*) "img:", cgca_img, "min. integrity:",                            &
+write (*,*) "img:", cgca_img, "min. integrity:",                       &
   minval( cgca_pfem_integrity % i )
 
 ! wait for integrity on all images to be calculated
