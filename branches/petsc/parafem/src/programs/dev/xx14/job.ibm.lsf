@@ -1,9 +1,10 @@
 #BSUB -J zzz
 #BSUB -oo zzz.out
 #BSUB -eo zzz.err
+#BSUB -P HCT00036
 #BSUB -R "span[ptile=24]"
 #BSUB -W 0:19
-#BSUB -n 72
+#BSUB -n 96
 
 #$Id: job.ibm.lsf 293 2016-06-20 11:30:58Z mexas $
 #  AUTHOR
@@ -25,15 +26,15 @@ NODES=nodes
 # Load Intel modules
 . /etc/profile.d/modules.sh
 module purge
-module add intel/16.0.047 intel_mpi/5.1.1
-# intel/license - need to load only for a non-default intel module.
-# A check
+module add intel_mpi
 module list
 
 # Specify the desired Intel MPI fabric here, or leave empty for default
 # See https://software.intel.com/en-us/node/535585
-FABRIC="I_MPI_FABRICS=shm:dapl"
 #FABRIC=
+#FABRIC="I_MPI_FABRICS=shm:dapl"
+#FABRIC="I_MPI_FABRICS=shm:ofa"
+#FABRIC="I_MPI_FABRICS=shm:tcp"
 
 # How many processors are allocated.
 # Save all nodes to file $NODES

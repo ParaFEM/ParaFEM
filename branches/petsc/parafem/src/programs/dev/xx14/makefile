@@ -49,8 +49,8 @@ release:
 	@echo
 	@echo "Building XX14 RELEASE"
 	$(MAKE) $(EXE) \
-	FFLAGS="-c -I$(MODULE) $(XX14_MPI_REL_FFLAGS) -hpl=xx14.pl -hwp" \
-	LDFLAGS="-L$(LIB) -lParaFEM_mpi.$(VERSION) $(XX14_MPI_REL_LDFLAGS) -hpl=xx14.pl -hwp"
+	FFLAGS="-c -I$(MODULE) $(XX14_MPI_REL_FFLAGS)" \
+	LDFLAGS="-L$(LIB) -lParaFEM_mpi.$(VERSION) $(XX14_MPI_REL_LDFLAGS)"
 	@echo "Done" $(EXE) "RELEASE"
 
 debug:
