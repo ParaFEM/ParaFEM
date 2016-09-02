@@ -1,10 +1,8 @@
-PROGRAM xx15_quadric_linear_hardening
+program XX15
 !------------------------------------------------------------------------------
 !   program xx15:  finite strain elasto-plastic analysis with Newton-Raphson
 !------------------------------------------------------------------------------
 
-  USE choose_solvers
-  USE parafem_petsc
   USE PRECISION
   USE GLOBAL_VARIABLES
   USE MP_INTERFACE
@@ -15,10 +13,11 @@ PROGRAM xx15_quadric_linear_hardening
   USE MATHS
   USE TIMING
   USE LARGE_STRAIN
-  USE plasticity_xx15
+  USE FRANCESC
   
   IMPLICIT NONE
 
+  ! neq, ntot declared in global_variables
   INTEGER :: nels, nn, nr, nip, nodof=3, nod, nst=6, loaded_nodes, nn_pp,     &
    nf_start, fmt=1, i, j, k, l, ndim=3, iters, limit, iel, nn_start,          &
    num_load_steps, iload, igauss, dimH, inewton, jump, npes_pp, partitioner=1,&
@@ -43,14 +42,8 @@ PROGRAM xx15_quadric_linear_hardening
   CHARACTER(len=50) :: text, fname_base, fname
  
   LOGICAL :: converged, timewrite=.TRUE., flag=.FALSE., print_output=.FALSE., &
-   tol_inc=.FALSE., lambda_inc=.TRUE., noncon_flag=.FALSE.,exit_iload=.false.
+   tol_inc=.FALSE., lambda_inc=.TRUE., noncon_flag=.FALSE.
 
-  CHARACTER(len=choose_solvers_string_length) :: solvers
-  LOGICAL                  :: error
-  CHARACTER(:),ALLOCATABLE :: message
-  CHARACTER,PARAMETER      :: tab = ACHAR(9)
-  REAL                     :: memory_use,peak_memory_use
-  
   !-------------------------- dynamic arrays-----------------------------------
   REAL(iwp), ALLOCATABLE:: points(:,:), coord(:,:), weights(:), xnew_pp(:),   &
    diag_precon_pp(:), r_pp(:), bee(:,:), load_value(:,:), g_coord_pp(:,:),    &
@@ -69,21 +62,18 @@ PROGRAM xx15_quadric_linear_hardening
    value_shape(:), shape_integral_pp(:,:), stress_integral_pp(:,:),           &
    stressnodes_pp(:), strain_integral_pp(:,:), strainnodes_pp(:),             &
    principal_integral_pp(:,:), princinodes_pp(:), principal(:),               &
-   reacnodes_pp(:), stiffness_mat_con(:,:,:,:), km(:,:), fixkm_pp(:,:,:)
+   reacnodes_pp(:), stiffness_mat_con(:,:,:,:)
 
   INTEGER, ALLOCATABLE  :: num(:), g_num(:,:), g_num_pp(:,:), g_g_pp(:,:),    &
    load_node(:), rest(:,:), nf_pp(:,:), no_pp(:), comp(:,:), fixed_node(:),   &
    fixed_dof(:), fixelem_pp(:), fixdof_pp(:), unload_pp(:,:), rm_vec(:)
   !----------------------------------------------------------------------------
 
-  !----------------------------------------------------------------------------
+  !-------------------------------------------------------------------------
   ! 1. Input and initialisation
-  !----------------------------------------------------------------------------
+  !-------------------------------------------------------------------------
 
-  timest = zero
-
-  timest(1) = elap_time()
-  timest(2) = elap_time()
+  timest(1) = ELAP_TIME( )
 
   CALL FIND_PE_PROCS(numpe,npes)
 
@@ -93,37 +83,29 @@ PROGRAM xx15_quadric_linear_hardening
 
 !  If I have forgotten to write the name of the file in the command
 !  line, the program is stopped
-  IF (argc < 1) THEN
-    IF (numpe == 1) THEN
+  IF (argc /= 1) THEN
+    IF (numpe==npes) THEN
       WRITE(*,*) "Need name of filename_base!!"
     END IF
     CALL SHUTDOWN
     STOP
   END IF
 
-! Input:  1: The first argument in the command line (arg1) 
-  IF (argc >= 1) THEN
-    CALL GETARG(1,fname_base)
-  END IF
-
+!     Input:  1: The first argument in the command line (arg1) 
+  CALL GETARG(1, fname_base)
+!     Output: fname_base ch: Name of the file (maybe par131) 
+ 
   fname = fname_base(1:INDEX(fname_base," ")-1) // ".dat"
-  CALL READ_DATA_XX7(fname,numpe,nels,nn,nr,loaded_nodes,fixed_nodes,          &
-                     nip,limit,tol,e,v,nod,num_load_steps,jump,tol2)
-
-  solvers = get_solvers()
-  IF (.NOT. solvers_valid(solvers)) THEN
-    CALL SHUTDOWN
-  END IF
+  CALL READ_DATA_XX7(fname,numpe,nels,nn,nr,loaded_nodes,fixed_nodes, &
+                             nip,limit,tol,e,v,nod,num_load_steps,jump,tol2)
 
   IF (nels < npes) THEN
-    IF (numpe==1) THEN
-      WRITE(*,*)"Error: fewer elements than processors"
-    END IF
     CALL SHUTDOWN
+    WRITE(*,*)"Error: less elements than processors"
     STOP
   END IF
 
-  IF(numpe==1) THEN
+  IF(numpe==npes) THEN
     fname = fname_base(1:INDEX(fname_base," ")-1) // ".res"
     OPEN (11, file=fname, status='replace', action='write')
   END IF
@@ -153,22 +135,29 @@ PROGRAM xx15_quadric_linear_hardening
 
   CALL CALC_NELS_PP(fname_base,nels,npes,numpe,partitioner,nels_pp)
   
+  timest(2) = ELAP_TIME()
+
   ALLOCATE(g_num_pp(nod, nels_pp)) 
   
   fname = fname_base(1:INDEX(fname_base," ")-1) // ".d"
   CALL READ_ELEMENTS_2(fname,npes,nn,numpe,g_num_pp)
   
+  timest(3) = ELAP_TIME()
+
   CALL CALC_NN_PP(g_num_pp,nn_pp,nn_start)
   
+  timest(4) = ELAP_TIME()
+
   ALLOCATE(g_coord_pp(ndim, nn_pp))
   CALL READ_NODES(fname,nn,nn_start,numpe,g_coord_pp)
+  
+  timest(5) = ELAP_TIME()
   
   ALLOCATE(rest(nr,nodof+1))
   fname = fname_base(1:INDEX(fname_base," ")-1) // ".bnd"
   CALL READ_RESTRAINTS(fname,numpe,rest)
   
-  timest(30) = timest(30) + elap_time()-timest(2) ! 30 = read
-  timest(2) = elap_time()
+  timest(6) = ELAP_TIME()
 
 !------------------------------------------------------------------------------
 ! 4. Allocate dynamic arrays used in the main program  
@@ -182,9 +171,7 @@ PROGRAM xx15_quadric_linear_hardening
   ALLOCATE(load_value(ndim,loaded_nodes))
   ALLOCATE(load_node(loaded_nodes))
   ALLOCATE(nf_pp(nodof,nn_pp))
-  IF (solvers == parafem_solvers) THEN
-    ALLOCATE(storekm_pp(ntot,ntot,nels_pp))
-  END IF
+  ALLOCATE(storekm_pp(ntot,ntot,nels_pp))
   ALLOCATE(kmat_elem(ntot,ntot))
   ALLOCATE(xnewel_pp(ntot,nels_pp))
   ALLOCATE(xnewel_pp_previous(ntot,nels_pp))
@@ -215,7 +202,6 @@ PROGRAM xx15_quadric_linear_hardening
   ALLOCATE(stiffness_mat_con(nels_pp,nip,(ndim*ndim),(ndim*ndim)))
   ALLOCATE(unload_pp(nels_pp,nip))
   ALLOCATE(rm_vec(npes))
-  ALLOCATE(km(ntot,ntot))
 
 !------------------------------------------------------------------------------
 ! 5. Loop the elements to find the steering array and the number of 
@@ -230,6 +216,8 @@ PROGRAM xx15_quadric_linear_hardening
 
   CALL CALC_NEQ(nn,rest,neq)
   
+  timest(7) = ELAP_TIME()
+
 !------------------------------------------------------------------------------
 ! 6. Create interprocessor communications tables
 !------------------------------------------------------------------------------  
@@ -240,8 +228,7 @@ PROGRAM xx15_quadric_linear_hardening
 
   CALL MAKE_GGL(npes_pp,npes,g_g_pp)
 
-  timest(31) = timest(31) + elap_time()-timest(2) ! 31 = setup
-  timest(2) = elap_time()
+  timest(8) = ELAP_TIME()
   
 !------------------------------------------------------------------------------
 ! 7. Read and distribute essential boundary conditions
@@ -270,9 +257,9 @@ PROGRAM xx15_quadric_linear_hardening
     ALLOCATE(fixvalprev_pp(fixdim*fixed_nodes))
     ALLOCATE(fixvaltot_pp(fixdim*fixed_nodes))
     
-    fixelem_pp      = 0
-    fixdof_pp       = 0
-    fixval_pp       = zero
+	fixelem_pp = 0
+	fixdof_pp  = 0
+	fixval_pp       = zero
     fixvalpiece_pp  = zero
     fixvalprev_pp   = zero
     fixvaltot_pp    = zero
@@ -292,22 +279,13 @@ PROGRAM xx15_quadric_linear_hardening
     
     DEALLOCATE(fixed_node, fixed_dof, fixed_value)
 
-    IF (solvers == petsc_solvers) THEN
-      ! storekm_pp is only used by the ParaFEM solvers but would also be needed
-      ! to convert the fixed displacements to a force.  Use a (hopefully small)
-      ! copy of the elements needed for the fixed displacements.  It would
-      ! better to use PETSc matrix-vector multiplies but that would require all
-      ! the handling of fixed dofs in ParaFEM to be changed (right down to
-      ! changes in gather and scatter I think) to pass them through as zeroes in
-      ! the matrix.
-      ALLOCATE(fixkm_pp(ntot,ntot,numfix_pp))
-    END IF
-
   END IF
   
-  !----------------------------------------------------------------------------
+  timest(9) = ELAP_TIME()
+
+  !-------------------------------------------------------------------------
   ! 8. Read and distribute natural boundary conditions
-  !----------------------------------------------------------------------------
+  !-------------------------------------------------------------------------
 
   ALLOCATE(fextpiece_pp(0:neq_pp))
   ALLOCATE(fext_pp(0:neq_pp))
@@ -327,12 +305,11 @@ PROGRAM xx15_quadric_linear_hardening
 
   END IF
   
-  timest(30) = timest(30) + elap_time()-timest(2) ! 30 = read
-  timest(2) = elap_time()
+  timest(10) = ELAP_TIME()
 
-  !----------------------------------------------------------------------------
+  !-------------------------------------------------------------------------
   ! 9. Allocate arrays dimensioned by neq_pp
-  !----------------------------------------------------------------------------
+  !-------------------------------------------------------------------------
 
   ALLOCATE(r_pp(0:neq_pp), xnew_pp(0:neq_pp), diag_precon_pp(0:neq_pp))
   ALLOCATE(res_pp(0:neq_pp), deltax_pp(0:neq_pp), fint_pp(0:neq_pp)) 
@@ -350,31 +327,9 @@ PROGRAM xx15_quadric_linear_hardening
 
   ALLOCATE(diag_precon_tmp(ntot,nels_pp))
 
-  !-----------------------------------------------------------------------------
-  ! 9a. Start up PETSc after find_pe_procs (so that MPI has been started) and
-  !     after find_g3 so that neq_pp and g_g_pp are set up.
-  !-----------------------------------------------------------------------------
-  IF (solvers == petsc_solvers) THEN
-    CALL p_initialize(fname_base,error)
-    IF (error) THEN
-      CALL shutdown
-    END IF
-    ! Set up PETSc.
-    CALL p_setup(neq_pp,ntot,g_g_pp,error)
-    IF (error) THEN
-      CALL p_finalize
-      CALL shutdown
-    END IF
-  END IF
-  memory_use = p_memory_use()
-  peak_memory_use = p_memory_peak()
-  IF (numpe == 1) WRITE(*,'(A,2F7.2,A)')                                       &
-    "current and peak memory use after setup:        ",                        &
-    memory_use,peak_memory_use," GB "
-
-  !----------------------------------------------------------------------------
+  !-------------------------------------------------------------------------
   ! 10. Initialise the solution vector to 0.0
-  !----------------------------------------------------------------------------
+  !-------------------------------------------------------------------------
 
   ! Vector comp to compute F (gradient of deformation)
   DO i = 1,nod
@@ -406,12 +361,14 @@ PROGRAM xx15_quadric_linear_hardening
   counter_output=1
 
   ! Set the initial guess (normalized)
-  initial_guess  = 0.25_iwp
-  lambda         = initial_guess
+  initial_guess=0.25_iwp
+  lambda=initial_guess
   lambda_total   = zero
   lambda_prev    = zero
   next_output=one/number_output
   
+  timest(11) = ELAP_TIME()
+
 !------------------------------------------------------------------------------
 !------------------------------------------------------------------------------
 !------------------------------------------------------------------------------
@@ -420,40 +377,23 @@ PROGRAM xx15_quadric_linear_hardening
 !------------------------------------------------------------------------------
 !------------------------------------------------------------------------------
 
-  timest(31) = timest(31) + elap_time()-timest(2) ! 31 = setup
-  timest(2) = elap_time()
-
   DO iload = 1,max_inc
   
     converged = .FALSE.
-
-    timest(2) = elap_time()
 
     ! Increase the stage control by 50% if the number of iterations of the two 
     ! previously converged full increments (not affected by the output  
     ! requests) are below 6
     !IF ((iter<6).AND.(prev_iter<6).AND.(iload>2)) THEN
-    !  IF(numpe==1) THEN
-    !    WRITE(*,*) 'The load increment is increased by 50%'
-    !  END IF
+    !  WRITE(*,*) 'The load increment is increased by 50%'
     !  lambda=1.5*lambda
     !END IF
 
-    timest(32) = timest(32) + elap_time()-timest(2) ! 32 = other work in load loop
-    timest(2) = elap_time()
-
     100 CONTINUE
 
-    timest(2) = elap_time()
-
-    ! If lambda is larger than unity, the simulation is finished
+    ! Check if the simulation is finished
     IF (lambda_total>=(1._iwp-tol_increment)) THEN
-
-      timest(32) = timest(32) + elap_time()-timest(2) ! 32 = other work in load loop
-      timest(2) = elap_time()
-      
-      exit_iload = .TRUE.
-      GOTO 400
+      EXIT
     END IF
 
     ! Update the load increments
@@ -468,15 +408,8 @@ PROGRAM xx15_quadric_linear_hardening
 
     ! Exit if the time increment is less that the specified minimum
     IF (lambda<min_inc) THEN
-      IF(numpe==1) THEN
-        WRITE(*,*) 'The load increment is too small'
-      END IF
-
-      timest(32) = timest(32) + elap_time()-timest(2) ! 32 = other work in load loop
-      timest(2) = elap_time()
-      
-      exit_iload = .TRUE.
-      GOTO 400
+      WRITE(*,*) 'The load increment is too small'
+      EXIT
     END IF
 
     ! Display the incremental, total and previous load increments
@@ -500,13 +433,7 @@ PROGRAM xx15_quadric_linear_hardening
     deltax_pp_temp = zero
     inewton = 0
     
-    timest(32) = timest(32) + elap_time()-timest(2) ! 32 = other work in load loop
-    timest(2) = elap_time()
-
     iterations: DO
-
-      timest(2) = elap_time()
-
       inewton = inewton + 1
 
       storefint_pp = zero
@@ -538,18 +465,11 @@ PROGRAM xx15_quadric_linear_hardening
 ! 11. Element stiffness integration and storage
 !------------------------------------------------------------------------------
       
-      timest(32) = timest(32) + elap_time()-timest(2) ! 32 = other work in load loop
-      timest(2) = elap_time()
+      timest(12) = ELAP_TIME()
       
-      IF (solvers == parafem_solvers) THEN
-        storekm_pp = zero
-      ELSE IF (solvers == petsc_solvers) THEN
-        CALL p_zero_matrix
-      END IF
+      storekm_pp = zero
       
       DO iel = 1,nels_pp
-
-        km = zero
 
         DO i = 1,nod
           num(i) = g_num_pp(i,iel) - nn_start + 1
@@ -570,59 +490,50 @@ PROGRAM xx15_quadric_linear_hardening
         coord = TRANSPOSE(g_coord_pp(:,num))
         upd_coord=coord+auxm_previous
         
+        timest(13) = ELAP_TIME()
+
         DO igauss = 1,nip
 
-          ! Initialise the state variables to the same converged value of     
-          ! the last time increment
+          ! Initialise the state variables to the same as in the previous     
+          ! increment
           statev(:)=statevar_con(iel,igauss,:)
           lnstrainelas(:)=lnstrainelas_mat_con(iel,igauss,:)
 
-          ! Calculates the total and incremental deformation gradients
+          ! Calculates the deformation gradient
           CALL DEFGRA(igauss,auxm,coord,points,det,detF,beeF,geeF,jacF,ndim,  &
            nod)
+
+          ! Calculates the incremental deformation gradient
           CALL DEFGRAINC(igauss,auxm_inc,upd_coord,points,jacFinc,ndim,nod)
           
+          timest(14) = ELAP_TIME()
+
           CALL PLASTICITY(deeF,jacF,jacFinc,sigma1C,statev,lnstrainelas,sigma, &
-                          detF,statevar_num,iel,igauss,noncon_flag,            &
-                          umat_quadric_linear_hardening)
+           detF,statevar_num,iel,igauss,noncon_flag)
            
           ! Exit if the local Newton-Raphson has not converged
-          IF (noncon_flag) THEN
-            GOTO 200
-          END IF
+          IF (noncon_flag) GOTO 200
            
-          ! During the first Newton-Raphson iteration, retrieve the previous  
-          ! converged stress and stiffness tensor
+          timest(15) = ELAP_TIME()
+
           IF ((iload>1).AND.(inewton==1)) THEN
             deeF(:,:)=stiffness_mat_con(iel,igauss,:,:)
             sigma1C(:)=sigma1C_mat_con(iel,igauss,:)
           END IF
           
           dw = det*weights(igauss)
-          
-          ! Calculate the internal force vector of the element
+   
           storefint_pp(:,iel)=storefint_pp(:,iel) + MATMUL(TRANSPOSE(beeF),   &
            sigma1C)*dw
-           
-          ! Calculate the stiffness tensor of the element
+          
           geeFT = TRANSPOSE(geeF)
-          km = km + (MATMUL(MATMUL(geeFT,deeF),geeF)*dw)
+          
+          storekm_pp(:,:,iel)=storekm_pp(:,:,iel) + (MATMUL(MATMUL(geeFT,     &
+           deeF),geeF)*dw)
 
         END DO
-
-        IF (solvers == parafem_solvers) THEN
-          storekm_pp(:,:,iel) = km
-        ELSE IF (solvers == petsc_solvers) THEN
-          CALL p_add_element(g_g_pp(:,iel),km)
-          FORALL (i = 1:numfix_pp, fixelem_pp(i) == iel) fixkm_pp(:,:,i) = km
-        END IF
       END DO
-      memory_use = p_memory_use()
-      peak_memory_use = p_memory_peak()
-      IF (numpe == 1) WRITE(*,'(A,2F7.2,A)')                                  &
-        "current and peak memory use after add elements: ",                   &
-         memory_use,peak_memory_use," GB "
-
+      
       ! This code deals with the fail of local convergence
       ! ---------------------------------------------------------------------------
       200 CONTINUE
@@ -667,72 +578,51 @@ PROGRAM xx15_quadric_linear_hardening
         ! iteration counter
         prev_iter=7
         iter=7
-
-        timest(33) = timest(33) + elap_time()-timest(2) ! 33 = matrix assemble
-        timest(2) = elap_time()
-
         GOTO 100
       END IF
       ! ---------------------------------------------------------------------------
-
-      IF (solvers == petsc_solvers) THEN
-        CALL p_assemble
-      END IF
-      memory_use = p_memory_use()
-      peak_memory_use = p_memory_peak()
-      IF (numpe == 1) WRITE(*,'(A,2F7.2,A)')                                  &
-        "current and peak memory use after assemble:     ",                   &
-        memory_use,peak_memory_use," GB "
-            
-      timest(33) = timest(33) + elap_time()-timest(2) ! 33 = matrix assemble
-      timest(2) = elap_time()
+      
+      ! Time is accumulated over all load increments
+      timest(16) = timest(16) + (ELAP_TIME() - timest(12))
       
 !------------------------------------------------------------------------------
-! 12. Build and invert the preconditioner (ParaFEM only)
+! 12. Build and invert the preconditioner
 !------------------------------------------------------------------------------
 
-      IF (solvers == parafem_solvers) THEN
-        diag_precon_tmp = zero
-        
-        DO iel = 1,nels_pp
-          DO k = 1,ntot 
-            diag_precon_tmp(k,iel)=diag_precon_tmp(k,iel) + storekm_pp(k,k,iel)
-          END DO
+      timest(17) = ELAP_TIME()
+      
+      diag_precon_tmp = zero
+
+      DO iel = 1,nels_pp
+        DO k = 1,ntot 
+          diag_precon_tmp(k,iel)=diag_precon_tmp(k,iel) + storekm_pp(k,k,iel)
         END DO
-        
-        diag_precon_pp(:) = zero
-        CALL SCATTER(diag_precon_pp(1:),diag_precon_tmp)
-        
-        diag_precon_pp(1:) = one/diag_precon_pp(1:)
-        diag_precon_pp(0)  = zero
-      END IF
+      END DO
 
-      timest(34) = timest(34) + elap_time()-timest(2) ! 34 = solve
-      timest(2) = elap_time()
+      diag_precon_pp(:) = zero
+      CALL SCATTER(diag_precon_pp(1:),diag_precon_tmp)
 
+      diag_precon_pp(1:) = one/diag_precon_pp(1:)
+      diag_precon_pp(0)  = zero
+      
 !------------------------------------------------------------------------------
 ! 13. Initialize PCG
 !------------------------------------------------------------------------------
       
-      ! During the first Newton-Raphson iteration, the incremental 
-      ! displacements are applied through a linear mapping of these 
-      ! displacements to the internal force vector
+      timest(18) = ELAP_TIME()
+      
       IF (inewton==1 .AND. numfix_pp>0) THEN
         DO i = 1,numfix_pp
-          DO j = 1,ntot
-            IF (g_g_pp(j,fixelem_pp(i))>0) THEN
-              IF (solvers == parafem_solvers) THEN
-                storefint_pp(j,fixelem_pp(i)) = storefint_pp(j,fixelem_pp(i))  &
-                  + fixvalpiece_pp(i)*storekm_pp(j,fixdof_pp(i),fixelem_pp(i))
-              ELSE IF (solvers == petsc_solvers) THEN
-                storefint_pp(j,fixelem_pp(i)) = storefint_pp(j,fixelem_pp(i))  &
-                  + fixvalpiece_pp(i)*fixkm_pp(j,fixdof_pp(i),i)
-              END IF
-            END IF
+	      DO j = 1,ntot
+	        IF (g_g_pp(j,fixelem_pp(i))>0) THEN
+              storefint_pp(j,fixelem_pp(i)) =                                 &
+               storefint_pp(j,fixelem_pp(i)) +                                &
+               fixvalpiece_pp(i)*storekm_pp(j,fixdof_pp(i),fixelem_pp(i))
+	        END IF
           END DO
-        END DO
-      END IF
-      
+	    END DO
+	  END IF
+		  
       fint_pp = zero
       CALL SCATTER(fint_pp(1:),storefint_pp)
 
@@ -746,53 +636,38 @@ PROGRAM xx15_quadric_linear_hardening
       IF (maxdiff == zero) THEN
         IF(numpe==1) THEN
           WRITE(*,*) "maxdiff = zero and now exiting loop"
+          EXIT
         END IF
-
-        timest(32) = timest(32) + elap_time()-timest(2) ! 32 = other work in load loop
-        timest(2) = elap_time()
-      
-        EXIT
       END IF
 
-!------------------------------------------------------------------------------
-!----------------- Solve using preconditioned Krylov solver -------------------
-!------------------------------------------------------------------------------
+!---------------------------------------------------------------------------
+!------------------------------- Solve using PCG ---------------------------
+!---------------------------------------------------------------------------
       
       deltax_pp = zero
       res_pp    = r_pp
 
-      timest(32) = timest(32) + elap_time()-timest(2) ! 32 = other work in load loop
-      timest(2) = elap_time()
+      CALL PCG_VER1(inewton,limit,tol,storekm_pp,r_pp(1:), &
+       diag_precon_pp(1:),rn0,deltax_pp(1:),iters)
 
-      IF (solvers == parafem_solvers) THEN
-        CALL PCG_VER1(inewton,limit,tol,storekm_pp,r_pp(1:),                   &
-                      diag_precon_pp(1:),rn0,deltax_pp(1:),iters)
-      ELSE IF (solvers == petsc_solvers) THEN
-        CALL p_use_solver(1,error)
-        IF (error) THEN
-          CALL p_shutdown
-          CALL shutdown
-        END IF
-        CALL p_solve(r_pp(1:),deltax_pp(1:))
-        CALL p_print_info(11)
-      END IF
-
-      timest(34) = timest(34) + elap_time()-timest(2) ! 34 = solve
-      timest(2) = elap_time()
-
+       
+       
+       WRITE(*,*) 'displacements are ',xnew_pp
+       
+       
+       
+       
+       
+       
       IF (numpe==1) THEN
         WRITE(91,*)iload,inewton,iters
         CALL FLUSH(91)
       END IF
 
-      timest(35) = timest(35) + elap_time()-timest(2) ! 35 = write
-      timest(2) = elap_time()
+      timest(19) = timest(19) + (ELAP_TIME() - timest(18))
 
-      ! Total displacements
       xnew_pp(1:) = xnew_pp(1:) + deltax_pp(1:)
       xnew_pp(0) = zero
-      
-      ! Incremental displacements corresponding to the time increment
       deltax_pp_temp(1:) = deltax_pp_temp(1:) + deltax_pp(1:)
       deltax_pp_temp(0) = zero
 
@@ -816,16 +691,9 @@ PROGRAM xx15_quadric_linear_hardening
         END IF 
       END IF
 
-      ! The time increment is cut in half if one of the following situations
-      ! happen:
-      ! - The maximum number of iterations has been met
-      ! - The current iteration diverged (the current energy is larger than
-      ! the two previous energies)
-      ! - There is some numerical instability which causes some NaN values
       IF ((inewton==limit_2).OR.(((energy_prev_prev/energy1)<(energy_prev/    &
-       energy1)).AND.((energy_prev/energy1)<(energy/energy1)).AND.            &
-        (inewton>2)).OR.(ISNAN(energy))) THEN
-        
+       energy1)).AND.((energy_prev/energy1)<(energy/energy1)).AND.(inewton>2))&
+       .OR.(ISNAN(energy))) THEN
         IF (numpe==1) THEN
           WRITE(*,*) 'The load increment is cut in half'
         END IF
@@ -847,18 +715,13 @@ PROGRAM xx15_quadric_linear_hardening
         ! iteration counter
         prev_iter=7
         iter=7
-
-        timest(32) = timest(32) + elap_time()-timest(2) ! 32 = other work in load loop
-        timest(2) = elap_time()
-
         GOTO 100
       END IF
  
-      ! After convergence, a last "iteration" is needed to calculate the fully
-      ! converged values (some FE algorithms omit this step, but we perform
-      ! it because we are interested in a fully precise solution)
       IF (converged) THEN 
 
+        timest(20) = ELAP_TIME()
+      
         ! If the current increment is not an output request increment, save the  
         ! current and previous increment number of iterations to allow for   
         ! for lambda increment to be increased
@@ -887,7 +750,7 @@ PROGRAM xx15_quadric_linear_hardening
         DO i = 1,numfix_pp
           xnewelinc_pp(fixdof_pp(i),fixelem_pp(i)) = fixvalpiece_pp(i)
         END DO
-        
+
         DO iel = 1,nels_pp
 
           DO i = 1,nod
@@ -909,6 +772,8 @@ PROGRAM xx15_quadric_linear_hardening
           coord = TRANSPOSE(g_coord_pp(:,num))
           upd_coord=coord+auxm_previous
 
+          timest(21) = ELAP_TIME()
+
           DO igauss = 1,nip
 
             statev(:)=statevar_con(iel,igauss,:)
@@ -919,14 +784,11 @@ PROGRAM xx15_quadric_linear_hardening
 
             CALL DEFGRAINC(igauss,auxm_inc,upd_coord,points,jacFinc,ndim,nod)
 
-            CALL PLASTICITY(deeF,jacF,jacFinc,sigma1C,statev,lnstrainelas,     &
-                            sigma,detF,statevar_num,iel,igauss,noncon_flag,    &
-                            umat_quadric_linear_hardening)
+            CALL PLASTICITY(deeF,jacF,jacFinc,sigma1C,statev,lnstrainelas,    &
+             sigma,detF,statevar_num,iel,igauss,noncon_flag)
              
             ! Exit if the local Newton-Raphson has not converged
-            IF (noncon_flag) THEN
-              GOTO 300
-            END IF
+            IF (noncon_flag) GOTO 300
              
             ! Save the variables
             statevar_con(iel,igauss,:)=statev(:)
@@ -980,10 +842,6 @@ PROGRAM xx15_quadric_linear_hardening
           ! iteration counter
           prev_iter=7
           iter=7
-
-          timest(32) = timest(32) + elap_time()-timest(2) ! 32 = other work in load loop
-          timest(2) = elap_time()
-              
           GOTO 100
         END IF
         ! ---------------------------------------------------------------------------
@@ -991,24 +849,34 @@ PROGRAM xx15_quadric_linear_hardening
         ! Save the converged displacement
         xnew_pp_previous=xnew_pp
 
-        timest(32) = timest(32) + elap_time()-timest(2) ! 32 = other work in load loop
-        timest(2) = elap_time()
-
         EXIT
       END IF
 
-      timest(32) = timest(32) + elap_time()-timest(2) ! 32 = other work in load loop
-      timest(2) = elap_time()
-
     END DO iterations
+    
+    
+    
+    
+    
+    
+    
+    
+    WRITE(*,*) 'xnew_pp is ',xnew_pp
 
-    timest(2) = elap_time()
-
+    
+    
+    
+    
+    
+    
+    
+    
+    
 !------------------------------------------------------------------------------
 !------------------------- End Newton-Raphson iterations ----------------------
 !------------------------------------------------------------------------------
 
-    IF (numpe==1) THEN
+    IF (numpe==npes) THEN
       WRITE(11,'(a,i3,a,f12.4,a,i4,a)') "Time after load step ",iload,": ", &
       ELAP_TIME() - timest(1),"     (",inewton," iterations )"
     END IF
@@ -1021,10 +889,9 @@ PROGRAM xx15_quadric_linear_hardening
     !  DEALLOCATE(diag_precon_tmp)
     !END IF
 
-!------------------------------------------------------------------------------
-!-----------------------------print out results -------------------------------
-!------------------------------------------------------------------------------
-
+!----------------------------------------------------------------------------
+!-----------------------------print out results -----------------------------
+!----------------------------------------------------------------------------
     IF (numpe==1) THEN
       IF (iload==1) THEN
         ! Displacement and total strain
@@ -1070,30 +937,28 @@ PROGRAM xx15_quadric_linear_hardening
       CALL FLUSH(30)
       !CALL FLUSH(31)
     END IF
-
-    IF (iload==max_inc) THEN
-      exit_iload = .TRUE.
-      GOTO 400
-    END IF
     
 !-----print out displacements, stress, principal stress and reactions -------
-    GOTO 500 ! remove this to print at every load step
-400 CONTINUE 
     !IF (print_output) THEN
-      writetimes = writetimes + 1
+    IF (iload==max_inc) THEN
       
+	  writetimes = writetimes + 1
+      IF(timewrite) THEN
+	    timest(4) = ELAP_TIME( )
+	  END IF
+
       ALLOCATE(xnewnodes_pp(nodes_pp*nodof))
-      ALLOCATE(shape_integral_pp(nod,nels_pp))
-      !ALLOCATE(stress_integral_pp(nod*nst,nels_pp))
-      ALLOCATE(strain_integral_pp(nod*nst,nels_pp))
-      !ALLOCATE(stressnodes_pp(nodes_pp*nst))
-      ALLOCATE(strainnodes_pp(nodes_pp*nst))
-      !ALLOCATE(reacnodes_pp(nodes_pp*nodof))
-      
+	  ALLOCATE(shape_integral_pp(nod,nels_pp))
+	  !ALLOCATE(stress_integral_pp(nod*nst,nels_pp))
+	  ALLOCATE(strain_integral_pp(nod*nst,nels_pp))
+	  !ALLOCATE(stressnodes_pp(nodes_pp*nst))
+	  ALLOCATE(strainnodes_pp(nodes_pp*nst))
+	  !ALLOCATE(reacnodes_pp(nodes_pp*nodof))
+
       CALL GATHER(xnew_pp(1:),xnewel_pp)
       IF (numfix_pp > 0) THEN
         DO i = 1,numfix_pp
-          xnewel_pp(fixdof_pp(i),fixelem_pp(i)) = fixvaltot_pp(i)
+          xnewel_pp(fixdof_pp(i),fixelem_pp(i)) = fixvalpiece_pp(i)
         END DO
       END IF
 
@@ -1145,7 +1010,7 @@ PROGRAM xx15_quadric_linear_hardening
         END DO
       END DO
 
-      text = "*DISPLACEMENT"
+!      text = "*DISPLACEMENT"
       CALL SCATTER_NODES(npes,nn,nels_pp,g_num_pp,nod,nodof,nodes_pp, &
               node_start,node_end,xnewel_pp,xnewnodes_pp,1)
       CALL WRITE_NODAL_VARIABLE(text,24,iload,nodes_pp,npes,numpe,nodof, &
@@ -1166,7 +1031,7 @@ PROGRAM xx15_quadric_linear_hardening
       !                          reacnodes_pp)
       !DEALLOCATE(reacnodes_pp)
 
-      text = "*ELASTIC STRAIN"
+!      text = "*ELASTIC STRAIN"
       CALL NODAL_PROJECTION(npes,nn,nels_pp,g_num_pp,nod,nst,nodes_pp,  &
        node_start,node_end,shape_integral_pp,strain_integral_pp,strainnodes_pp)
       CALL WRITE_NODAL_VARIABLE(text,27,iload,nodes_pp,npes,numpe,nst,   &
@@ -1174,6 +1039,11 @@ PROGRAM xx15_quadric_linear_hardening
                                 
       DEALLOCATE(strain_integral_pp,strainnodes_pp)
       DEALLOCATE(shape_integral_pp)
+
+      IF(timewrite) THEN
+        timest(5) = elap_time( )
+        timewrite = .FALSE.
+      END IF
 
       ! Outputting unloading
       !CALL MPI_ALLREDUCE(yield_ip_pp,yield_tot,1,MPI_INT,MPI_SUM,             &
@@ -1197,24 +1067,12 @@ PROGRAM xx15_quadric_linear_hardening
       
       print_output=.false.
 
-    !END IF  !printing
-
-500 CONTINUE
+    END IF  !printing
     
-    IF (exit_iload) THEN
-
-      timest(35) = timest(35) + elap_time()-timest(2) ! 35 = write
-      timest(2) = elap_time()
-
+    IF (iload==max_inc) THEN
       EXIT
     END IF
-
-    timest(35) = timest(35) + elap_time()-timest(2) ! 35 = write
-    timest(2) = elap_time()
-
   END DO !iload
-  
-  timest(2) = elap_time()
 
   IF(numpe==1) THEN
     CLOSE(24)
@@ -1223,7 +1081,6 @@ PROGRAM xx15_quadric_linear_hardening
     CLOSE(27)
     CLOSE(29)
     CLOSE(30)
-    !CLOSE(31)
   END IF
 
 !------------------------------------------------------------------------------
@@ -1234,22 +1091,16 @@ PROGRAM xx15_quadric_linear_hardening
 !------------------------------------------------------------------------------
 !------------------------------------------------------------------------------
 
-  peak_memory_use = p_memory_peak()
-
-  IF (numpe==1) THEN
+  IF (numpe==npes) THEN
     WRITE(11,'(a,i5,a)') "This job ran on ",npes," processors"
     WRITE(11,'(A,3(I8,A))')"There are ",nn," nodes",nels," elements and ",&
                            neq," equations"
-    WRITE(11,'(A,F10.4)') "Time to read input:       ", timest(30)
-    WRITE(11,'(A,F10.4)') "Time for setup:           ", timest(31)
-    WRITE(11,'(A,F10.4)') "Time for matrix assemble: ", timest(33)
-    WRITE(11,'(A,F10.4)') "Time for linear solve:    ", timest(34)
-    WRITE(11,'(A,F10.4)') "Other time in load loop:  ", timest(32)
-    WRITE(11,'(A,F10.4)') "Time to write results:    ", timest(35)
-    WRITE(11,'(A)')       "                          ----------"
-    WRITE(11,'(A,F10.4)') "Total:                    ", SUM(timest(30:35))
-    WRITE(11,'(A)')       "                          ----------"
-    WRITE(11,'(A,F10.4)') "This analysis took:       ", elap_time()-timest(1)
+    WRITE(11,*) "Time after the mesh   :", timest(2) - timest(1)
+    WRITE(11,*) "Time after boundary conditions  :", timest(3) - timest(1)
+    WRITE(11,*) "This analysis took  :", elap_time( ) - timest(1)
+    WRITE(11,*) "Time to write results (each time) :", timest(5) - timest(4)
+    WRITE(11,*) "Time inside the load loop  :", elap_time( ) - timest(3) - &
+                                        writetimes*(timest(5)-timest(4))
 !   CALL FLUSH(11)
     CLOSE(11)
   END IF
@@ -1257,461 +1108,15 @@ PROGRAM xx15_quadric_linear_hardening
 !   Formats
   2000 FORMAT(' Energy  ',i3,1p,i3,1p,e25.15,1p,e25.15) 
 
-  IF (numpe==1) THEN
-    WRITE(*,*) 'The simulation is finished'
-  END IF
+  WRITE(*,*) 'The simulation is finished'
 
 !---------------------------------- shutdown ----------------------------------
-
-  IF (solvers == petsc_solvers) THEN
-    CALL p_shutdown
-  END IF
-
   CALL SHUTDOWN()
 
-CONTAINS
-  
+ END PROGRAM XX15
+ 
 !------------------------------------------------------------------------------
 !------------------------------------------------------------------------------
 !------------------------------------------------------------------------------
-
-  SUBROUTINE umat_quadric_linear_hardening(stress,statev,ddsdde,stran,dstran,  &
-                                           ntens,statevar_num,iel,igauss,      &
-                                           noncon_flag)
-    ! This subroutine returns the updated stress, strain and the tangent 
-    ! operator for the Eccentric-Ellipsoid model with (linear) isotropic 
-    ! hardening and associative plastic flow rule
-    IMPLICIT NONE
-
-    INTEGER, INTENT(IN) :: ntens
-    INTEGER, INTENT(IN) :: statevar_num, iel, igauss
-    REAL(iwp), INTENT(OUT) :: stress(:), ddsdde(:,:)
-    REAL(iwp), INTENT(INOUT) :: stran(:), statev(:), dstran(:)
-    LOGICAL, INTENT(INOUT)   :: noncon_flag
-
-    REAL(iwp) :: scalar_term, eqplas, e, nu, yield_t, yield_c, f_lower_0,     &
-     f_upper_0, syield, hard, sfs, zeta, stress_eq, plastic_mul, norm_flow,   &
-     yield, ran_scalar, norm_solution, nen, eqplas_trial, res_piv, alpha,     &
-     mprod, mprev, mder, alpha1, alpha2
-    REAL(iwp) :: unit_tensor(6), ixi(6,6), ixi_sym(6,6), f_4(6,6), f_2(6),    &
-     flow_dir(7), fs(6), res_strain(6), dnds(6,6), unit_7(7,7),               &
-     strain_trial(6), residuals(8), results(8), jacobian(8,8), fd(7),         &
-     inv_jacobian(8,8), e_comp(6,6), nxn(6,6), en(6), g_mat(7,7),             &
-     flow_dir_stress(6), grad_flow(7,7), dir(8), results0(8)
-    REAL(iwp), PARAMETER :: zero=0._iwp, one=1._iwp, two=2._iwp,              &
-	 tol=0.000001_iwp, half=0.5_iwp, tol_nr=0.00000001_iwp, beta=0.0001_iwp,  &
-     ls_const=0.1_iwp, four=4._iwp
-    INTEGER :: i, j, iter, ls_iter
-    INTEGER, PARAMETER :: max_nr_iter=50, max_ls_iter=25
-     
-    ! Assign material properties (user defined)
-    ! Yield properties obtained from Wolfram et al. 2012
-    e=12700._iwp
-    nu=0.3_iwp
-    yield_t=52._iwp !(0.41%)
-    yield_c=105._iwp !(0.83%)
-    !zeta=0.2_iwp
-    zeta=0.49_iwp
-    !hard=0.001 ! Corresponds to 0% of the elastic slope
-    !hard=0.296_iwp ! Corresponds to 5% of the elastic slope in tension
-    hard=0.038_iwp ! Corresponds to 5% of the elastic slope in compression
-     
-    ! Assign derived material properties
-    f_upper_0=(yield_t+yield_c)/(two*yield_t*yield_c)
-    f_lower_0=(one/two)*((one/yield_t)-(one/yield_c))
-       
-    ! Recover the previous equivalent plastic strain
-    eqplas_trial=statev(1)
-
-    ! Initializing variables
-    ddsdde=zero
-    stress=zero
-
-    ! Compute the linear elastic isotropic stiffness matrix
-    scalar_term=e/((one+nu)*(one-two*nu))
-
-    ddsdde(1,1)=one-nu
-    ddsdde(2,2)=one-nu
-    ddsdde(3,3)=one-nu
-    ddsdde(4,4)=(one-two*nu)/two
-    ddsdde(5,5)=(one-two*nu)/two
-    ddsdde(6,6)=(one-two*nu)/two
-    ddsdde(1,2)=nu
-    ddsdde(1,3)=nu
-    ddsdde(2,1)=nu
-    ddsdde(2,3)=nu
-    ddsdde(3,1)=nu
-    ddsdde(3,2)=nu
-
-    ddsdde=scalar_term*ddsdde
-    
-    ! Calculate the predictor strain and stress
-    DO i=1,ntens
-      DO j=1,ntens
-        stress(i)=stress(i)+ddsdde(i,j)*stran(j)
-      END DO
-    END DO
-    
-    ! Define the unit tensor, IxI and IxI_sym
-    ixi=zero
-    ixi_sym=zero
-    
-    DO i=1,3
-      unit_tensor(i)=one
-      unit_tensor(i+3)=zero
-      DO j=1,3
-        ixi(i,j)=one
-      END DO
-      
-      ixi_sym(i,i)=one
-      ixi_sym(i+3,i+3)=half
-    END DO
-
-    ! Define the fourth order tensor F_4 and the second order tensor F_2
-    f_4=-zeta*(f_upper_0**2)*ixi+(zeta+one)*(f_upper_0**2)*ixi_sym
-    f_2=f_lower_0*unit_tensor
-        
-    ! Calculate the equivalent stress
-    fs=MATMUL(f_4,stress)
-    fs(4:6)=four*fs(4:6)
-    sfs=DOT_PROD(stress,fs,6)
-    sfs=SQRT(sfs)
-    stress_eq=sfs+DOT_PROD(f_2,stress,6)
-        
-    ! Calculate the equivalent yield stress
-    syield=one+hard*eqplas_trial
-    
-    ! Determine if there is yielding
-    ! =========================================================================
-    IF ((stress_eq-syield)>=tol) THEN
-
-      ! This material point is yielding, proceed with the return-mapping
-      ! =======================================================================
-
-      ! Initialise some matrices
-      g_mat=zero
-      g_mat(1:6,1:6)=ddsdde
-      g_mat(7,7)=hard
-      
-      unit_7=zero
-      DO i=1,7
-        unit_7(i,i)=one
-      END DO
-      
-      ! Initialize variables before the local Newton-Raphson loop
-      plastic_mul=zero
-      strain_trial=stran
-      
-      DO iter=1,max_nr_iter
-      
-        ! Warn if the maximum number of iterations has been reached
-        IF (iter==max_nr_iter) THEN
-          WRITE(*,*) 'Maximum local Newton-Raphson iterations have been reached'
-          noncon_flag=.TRUE.
-          EXIT
-        END IF
-        
-        ! Calculate the flow direction
-        IF (iter.EQ.1) THEN
-          flow_dir_stress=(fs/sfs)+f_2
-      
-          ! Compute the residuals 
-          yield=sfs+DOT_PROD(f_2,stress,6)-(one+hard*(plastic_mul+eqplas_trial))
-         
-          ! Assemble the residual and the results vector
-          residuals=zero
-          results(1:6)=stran(1:6)  
-          
-          residuals(7)=zero
-          results(7)=-eqplas_trial
-          
-          residuals(8)=yield
-          results(8)=zero
-        END IF
-        
-        ! Assemble the flow direction
-        flow_dir(1:6)=flow_dir_stress(1:6)
-        flow_dir(7)=one
-         
-        ! Calculate the Jacobian
-        ! =====================================================================
-         
-        ! Calculate the derivative of the flow vector with respect to stress
-        fs=MATMUL(f_4,stress)
-        fs(4:6)=four*fs(4:6)
-        
-        dnds=(f_4/sfs)
-        dnds(4:6,4:6)=four*dnds(4:6,4:6)
-        
-        dnds=dnds-TENSOR_PRODUCT_22(fs,(fs/(sfs**3)))
-         
-        grad_flow=zero
-        grad_flow(1:6,1:6)=dnds
-                 
-        ! Assemble the jacobian
-        jacobian(1:7,1:7)=unit_7+plastic_mul*MATMUL(grad_flow,g_mat)
-        fd=MATMUL(flow_dir,g_mat)
-        
-        jacobian(8,1:7)=fd(1:7)
-        jacobian(1:7,8)=flow_dir(1:7)        
-        jacobian(8,8)=zero
-        
-        ! Invert the Jacobian
-        CALL INVERSE(jacobian,inv_jacobian,8)
-        ! =====================================================================
-         
-        ! Compute direction of advance
-        dir=-MATMUL(inv_jacobian,residuals)
-         
-        ! Line search scheme
-        ! =====================================================================
-        
-        ! Set up some initial results
-        alpha=one
-        mprod=half*DOT_PROD(residuals,residuals,8)
-        mprev=mprod
-        mder=-two*mprod
-        results0=results
-        
-        DO ls_iter=1,max_ls_iter
-        
-          ! Update new results
-          results=results0+alpha*dir
-          plastic_mul=results(8)
-          eqplas=-results(7)
-          stran(1:6)=results(1:6)
-          stress=MATMUL(ddsdde,stran)
-          
-          fs=MATMUL(f_4,stress)
-          fs(4:6)=four*fs(4:6)
-          sfs=DOT_PROD(stress,fs,6)
-          sfs=SQRT(sfs)
-          flow_dir_stress=(fs/sfs)+f_2
-          
-          res_strain=stran-strain_trial+plastic_mul*flow_dir_stress
-          res_piv=-eqplas+eqplas_trial+plastic_mul
-          yield=sfs+DOT_PROD(f_2,stress,6)-(one+hard*(plastic_mul+eqplas_trial))
-         
-          residuals(1:6)=res_strain(1:6)
-          residuals(7)=res_piv
-          residuals(8)=yield
-          
-          mprod=half*DOT_PROD(residuals,residuals,8)
-          
-          IF (mprod<=((one-two*ls_const*beta)*mprev)) THEN
-            EXIT
-          ELSE
-            alpha1=ls_const*alpha
-            alpha2=(-(alpha**2)*mder)/(two*(mprod-mprev-alpha*mder))
-            
-            IF (alpha1>=alpha2) THEN
-              alpha=alpha1
-            ELSE
-              alpha=alpha2
-            END IF
-          END IF
-        END DO
-        ! =====================================================================
-         
-        ! Exit if convergence
-        ! =====================================================================
-        norm_solution=zero
-        DO i=1,8
-          norm_solution=norm_solution+(residuals(i)**2)
-        END DO
-        norm_solution=SQRT(norm_solution)
-         
-        IF (norm_solution<=tol_nr) THEN
-          EXIT
-        END IF
-        ! =====================================================================
-        
-      END DO
-      
-      ! Update equivalent plastic strain     
-      eqplas=eqplas_trial+plastic_mul
-
-      ! Assemble tangent operator
-      CALL INVERSE(ddsdde,e_comp,6)
-      dnds=e_comp+plastic_mul*dnds
-      CALL INVERSE(dnds,ddsdde,6)
-      en=MATMUL(ddsdde,flow_dir_stress)
-      nxn=tensor_product_22(en,en)
-      
-      DO i=4,6
-        flow_dir(i)=half*flow_dir(i)
-      END DO
-      
-      nen=double_contraction_22(flow_dir,en)+hard
-      ddsdde=ddsdde-(one/nen)*nxn
-      
-      ! Update state variables
-      statev(1)=eqplas
-
-    END IF
-    
-    ! End of yielding
-    ! =========================================================================
-    
-    RETURN
-  END SUBROUTINE umat_quadric_linear_hardening
-  
-!------------------------------------------------------------------------------
-!------------------------------------------------------------------------------
-!------------------------------------------------------------------------------
-  
-  FUNCTION DOUBLE_CONTRACTION_22(vector_input_1,vector_input_2)
-    ! This function performs a double contraction of two second order tensors, 
-    ! in vector notation, as following, alpha=AijCij
-    IMPLICIT NONE
-    
-	real(iwp), INTENT(IN) :: vector_input_1(:), vector_input_2(:)
-    real(iwp) :: double_contraction_22
-    integer :: i
-    
-    double_contraction_22=0._iwp
-    
-    DO i=1,3
-      double_contraction_22=double_contraction_22+vector_input_1(i)*          &
-       vector_input_2(i)
-    END DO
-    
-    DO i=4,6
-      double_contraction_22=double_contraction_22+2._iwp*vector_input_1(i)*   &
-       vector_input_2(i)
-    END DO
-    
-  RETURN
-  END FUNCTION DOUBLE_CONTRACTION_22
-  
-!------------------------------------------------------------------------------
-!------------------------------------------------------------------------------
-!------------------------------------------------------------------------------
-
-  FUNCTION TENSOR_PRODUCT_22(vector_input_1,vector_input_2)
-    ! This function calculates a fourth order tensor through the tensorial 
-    ! product of two second order tensor, in matrix notation, as following
-    ! Aijkl=BijCkl
-    IMPLICIT NONE
-    
-	real(iwp), INTENT(IN) :: vector_input_1(:), vector_input_2(:)
-    real(iwp) :: tensor_product_22(6,6)
-    integer :: i, j
-    
-    DO i=1,6
-      DO j=1,6
-        tensor_product_22(i,j)=vector_input_1(i)*vector_input_2(j)
-      END DO
-    END DO
-    
-  RETURN
-  END FUNCTION TENSOR_PRODUCT_22
-  
-!------------------------------------------------------------------------------
-!------------------------------------------------------------------------------
-!------------------------------------------------------------------------------
-
-  FUNCTION DOT_PROD(vector_input_1,vector_input_2,dimen)
-    ! This function performs a double contraction of two second order tensors, 
-    ! in vector notation, as following, dot_prod=uivi, with dimen being the 
-    ! dimension of both vectors
-    IMPLICIT NONE
-    
-	real(iwp), INTENT(IN) :: vector_input_1(:), vector_input_2(:)
-    integer, INTENT(IN) :: dimen
-    real(iwp) :: dot_prod
-    integer :: i
-    
-    dot_prod=0._iwp
-    
-    DO i=1,dimen
-      dot_prod=dot_prod+vector_input_1(i)*vector_input_2(i)
-    END DO
-       
-  RETURN
-  END FUNCTION DOT_PROD
-  
-!------------------------------------------------------------------------------
-!------------------------------------------------------------------------------
-!------------------------------------------------------------------------------
-
-  SUBROUTINE INVERSE(a,c,n)
-    !This subroutine calculates the inverse of a nxn matrix
-    ! Input is a(n,n)
-    ! n is the dimension
-    ! c is the inverse of a    
-    IMPLICIT NONE
-
-    INTEGER :: n, i, j, k  
-    REAL(iwp) :: a(n,n), c(n,n), l(n,n), u(n,n), b(n), d(n), x(n)
-    REAL(iwp) :: coeff
-    
-    ! step 0: initialization for matrices L and U and b
-    ! Fortran 90/95 aloows such operations on matrices
-    l=0._iwp
-    u=0._iwp
-    b=0._iwp
-
-    ! step 1: forward elimination
-    DO k=1,(n-1)
-      DO i=(k+1),n
-        coeff=a(i,k)/a(k,k)
-        l(i,k)=coeff
-        DO j=(k+1),n
-          a(i,j)=a(i,j)-coeff*a(k,j)
-        END DO
-      END DO
-    END DO
-
-    ! Step 2: prepare L and U matrices 
-    ! L matrix is a matrix of the elimination coefficient
-    ! + the diagonal elements are 1.0
-    DO i=1,n
-      l(i,i)=1._iwp
-    END DO
-    
-    ! U matrix is the upper triangular part of A
-    DO j=1,n
-      DO i=1,j
-        u(i,j)=a(i,j)
-      END DO
-    END DO
-
-    ! Step 3: compute columns of the inverse matrix C
-    DO k=1,n
-      b(k)=1._iwp
-      d(1)=b(1)
-      
-      ! Step 3a: Solve Ld=b using the forward substitution
-      DO i=2,n
-        d(i)=b(i)
-        DO j=1,(i-1)
-          d(i)=d(i)-l(i,j)*d(j)
-        END DO
-      END DO
-      
-      ! Step 3b: Solve Ux=d using the back substitution
-      x(n)=d(n)/u(n,n)
-      DO i=(n-1),1,-1
-        x(i)=d(i)
-        DO j=n,(i+1),-1
-        x(i)=x(i)-u(i,j)*x(j)
-        END DO
-        x(i)=x(i)/u(i,i)
-      END DO
-      
-      ! Step 3c: fill the solutions x(n) into column k of C
-      DO i=1,n
-        c(i,k)=x(i)
-      END DO
-      b(k)=0._iwp
-    END DO
-    
-  RETURN
-  END SUBROUTINE INVERSE  
-
-!------------------------------------------------------------------------------
-!------------------------------------------------------------------------------
-!------------------------------------------------------------------------------
-
-END PROGRAM xx15_quadric_linear_hardening
+ 
+ 
