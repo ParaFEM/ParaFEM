@@ -43,7 +43,7 @@ PROGRAM xx15_quadric_linear_hardening
   CHARACTER(len=50) :: text, fname_base, fname
  
   LOGICAL :: converged, timewrite=.TRUE., flag=.FALSE., print_output=.FALSE., &
-   tol_inc=.FALSE., lambda_inc=.TRUE., noncon_flag=.FALSE.,exit_iload=.false.
+   tol_inc=.FALSE., lambda_inc=.TRUE., noncon_flag=.FALSE.
 
   CHARACTER(len=choose_solvers_string_length) :: solvers
   LOGICAL                  :: error
@@ -404,9 +404,9 @@ PROGRAM xx15_quadric_linear_hardening
   ! Establish the number of times the output is printed
   number_output=1
   counter_output=1
-
+  
   ! Set the initial guess (normalized)
-  initial_guess  = 0.25_iwp
+  initial_guess  = 0.01_iwp
   lambda         = initial_guess
   lambda_total   = zero
   lambda_prev    = zero
@@ -432,12 +432,12 @@ PROGRAM xx15_quadric_linear_hardening
     ! Increase the stage control by 50% if the number of iterations of the two 
     ! previously converged full increments (not affected by the output  
     ! requests) are below 6
-    !IF ((iter<6).AND.(prev_iter<6).AND.(iload>2)) THEN
-    !  IF(numpe==1) THEN
-    !    WRITE(*,*) 'The load increment is increased by 50%'
-    !  END IF
-    !  lambda=1.5*lambda
-    !END IF
+    IF ((iter<6).AND.(prev_iter<6).AND.(iload>2)) THEN
+      IF(numpe==1) THEN
+        WRITE(*,*) 'The load increment is increased by 50%'
+      END IF
+      lambda=1.5*lambda
+    END IF
 
     timest(32) = timest(32) + elap_time()-timest(2) ! 32 = other work in load loop
     timest(2) = elap_time()
@@ -447,13 +447,12 @@ PROGRAM xx15_quadric_linear_hardening
     timest(2) = elap_time()
 
     ! If lambda is larger than unity, the simulation is finished
-    IF (lambda_total>=(1._iwp-tol_increment)) THEN
+    IF (lambda_total>=(1-tol_increment)) THEN
 
       timest(32) = timest(32) + elap_time()-timest(2) ! 32 = other work in load loop
       timest(2) = elap_time()
       
-      exit_iload = .TRUE.
-      GOTO 400
+      EXIT
     END IF
 
     ! Update the load increments
@@ -475,8 +474,7 @@ PROGRAM xx15_quadric_linear_hardening
       timest(32) = timest(32) + elap_time()-timest(2) ! 32 = other work in load loop
       timest(2) = elap_time()
       
-      exit_iload = .TRUE.
-      GOTO 400
+      EXIT
     END IF
 
     ! Display the incremental, total and previous load increments
@@ -1041,10 +1039,10 @@ PROGRAM xx15_quadric_linear_hardening
         !OPEN(28, file=fname, status='replace', action='write')
                 
         ! Homogenized stress and strain
-        fname = fname_base(1:INDEX(fname_base, " ")-1) // "_hom_stress.res"
-        OPEN(29, file=fname, status='replace', action='write')
-        fname = fname_base(1:INDEX(fname_base, " ")-1) // "_hom_strain.res"
-        OPEN(30, file=fname, status='replace', action='write')
+        !fname = fname_base(1:INDEX(fname_base, " ")-1) // "_hom_stress.res"
+        !OPEN(29, file=fname, status='replace', action='write')
+        !fname = fname_base(1:INDEX(fname_base, " ")-1) // "_hom_strain.res"
+        !OPEN(30, file=fname, status='replace', action='write')
         
         ! Load and displacement
         !fname = fname_base(1:INDEX(fname_base, " ")-1) // "_disp_load.res"
@@ -1066,20 +1064,15 @@ PROGRAM xx15_quadric_linear_hardening
     ! load_node,iload)
      
     IF (numpe==1) THEN
-      CALL FLUSH(29)
-      CALL FLUSH(30)
+      !CALL FLUSH(29)
+      !CALL FLUSH(30)
       !CALL FLUSH(31)
-    END IF
-
-    IF (iload==max_inc) THEN
-      exit_iload = .TRUE.
-      GOTO 400
     END IF
     
 !-----print out displacements, stress, principal stress and reactions -------
-    GOTO 500 ! remove this to print at every load step
-400 CONTINUE 
     !IF (print_output) THEN
+!!$    IF (iload==max_inc) THEN
+      
       writetimes = writetimes + 1
       
       ALLOCATE(xnewnodes_pp(nodes_pp*nodof))
@@ -1197,11 +1190,9 @@ PROGRAM xx15_quadric_linear_hardening
       
       print_output=.false.
 
-    !END IF  !printing
-
-500 CONTINUE
+!!$    END IF  !printing
     
-    IF (exit_iload) THEN
+    IF (iload==max_inc) THEN
 
       timest(35) = timest(35) + elap_time()-timest(2) ! 35 = write
       timest(2) = elap_time()
@@ -1221,8 +1212,8 @@ PROGRAM xx15_quadric_linear_hardening
     !CLOSE(25)
     !CLOSE(26)
     CLOSE(27)
-    CLOSE(29)
-    CLOSE(30)
+    !CLOSE(29)
+    !CLOSE(30)
     !CLOSE(31)
   END IF
 
@@ -1313,7 +1304,7 @@ CONTAINS
     !zeta=0.2_iwp
     zeta=0.49_iwp
     !hard=0.001 ! Corresponds to 0% of the elastic slope
-    !hard=0.296_iwp ! Corresponds to 5% of the elastic slope in tension
+    hard=0.296_iwp ! Corresponds to 5% of the elastic slope in tension
     hard=0.038_iwp ! Corresponds to 5% of the elastic slope in compression
      
     ! Assign derived material properties
@@ -1407,8 +1398,6 @@ CONTAINS
         ! Warn if the maximum number of iterations has been reached
         IF (iter==max_nr_iter) THEN
           WRITE(*,*) 'Maximum local Newton-Raphson iterations have been reached'
-          noncon_flag=.TRUE.
-          EXIT
         END IF
         
         ! Calculate the flow direction
