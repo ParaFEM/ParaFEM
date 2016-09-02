@@ -617,15 +617,17 @@ PROGRAM xx15_quadric_linear_hardening
           FORALL (i = 1:numfix_pp, fixelem_pp(i) == iel) fixkm_pp(:,:,i) = km
         END IF
       END DO
+
+      ! This code deals with the fail of local convergence
+      ! ---------------------------------------------------------------------------
+      200 CONTINUE
+
+      ! The memory measurements are collective.
       memory_use = p_memory_use()
       peak_memory_use = p_memory_peak()
       IF (numpe == 1) WRITE(*,'(A,2F7.2,A)')                                  &
         "current and peak memory use after add elements: ",                   &
          memory_use,peak_memory_use," GB "
-
-      ! This code deals with the fail of local convergence
-      ! ---------------------------------------------------------------------------
-      200 CONTINUE
 
       ! Call a barrier to ensure all processes are synchronised
       CALL MPI_BARRIER(MPI_COMM_WORLD,ier)
