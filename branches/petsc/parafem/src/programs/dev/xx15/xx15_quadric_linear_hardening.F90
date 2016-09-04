@@ -404,9 +404,9 @@ PROGRAM xx15_quadric_linear_hardening
   ! Establish the number of times the output is printed
   number_output=1
   counter_output=1
-
+  
   ! Set the initial guess (normalized)
-  initial_guess  = 0.25_iwp
+  initial_guess  = 0.05_iwp
   lambda         = initial_guess
   lambda_total   = zero
   lambda_prev    = zero
@@ -432,12 +432,12 @@ PROGRAM xx15_quadric_linear_hardening
     ! Increase the stage control by 50% if the number of iterations of the two 
     ! previously converged full increments (not affected by the output  
     ! requests) are below 6
-    !IF ((iter<6).AND.(prev_iter<6).AND.(iload>2)) THEN
-    !  IF(numpe==1) THEN
-    !    WRITE(*,*) 'The load increment is increased by 50%'
-    !  END IF
-    !  lambda=1.5*lambda
-    !END IF
+    IF ((iter<6).AND.(prev_iter<6).AND.(iload>2)) THEN
+      IF(numpe==1) THEN
+        WRITE(*,*) 'The load increment is increased by 50%'
+      END IF
+      lambda=1.5*lambda
+    END IF
 
     timest(32) = timest(32) + elap_time()-timest(2) ! 32 = other work in load loop
     timest(2) = elap_time()
@@ -1013,6 +1013,7 @@ PROGRAM xx15_quadric_linear_hardening
     IF (numpe==1) THEN
       WRITE(11,'(a,i3,a,f12.4,a,i4,a)') "Time after load step ",iload,": ", &
       ELAP_TIME() - timest(1),"     (",inewton," iterations )"
+      FLUSH(11)
     END IF
 
     !IF (iload==1) THEN
@@ -1203,16 +1204,12 @@ PROGRAM xx15_quadric_linear_hardening
 
 500 CONTINUE
     
-    IF (exit_iload) THEN
-
-      timest(35) = timest(35) + elap_time()-timest(2) ! 35 = write
-      timest(2) = elap_time()
-
-      EXIT
-    END IF
-
     timest(35) = timest(35) + elap_time()-timest(2) ! 35 = write
     timest(2) = elap_time()
+
+    IF (exit_iload) THEN
+      EXIT
+    END IF
 
   END DO !iload
   
