@@ -618,16 +618,30 @@ PROGRAM xx15_quadric_linear_hardening
         END IF
       END DO
 
-      ! This code deals with the fail of local convergence
-      ! ---------------------------------------------------------------------------
       200 CONTINUE
 
-      ! The memory measurements are collective.
       memory_use = p_memory_use()
       peak_memory_use = p_memory_peak()
       IF (numpe == 1) WRITE(*,'(A,2F7.2,A)')                                  &
         "current and peak memory use after add elements: ",                   &
          memory_use,peak_memory_use," GB "
+
+      ! When using PETSc, even if local convergence fails, the matrix has to be
+      ! assembled to be in the correct state for p_zero_matrix().
+      IF (solvers == petsc_solvers) THEN
+        CALL p_assemble
+      END IF
+      memory_use = p_memory_use()
+      peak_memory_use = p_memory_peak()
+      IF (numpe == 1) WRITE(*,'(A,2F7.2,A)')                                  &
+        "current and peak memory use after assemble:     ",                   &
+        memory_use,peak_memory_use," GB "
+            
+      timest(33) = timest(33) + elap_time()-timest(2) ! 33 = matrix assemble
+      timest(2) = elap_time()
+      
+      ! This code deals with the fail of local convergence
+      ! ---------------------------------------------------------------------------
 
       ! Call a barrier to ensure all processes are synchronised
       CALL MPI_BARRIER(MPI_COMM_WORLD,ier)
@@ -677,15 +691,6 @@ PROGRAM xx15_quadric_linear_hardening
       END IF
       ! ---------------------------------------------------------------------------
 
-      IF (solvers == petsc_solvers) THEN
-        CALL p_assemble
-      END IF
-      memory_use = p_memory_use()
-      peak_memory_use = p_memory_peak()
-      IF (numpe == 1) WRITE(*,'(A,2F7.2,A)')                                  &
-        "current and peak memory use after assemble:     ",                   &
-        memory_use,peak_memory_use," GB "
-            
       timest(33) = timest(33) + elap_time()-timest(2) ! 33 = matrix assemble
       timest(2) = elap_time()
       
@@ -938,9 +943,10 @@ PROGRAM xx15_quadric_linear_hardening
           END DO
         END DO
         
+        300 CONTINUE
+
         ! This code deals with the fail of local convergence
         ! ---------------------------------------------------------------------------
-        300 CONTINUE
       
         ! Call a barrier to ensure all processes are synchronised
         CALL MPI_BARRIER(MPI_COMM_WORLD,ier)
