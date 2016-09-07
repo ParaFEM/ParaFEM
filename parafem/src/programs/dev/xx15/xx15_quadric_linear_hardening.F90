@@ -1050,10 +1050,10 @@ PROGRAM xx15_quadric_linear_hardening
         !OPEN(28, file=fname, status='replace', action='write')
                 
         ! Homogenized stress and strain
-        fname = fname_base(1:INDEX(fname_base, " ")-1) // "_hom_stress.res"
-        OPEN(29, file=fname, status='replace', action='write')
-        fname = fname_base(1:INDEX(fname_base, " ")-1) // "_hom_strain.res"
-        OPEN(30, file=fname, status='replace', action='write')
+        !fname = fname_base(1:INDEX(fname_base, " ")-1) // "_hom_stress.res"
+        !OPEN(29, file=fname, status='replace', action='write')
+        !fname = fname_base(1:INDEX(fname_base, " ")-1) // "_hom_strain.res"
+        !OPEN(30, file=fname, status='replace', action='write')
         
         ! Load and displacement
         !fname = fname_base(1:INDEX(fname_base, " ")-1) // "_disp_load.res"
@@ -1075,8 +1075,8 @@ PROGRAM xx15_quadric_linear_hardening
     ! load_node,iload)
      
     IF (numpe==1) THEN
-      CALL FLUSH(29)
-      CALL FLUSH(30)
+      !CALL FLUSH(29)
+      !CALL FLUSH(30)
       !CALL FLUSH(31)
     END IF
 
@@ -1226,8 +1226,8 @@ PROGRAM xx15_quadric_linear_hardening
     !CLOSE(25)
     !CLOSE(26)
     CLOSE(27)
-    CLOSE(29)
-    CLOSE(30)
+    !CLOSE(29)
+    !CLOSE(30)
     !CLOSE(31)
   END IF
 
