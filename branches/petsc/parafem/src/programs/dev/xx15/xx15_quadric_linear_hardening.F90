@@ -446,6 +446,8 @@ PROGRAM xx15_quadric_linear_hardening
 
     timest(2) = elap_time()
 
+!!$    ! Special case: If lambda is larger than 0.25, the simulation is finished
+!!$    IF (lambda_total>=(0.25_iwp-tol_increment)) THEN
     ! If lambda is larger than unity, the simulation is finished
     IF (lambda_total>=(1._iwp-tol_increment)) THEN
 
@@ -460,6 +462,9 @@ PROGRAM xx15_quadric_linear_hardening
     lambda_prev=lambda_total
     lambda_total=lambda_total+lambda
     
+!!$    ! Special case: If the total lambda is larger than 0.25, cut it off
+!!$    IF (lambda_total>=(0.25_iwp-tol_increment)) THEN
+!!$      lambda_total=0.25_iwp
     ! If the total lambda is larger than one, cut it off
     IF (lambda_total>=(1._iwp-tol_increment)) THEN
       lambda_total=1._iwp
@@ -1255,6 +1260,20 @@ PROGRAM xx15_quadric_linear_hardening
     WRITE(11,'(A,F10.4)') "Total:                    ", SUM(timest(30:35))
     WRITE(11,'(A)')       "                          ----------"
     WRITE(11,'(A,F10.4)') "This analysis took:       ", elap_time()-timest(1)
+    WRITE(11,*)
+    WRITE(11,'(A,F10.2,A)') "Peak memory use: ",peak_memory_use," GB"
+    WRITE(11,*)
+    ! REVISION is substituted with a string like "2108" (including the double
+    ! quotes) by the preprocessor, see the makefile.
+    WRITE(11,'(2A,2(I0,A),4(F0.2,A),F0.2)')                                    &
+      REVISION,tab,                                                            &
+      npes,tab,                                                                &
+      neq,tab,                                                                 &
+      timest(31),tab,                                                          &
+      timest(33),tab,                                                          &
+      timest(34),tab,                                                          &
+      timest(31)+timest(33)+timest(34),tab,                                    &
+      peak_memory_use
 !   CALL FLUSH(11)
     CLOSE(11)
   END IF
