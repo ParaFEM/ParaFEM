@@ -64,7 +64,11 @@ xx15_original: xx15_original.o plasticity_xx15.o
 # Compiling the xx15 objects needs the plasticity_xx15 module already
 # compiled.
 xx15_%.o : xx15_%.F90 plasticity_xx15.o
-	$(FC) $(FFLAGS) -o $@ $< 
+# The \"\" are to include "" around the text when it is substituted in
+# the program.  The "" are to expand REVISION correctly even if it has
+# special characters.  The $$ are to escape the make $ to become a
+# shell $.
+	$(FC) $(FFLAGS) -D REVISION=\""$$REVISION"\" -o $@ $< 
 
 plasticity_xx15.o : plasticity_xx15.F90
 	$(FC) $(FFLAGS) -o $@ $< 
