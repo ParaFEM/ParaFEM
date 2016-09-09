@@ -71,7 +71,7 @@ MODULE NEW_LIBRARY
     
     DO i = 1,UBOUND(rest,1)
       j = rest(i,1)
-      nf(:,j) = rest(i,2:4)
+      nf(:,j) = rest(i,2:)
     END DO
     
     RETURN
