@@ -1,0 +1,16 @@
+#!/bin/bash --login
+
+#PBS -N xx15
+#PBS -l select=40
+#PBS -l walltime=1:00:00
+#PBS -A z01-csetds
+
+export PBS_O_WORKDIR=$(readlink -f $PBS_O_WORKDIR)
+cd $PBS_O_WORKDIR
+
+module use $HOME/modulefiles
+module load parafem
+
+nodes=$(qstat -f $PBS_JOBID | awk '/Resource_List\.nodect/{print $3}')
+
+aprun -n $((24*nodes)) xx15_quadric_linear_hardening mesh_input_file_1_1 &> log
