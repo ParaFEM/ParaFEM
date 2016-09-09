@@ -1,0 +1,3 @@
+This is an example directory tree for tests on the bone examples.
+Copy it (not svn cp) to a working directory and fill in the zero-sized
+files and update the .dat files in normal and normal_metis.
