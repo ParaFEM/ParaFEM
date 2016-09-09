@@ -50,8 +50,8 @@
 #define ELEM_BUF_SIZE 8192
 typedef struct elemBuf_s {
   struct elemBuf_s *pNext;
-  int numOcc;
-  int elem[ELEM_BUF_SIZE];
+  long numOcc;
+  long elem[ELEM_BUF_SIZE];
 } elemBuf;
 
 int
@@ -59,14 +59,14 @@ main( int argc, char **argv ) {
   FILE *pIFH;
   FILE *pOFH;
   char buf[256];
-  int i;
+  long i;
   elemBuf *pRootElemBuf;
   elemBuf *pElemBuf;
-  int base;
+  long base;
 
-  int iel;
-  int ndim;
-  int nod;
+  long iel;
+  long ndim;
+  long nod;
 
   /* Display USAGE if number of expected arguments incorrect 	 */
   if (argc != 3) {
@@ -134,9 +134,9 @@ main( int argc, char **argv ) {
       break;
     }
     /* read ELEM-ID, NUM-DIMS and NODES-PER-ELEM tokens from line; skip the 4th token (1)	 */
-    sscanf(strtok(buf, " "), "%d", &iel);
-    sscanf(strtok(NULL, " "), "%d", &ndim);
-    sscanf(strtok(NULL, " "), "%d", &nod);
+    sscanf(strtok(buf, " "), "%ld", &iel);
+    sscanf(strtok(NULL, " "), "%ld", &ndim);
+    sscanf(strtok(NULL, " "), "%ld", &nod);
     strtok(NULL, " ");
 
     /* grow the buffer array list if number of nodes exceeds remaining space in current buffer */
@@ -161,7 +161,7 @@ main( int argc, char **argv ) {
 
     /* read "nod" NODE INDICES from current line as required for element type and copy to current buffer */
     for (i=0; i<nod; i++) {
-      sscanf(strtok(NULL, " "), "%d", &pElemBuf->elem[i+base]);
+      sscanf(strtok(NULL, " "), "%ld", &pElemBuf->elem[i+base]);
     }
 
     /* update buffer position to reflect new nodes added	 */
@@ -171,18 +171,18 @@ main( int argc, char **argv ) {
 
 
 //VSZ
-  printf("%d elements read / %d dim / %d nod\n", iel, ndim, nod);
+  printf("%ld elements read / %ld dim / %ld nod\n", iel, ndim, nod);
 
   /* loop over buffer and output connectivity in METIS format	 */
   /* ONLY SUPPORTS Tet(nod=4) and Hex(nod=8) elements	 */
 
   /* Process HEX elements	 */
   if( nod == 8 ) {
-    fprintf(pOFH, "%d 3\n", iel);
+    fprintf(pOFH, "%ld 3\n", iel);
     pElemBuf = pRootElemBuf;
     base = 0;
     for (i=0; i<iel; i++) {
-      fprintf(pOFH, "%7d %7d %7d %7d %7d %7d %7d %7d\n",
+      fprintf(pOFH, "%ld %ld %ld %ld %ld %ld %ld %ld\n",
 	      pElemBuf->elem[base+4], pElemBuf->elem[base+0],
 	      pElemBuf->elem[base+3], pElemBuf->elem[base+7],
 	      pElemBuf->elem[base+5], pElemBuf->elem[base+1],
@@ -196,11 +196,11 @@ main( int argc, char **argv ) {
   }
   /* Process TET elements	 */
   else if (nod == 4) {
-    fprintf(pOFH, "%d 2\n", iel);
+    fprintf(pOFH, "%ld 2\n", iel);
     pElemBuf = pRootElemBuf;
     base = 0;
     for (i=0; i<iel; i++) {
-      fprintf(pOFH, "%7d %7d %7d %7d\n",
+      fprintf(pOFH, "%ld %ld %ld %ld\n",
 	      pElemBuf->elem[base+0], pElemBuf->elem[base+1],
 	      pElemBuf->elem[base+1], pElemBuf->elem[base+2]);
       base += 4;
@@ -212,13 +212,13 @@ main( int argc, char **argv ) {
   }
   /* Unsupported element type - error and exit */
   else {
-    printf("%d nod not supported\n", nod);
+    printf("%ld nod not supported\n", nod);
     fclose(pIFH);
     fclose(pOFH);
     return(0);
   }
 
-  /* Successful conversion - tody and exit	 */
+  /* Successful conversion - tidy and exit	 */
 
   fclose(pIFH);
   fclose(pOFH);
