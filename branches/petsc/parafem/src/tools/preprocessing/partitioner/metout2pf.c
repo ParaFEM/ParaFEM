@@ -2,21 +2,19 @@
  * metout2pf
  * ---------------------------------------------------------------
  * This program takes an unpartitioned ParaFEM input deck
- * (.d, .bnd, .lds) and a METIS output partition file and outputs
- * a new ParaFEM input deck (.d, .bnd, .lds AND .psize) that
- * incorporates the partitioning information.
+ * (.d, .bnd, .lds, .fix) and a METIS output partition file and
+ * outputs a new ParaFEM input deck (.d, .bnd, .lds, .fix AND
+ * .psize) that incorporates the partitioning information.
  *
- * NOTE: if the BND or LDS files are not present, they will not be
- * processed but the program will exit after processing the model
- * files.
+ * NOTE: if the BND, LDS, or FIX files are not present, they will
+ * not be processed but the program will exit after processing the
+ * model files.
  *
  * NOTE: the METIS partition programs (partnmesh/partdmesh) will
  * output TWO partition files, with the suffix of .epart.# or
  * .npart.#, where # matches the number of partitions specified
  * when the partition programs were executed. The epart.# file
  * should be used for this program.
- *
- * NOTE: ParaFEM .fix files are not supported.
  *
  * USAGE:
  *   metout2pf <partition_file> <input_basename> <output_basename>
@@ -31,8 +29,8 @@
  *         metout2pf helix.met.epart.3 helix helix_part
 
  * This will generate helix_part.d and helix_part.psize files. It
- * will also generate helix_part.bnd and helix_part.lds if those
- * input files were present.
+ * will also generate helix_part.bnd, helix_part.lds, and
+ * helix_part.fix files if those input files were present.
  * ---------------------------------------------------------------
  * The code was originally developed by Vendel Szeremi as part of
  * his MSc dissertation "Scalable Parallel Finite Element Method".
@@ -42,6 +40,7 @@
  *
  * MODIFICATIONS:
      Louise M. Lever
+     Mark Filipiak
  * ---------------------------------------------------------------
  */
 
@@ -50,24 +49,30 @@
 #include <string.h>
 
 typedef struct node_s {
-  int nn;
-  int rnn;
+  long nn;
+  long rnn;
   float x1;
   float x2;
   float x3;
 } node;
 
 typedef struct lds_s {
-  int nn;
+  long nn;
   float x1;
   float x2;
   float x3;
 } lds;
 
+typedef struct fix_s {
+  long nn;
+  long x1;
+  float x2;
+} fix;
 
 int icmp(const void *pI1, const void *pI2);
 int ionecmp(const void *pI1, const void *pI2);
 int ldscmp(const void *pL1, const void *pL2);
+int fixcmp(const void *pF1, const void *pF2);
 
 
 int
@@ -76,31 +81,33 @@ main( int argc, char **argv ) {
   FILE *pIFH;
   FILE *pOFH;
   char buf[256];
-  int i;
-  int j;
-  int base;
-  int idx;
+  long i;
+  long j;
+  long base;
+  long idx;
 
-  int iel;
-  int ndim;
-  int nod;
-  int nn;
-  int nnnew;
-  int pnum;
+  long iel;
+  long ndim;
+  long nod;
+  long nn;
+  long nnnew;
+  long pnum;
 
   char fnamebuf[256];
 
-  int *pPart;
-  int maxPartNumber;
-  int *pPartSize;
+  long *pPart;
+  long maxPartNumber;
+  long *pPartSize;
   node *pNodes;
-  int *pSortNodes;
-  int *pElem;
+  long *pSortNodes;
+  long *pElem;
 
-  int numlds;
-  int numbnd;
+  long numlds;
+  long numbnd;
+  long numfix;
   lds *pLds;
-  int *pBnd;
+  long *pBnd;
+  fix *pFix;
 
   if (argc != 4) {
     printf("Usage: metout2pf partitionfile basenamein basenameout\n");
@@ -128,7 +135,7 @@ main( int argc, char **argv ) {
   fclose(pPFH);
 
   /* allocate 2-item (partition,id) array for all elements	 */
-  pPart = malloc(iel * 2 * sizeof(int));
+  pPart = malloc(iel * 2 * sizeof(long));
   /* error and exit on malloc fail	 */
   if (pPart == NULL) {
     printf("No mem.\n");
@@ -144,7 +151,7 @@ main( int argc, char **argv ) {
   i = 0;
   /* store partition number from file with element id as a pair for sorting */
   while (fgets(buf, 256, pPFH)) {
-    sscanf(buf, "%d", &pPart[i*2]);
+    sscanf(buf, "%ld", &pPart[i*2]);
     pPart[i*2+1] = i+1;
     i++;
   }
@@ -155,12 +162,12 @@ main( int argc, char **argv ) {
   fflush(stdout);
 
   /* sort elements by the partition they belong to */
-  qsort(pPart, iel, 2*sizeof(int), icmp);
+  qsort(pPart, iel, 2*sizeof(long), icmp);
 
 
 
   for (i=0; i<20; i++) {
-    printf("DBG pPart i=%d %d %d\n", i, pPart[i*2], pPart[i*2+1]);
+    printf("DBG pPart i=%ld %ld %ld\n", i, pPart[i*2], pPart[i*2+1]);
   }
 
   printf("\r                                                                           ");
@@ -180,13 +187,13 @@ main( int argc, char **argv ) {
   }
 
   /* find sizes of partitions */
-  pPartSize = malloc((maxPartNumber+1) * sizeof(int));
+  pPartSize = malloc((maxPartNumber+1) * sizeof(long));
   if (pPartSize == NULL) {
     printf("No mem.\n");
     return(0);
   }
   /* zero the counts for each partition	 */
-  bzero(pPartSize, (maxPartNumber+1) * sizeof(int));
+  bzero(pPartSize, (maxPartNumber+1) * sizeof(long));
   /* traverse the list and count number of elements per partition	 */
   for (i=0; i<iel; i++) {
     pPartSize[ pPart[i*2] ]++;
@@ -275,7 +282,7 @@ main( int argc, char **argv ) {
       break;
     }
     /* get the node ID and coordinate values	 */
-    sscanf(buf, "%d%f%f%f", &j, &pNodes[i].x1, &pNodes[i].x2, &pNodes[i].x3);
+    sscanf(buf, "%ld%f%f%f", &j, &pNodes[i].x1, &pNodes[i].x2, &pNodes[i].x3);
     pNodes[i].nn = j;
     i++;
   }
@@ -296,9 +303,9 @@ main( int argc, char **argv ) {
     return(0);
   }
   /* get element id, dim and type of FIRST element - assume all same type	 */
-  sscanf(buf, "%d%d%d", &j, &ndim, &nod);
+  sscanf(buf, "%ld%ld%ld", &j, &ndim, &nod);
   /* allocate array to store element connectivity for all elements of retrieved type	 */
-  pElem = malloc((iel * (nod + 2)) * sizeof(int));
+  pElem = malloc((iel * (nod + 2)) * sizeof(long));
   if (pElem == NULL) {
     printf("No mem.\n");
     fclose(pIFH);
@@ -308,13 +315,13 @@ main( int argc, char **argv ) {
   /* read element lines until *DISPLACEMENTS keyword found or EOF	 */
   /* LML: *DISPLACEMENTS will NOT BE FOUND in ParaFEM model .d files	 */
   while (1) {
-    sscanf(strtok(buf, " "), "%d", &j);
-    sscanf(strtok(NULL, " "), "%d", &ndim);
-    sscanf(strtok(NULL, " "), "%d", &nod);
+    sscanf(strtok(buf, " "), "%ld", &j);
+    sscanf(strtok(NULL, " "), "%ld", &ndim);
+    sscanf(strtok(NULL, " "), "%ld", &nod);
     strtok(NULL, " ");
     pElem[base] = j;
     for (i=0; i<nod; i++) {
-      sscanf(strtok(NULL, " "), "%d", &pElem[i+base+2]);
+      sscanf(strtok(NULL, " "), "%ld", &pElem[i+base+2]);
     }
     base += nod + 2;
     if (fgets(buf, 256, pIFH) == NULL) {
@@ -345,7 +352,7 @@ main( int argc, char **argv ) {
 
 
 
-  printf("\nDBG nnnew %d\n", nnnew);
+  printf("\nDBG nnnew %ld\n", nnnew);
 
   j = 0;
   for (i=0; i<nn; i++) {
@@ -360,7 +367,7 @@ main( int argc, char **argv ) {
     }
   }
 
-  printf("DBG .rnn max %d\n", j);
+  printf("DBG .rnn max %ld\n", j);
 
   printf("\r                                                                           ");
   printf("\r %04d write renumbered nodes", __LINE__);
@@ -381,7 +388,7 @@ main( int argc, char **argv ) {
   fprintf(pOFH, "*NODES\n");
 
   /* build (node id,new node id) list for sorting	 */
-  pSortNodes = malloc(2*nn*sizeof(int));
+  pSortNodes = malloc(2*nn*sizeof(long));
   if (pSortNodes == NULL) {
     printf("No mem.\n");
     return(0);
@@ -391,10 +398,10 @@ main( int argc, char **argv ) {
     pSortNodes[i*2+1] = pNodes[i].rnn;
   }
   /* sort based on new node id	 */
-  qsort(pSortNodes, nn, 2*sizeof(int), ionecmp);
+  qsort(pSortNodes, nn, 2*sizeof(long), ionecmp);
   /* output all nodes in new node id order	 */
   for( i=0; i<nn; i++ ) {
-    fprintf(pOFH, " %4d  % 1.4E  % 1.4E  % 1.4E\n", pSortNodes[i*2+1],
+    fprintf(pOFH, " %ld %.8E %.8E %.8E\n", pSortNodes[i*2+1],
 	    pNodes[pSortNodes[i*2]-1].x1, pNodes[pSortNodes[i*2]-1].x2,
 	    pNodes[pSortNodes[i*2]-1].x3);
   }
@@ -412,14 +419,14 @@ main( int argc, char **argv ) {
   pnum = 1;
   for (i=0; i<iel; i++) {
     /* output new node id, ndim, nod and fixed "1" label	 */
-    fprintf(pOFH, "%4d %4d %4d %4d ", i+1, ndim, nod, 1);
+    fprintf(pOFH, "%ld %ld %ld %ld ", i+1, ndim, nod, 1);
     /* output the connectivity indices using renumbered node ids	 */
     for (j=0; j<nod; j++) {
-      fprintf(pOFH, "%4d ", pNodes[ pElem[((pPart[i*2+1]-1)*(nod+2))+j+2]-1 ].rnn);
+      fprintf(pOFH, "%ld ", pNodes[ pElem[((pPart[i*2+1]-1)*(nod+2))+j+2]-1 ].rnn);
     }
     /* output partition number as the material ID	 */
     /* LML: THIS PREVENTS ANY USE OF MULTIPLE MATERIALS	 */
-    fprintf(pOFH, "%4d\n", pnum);
+    fprintf(pOFH, "%ld\n", pnum);
     if (pPart[i*2] != pPart[(i+1)*2]) {
       pnum++;
     }
@@ -450,18 +457,18 @@ main( int argc, char **argv ) {
     }
   }
   /* output number of partitions (non-zero counted)	 */
-  fprintf(pOFH, "%d\n", j);
+  fprintf(pOFH, "%ld\n", j);
   /* output size of non-empty partitions	 */
   for (i=0; i<=maxPartNumber; i++) {
     if (pPartSize[i] > 0) {
-      fprintf(pOFH, "%d ", pPartSize[i]);
+      fprintf(pOFH, "%ld ", pPartSize[i]);
     }
   }
   fclose(pOFH);
 
 
 
-
+ loads:
   printf("\r                                                                           ");
   printf("\r %04d renumber loads", __LINE__);
   fflush(stdout);
@@ -476,8 +483,9 @@ main( int argc, char **argv ) {
   strcat(fnamebuf, ".lds");
   pIFH = fopen(fnamebuf, "r");
   if (pIFH == NULL) {
-    printf("Could not open %s.\n", fnamebuf);
-    return(0);
+    printf("\nCould not open %s, skipping\n", fnamebuf);
+    fflush(stdout);
+    goto restraints;
   }
   numlds = 0;
   while (fgets(buf, 256, pIFH)) {
@@ -486,10 +494,7 @@ main( int argc, char **argv ) {
   fclose(pIFH);
 
   pIFH = fopen(fnamebuf, "r");
-  if (pIFH == NULL) {
-    printf("Could not open %s.\n", fnamebuf);
-    return(0);
-  }
+
   strcpy(fnamebuf, argv[3]);
   strcat(fnamebuf, ".lds");
   pOFH = fopen(fnamebuf, "w");
@@ -501,7 +506,7 @@ main( int argc, char **argv ) {
   pLds = malloc(numlds*sizeof(lds));
   i = 0;
   while (fgets(buf, 256, pIFH)) {
-    sscanf(buf, "%d%f%f%f", &pLds[i].nn,
+    sscanf(buf, "%ld%f%f%f", &pLds[i].nn,
 			&pLds[i].x1, &pLds[i].x2, &pLds[i].x3);
     i++;
   }
@@ -510,13 +515,14 @@ main( int argc, char **argv ) {
   }
   qsort(pLds, numlds, sizeof(lds), ldscmp);
   for (i=0; i<numlds; i++) {
-    fprintf(pOFH, " %4d  % 1.4E  % 1.4E  % 1.4E\n",
+    fprintf(pOFH, " %ld %.8E %.8E %.8E\n",
 	    pLds[i].nn, pLds[i].x1, pLds[i].x2, pLds[i].x3);
   }
   fclose(pIFH);
   fclose(pOFH);
 
 
+ restraints:
   printf("\r                                                                           ");
   printf("\r %04d renumber restraints", __LINE__);
   fflush(stdout);
@@ -526,8 +532,9 @@ main( int argc, char **argv ) {
   strcat(fnamebuf, ".bnd");
   pIFH = fopen(fnamebuf, "r");
   if (pIFH == NULL) {
-    printf("Could not open %s.\n", fnamebuf);
-    return(0);
+    printf("\nCould not open %s, skipping\n", fnamebuf);
+    fflush(stdout);
+    goto fixed;
   }
   numbnd = 0;
   while (fgets(buf, 256, pIFH)) {
@@ -536,10 +543,7 @@ main( int argc, char **argv ) {
   fclose(pIFH);
 
   pIFH = fopen(fnamebuf, "r");
-  if (pIFH == NULL) {
-    printf("Could not open %s.\n", fnamebuf);
-    return(0);
-  }
+
   strcpy(fnamebuf, argv[3]);
   strcat(fnamebuf, ".bnd");
   pOFH = fopen(fnamebuf, "w");
@@ -547,38 +551,85 @@ main( int argc, char **argv ) {
     printf("Could not open %s.\n", fnamebuf);
     return(0);
   }
-  pBnd = malloc(numbnd * 4 * sizeof(int));
+  pBnd = malloc(numbnd * 4 * sizeof(long));
   if (pBnd == NULL) {
     printf("No mem.\n");
     return(0);
   }
   i = 0;
   while (fgets(buf, 256, pIFH)) {
-    sscanf(buf, "%d%d%d%d", &pBnd[i*4], &pBnd[i*4+1],
+    sscanf(buf, "%ld%ld%ld%ld", &pBnd[i*4], &pBnd[i*4+1],
 	   &pBnd[i*4+2], &pBnd[i*4+3]);
     i++;
   }
   for (i=0; i<numbnd; i++) {
     pBnd[i*4] = pNodes[pBnd[i*4]-1].rnn;
   }
-  qsort(pBnd, numbnd, 4*sizeof(int), icmp);
+  qsort(pBnd, numbnd, 4*sizeof(long), icmp);
 
   for (i=0; i<numbnd; i++) {
-    fprintf(pOFH, "%4d   %d   %d   %d\n",
+    fprintf(pOFH, "%ld %ld %ld %ld\n",
 	    pBnd[i*4], pBnd[i*4+1], pBnd[i*4+2], pBnd[i*4+3]);
   }
-
   fclose(pIFH);
   fclose(pOFH);
 
+ fixed:
+  printf("\r                                                                           ");
+  printf("\r %04d renumber fixed", __LINE__);
+  fflush(stdout);
+
+  /* renumber fixed */
+  strcpy(fnamebuf, argv[2]);
+  strcat(fnamebuf, ".fix");
+  pIFH = fopen(fnamebuf, "r");
+  if (pIFH == NULL) {
+    printf("\nCould not open %s, skipping\n", fnamebuf);
+    fflush(stdout);
+    goto done;
+  }
+  numfix = 0;
+  while (fgets(buf, 256, pIFH)) {
+    numfix++;
+  }
+  fclose(pIFH);
+
+  pIFH = fopen(fnamebuf, "r");
+
+  strcpy(fnamebuf, argv[3]);
+  strcat(fnamebuf, ".fix");
+  pOFH = fopen(fnamebuf, "w");
+  if (pOFH == NULL) {
+    printf("Could not open %s.\n", fnamebuf);
+    return(0);
+  }
+
+  pFix = malloc(numfix*sizeof(fix));
+  i = 0;
+  while (fgets(buf, 256, pIFH)) {
+    sscanf(buf, "%ld%ld%f", &pFix[i].nn, &pFix[i].x1, &pFix[i].x2);
+    i++;
+  }
+  for (i=0; i<numfix; i++) {
+    pFix[i].nn = pNodes[pFix[i].nn-1].rnn;
+  }
+  qsort(pFix, numfix, sizeof(fix), fixcmp);
+  for (i=0; i<numfix; i++) {
+    fprintf(pOFH, " %ld %ld %.8E\n",
+	    pFix[i].nn, pFix[i].x1, pFix[i].x2);
+  }
+  fclose(pIFH);
+  fclose(pOFH);
+
+ done:
   printf("\rdone                                      \n");
 }
 
 int icmp(const void *pI1, const void *pI2) {
-  if (*(int*)pI1 < *(int*)pI2) {
+  if (*(long*)pI1 < *(long*)pI2) {
     return(-1);
   }
-  else if (*(int*)pI1 > *(int*)pI2) {
+  else if (*(long*)pI1 > *(long*)pI2) {
     return(1);
   }
   else {
@@ -587,8 +638,8 @@ int icmp(const void *pI1, const void *pI2) {
 }
 
 int ionecmp(const void *pI1, const void *pI2) {
-  int *p1 = (int *)pI1;
-  int *p2 = (int *)pI2;
+  long *p1 = (long *)pI1;
+  long *p2 = (long *)pI2;
   p1++;
   p2++;
   if (*p1 < *p2) {
@@ -605,6 +656,21 @@ int ionecmp(const void *pI1, const void *pI2) {
 int ldscmp(const void *pL1, const void *pL2) {
   lds *p1 = (lds*)pL1;
   lds *p2 = (lds*)pL2;
+
+  if (p1->nn < p2->nn) {
+    return(-1);
+  }
+  else if (p1->nn > p2->nn) {
+    return(1);
+  }
+  else {
+    return(0);
+  }
+}
+
+int fixcmp(const void *pF1, const void *pF2) {
+  fix *p1 = (fix*)pF1;
+  fix *p2 = (fix*)pF2;
 
   if (p1->nn < p2->nn) {
     return(-1);
