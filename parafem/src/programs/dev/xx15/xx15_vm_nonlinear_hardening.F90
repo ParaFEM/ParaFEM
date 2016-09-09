@@ -21,7 +21,7 @@ PROGRAM xx15_vm_nonlinear_hardening
 
   INTEGER :: nels, nn, nr, nip, nodof=3, nod, nst=6, loaded_nodes, nn_pp,     &
    nf_start, fmt=1, i, j, k, l, ndim=3, iters, limit, iel, nn_start,          &
-   num_load_steps, iload, igauss, dimH, inewton, jump, npes_pp, partitioner=1,&
+   num_load_steps, iload, igauss, dimH, inewton, jump, npes_pp, partitioner  ,&
    argc, iargc, limit_2, fixed_nodes, numfix_pp, fixdim, writetimes=0,        &
    nodes_pp, node_start, node_end, idx1, idx2, yield_ip_pp, unload_ip_pp,     &
    yield_tot, unload_tot
@@ -112,7 +112,7 @@ PROGRAM xx15_vm_nonlinear_hardening
 
   fname = fname_base(1:INDEX(fname_base," ")-1) // ".dat"
   CALL READ_DATA_XX7(fname,numpe,nels,nn,nr,loaded_nodes,fixed_nodes,          &
-                     nip,limit,tol,e,v,nod,num_load_steps,jump,tol2)
+                     nip,limit,tol,e,v,nod,num_load_steps,jump,tol2,partitioner)
 
   solvers = get_solvers()
   IF (.NOT. solvers_valid(solvers)) THEN
@@ -160,6 +160,8 @@ PROGRAM xx15_vm_nonlinear_hardening
   ALLOCATE(g_num_pp(nod, nels_pp)) 
   
   fname = fname_base(1:INDEX(fname_base," ")-1) // ".d"
+  CALL READ_G_NUM_PP(fname_base,iel_start,nn,npes,numpe,g_num_pp)
+  ! read_elements_2() does not work for METIS partitions
   CALL READ_ELEMENTS_2(fname,npes,nn,numpe,g_num_pp)
   
   CALL CALC_NN_PP(g_num_pp,nn_pp,nn_start)

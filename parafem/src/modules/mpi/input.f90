@@ -5404,7 +5404,8 @@ MODULE INPUT
 !------------------------------------------------------------------------------
 
     SUBROUTINE READ_DATA_XX7(fname,numpe,nels,nn,nr,loaded_nodes,fixed_nodes, &
-                             nip,limit,tol,e,v,nod,num_load_steps,jump,tol2)
+                             nip,limit,tol,e,v,nod,num_load_steps,jump,tol2,  &
+                             partition)
 
     !/****f* input_output/read_data_xx7
     !*  NAME
@@ -5413,7 +5414,7 @@ MODULE INPUT
     !*    Usage:      CALL read_data_xx7(fname,numpe,nels,nn,nr,              &
     !*                                   loaded_nodes,fixed_nodes,nip,        &
     !*                                   limit,tol,e,v,nod,num_load_steps,    &
-    !*                                   jump,tol2)
+    !*                                   jump,tol2,partition)
     !*  FUNCTION
     !*    Master process reads the general data of the problem
     !*    Master process broadcasts to slave processes.
@@ -5473,6 +5474,11 @@ MODULE INPUT
     !*    tol2                   : Real
     !*                           : Tolerance for Newton-Raphson loop
     !*
+    !*    partition              : Integer
+    !*                           : Type of partitioning 
+    !*                           : 1 = internal partitioning
+    !*                           : 2 = external partitioning with .psize file
+    !*
     !*  AUTHOR
     !*    Francisco Calvo
     !*    L. Margetts
@@ -5492,7 +5498,8 @@ MODULE INPUT
     INTEGER,      INTENT(OUT) :: nels, nn, nr, loaded_nodes, fixed_nodes, nip,&
                                  limit, nod, num_load_steps, jump
     REAL(iwp),    INTENT(OUT) :: tol, e, v, tol2
-    INTEGER                   :: bufsize, ier, vec_integer(10)
+    INTEGER,      INTENT(OUT) :: partition
+    INTEGER                   :: bufsize, ier, vec_integer(11)
     REAL(iwp)                 :: vec_real(4)
 
     !----------------------------------------------------------------------
@@ -5507,6 +5514,7 @@ MODULE INPUT
       READ(10,*)nod
       READ(10,*)num_load_steps,jump
       READ(10,*)tol2
+      READ(10,*)partition
       CLOSE(10)
       
       vec_integer(1)  = nels
@@ -5523,6 +5531,7 @@ MODULE INPUT
       vec_integer(9)  = num_load_steps
       vec_integer(10) = jump
       vec_real(4)     = tol2
+      vec_integer(11) = partition
       
     END IF
 
@@ -5530,7 +5539,7 @@ MODULE INPUT
     ! 2. Master process broadcasts the data to slave processes
     !----------------------------------------------------------------------
 
-    bufsize = 10
+    bufsize = 11
     CALL MPI_BCAST(vec_integer,bufsize,MPI_INTEGER,0,MPI_COMM_WORLD,ier)
 
     bufsize = 4
@@ -5539,6 +5548,7 @@ MODULE INPUT
     !----------------------------------------------------------------------
     ! 3. Slave processes extract the variables back from the vectors
     !----------------------------------------------------------------------
+
 
     IF (numpe/=1) THEN
       nels           = vec_integer(1)
@@ -5555,6 +5565,7 @@ MODULE INPUT
       num_load_steps = vec_integer(9)
       jump           = vec_integer(10)
       tol2           = vec_real(4)
+      partition      = vec_integer(11)
     END IF
 
     RETURN
