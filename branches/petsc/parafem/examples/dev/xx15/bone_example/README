@@ -1,3 +1,9 @@
 This is an example directory tree for tests on the bone examples.
-Copy it (not svn cp) to a working directory and fill in the zero-sized
-files and update the .dat files in normal and normal_metis.
+
+svn export it to a working directory and fill in the zero-sized files
+and update the .dat files in normal and normal_metis.  Or svn export
+directly from the URL.
+
+Don't use cp (or svn co):  that will create .svn files and if you
+accidentally commit the working directory with the large .d files,
+then all of that will go into the repository.
