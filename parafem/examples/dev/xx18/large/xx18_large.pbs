@@ -8,6 +8,18 @@
 export PBS_O_WORKDIR=$(readlink -f $PBS_O_WORKDIR)
 cd $PBS_O_WORKDIR
 
+# To get the 30 September 2016 TDS modules the following lines are
+# possibly needed.  Probably only cray-mpich needs to be swapped.
+module unload modules
+. /opt/modules/3.2.10.5/init/bash
+module load modules/3.2.10.5
+module swap cray-mpich cray-mpich/7.4.3
+module swap craype craype/2.5.7
+module swap cce cce/8.5.3
+module swap cray-libsci cray-libsci/16.09.1
+module load cray-tpsl-64/16.07.1
+module load cray-petsc-64/3.7.2.1
+
 module use $HOME/modulefiles
 module load parafem
 
