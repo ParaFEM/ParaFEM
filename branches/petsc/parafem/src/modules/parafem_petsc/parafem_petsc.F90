@@ -463,7 +463,7 @@ CONTAINS
     !*    g_g_all(:,:)       : PetscInt
     !*                         The equivalent of g_g_pp, but for all elements
     !*                         that have dofs corresponding to the equations on
-    !*                         this process.  The element numbers in g_g_all
+    !*                         this process.  The element numbers of g_g_all
     !*                         have no relationship with global or local
     !*                         element numbers:  the element numbers are not
     !*                         needed for the row non-zero counting that
@@ -513,7 +513,11 @@ CONTAINS
 
     ! p_el defines one stage of the mapping (process-element pairs)
     ! from: process number of equations corresponding to dofs contained in
-    !       elements on this process
+    !       elements on this process, but only for equations that are not
+    !       on this process.  For equations on this process corresponding
+    !       to dofs contained in elements on this process, g_g_pp contains
+    !       the information needed, and g_g_pp becomes part of g_g_all
+    !       later.
     ! to:   the corresponding local number of the element.
     ! p_el(:,1) are process numbers
     ! p_el(:,2) are local element numbers
@@ -533,6 +537,9 @@ CONTAINS
         low = 2
       END IF
       DO j = low, n
+        ! Equations that are on this process, corresponding to dofs contained in
+        ! elements on this process don't need to be considered: the elements are
+        ! already on this process in the g_g_pp array.
         IF (q(j) /= numpe) THEN
           p_el(i,1) = q(j)
           p_el(i,2) = iel
@@ -542,15 +549,16 @@ CONTAINS
     END DO
     n = i - 1
     DEALLOCATE(el_p,q)
-    ! => p_el(1:n) gives the pairing from process to element, but is unsorted
+    ! => p_el(1:n,:) gives the pairing from process to element, but is unsorted
 
     CALL PetscSortIntWithArray(n,p_el(1:n,1),p_el(1:n,2),p_object%ierr)
-    ! => p_el(1:n) gives the pairing from process to element, sorted.
+    ! => p_el(1:n,:) gives the pairing from process to element, sorted by
+    !    process number.
 
     ! Now complete the mapping.
     ALLOCATE(send_start(npes),send_count(npes))
     send_count = 0
-    p = 0 ! invalid process number
+    p = 0 ! an invalid process number to start things off
     DO i = 1, n
       IF (p_el(i,1) /= p) THEN
         ! next process in mapping
@@ -583,16 +591,16 @@ CONTAINS
     !    complete
 
     ! Collect all the elements required by equations that are on this process.
-    ! The elements from other process will be put into the beginning of g_g_all,
-    ! then the elements on this process will be copied from g_g_pp to the end of
-    ! g_g_all.  g_g_all can be the receive buffer because it is contiguous, but
-    ! there needs to be a contiguous send buffer to use MPI_Isend.  This would
-    ! be a problem if you are sending lots of data but it is expected that the
-    ! ratio of neigbouring elements (or 'surface') to local elements (the
-    ! 'volume') is small - otherwise you have used too many processes for the
-    ! size of problem and/or chosen a poor partitioning of the mesh.  To reduce
-    ! peak memory, allocate g_g_all after send_buffer is set up and p_el is
-    ! freed.
+    ! The elements from other processes will be put into the beginning of
+    ! g_g_all, then the elements on this process will be copied from g_g_pp to
+    ! the end of g_g_all.  g_g_all can be the receive buffer because it is
+    ! contiguous, but there needs to be a contiguous send buffer to use
+    ! MPI_Isend.  This would be a problem if you are sending lots of data but it
+    ! is expected that the ratio of neigbouring elements (or 'surface') to local
+    ! elements (the 'volume') is small - otherwise you have used too many
+    ! processes for the size of problem and/or chosen a poor partitioning of the
+    ! mesh.  To reduce peak memory, allocate g_g_all after send_buffer is set up
+    ! and p_el is freed.
     nels_send = SUM(send_count) ! = n
     nels_recv = SUM(recv_count)
     nels_all = nels_recv + nels_pp
@@ -664,7 +672,8 @@ CONTAINS
 
     g_g_all(:,nels_recv+1:) = g_g_pp
     ! => all the elements needed for the equations that are on this process are
-    !    in g_g_all
+    !    in g_g_all.  The element numbers of g_g_all have no relationship with
+    !    global or local element numbers.
   END SUBROUTINE collect_elements
 
   SUBROUTINE row_nnz(g_g_all,dnz,onz)
@@ -765,22 +774,23 @@ CONTAINS
     END DO
     n = i - 1
     DEALLOCATE(d)
-    ! => eq_el(1:n) gives the pairing from global equation number to element,
-    !    but is unsorted
+    ! => eq_el(1:n,:) gives the pairing from global equation number (of
+    !    equations on this process) to element, but is unsorted
 
-    ! Sort p_el.  This is slow.
+    ! Sort eq_el.  This is slow.
     CALL PetscSortIntWithArray(n,eq_el(1:n,1),eq_el(1:n,2),p_object%ierr)
-    ! => eq_el(1:n) gives the pairing from global equation number to element,
-    !    sorted.
+    ! => eq_el(1:n,:) gives the pairing from global equation number (of
+    !    equations on this process) to element, sorted by global equation
+    !    number.
 
     eq_el(1:n,1) = eq_el(1:n,1) - ieq_start + 1
-    ! => eq_el(1:n) gives the pairing from local equation number to element,
-    !    sorted.
+    ! => eq_el(1:n,:) gives the pairing from local equation number (of equations
+    !    on this process) to element, sorted by local equation number.
 
     ! Now complete the mapping.
     ALLOCATE(eq_start(neq_pp),eq_count(neq_pp))
     eq_count = 0
-    ieq = 0 ! invalid equation number
+    ieq = 0 ! an invalid equation number to start things off.
     DO i = 1, n
       IF (eq_el(i,1) /= ieq) THEN
         ! next equation in mapping
@@ -801,9 +811,9 @@ CONTAINS
       eq_start(ieq) = s
       s = s + eq_count(ieq)
     END DO
-    ! => if eq_count(ieq) /= 0 then the elements to with dofs contain ieq are
-    !    eq_el(eq_start(ieq):eq_start(ieq)+eq_count(ieq)-1,2)
-    ! => equation to element mapping complete
+    ! => if eq_count(ieq) /= 0 then the elements with the dof that corresponds
+    !    to ieq are eq_el(eq_start(ieq):eq_start(ieq)+eq_count(ieq)-1,2)
+    ! => equation to element mapping complete.
 
     ! For each equation on this process, count the on- and off-process
     ! non-zeroes in the corresponding row of the global matrix.  This is slow.
@@ -996,7 +1006,8 @@ CONTAINS
 
     ! p_object%nsolvers is initialized to 1.  PetscOptionsGetInt does not change
     ! p_object%nsolvers if -nsolvers is not set in xxx.petsc
-    CALL PetscOptionsGetInt(PETSC_NULL_CHARACTER,"-nsolvers",p_object%nsolvers,&
+    CALL PetscOptionsGetInt(PETSC_NULL_OBJECT,PETSC_NULL_CHARACTER,            &
+                            "-nsolvers",p_object%nsolvers,                     &
                             p_object%nsolvers_set,p_object%ierr)
 
     IF (p_object%nsolvers < 1) THEN
@@ -1030,10 +1041,11 @@ CONTAINS
     END IF
 
     ! Fail if the KSP, tolerance, max iterations, or PC have not been set.
-    ! PetscOptionsHasName("","-ksp_type",...) will look for the option
+    ! PetscOptionsHasName(NULL,"","-ksp_type",...) will look for the option
     ! "-ksp_type", i.e. as if there were no prefix.
     DO s = 1, p_object%nsolvers
-      CALL PetscOptionsHasName(p_object%prefix(s),"-ksp_type",set,p_object%ierr)
+      CALL PetscOptionsHasName(PETSC_NULL_OBJECT,p_object%prefix(s),           &
+                               "-ksp_type",set,p_object%ierr)
       IF (.NOT. set) THEN
         IF (numpe == 1) THEN
           WRITE(error_unit,'(A)')                                              &
@@ -1041,7 +1053,8 @@ CONTAINS
         END IF
         error = .TRUE.
       END IF
-      CALL PetscOptionsHasName(p_object%prefix(s),"-ksp_rtol",set,p_object%ierr)
+      CALL PetscOptionsHasName(PETSC_NULL_OBJECT,p_object%prefix(s),           &
+                               "-ksp_rtol",set,p_object%ierr)
       IF (.NOT. set) THEN
         IF (numpe == 1) THEN
           WRITE(error_unit,'(A)')                                              &
@@ -1049,8 +1062,8 @@ CONTAINS
         END IF
         error = .TRUE.
       END IF
-      CALL PetscOptionsHasName(p_object%prefix(s),"-ksp_max_it",set,           &
-                               p_object%ierr)
+      CALL PetscOptionsHasName(PETSC_NULL_OBJECT,p_object%prefix(s),           &
+                               "-ksp_max_it",set,p_object%ierr)
       IF (.NOT. set) THEN
         IF (numpe == 1) THEN
           WRITE(error_unit,'(A)')                                              &
@@ -1058,7 +1071,8 @@ CONTAINS
         END IF
         error = .TRUE.
       END IF
-      CALL PetscOptionsHasName(p_object%prefix(s),"-pc_type",set,p_object%ierr)
+      CALL PetscOptionsHasName(PETSC_NULL_OBJECT,p_object%prefix(s),           &
+                               "-pc_type",set,p_object%ierr)
       IF (.NOT. set) THEN
         IF (numpe == 1) THEN
           WRITE(error_unit,'(A)')                                              &
@@ -2192,8 +2206,9 @@ CONTAINS
     ! this to be larger than 1.25, which would correspond to 5 hexahedra about
     ! an edge.  The over allocation can be changed at run time but the default
     ! value of 1.3 probably safe (for regular grids it will be excessive).
-    CALL PetscOptionsGetReal(PETSC_NULL_CHARACTER,"-over_allocation",          &
-                             p_object%over_allocation,set,p_object%ierr)
+    CALL PetscOptionsGetReal(PETSC_NULL_OBJECT,PETSC_NULL_CHARACTER,           &
+                             "-over_allocation",p_object%over_allocation,      &
+                             set,p_object%ierr)
 
     nnod_estimate = NINT(p_object%over_allocation * v)
   END FUNCTION nnod_estimate

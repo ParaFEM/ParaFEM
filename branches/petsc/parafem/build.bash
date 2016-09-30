@@ -33,16 +33,31 @@ export modulefile=$HOME/modulefiles/parafem/$version
 # needed.
 #module load cray-petsc-64
 
-# To get the 14 April 2016 Archer modules the following lines are
+# To get the 30 September 2016 TDS modules the following lines are
 # needed, including an explicit load of cray-tpsl-64.  Switch back to
 # a simple 'module load cray-petsc-64' when the defaults are changed.
-module swap modules modules/3.2.10.3
-module swap cray-mpich cray-mpich/7.3.2
-module swap craype craype/2.5.3
-module swap cce cce/8.4.5
-module swap cray-libsci cray-libsci/16.03.1
-module load cray-tpsl-64/16.03.1
-module load cray-petsc-64/3.6.3.0
+module unload modules
+. /opt/modules/3.2.10.5/init/bash
+module load modules/3.2.10.5
+module swap cray-mpich cray-mpich/7.4.3
+module swap craype craype/2.5.7
+module swap cce cce/8.5.3
+module swap cray-libsci cray-libsci/16.09.1
+module load cray-tpsl-64/16.07.1
+module load cray-petsc-64/3.7.2.1
+
+## To get the 14 April 2016 Archer modules the following lines are
+## needed, including an explicit load of cray-tpsl-64.  Switch back to
+## a simple 'module load cray-petsc-64' when the defaults are changed.
+#module unload modules
+#. /opt/modules/3.2.10.3/init/bash
+#module load modules/3.2.10.3
+#module swap cray-mpich cray-mpich/7.3.2
+#module swap craype craype/2.5.3
+#module swap cce cce/8.4.5
+#module swap cray-libsci cray-libsci/16.03.1
+#module load cray-tpsl-64/16.03.1
+#module load cray-petsc-64/3.6.3.0
 
 module list -t 2>&1 | head -n 1 > $log
 module list -t 2>&1 | tail -n +2 | LC_ALL=POSIX sort >> $log
