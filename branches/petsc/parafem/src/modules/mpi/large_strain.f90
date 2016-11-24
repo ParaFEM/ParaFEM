@@ -1048,7 +1048,12 @@ MODULE LARGE_STRAIN
 
     numdof   = 0
     contrest = 1
-    noderest = rest(contrest,1)
+    IF (contrest <= nr) THEN
+      noderest = rest(contrest,1)
+    ELSE
+      ! set noderest to an invalid node number
+      noderest = -1
+    END IF
 
     DO i = 1,nn_start-1
       IF (i==noderest) THEN
@@ -1058,7 +1063,12 @@ MODULE LARGE_STRAIN
           END IF
         END DO
         contrest = contrest + 1
-        noderest = rest(contrest,1)
+        IF (contrest <= nr) THEN
+          noderest = rest(contrest,1)
+        ELSE
+          ! set noderest to an invalid node number
+          noderest = -1
+        END IF
       ELSE
         numdof = numdof + nodof
       END IF
@@ -1080,7 +1090,12 @@ MODULE LARGE_STRAIN
           END IF
         END DO
         contrest = contrest + 1
-        noderest = rest(contrest,1)
+        IF (contrest <= nr) THEN
+          noderest = rest(contrest,1)
+        ELSE
+          ! set noderest to an invalid node number
+          noderest = -1
+        END IF
       ELSE
         DO j = 2,nodof+1 
           numdof = numdof + 1
