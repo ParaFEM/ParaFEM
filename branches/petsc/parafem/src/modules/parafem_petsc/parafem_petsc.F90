@@ -167,21 +167,18 @@ CONTAINS
     CALL PetscInitialize(fname,p_ierr)
   END SUBROUTINE p_initialize
 
-  SUBROUTINE p_setup(neq_pp,ntot_max,g_g_pp,error)
+  SUBROUTINE p_setup(ntot_max,g_g_pp,error)
 
     !/****if* petsc/p_setup
     !*  NAME
     !*    SUBROUTINE: p_setup
     !*  SYNOPSIS
-    !*    Usage:      p_setup(neq_pp,ntot_max,g_g_pp,error)
+    !*    Usage:      p_setup(ntot_max,g_g_pp,error)
     !*  FUNCTION
     !*      Initialises PETSc and its matrices, vectors and solvers
     !*  ARGUMENTS
     !*    INTENT(IN)
     !*
-    !*    neq_pp             : Integer
-    !*                         Number of equations on this process = number of
-    !*                         rows in the global matrix on this process
     !*    ntot_max           : Integer
     !*                         Maximum number of dofs in an element.  This will
     !*                         be ntot if there is only one element type.  If
@@ -218,7 +215,6 @@ CONTAINS
     !*  types will require major changes in ParaFEM
     !*/
 
-    INTEGER, INTENT(in)                 :: neq_pp
     INTEGER, INTENT(in)                 :: ntot_max
     INTEGER, DIMENSION(:,:), INTENT(in) :: g_g_pp
     LOGICAL, INTENT(out)                :: error
@@ -226,8 +222,8 @@ CONTAINS
     error = .FALSE.
 
     ! Create the objects
-    CALL p_create_matrix(neq_pp,g_g_pp)
-    CALL p_create_vectors(neq_pp) ! RHS and solution
+    CALL p_create_matrix(g_g_pp)
+    CALL p_create_vectors ! RHS and solution
     CALL p_create_ksps(error) ! Krylov solver(s)
     IF (error) THEN
       CALL p_destroy_vectors
@@ -297,21 +293,18 @@ CONTAINS
     CALL p_finalize
   END SUBROUTINE p_shutdown
 
-  SUBROUTINE p_create_matrix(neq_pp,g_g_pp)
+  SUBROUTINE p_create_matrix(g_g_pp)
 
     !/****if* petsc/p_create_matrix
     !*  NAME
     !*    SUBROUTINE: p_create_matrix
     !*  SYNOPSIS
-    !*    Usage:      p_create_matrix(neq_pp,g_g_pp)
+    !*    Usage:      p_create_matrix(g_g_pp)
     !*  FUNCTION
     !*      Creates the global matrix (but doesn't assemble it)
     !*  ARGUMENTS
     !*    INTENT(IN)
     !*
-    !*    neq_pp             : Integer
-    !*                         Number of equations on this process = number of
-    !*                         rows in the global matrix on this process
     !*    g_g_pp(:,:)        : Integer
     !*                         The steering array. g_g_pp(:,iel) are the global
     !*                         equation numbers for the dofs in element with
@@ -337,7 +330,6 @@ CONTAINS
     !*  What about multi-field?
     !*/
 
-    INTEGER, INTENT(in) :: neq_pp
     INTEGER, DIMENSION(:,:), INTENT(in) :: g_g_pp
 
     PetscInt :: p_neq_pp
@@ -404,13 +396,13 @@ CONTAINS
     CALL MatDestroy(p_object%A,p_ierr)
   END SUBROUTINE p_destroy_matrix
 
-  SUBROUTINE p_zero_matrix()
+  SUBROUTINE p_zero_matrix
 
     !/****if* petsc/p_zero_matrix
     !*  NAME
     !*    SUBROUTINE: p_zero_matrix
     !*  SYNOPSIS
-    !*    Usage:      p_zero_matrix()
+    !*    Usage:      p_zero_matrix
     !*  FUNCTION
     !*      Zeroes the global matrix
     !*  ARGUMENTS
@@ -851,21 +843,17 @@ CONTAINS
     END IF
   END SUBROUTINE row_nnz
 
-  SUBROUTINE p_create_vectors(neq_pp)
+  SUBROUTINE p_create_vectors
 
     !/****if* petsc/p_create_vectors
     !*  NAME
     !*    SUBROUTINE: p_create_vectors
     !*  SYNOPSIS
-    !*    Usage:      p_create_vectors(neq_pp)
+    !*    Usage:      p_create_vectors
     !*  FUNCTION
     !*    Create the global RHS and solution vectors
     !*  ARGUMENTS
-    !*    INTENT(IN)
-    !*
-    !*    neq_pp             : Integer
-    !*                         Number of equations on this process = number of
-    !*                         rows in the global matrix on this process
+    !*    None
     !*  AUTHOR
     !*    Mark Filipiak
     !*  CREATION DATE
@@ -881,8 +869,6 @@ CONTAINS
     !*  the restraints are handled block-wise in ParaFEM.
     !*  What about multi-field?
     !*/
-
-    INTEGER, INTENT(in) :: neq_pp
 
     PetscInt :: p_neq_pp
 
