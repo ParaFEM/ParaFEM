@@ -1254,56 +1254,8 @@ CONTAINS
     !*
     !*/
 
-!!$    ! an example of timing and using a PETSc viewer for testing
-!!$    DOUBLE PRECISION :: wtime,wtime_max
-!!$    DOUBLE PRECISION :: btime,btime_max
-
     CALL MatAssemblyBegin(p_object%A,MAT_FINAL_ASSEMBLY,p_ierr)
-
-!!$    ! an example of timing and using a PETSc viewer for testing
-!!$    CALL MPI_Barrier(MPI_COMM_WORLD,m_ierr)
-!!$    wtime = MPI_Wtime()
-
     CALL MatAssemblyEnd(p_object%A,MAT_FINAL_ASSEMBLY,p_ierr)
-
-!!$    ! an example of timing and using a PETSc viewer for testing
-!!$    wtime = MPI_Wtime() - wtime
-!!$    btime = MPI_Wtime()
-!!$    CALL MPI_Barrier(MPI_COMM_WORLD,m_ierr)
-!!$    btime = MPI_Wtime() - btime
-!!$
-!!$    BLOCK
-!!$      INTEGER :: rank,len
-!!$      CHARACTER(len=MPI_MAX_PROCESSOR_NAME) :: node
-!!$      CHARACTER(len=string_length) :: message
-!!$      PetscViewer :: viewer
-!!$
-!!$      CALL MPI_Comm_rank(MPI_COMM_WORLD,rank,m_ierr)
-!!$      CALL MPI_Get_processor_name(node,len,m_ierr)
-!!$
-!!$      CALL MPI_Reduce(wtime,wtime_max,1,MPI_DOUBLE_PRECISION,MPI_MAX,0,        &
-!!$                      MPI_COMM_WORLD,m_ierr)
-!!$      CALL MPI_Reduce(btime,btime_max,1,MPI_DOUBLE_PRECISION,MPI_MAX,0,        &
-!!$                      MPI_COMM_WORLD,m_ierr)
-!!$      IF (rank==0) THEN
-!!$        WRITE(*,'(A,i3,A,i3)') "p_assemble max work = ", NINT(wtime_max),      &
-!!$          " max barrier = ", NINT(btime_max)
-!!$      END IF
-!!$
-!!$      ! You could use the iso_c_binding module and use c_new_line to get a
-!!$      ! C-like newline but PETSc treats "\n" specially, so it is easier to use
-!!$      ! that.  Note that "stdout" in PetscViewerASCIIOpen will open stdout, not
-!!$      ! a file called stdout; similarly for "stderr".
-!!$      WRITE(message,'(A,i4,A,A,A,i3,A)') "p_assemble rank = ", rank,           &
-!!$        " node = ", TRIM(node),                                                &
-!!$        " work = ", NINT(wtime), "\n"
-!!$      CALL PetscViewerASCIIOpen(MPI_COMM_WORLD,"stdout",viewer,p_ierr)
-!!$      CALL PetscViewerASCIIPushSynchronized(viewer,p_ierr)
-!!$      CALL PetscViewerASCIISynchronizedPrintf(viewer,message,p_ierr)
-!!$      CALL PetscViewerFlush(viewer,p_ierr)
-!!$      CALL PetscViewerASCIIPopSynchronized(viewer,p_ierr)
-!!$      CALL PetscViewerDestroy(viewer,p_ierr)
-!!$    END BLOCK
 
     ! All subsequent assemblies SHOULD not create any new entries: fail with an
     ! error message if they do.
