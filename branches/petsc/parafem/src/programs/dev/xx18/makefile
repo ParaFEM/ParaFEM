@@ -36,7 +36,7 @@ release:
 	$(MAKE) xx18 \
 	FFLAGS="-c -I$(MODULE_MPI) -I$(MODULE_CHOOSE_SOLVERS) -I$(MODULE_PARAFEM_PETSC) $(XX18_MPI_REL_FFLAGS)" \
 	LDFLAGS="-L$(LIB) $(XX18_MPI_REL_LDFLAGS)" \
-	LIBS="-lParaFEM_mpi.$(VERSION) -lParaFEM_choose_solvers.$(VERSION) -lParaFEM_parafem_petsc.$(VERSION)"
+	LIBS="-lParaFEM_mpi.$(VERSION) -lParaFEM_choose_solvers.$(VERSION) -lParaFEM_parafem_petsc.$(VERSION) $(PETSC_L)"
 	@echo "Done xx18 RELEASE"
 
 debug:
@@ -45,7 +45,7 @@ debug:
 	$(MAKE) xx18 \
 	FFLAGS="-c -I$(MODULE_MPI) -I$(MODULE_CHOOSE_SOLVERS) -I$(MODULE_PARAFEM_PETSC) $(XX18_MPI_DBG_FFLAGS)" \
 	LDFLAGS="-L$(LIB) $(XX18_MPI_DBG_LDFLAGS)" \
-	LIBS="-lParaFEM_mpi_D.$(VERSION) -lParaFEM_choose_solvers_D.$(VERSION) -lParaFEM_parafem_petsc_D.$(VERSION)"
+	LIBS="-lParaFEM_mpi_D.$(VERSION) -lParaFEM_choose_solvers_D.$(VERSION) -lParaFEM_parafem_petsc_D.$(VERSION) $(PETSC_L)"
 	@echo "Done xx18 DEBUG"
 
 xx18: xx18.o
