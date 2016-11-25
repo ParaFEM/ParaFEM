@@ -623,7 +623,6 @@ CONTAINS
     r = 1 ! r for requests
     DO p = 1, npes
       IF (recv_count(p) /= 0) THEN
-!!$        CALL MPI_Irecv(g_g_all(1,recv_start(p)),                               &
         CALL MPI_Irecv(g_g_all(:,recv_start(p):recv_start(p)+recv_count(p)-1), &
                        recv_count(p),PARAFEM_ELEMENT,p-1,0,                    &
                        MPI_COMM_WORLD,requests(r),ierr)
@@ -637,7 +636,6 @@ CONTAINS
 
     DO p = 1, npes
       IF (send_count(p) /= 0) THEN
-!!$        CALL MPI_Isend(send_buffer(1,send_start(p)),                           &
         CALL MPI_Isend(send_buffer                                             &
                          (:,send_start(p):send_start(p)+send_count(p)-1),      &
                        send_count(p),PARAFEM_ELEMENT,p-1,0,                    &
@@ -739,7 +737,7 @@ CONTAINS
     i = 1
     DO iel = 1, nels_all
       d = g_g_all(:,iel) ! global equation numbers
-#ifdef DUPLICATE_DOFS
+#ifdef P_DUPLICATE_DOFS
       ! Is there any possibility at all of duplicate dofs in an element?
       n = ntot ! n becomes the number of unique entries
       CALL PetscSortRemoveDupsInt(n,d,p_ierr)
