@@ -63,6 +63,10 @@ MODULE parafem_petsc
 #include <petsc/finclude/petscksp.h90>
 #include <petsc/finclude/petscpc.h>
 #include <petsc/finclude/petscpc.h90>
+! PETSc Viewers can be used for testing, see p_assemble for commented-out
+! example.
+#include <petsc/finclude/petscviewer.h>
+#include <petsc/finclude/petscviewer.h90>
   
   ! Private parameters
   INTEGER,PARAMETER,PRIVATE          :: string_length = 1024
@@ -86,7 +90,7 @@ MODULE parafem_petsc
     PetscInt            :: solver   = 1
     PetscInt            :: nsolvers = 1
     PetscBool           :: nsolvers_set = .false.
-    KSP,                          DIMENSION(:), ALLOCATABLE :: ksp(:)
+    KSP,         DIMENSION(:), ALLOCATABLE :: ksp
     ! KSPGetOptionsPrefix and PCGetOptionsPrefix don't work in Fortran yet
     ! (PETSc 3.7), so keep a record of the prefixes here.
     CHARACTER(len=string_length), DIMENSION(:), ALLOCATABLE :: prefix(:)
@@ -158,7 +162,7 @@ CONTAINS
     END IF
     ! The communicator is MPI_COMM_WORLD, set by find_pe_procs(), and numpe ==
     ! 1 corresponds to rank == 0.
-    CALL MPI_BCAST(exist,1,MPI_LOGICAL,0,MPI_COMM_WORLD,ierr)
+    CALL MPI_Bcast(exist,1,MPI_LOGICAL,0,MPI_COMM_WORLD,ierr)
 
     IF (.NOT. exist) THEN
       IF (numpe == 1) THEN
@@ -575,6 +579,14 @@ CONTAINS
     ! => if send_count(p) /= 0 then the elements to send to process p are
     !    p_el(send_start(p):send_start(p)+send_count(p)-1,2)
     ! => process to element mapping complete and send information complete.
+
+    ! For each process p, you could sort the element numbers in
+    ! p_el(send_start(p):send_start(p)+send_count(p)-1,2) on their own (no need
+    ! to include p_el(send_start(p):send_start(p)+send_count(p)-1,1), which are
+    ! all p).  Having the elements ordered for each process may improve the
+    ! locality of send_buffer = g_g_pp(:,p_el(1:n,2)).  But you would have to
+    ! measure if the time for the sorting is compensated by the time
+    ! improvement in the copy.
 
     ! Transpose the send_count to get the receive counts
     ALLOCATE(recv_start(npes),recv_count(npes))
@@ -1272,9 +1284,59 @@ CONTAINS
     !*
     !*/
 
+!!$    ! an example of timing and using a PETSc viewer for testing
+!!$    DOUBLE PRECISION :: wtime,wtime_max
+!!$    DOUBLE PRECISION :: btime,btime_max
+!!$    INTEGER :: m_ierr
+
     CALL MatAssemblyBegin(p_object%A,MAT_FINAL_ASSEMBLY,p_object%ierr)
+
+!!$    ! an example of timing and using a PETSc viewer for testing
+!!$    CALL MPI_Barrier(MPI_COMM_WORLD,m_ierr)
+!!$    wtime = MPI_Wtime()
+
     CALL MatAssemblyEnd(p_object%A,MAT_FINAL_ASSEMBLY,p_object%ierr)
-    
+
+!!$    ! an example of timing and using a PETSc viewer for testing
+!!$    wtime = MPI_Wtime() - wtime
+!!$    btime = MPI_Wtime()
+!!$    CALL MPI_Barrier(MPI_COMM_WORLD,m_ierr)
+!!$    btime = MPI_Wtime() - btime
+!!$
+!!$    BLOCK
+!!$      INTEGER :: rank,m_ierr,len
+!!$      CHARACTER(len=MPI_MAX_PROCESSOR_NAME) :: node
+!!$      CHARACTER(len=string_length) :: message
+!!$      PetscViewer :: viewer
+!!$      PetscErrorCode :: p_ierr
+!!$
+!!$      CALL MPI_Comm_rank(MPI_COMM_WORLD,rank,m_ierr)
+!!$      CALL MPI_Get_processor_name(node,len,m_ierr)
+!!$
+!!$      CALL MPI_Reduce(wtime,wtime_max,1,MPI_DOUBLE_PRECISION,MPI_MAX,0,        &
+!!$                      MPI_COMM_WORLD,m_ierr)
+!!$      CALL MPI_Reduce(btime,btime_max,1,MPI_DOUBLE_PRECISION,MPI_MAX,0,        &
+!!$                      MPI_COMM_WORLD,m_ierr)
+!!$      IF (rank==0) THEN
+!!$        WRITE(*,'(A,i3,A,i3)') "p_assemble max work = ", NINT(wtime_max),      &
+!!$          " max barrier = ", NINT(btime_max)
+!!$      END IF
+!!$
+!!$      ! You could use the iso_c_binding module and use c_new_line to get a
+!!$      ! C-like newline but PETSc treats "\n" specially, so it is easier to use
+!!$      ! that.  Note that "stdout" in PetscViewerASCIIOpen will open stdout, not
+!!$      ! a file called stdout; similarly for "stderr".
+!!$      WRITE(message,'(A,i4,A,A,A,i3,A)') "p_assemble rank = ", rank,           &
+!!$        " node = ", TRIM(node),                                                &
+!!$        " work = ", NINT(wtime), "\n"
+!!$      CALL PetscViewerASCIIOpen(MPI_COMM_WORLD,"stdout",viewer,p_ierr)
+!!$      CALL PetscViewerASCIIPushSynchronized(viewer,p_ierr)
+!!$      CALL PetscViewerASCIISynchronizedPrintf(viewer,message,p_ierr)
+!!$      CALL PetscViewerFlush(viewer,p_ierr)
+!!$      CALL PetscViewerASCIIPopSynchronized(viewer,p_ierr)
+!!$      CALL PetscViewerDestroy(viewer,p_ierr)
+!!$    END BLOCK
+
     ! All subsequent assemblies SHOULD not create any new entries: fail with an
     ! error message if they do.
     CALL MatSetOption(p_object%A,MAT_NEW_NONZERO_LOCATION_ERR,PETSC_TRUE,      &
@@ -1823,7 +1885,7 @@ CONTAINS
 
     VmRSS = kbytes / 1048576.0 ! VmRSS in GB
     ! MPI_REAL4 matches real32
-    CALL MPI_ALLREDUCE(VmRSS,sum_VmRSS,1,MPI_REAL4,MPI_SUM,MPI_COMM_WORLD,ierr)
+    CALL MPI_Allreduce(VmRSS,sum_VmRSS,1,MPI_REAL4,MPI_SUM,MPI_COMM_WORLD,ierr)
     p_memory_use = sum_VmRSS
   END FUNCTION p_memory_use
   
@@ -1882,7 +1944,7 @@ CONTAINS
 
     VmHWM = kbytes / 1048576.0 ! VmHWM in GB
     ! MPI_REAL4 matches real32
-    CALL MPI_ALLREDUCE(VmHWM,sum_VmHWM,1,MPI_REAL4,MPI_SUM,MPI_COMM_WORLD,ierr)
+    CALL MPI_Allreduce(VmHWM,sum_VmHWM,1,MPI_REAL4,MPI_SUM,MPI_COMM_WORLD,ierr)
     p_memory_peak = sum_VmHWM
   END FUNCTION p_memory_peak
   
