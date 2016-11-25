@@ -36,16 +36,16 @@ module unload modules
 module load modules/3.2.10.5
 source $MODULESHOME/init/bash
 module load cdt/16.09 &> /dev/null
-module unload cray-petsc
-module unload cray-tpsl
+module unload cray-petsc-64
+module unload cray-tpsl-64
 module load cray-tpsl-64/16.07.1
 module load cray-petsc-64/3.7.2.1
 
-# CrayPat
-module unload perftools
-module unload perftools-base
-module load perftools-base/6.4.2
-module load perftools/6.4.2
+## CrayPat
+#module unload perftools
+#module unload perftools-base
+#module load perftools-base/6.4.2
+#module load perftools/6.4.2
 
 module list -t 2>&1 | head -n 1 > $log
 module list -t 2>&1 | tail -n +2 | LC_ALL=POSIX sort >> $log
