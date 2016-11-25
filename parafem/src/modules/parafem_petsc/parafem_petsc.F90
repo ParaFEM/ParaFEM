@@ -29,7 +29,7 @@ MODULE parafem_petsc
   !*  TYPE to PASS to the PETSc routines.
   !*/
   
-  USE, INTRINSIC :: iso_fortran_env ! for the real32 kind to use with MPI_REAL4
+  USE, INTRINSIC :: iso_fortran_env, ONLY: int64, real32, error_unit
   USE mp_interface
   USE global_variables, ONLY: ntot, nels_pp, neq_pp, numpe
   USE gather_scatter,   ONLY: npes, neq_pp1, num_neq_pp1, threshold, ieq_start
@@ -100,7 +100,6 @@ MODULE parafem_petsc
     PetscReal           :: rtol,p_n2,r_n2,b_n2
     KSPConvergedReason  :: reason
     CHARACTER(len=string_length) :: description = ""
-    PetscErrorCode      :: ierr
   END TYPE p_type
 
   ! Only p_object%ksp is used as a target.
@@ -176,7 +175,7 @@ CONTAINS
       RETURN
     END IF
 
-    CALL PetscInitialize(fname,p_object%ierr)
+    CALL PetscInitialize(fname,p_ierr)
   END SUBROUTINE p_initialize
 
   SUBROUTINE p_setup(neq_pp,ntot_max,g_g_pp,error)
@@ -273,7 +272,7 @@ CONTAINS
     !*
     !*/
 
-    CALL PetscFinalize(p_object%ierr)
+    CALL PetscFinalize(p_ierr)
   END SUBROUTINE p_finalize
 
   SUBROUTINE p_shutdown
@@ -371,40 +370,40 @@ CONTAINS
 !!$    ! P matrix uses up even more peak memory than the p_object%A matrix.
 !!$    CALL petsc_row_nnz(g_g_pp,P) ! P created
 
-    CALL MatCreate(PETSC_COMM_WORLD,p_object%A,p_object%ierr)
+    CALL MatCreate(PETSC_COMM_WORLD,p_object%A,p_ierr)
     CALL MatSetSizes(p_object%A,p_neq_pp,p_neq_pp,                             &
-                     PETSC_DETERMINE,PETSC_DETERMINE,p_object%ierr)
+                     PETSC_DETERMINE,PETSC_DETERMINE,p_ierr)
     ! The default matrix type set by MatSetFromOptions is MATAIJ, which is what
     ! we want.  MatSetFromOptions is called before specific options are set
     ! here, so that the user cannot override the specific options set here.
-    CALL MatSetFromOptions(p_object%A,p_object%ierr)
+    CALL MatSetFromOptions(p_object%A,p_ierr)
     
     ! Either use the hand-calculated pre-allocation,
     CALL MatSeqAIJSetPreallocation(p_object%A,                                 &
                                    PETSC_NULL_INTEGER,dnz,                     &
-                                   p_object%ierr)
+                                   p_ierr)
     CALL MatMPIAIJSetPreallocation(p_object%A,                                 &
                                    PETSC_NULL_INTEGER,dnz,                     &
                                    PETSC_NULL_INTEGER,onz,                     &
-                                   p_object%ierr)
+                                   p_ierr)
     DEALLOCATE(dnz,onz)
 
 !!$    ! or use the PETSc-calculated pre-allocation
-!!$    CALL MatPreallocatorPreallocate(P,PETSC_FALSE,p_object%A,p_object%ierr)
-!!$    CALL MatDestroy(P,p_object%ierr)
+!!$    CALL MatPreallocatorPreallocate(P,PETSC_FALSE,p_object%A,p_ierr)
+!!$    CALL MatDestroy(P,p_ierr)
 
     ! If the allocation is too small, PETSc will produce reams of information
     ! and not assemble the matrix properly.  We output some information at the
     ! end of the assembly routine if p_object%over_allocation should be
     ! increased.
     CALL MatSetOption(p_object%A,MAT_NEW_NONZERO_ALLOCATION_ERR,PETSC_FALSE,   &
-                      p_object%ierr)
+                      p_ierr)
 
     ! PETSc uses C array order, so a transpose would be needed when adding
     ! elements, but you can get PETSc to use Fortran order for MatSetValues by
     ! setting MAT_ROW_ORIENTED false (at least for the Mat types used so far:
     ! SEQAIJ and MPIAIJ).
-    CALL MatSetOption(p_object%A,MAT_ROW_ORIENTED,PETSC_FALSE,p_object%ierr)
+    CALL MatSetOption(p_object%A,MAT_ROW_ORIENTED,PETSC_FALSE,p_ierr)
   END SUBROUTINE p_create_matrix
 
   SUBROUTINE p_destroy_matrix
@@ -431,7 +430,7 @@ CONTAINS
     !*
     !*/
 
-    CALL MatDestroy(p_object%A,p_object%ierr)
+    CALL MatDestroy(p_object%A,p_ierr)
   END SUBROUTINE p_destroy_matrix
 
   SUBROUTINE p_zero_matrix()
@@ -458,7 +457,7 @@ CONTAINS
     !*
     !*/
 
-    CALL MatZeroEntries(p_object%A,p_object%ierr)
+    CALL MatZeroEntries(p_object%A,p_ierr)
   END SUBROUTINE p_zero_matrix
 
   SUBROUTINE collect_elements(g_g_pp,g_g_all)
@@ -550,7 +549,7 @@ CONTAINS
     DO iel = 1, nels_pp
       q = el_p(:,iel)
       n = ntot ! n becomes the number of unique entries
-      CALL PetscSortRemoveDupsInt(n,q,p_object%ierr)
+      CALL PetscSortRemoveDupsInt(n,q,p_ierr)
       ! remove a possible zero entry (from restraints)
       IF (q(1) /= 0) THEN
         low = 1
@@ -572,7 +571,7 @@ CONTAINS
     DEALLOCATE(el_p,q)
     ! => p_el(1:n,:) gives the pairing from process to element, but is unsorted
 
-    CALL PetscSortIntWithArray(n,p_el(1:n,1),p_el(1:n,2),p_object%ierr)
+    CALL PetscSortIntWithArray(n,p_el(1:n,1),p_el(1:n,2),p_ierr)
     ! => p_el(1:n,:) gives the pairing from process to element, sorted by
     !    process number.
 
@@ -780,7 +779,7 @@ CONTAINS
 #ifdef DUPLICATE_DOFS
       ! Is there any possibility at all of duplicate dofs in an element?
       n = ntot ! n becomes the number of unique entries
-      CALL PetscSortRemoveDupsInt(n,d,p_object%ierr)
+      CALL PetscSortRemoveDupsInt(n,d,p_ierr)
       ! There is no need to shift the start of the loop if d(1) == 0, since
       ! ieq_start > 0
       DO j = 1, n
@@ -807,7 +806,7 @@ CONTAINS
     !    equations on this process) to element, but is unsorted
 
     ! Sort eq_el.  This is slow.
-    CALL PetscSortIntWithArray(n,eq_el(1:n,1),eq_el(1:n,2),p_object%ierr)
+    CALL PetscSortIntWithArray(n,eq_el(1:n,1),eq_el(1:n,2),p_ierr)
     ! => eq_el(1:n,:) gives the pairing from global equation number (of
     !    equations on this process) to element, sorted by global equation
     !    number.
@@ -860,7 +859,7 @@ CONTAINS
           RESHAPE(g_g_all                                                      &
                     (:,eq_el(eq_start(ieq):eq_start(ieq)+eq_count(ieq)-1,2)),  &
                   (/n/))
-        CALL PetscSortRemoveDupsInt(n,d,p_object%ierr)
+        CALL PetscSortRemoveDupsInt(n,d,p_ierr)
         ! remove a possible zero entry (from restraints).
         IF (d(1) /= 0) THEN
           low = 1
@@ -990,14 +989,14 @@ CONTAINS
 
     ! RHS vector.  For this particular order (create, set size, set from
     ! options) the allocation is done by set from options.
-    CALL VecCreate(PETSC_COMM_WORLD,p_object%b,p_object%ierr)
-    CALL VecSetSizes(p_object%b,p_neq_pp,PETSC_DECIDE,p_object%ierr)
+    CALL VecCreate(PETSC_COMM_WORLD,p_object%b,p_ierr)
+    CALL VecSetSizes(p_object%b,p_neq_pp,PETSC_DECIDE,p_ierr)
     ! The default vector type set by VecSetFromOptions is VECSEQ for one
     ! process and VECMPI for more than one process.
-    CALL VecSetFromOptions(p_object%b,p_object%ierr)
+    CALL VecSetFromOptions(p_object%b,p_ierr)
 
     ! Solution vector
-    CALL VecDuplicate(p_object%b,p_object%x,p_object%ierr)
+    CALL VecDuplicate(p_object%b,p_object%x,p_ierr)
   END SUBROUTINE p_create_vectors
   
   SUBROUTINE p_destroy_vectors
@@ -1024,8 +1023,8 @@ CONTAINS
     !*
     !*/
 
-    CALL VecDestroy(p_object%x,p_object%ierr)
-    CALL VecDestroy(p_object%b,p_object%ierr)
+    CALL VecDestroy(p_object%x,p_ierr)
+    CALL VecDestroy(p_object%b,p_ierr)
   END SUBROUTINE p_destroy_vectors
   
   SUBROUTINE p_create_ksps(error)
@@ -1073,12 +1072,12 @@ CONTAINS
     !* 
     !*  in the xxx.petsc file and 
     !* 
-    !*  CALL KSPSetOptionsPrefix(p_object%ksp,"solver_1_",p_object%ierr)
+    !*  CALL KSPSetOptionsPrefix(p_object%ksp,"solver_1_",p_ierr)
     !* 
     !*  before KSPSetFromOptions before using the 'solver_1_' solver, i.e. CG,
     !*  and
     !* 
-    !*  CALL KSPSetOptionsPrefix(p_object%ksp,"solver_2_",p_object%ierr)
+    !*  CALL KSPSetOptionsPrefix(p_object%ksp,"solver_2_",p_ierr)
     !* 
     !*  before KSPSetFromOptions before using the 'solver_2_' solver, i.e.
     !*  GMRES.  Thus you can switch from CG to GMRES (for example) during a
@@ -1107,7 +1106,7 @@ CONTAINS
     ! p_object%nsolvers if -nsolvers is not set in xxx.petsc
     CALL PetscOptionsGetInt(PETSC_NULL_OBJECT,PETSC_NULL_CHARACTER,            &
                             "-nsolvers",p_object%nsolvers,                     &
-                            p_object%nsolvers_set,p_object%ierr)
+                            p_object%nsolvers_set,p_ierr)
 
     IF (p_object%nsolvers < 1) THEN
       IF (numpe == 1) THEN
@@ -1123,19 +1122,18 @@ CONTAINS
     IF (.NOT. p_object%nsolvers_set) THEN
       ! Simple case, one solver, no prefix needed in the xxx.petsc file
       s = 1
-      CALL KSPCreate(PETSC_COMM_WORLD,p_object%ksp(s),p_object%ierr)
+      CALL KSPCreate(PETSC_COMM_WORLD,p_object%ksp(s),p_ierr)
       p_object%prefix(s) = "" ! for tests
       ! No KSPSetOptionsPrefix
-      CALL KSPSetFromOptions(p_object%ksp(s),p_object%ierr)
+      CALL KSPSetFromOptions(p_object%ksp(s),p_ierr)
     ELSE
       ! General case, one or more solvers, prefixes needed
       DO s = 1, p_object%nsolvers
-        CALL KSPCreate(PETSC_COMM_WORLD,p_object%ksp(s),p_object%ierr)
+        CALL KSPCreate(PETSC_COMM_WORLD,p_object%ksp(s),p_ierr)
         WRITE(s_string,'(I0)') s
         p_object%prefix(s) = pre_prefix//"_"//TRIM(s_string)//"_"
-        CALL KSPSetOptionsPrefix(p_object%ksp(s),p_object%prefix(s),           &
-                                 p_object%ierr)
-        CALL KSPSetFromOptions(p_object%ksp(s),p_object%ierr)
+        CALL KSPSetOptionsPrefix(p_object%ksp(s),p_object%prefix(s),p_ierr)
+        CALL KSPSetFromOptions(p_object%ksp(s),p_ierr)
       END DO
     END IF
 
@@ -1144,7 +1142,7 @@ CONTAINS
     ! "-ksp_type", i.e. as if there were no prefix.
     DO s = 1, p_object%nsolvers
       CALL PetscOptionsHasName(PETSC_NULL_OBJECT,p_object%prefix(s),           &
-                               "-ksp_type",set,p_object%ierr)
+                               "-ksp_type",set,p_ierr)
       IF (.NOT. set) THEN
         IF (numpe == 1) THEN
           WRITE(error_unit,'(A)')                                              &
@@ -1153,7 +1151,7 @@ CONTAINS
         error = .TRUE.
       END IF
       CALL PetscOptionsHasName(PETSC_NULL_OBJECT,p_object%prefix(s),           &
-                               "-ksp_rtol",set,p_object%ierr)
+                               "-ksp_rtol",set,p_ierr)
       IF (.NOT. set) THEN
         IF (numpe == 1) THEN
           WRITE(error_unit,'(A)')                                              &
@@ -1162,7 +1160,7 @@ CONTAINS
         error = .TRUE.
       END IF
       CALL PetscOptionsHasName(PETSC_NULL_OBJECT,p_object%prefix(s),           &
-                               "-ksp_max_it",set,p_object%ierr)
+                               "-ksp_max_it",set,p_ierr)
       IF (.NOT. set) THEN
         IF (numpe == 1) THEN
           WRITE(error_unit,'(A)')                                              &
@@ -1171,7 +1169,7 @@ CONTAINS
         error = .TRUE.
       END IF
       CALL PetscOptionsHasName(PETSC_NULL_OBJECT,p_object%prefix(s),           &
-                               "-pc_type",set,p_object%ierr)
+                               "-pc_type",set,p_ierr)
       IF (.NOT. set) THEN
         IF (numpe == 1) THEN
           WRITE(error_unit,'(A)')                                              &
@@ -1213,7 +1211,7 @@ CONTAINS
     PetscInt :: s
 
     DO s = 1, p_object%nsolvers
-      CALL KSPDestroy(p_object%ksp(s),p_object%ierr)
+      CALL KSPDestroy(p_object%ksp(s),p_ierr)
     END DO
     DEALLOCATE(p_object%ksp,p_object%prefix)
   END SUBROUTINE p_destroy_ksps
@@ -1344,7 +1342,7 @@ CONTAINS
     ! work with Fortran-order arrays.
     p_object%values(1:p_ntot*p_ntot) = RESHAPE(km,(/p_ntot*p_ntot/))
     CALL MatSetValues(p_object%A,p_ntot,p_object%rows,p_ntot,p_object%cols,    &
-                      p_object%values,ADD_VALUES,p_object%ierr)
+                      p_object%values,ADD_VALUES,p_ierr)
   END SUBROUTINE p_add_element
 
   SUBROUTINE p_assemble
@@ -1374,15 +1372,14 @@ CONTAINS
 !!$    ! an example of timing and using a PETSc viewer for testing
 !!$    DOUBLE PRECISION :: wtime,wtime_max
 !!$    DOUBLE PRECISION :: btime,btime_max
-!!$    INTEGER :: m_ierr
 
-    CALL MatAssemblyBegin(p_object%A,MAT_FINAL_ASSEMBLY,p_object%ierr)
+    CALL MatAssemblyBegin(p_object%A,MAT_FINAL_ASSEMBLY,p_ierr)
 
 !!$    ! an example of timing and using a PETSc viewer for testing
 !!$    CALL MPI_Barrier(MPI_COMM_WORLD,m_ierr)
 !!$    wtime = MPI_Wtime()
 
-    CALL MatAssemblyEnd(p_object%A,MAT_FINAL_ASSEMBLY,p_object%ierr)
+    CALL MatAssemblyEnd(p_object%A,MAT_FINAL_ASSEMBLY,p_ierr)
 
 !!$    ! an example of timing and using a PETSc viewer for testing
 !!$    wtime = MPI_Wtime() - wtime
@@ -1391,11 +1388,10 @@ CONTAINS
 !!$    btime = MPI_Wtime() - btime
 !!$
 !!$    BLOCK
-!!$      INTEGER :: rank,m_ierr,len
+!!$      INTEGER :: rank,len
 !!$      CHARACTER(len=MPI_MAX_PROCESSOR_NAME) :: node
 !!$      CHARACTER(len=string_length) :: message
 !!$      PetscViewer :: viewer
-!!$      PetscErrorCode :: p_ierr
 !!$
 !!$      CALL MPI_Comm_rank(MPI_COMM_WORLD,rank,m_ierr)
 !!$      CALL MPI_Get_processor_name(node,len,m_ierr)
@@ -1426,10 +1422,9 @@ CONTAINS
 
     ! All subsequent assemblies SHOULD not create any new entries: fail with an
     ! error message if they do.
-    CALL MatSetOption(p_object%A,MAT_NEW_NONZERO_LOCATION_ERR,PETSC_TRUE,      &
-                      p_object%ierr)
+    CALL MatSetOption(p_object%A,MAT_NEW_NONZERO_LOCATION_ERR,PETSC_TRUE,p_ierr)
 
-    CALL MatGetInfo(p_object%A,MAT_GLOBAL_SUM,p_object%info,p_object%ierr)
+    CALL MatGetInfo(p_object%A,MAT_GLOBAL_SUM,p_object%info,p_ierr)
     IF (p_object%info(MAT_INFO_MALLOCS) /= 0.0) THEN
       IF (numpe == 1) THEN
         WRITE(*,'(A,I0,A,F0.1,A)') "The matrix assembly required ",            &
@@ -1474,12 +1469,12 @@ CONTAINS
 
     PetscScalar,POINTER :: varray(:)
 
-    CALL VecGetArrayF90(p_object%b,varray,p_object%ierr)
+    CALL VecGetArrayF90(p_object%b,varray,p_ierr)
     ! This is OK as long as PetscScalars are not smaller than ParaFEM reals.
     ! There should be a test for sizes of PetscScalars (and PetscInts) and
     ! ParaFEM reals (and indices).
     varray = r_pp
-    CALL VecRestoreArrayF90(p_object%b,varray,p_object%ierr)
+    CALL VecRestoreArrayF90(p_object%b,varray,p_ierr)
   END SUBROUTINE p_set_rhs
 
   SUBROUTINE p_set_solution(x_pp)
@@ -1515,12 +1510,12 @@ CONTAINS
 
     PetscScalar,POINTER :: varray(:)
 
-    CALL VecGetArrayF90(p_object%x,varray,p_object%ierr)
+    CALL VecGetArrayF90(p_object%x,varray,p_ierr)
     ! This is OK as long as PetscScalars are not smaller than ParaFEM reals.
     ! There should be a test for sizes of PetscScalars (and PetscInts) and
     ! ParaFEM reals (and indices).
     varray = x_pp
-    CALL VecRestoreArrayF90(p_object%x,varray,p_object%ierr)
+    CALL VecRestoreArrayF90(p_object%x,varray,p_ierr)
   END SUBROUTINE p_set_solution
 
   SUBROUTINE p_get_solution(x_pp)
@@ -1556,12 +1551,12 @@ CONTAINS
 
     PetscScalar,POINTER :: varray(:)
 
-    CALL VecGetArrayF90(p_object%x,varray,p_object%ierr)
+    CALL VecGetArrayF90(p_object%x,varray,p_ierr)
     ! This is OK as long as ParaFEM reals are not smaller than PetscScalars.
     ! There should be a test for sizes of PetscScalars (and PetscInts) and
     ! ParaFEM reals (and indices).
     x_pp = varray
-    CALL VecRestoreArrayF90(p_object%x,varray,p_object%ierr)
+    CALL VecRestoreArrayF90(p_object%x,varray,p_ierr)
   END SUBROUTINE p_get_solution
 
   SUBROUTINE p_use_solver(solver,error)
@@ -1683,26 +1678,26 @@ CONTAINS
     ksp => p_object%ksp(p_object%solver)
     
     ! Solution vector 
-    CALL KSPSetInitialGuessNonzero(ksp,PETSC_FALSE,p_object%ierr)
+    CALL KSPSetInitialGuessNonzero(ksp,PETSC_FALSE,p_ierr)
     IF (PRESENT(initial_guess_nonzero)) THEN
       IF (initial_guess_nonzero) THEN
         ! For non-linear solves, the previous solution is usually used as an
         ! initial guess: copy the ParaFEM solution vector to PETSc.
-        CALL KSPSetInitialGuessNonzero(ksp,PETSC_TRUE,p_object%ierr)
+        CALL KSPSetInitialGuessNonzero(ksp,PETSC_TRUE,p_ierr)
         CALL p_set_solution(x_pp)
       END IF
     END IF
 
-    CALL KSPSetOperators(ksp,p_object%A,p_object%A,p_object%ierr)
+    CALL KSPSetOperators(ksp,p_object%A,p_object%A,p_ierr)
 
-    CALL KSPSetReusePreconditioner(ksp,PETSC_FALSE,p_object%ierr)
+    CALL KSPSetReusePreconditioner(ksp,PETSC_FALSE,p_ierr)
     IF (PRESENT(reuse_preconditioner)) THEN
       IF (reuse_preconditioner) THEN
-        CALL KSPSetReusePreconditioner(ksp,PETSC_TRUE,p_object%ierr)
+        CALL KSPSetReusePreconditioner(ksp,PETSC_TRUE,p_ierr)
       END IF
     END IF
 
-    CALL KSPSolve(ksp,p_object%b,p_object%x,p_object%ierr)
+    CALL KSPSolve(ksp,p_object%b,p_object%x,p_ierr)
 
     CALL p_get_solution(x_pp)
   END SUBROUTINE p_solve
@@ -1745,27 +1740,27 @@ CONTAINS
     
     ! Preconditioned residual norm tolerance
     CALL KSPGetTolerances(ksp,p_object%rtol,PETSC_NULL_REAL,                   &
-                          PETSC_NULL_REAL,PETSC_NULL_INTEGER,p_object%ierr)
+                          PETSC_NULL_REAL,PETSC_NULL_INTEGER,p_ierr)
 
     ! True residual L2 norm
-    CALL VecDuplicate(p_object%b,y,p_object%ierr)
-    CALL VecDuplicate(y,w,p_object%ierr)
+    CALL VecDuplicate(p_object%b,y,p_ierr)
+    CALL VecDuplicate(y,w,p_ierr)
     ! y = Ax
-    CALL MatMult(p_object%A,p_object%x,y,p_object%ierr)
+    CALL MatMult(p_object%A,p_object%x,y,p_ierr)
     ! w = b - y == b - Ax
     s = -1.0 ! VecWAXPY needs a PetscScalar
-    CALL VecWAXPY(w,s,y,p_object%b,p_object%ierr)
+    CALL VecWAXPY(w,s,y,p_object%b,p_ierr)
     ! ||b - Ax||
-    CALL VecNorm(w,NORM_2,p_object%r_n2,p_object%ierr)
-    CALL VecDestroy(w,p_object%ierr)
-    CALL VecDestroy(y,p_object%ierr)
+    CALL VecNorm(w,NORM_2,p_object%r_n2,p_ierr)
+    CALL VecDestroy(w,p_ierr)
+    CALL VecDestroy(y,p_ierr)
 
     ! L2 norm of RHS
     ! ||b||
-    CALL VecNorm(p_object%b,NORM_2,p_object%b_n2,p_object%ierr)
+    CALL VecNorm(p_object%b,NORM_2,p_object%b_n2,p_ierr)
     
-    CALL KSPGetIterationNumber(ksp,p_object%its,p_object%ierr)
-    CALL KSPGetConvergedReason(ksp,p_object%reason,p_object%ierr)
+    CALL KSPGetIterationNumber(ksp,p_object%its,p_ierr)
+    CALL KSPGetConvergedReason(ksp,p_object%reason,p_ierr)
     p_object%description = p_describe_reason(p_object%reason)
   
     IF (numpe == 1)THEN
@@ -2357,7 +2352,7 @@ CONTAINS
     ! value of 1.3 probably safe (for regular grids it will be excessive).
     CALL PetscOptionsGetReal(PETSC_NULL_OBJECT,PETSC_NULL_CHARACTER,           &
                              "-over_allocation",p_object%over_allocation,      &
-                             set,p_object%ierr)
+                             set,p_ierr)
 
     nnod_estimate = NINT(p_object%over_allocation * v)
   END FUNCTION nnod_estimate
