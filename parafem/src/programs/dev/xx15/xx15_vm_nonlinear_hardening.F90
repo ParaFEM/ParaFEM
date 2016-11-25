@@ -367,7 +367,7 @@ PROGRAM xx15_vm_nonlinear_hardening
       CALL shutdown
     END IF
     ! Set up PETSc.
-    CALL p_setup(neq_pp,ntot,g_g_pp,error)
+    CALL p_setup(ntot,g_g_pp,error)
     IF (error) THEN
       CALL p_finalize
       CALL shutdown

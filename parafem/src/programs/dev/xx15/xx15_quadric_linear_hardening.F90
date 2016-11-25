@@ -41,6 +41,7 @@ PROGRAM xx15_quadric_linear_hardening
 
   CHARACTER(len=15) :: element
   CHARACTER(len=50) :: text, fname_base, fname
+  CHARACTER(LEN=6)    :: ch 
  
   LOGICAL :: converged, timewrite=.TRUE., flag=.FALSE., print_output=.FALSE., &
    tol_inc=.FALSE., lambda_inc=.TRUE., noncon_flag=.FALSE.,exit_iload=.false.
@@ -69,7 +70,8 @@ PROGRAM xx15_quadric_linear_hardening
    value_shape(:), shape_integral_pp(:,:), stress_integral_pp(:,:),           &
    stressnodes_pp(:), strain_integral_pp(:,:), strainnodes_pp(:),             &
    principal_integral_pp(:,:), princinodes_pp(:), principal(:),               &
-   reacnodes_pp(:), stiffness_mat_con(:,:,:,:), km(:,:), fixkm_pp(:,:,:)
+   reacnodes_pp(:), stiffness_mat_con(:,:,:,:), km(:,:), fixkm_pp(:,:,:),     &
+   temp(:,:)
 
   INTEGER, ALLOCATABLE  :: num(:), g_num(:,:), g_num_pp(:,:), g_g_pp(:,:),    &
    load_node(:), rest(:,:), nf_pp(:,:), no_pp(:), comp(:,:), fixed_node(:),   &
@@ -362,7 +364,7 @@ PROGRAM xx15_quadric_linear_hardening
       CALL shutdown
     END IF
     ! Set up PETSc.
-    CALL p_setup(neq_pp,ntot,g_g_pp,error)
+    CALL p_setup(ntot,g_g_pp,error)
     IF (error) THEN
       CALL p_finalize
       CALL shutdown
@@ -1049,6 +1051,12 @@ PROGRAM xx15_quadric_linear_hardening
         fname = fname_base(1:INDEX(fname_base, " ")-1) // "_est.res"
         OPEN(27, file=fname, status='replace', action='write')
         
+        WRITE(ch,'(I6.6)') numpe
+        OPEN(112,file=fname_base(1:INDEX(fname_base, " ")-1)//".ensi.DISPL-"   &
+                      //ch,status='replace',action='write')
+        WRITE(112,'(A)') "Alya Ensight Gold --- Vector per-node variable file"
+        WRITE(112,'(A/A/A)') "part", "     1","coordinates"
+
         !fname = fname_base(1:INDEX(fname_base, " ")-1) // "_str.res"
         !OPEN(25, file=fname, status='replace', action='write')
         !fname = fname_base(1:INDEX(fname_base, " ")-1) // "_rea.res"
@@ -1166,7 +1174,15 @@ PROGRAM xx15_quadric_linear_hardening
               node_start,node_end,xnewel_pp,xnewnodes_pp,1)
       CALL WRITE_NODAL_VARIABLE(text,24,iload,nodes_pp,npes,numpe,nodof, &
                                 xnewnodes_pp)
-	  DEALLOCATE(xnewnodes_pp)
+
+      ALLOCATE(temp(nodof,nodes_pp))
+      temp = RESHAPE(xnewnodes_pp,(/nodof,nodes_pp/))
+      DO i = 1, nodof
+        CALL dismsh_ensi_p(112,iload,nodes_pp,npes,numpe,1,temp(i,:))
+      END DO
+      DEALLOCATE(temp)
+
+      DEALLOCATE(xnewnodes_pp)
 
 !      text = "*STRESS"
       !CALL NODAL_PROJECTION(npes,nn,nels_pp,g_num_pp,nod,nst,nodes_pp,  &
@@ -1236,6 +1252,7 @@ PROGRAM xx15_quadric_linear_hardening
     !CLOSE(29)
     !CLOSE(30)
     !CLOSE(31)
+    CLOSE(112)
   END IF
 
 !------------------------------------------------------------------------------
@@ -1246,6 +1263,33 @@ PROGRAM xx15_quadric_linear_hardening
 !------------------------------------------------------------------------------
 !------------------------------------------------------------------------------
 
+!!$            ALLOCATE(etype(nels),nf(nodof,nn),oldlds(nn*ndim)) 
+!!$
+!!$            etype  = 1   ! Only one material type in this mesh
+!!$            nf     = 0
+!!$            oldlds = zero
+!!$
+!!$            nstep=1; npri=1; dtim=1.0; solid=.true. 
+!!$
+!!$            k=0 
+!!$            DO j=1,loaded_freedoms
+!!$              k=k+1
+!!$              found=.false.
+!!$              DO i=1,nn
+!!$                IF(i==no(k)) THEN
+!!$                  l=i*3
+!!$                  oldlds(l)=val(k)
+!!$                  found=.true.
+!!$                END IF
+!!$                IF(found)CYCLE
+!!$              END DO
+!!$            END DO
+!!$
+!!$            CALL rest_to_nf(rest,nf)
+!!$
+!!$            CALL mesh_ensi(TRIM(fname_base),LEN(TRIM(fname_base),g_coord,g_num,element,etype,nf,          &
+!!$                           oldlds(1:),nstep,npri,dtim,solid)
+!!$
   peak_memory_use = p_memory_peak()
 
   IF (numpe==1) THEN
