@@ -102,7 +102,7 @@ MODULE parafem_petsc
 
   ! Private functions
   PRIVATE :: release_memory
-  PRIVATE :: collect_elements,row_nnz,petsc_row_nnz
+  PRIVATE :: collect_elements,row_nnz
  
 CONTAINS
   
@@ -343,21 +343,15 @@ CONTAINS
     PetscInt :: p_neq_pp
     PetscInt, DIMENSION(:),   ALLOCATABLE :: dnz,onz
     PetscInt, DIMENSION(:,:), ALLOCATABLE :: g_g_all
-!!$    Mat :: P
 
     p_neq_pp = neq_pp
 
-    ! Set the number of zeroes per row for the matrix size
-    ! pre-allocation.
-
-    ! Either calculate the pre-allocation by hand,
+    ! Set the number of zeroes per row for the matrix size pre-allocation.
+    ! These routines are faster and use less peak memory than using a PETSc
+    ! MATPREALLOCATOR matrix.
     CALL collect_elements(g_g_pp,g_g_all) ! g_g_all allocated
     CALL row_nnz(g_g_all,dnz,onz) ! dnz, onz allocated
     DEALLOCATE(g_g_all)
-
-!!$    ! or calculate the pre-allocation using PETSc.  Slower than row_nnz, and the
-!!$    ! P matrix uses up even more peak memory than the p_object%A matrix.
-!!$    CALL petsc_row_nnz(g_g_pp,P) ! P created
 
     CALL MatCreate(PETSC_COMM_WORLD,p_object%A,p_ierr)
     CALL MatSetSizes(p_object%A,p_neq_pp,p_neq_pp,                             &
@@ -367,7 +361,6 @@ CONTAINS
     ! here, so that the user cannot override the specific options set here.
     CALL MatSetFromOptions(p_object%A,p_ierr)
     
-    ! Either use the hand-calculated pre-allocation,
     CALL MatSeqAIJSetPreallocation(p_object%A,                                 &
                                    PETSC_NULL_INTEGER,dnz,                     &
                                    p_ierr)
@@ -376,10 +369,6 @@ CONTAINS
                                    PETSC_NULL_INTEGER,onz,                     &
                                    p_ierr)
     DEALLOCATE(dnz,onz)
-
-!!$    ! or use the PETSc-calculated pre-allocation
-!!$    CALL MatPreallocatorPreallocate(P,PETSC_FALSE,p_object%A,p_ierr)
-!!$    CALL MatDestroy(P,p_ierr)
 
     ! PETSc uses C array order, so a transpose would be needed when adding
     ! elements, but you can get PETSc to use Fortran order for MatSetValues by
@@ -861,76 +850,6 @@ CONTAINS
       WRITE(*,'(A,I0)')"Number of non-zeroes in the global matrix = ", nnz
     END IF
   END SUBROUTINE row_nnz
-
-  SUBROUTINE petsc_row_nnz(g_g_pp,P)
-
-    !/****if* petsc/petsc_row_nnz
-    !*  NAME
-    !*    SUBROUTINE: petsc_row_nnz
-    !*  SYNOPSIS
-    !*    Usage:      petsc_row_nnz(g_g_pp,P)
-    !*  FUNCTION
-    !*    Calculates the number of on- and off-process non-zeroes in the global
-    !*    matrix for the equations on this process.  Uses PETSc.
-    !*  ARGUMENTS
-    !*    INTENT(IN)
-    !*
-    !*    g_g_pp(:,:)        : Integer
-    !*                         The steering array. g_g_pp(:,iel) are the global
-    !*                         equation numbers for the dofs in element with
-    !*                         local number iel (global number iel_start+iel-1)
-    !*                         Restrained dofs have equation number 0.
-    !*    INTENT(OUT)
-    !*
-    !*    P                  : Mat
-    !*                         A MATPREALLOCATOR matrix that contains the
-    !*                         pre-allocation information
-    !*  AUTHOR
-    !*    Mark Filipiak
-    !*  CREATION DATE
-    !*    25.11.2016
-    !*  MODIFICATION HISTORY
-    !*    Version 1, 25.11.2016, Mark Filipiak
-    !*  COPYRIGHT
-    !*    (c) University of Edinburgh 2016
-    !******
-    !*  Place remarks that should not be included in the documentation here.
-    !*
-    !*  PETSc 64-bit indices are used.
-    !*
-    !*  Slower than row_nnz.  Setting the values in P uses a lot of peak memory
-    !*  (even more than when setting values in p_object%A) - I'm not sure why.
-    !*/
-
-    INTEGER, DIMENSION(:,:), INTENT(in)  :: g_g_pp
-    Mat,                     INTENT(out) :: P
-
-    PetscInt :: p_neq_pp,p_ntot,iel
-    PetscInt,    DIMENSION(:), ALLOCATABLE :: rows,cols
-    PetscScalar, DIMENSION(:), ALLOCATABLE :: values
-
-    p_neq_pp = neq_pp
-
-    CALL MatCreate(PETSC_COMM_WORLD,P,p_ierr)
-    CALL MatSetSizes(P,p_neq_pp,p_neq_pp,PETSC_DETERMINE,PETSC_DETERMINE,p_ierr)
-    CALL MatSetType(P,MATPREALLOCATOR,p_ierr)
-    CALL MatSetup(P,p_ierr)
-
-    p_ntot = SIZE(g_g_pp,1)
-    ALLOCATE(rows(p_ntot),cols(p_ntot),values(p_ntot*p_ntot))
-    ! no need to worry about array order, the values are dummies.
-    values = 0.0
-    DO iel = 1, nels_pp
-      rows = g_g_pp(:,iel) - 1
-      cols = rows
-      CALL MatSetValues(P,p_ntot,rows,p_ntot,cols,values,ADD_VALUES,p_ierr)
-    END DO
-
-    CALL MatAssemblyBegin(P,MAT_FINAL_ASSEMBLY,p_ierr)
-    CALL MatAssemblyEnd(P,MAT_FINAL_ASSEMBLY,p_ierr)
-
-    DEALLOCATE(rows,cols,values)
-  END SUBROUTINE petsc_row_nnz
 
   SUBROUTINE p_create_vectors(neq_pp)
 
