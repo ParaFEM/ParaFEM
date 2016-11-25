@@ -39,7 +39,7 @@ module load cdt/16.09 &> /dev/null
 module unload cray-petsc-64
 module unload cray-tpsl-64
 module load cray-tpsl-64/16.07.1
-module load cray-petsc-64/3.7.2.1
+#module load cray-petsc-64/3.7.2.1
 
 ## CrayPat
 #module unload perftools

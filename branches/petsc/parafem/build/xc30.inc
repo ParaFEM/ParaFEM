@@ -6,12 +6,12 @@
 
 # Where PETSc is.  Usually this is the library provided by Cray, so
 # all the variables are empty.
-PETSC_INCLUDE=""
-PETSC_LIB=""
-PETSC_L=""
-#PETSC_INCLUDE="-I/work/z01/z01/mjf/ecse0604/petsc/64-cray/include"
-#PETSC_LIB="-L/work/z01/z01/mjf/ecse0604/petsc/64-cray/lib"
-#PETSC_L="-lpetsc"
+#PETSC_INCLUDE=""
+#PETSC_LIB=""
+#PETSC_L=""
+PETSC_INCLUDE="-I/work/z01/z01/mjf/ecse0604/petsc/64-cray/include"
+PETSC_LIB="-L/work/z01/z01/mjf/ecse0604/petsc/64-cray/lib"
+PETSC_L="-lpetsc"
 
 # ------------------------------------------------------------------------------
 # Generic settings for compilation
