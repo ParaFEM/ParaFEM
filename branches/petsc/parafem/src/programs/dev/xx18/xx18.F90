@@ -54,7 +54,7 @@ PROGRAM xx18
   LOGICAL                  :: error
   CHARACTER(:),ALLOCATABLE :: message
   CHARACTER,PARAMETER      :: tab = ACHAR(9)
-  REAL                     :: memory_use,peak_memory_use
+  REAL                     :: peak_memory_use
   
   !-----------------------------------------------------------------------------
   ! 1. Dynamic arrays
@@ -76,7 +76,6 @@ PROGRAM xx18
 
   timest(1)=elap_time()
 
-  CALL find_pe_procs(numpe,npes)
   CALL getname(argv,nlen) 
   CALL read_p121(argv,numpe,e,element,limit,loaded_nodes,meshgen,nels,         &
                  nip,nn,nod,nr,partitioner,tol,v)
@@ -136,11 +135,9 @@ PROGRAM xx18
       CALL shutdown
     END IF
   END IF
-  memory_use = p_memory_use()
   peak_memory_use = p_memory_peak()
-  IF (numpe == 1) WRITE(*,'(A,2F7.2,A)')                                       &
-    "current and peak memory use after setup:        ",                        &
-    memory_use,peak_memory_use," GB "
+  IF (numpe == 1) WRITE(*,'(A,F7.2,A)')                                        &
+    "peak memory use after setup:        ", peak_memory_use," GB "
 
   IF(numpe==1)THEN
     OPEN(11,FILE=argv(1:nlen)//".res",STATUS='REPLACE',ACTION='WRITE')
@@ -175,20 +172,16 @@ PROGRAM xx18
       CALL p_add_element(g_g_pp(:,iel),km)
     END IF
   END DO elements_1
-  memory_use = p_memory_use()
   peak_memory_use = p_memory_peak()
-  IF (numpe == 1) WRITE(*,'(A,2F7.2,A)')                                       &
-    "current and peak memory use after add elements: ",                        &
-    memory_use,peak_memory_use," GB "
+  IF (numpe == 1) WRITE(*,'(A,F7.2,A)')                                        &
+    "peak memory use after add elements: ", peak_memory_use," GB "
 
   IF (solvers == petsc_solvers) THEN
     CALL p_assemble
   END IF
-  memory_use = p_memory_use()
   peak_memory_use = p_memory_peak()
-  IF (numpe == 1) WRITE(*,'(A,2F7.2,A)')                                       &
-    "current and peak memory use after assemble:     ",                        &
-    memory_use,peak_memory_use," GB "
+  IF (numpe == 1) WRITE(*,'(A,F7.2,A)')                                        &
+    "peak memory use after assemble:     ", peak_memory_use," GB "
 
   timest(4) = elap_time()
   
