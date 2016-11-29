@@ -101,7 +101,6 @@ MODULE parafem_petsc
   PetscErrorCode, PRIVATE :: p_ierr
 
   ! Private functions
-  PRIVATE :: release_memory
   PRIVATE :: collect_elements,row_nnz
  
 CONTAINS
@@ -1743,8 +1742,10 @@ CONTAINS
     !*  SYNOPSIS
     !*    Usage:      p_memory_use()
     !*  FUNCTION
-    !*    Return amount of memory (in GB) in use just now in the program.
-    !*    Linux only.
+    !*    Return amount of memory (in GB) in use in the program.  Call
+    !*    p_release_memory just before p_memory_use to get the amount of memory
+    !*    really in use:  otherwise you get (approximately) the peak memory
+    !*    use since the last p_release_memory call.
     !*  ARGUMENTS
     !*    None.
     !*  AUTHOR
@@ -1759,6 +1760,7 @@ CONTAINS
     !******
     !*  Place remarks that should not be included in the documentation here.
     !*
+    !*  Linux only.
     !*/
 
     REAL    :: p_memory_use
@@ -1771,8 +1773,6 @@ CONTAINS
     REAL(real32)   :: VmRSS,sum_VmRSS
 
     INTEGER :: ierr
-
-    CALL release_memory
 
     kbytes = 0
 
@@ -1856,17 +1856,21 @@ CONTAINS
     p_memory_peak = sum_VmHWM
   END FUNCTION p_memory_peak
   
-  SUBROUTINE release_memory
+  SUBROUTINE p_release_memory
 
-    !/****if* petsc/release_memory
+    !/****if* petsc/p_release_memory
     !*  NAME
-    !*    SUBROUTINE: release_memory
+    !*    SUBROUTINE: p_release_memory
     !*  SYNOPSIS
-    !*    Usage:      release_memory
+    !*    Usage:      p_release_memory
     !*  FUNCTION
+
     !*    Release all freed memory back to the system.  Maybe not all if there
-    !*    gaps in the heap.  Linux only.  Does not work for the Cray compiler
-    !*    with -h system_malloc.
+    !*    are gaps in the heap.  Linux only.  Does not work for the Cray
+    !*    compiler with -h system_alloc.
+    !*
+    !*    Releasing memory reduces the peak memory requirement (perhaps the
+    !*    system allocator is better than the tcmalloc and glibc allocators).
     !*  ARGUMENTS
     !*    None.
     !*  AUTHOR
@@ -1882,7 +1886,7 @@ CONTAINS
     !*
     !*  For Cray, the default malloc is tcmalloc.  Other compilers (Gnu, Intel)
     !*  use the malloc in glibc.  The #ifdef _CRAYFTN test can only tell if the
-    !*  Cray compiler is used, not if -h system_malloc is used.
+    !*  Cray compiler is used, not if -h system_alloc is used.
 
     USE, INTRINSIC :: iso_c_binding, ONLY: c_int,c_size_t
 
@@ -1904,5 +1908,5 @@ CONTAINS
 #else
     i = malloc_trim(0_c_size_t) ! others
 #endif
-  END SUBROUTINE release_memory
+  END SUBROUTINE p_release_memory
 END MODULE parafem_petsc
