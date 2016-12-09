@@ -2,7 +2,7 @@ MODULE plasticity_xx15
   
   USE PRECISION
   USE MATHS
-  USE NEW_LIBRARY 
+  USE NEW_LIBRARY
   
 CONTAINS
   
@@ -72,6 +72,9 @@ CONTAINS
     lnstrainelas(5)=two*lnstrainelas(5)
     lnstrainelas(6)=two*lnstrainelas(6)
 
+    WRITE(*,'(A,3f10.6)') "K", lne1, lne2, lne3
+    WRITE(*,'(A,6f10.6)') "K", lnstrainelas
+    
     ! Calculate the Cauchy stress tensor and the consistent tangent operator 
     ! (material contribution)
     ! Calling UMAT, which consists in the same format as the one used in
@@ -108,6 +111,8 @@ CONTAINS
     ! Left Cauchy-Green deformation tensor
     CALL ln_deriv(lnderiv,e1,e2,e3,lne1,lne2,lne3,et1,et2,et3,tol)
     
+    WRITE(*,'(A,81f10.2)') "K", lnderiv
+
     ! Computes the derivative of the Left Cauchy-Green deformation tensor with
     ! respect to the deformation gradient
     CALL bderivf(b_tensor,bderiv)
@@ -174,6 +179,13 @@ CONTAINS
     REAL(iwp), PARAMETER :: zero=0._iwp, half=0.5_iwp, one=1._iwp, two=2._iwp,&
      three=3._iwp, nine=9._iwp, cons=5._iwp
     INTEGER :: i
+
+    REAL(iwp) :: d1, d2, d3
+    REAL(iwp) :: et1_kopp(6), et2_kopp(6), et3_kopp(6), e1_kopp, e2_kopp, e3_kopp
+    REAL(iwp) :: et1_lapack(6), et2_lapack(6), et3_lapack(6), e1_lapack, e2_lapack, e3_lapack
+
+    CALL EIGEN_KOPP(e1_kopp,e2_kopp,e3_kopp,tensor,et1_kopp,et2_kopp,et3_kopp,tol)
+    CALL EIGEN_LAPACK(e1_lapack,e2_lapack,e3_lapack,tensor,et1_lapack,et2_lapack,et3_lapack,tol)
 
     ! Scale the tolerance
     sca_tol=cons*tol
@@ -252,9 +264,38 @@ CONTAINS
     alpha=DACOS(alpha)
     pi=4._iwp*DATAN(one)
 
-    e1=-two*DSQRT(q)*DCOS(alpha/three)+sinv1/three
-    e2=-two*DSQRT(q)*DCOS((alpha+two*pi)/three)+sinv1/three
-    e3=-two*DSQRT(q)*DCOS((alpha-two*pi)/three)+sinv1/three
+    d1=-two*DSQRT(q)*DCOS(alpha/three)+sinv1/three
+    d2=-two*DSQRT(q)*DCOS((alpha+two*pi)/three)+sinv1/three
+    d3=-two*DSQRT(q)*DCOS((alpha-two*pi)/three)+sinv1/three
+
+!!$    ! Unsorted
+!!$    e1 = d1
+!!$    e2 = d2
+!!$    e3 = d3
+    ! Sort the eigenvalues to match dsyev
+    IF (d1 < d2) THEN
+      IF (d1 < d3) THEN
+        e1 = d1
+        IF (d2 < d3) THEN
+          e2 = d2; e3 = d3
+        ELSE ! d3 <= d2
+          e2 = d3; e3 = d2
+        END IF
+      ELSE ! d3 <= d1
+        e1 = d3; e2 = d1; e3 = d2
+      END IF
+    ELSE ! d2 <= d1
+      IF (d2 < d3) THEN
+        e1 = d2
+        IF (d1 < d3) THEN
+          e2 = d1; e3 = d3
+        ELSE ! d3 <= d1
+          e2 = d3; e3 = d1
+        END IF
+      ELSE ! d3 <= d2
+        e1 = d3; e2 = d2; e3 = d1
+      END IF
+    END IF
     
     ! Calculate the eigenprojections
     ! Assign the value to the unit_tensor
@@ -302,9 +343,239 @@ CONTAINS
     e1=e1/cons
     e2=e2/cons
     e3=e3/cons
-    
+
+    WRITE(*,'(A,3f6.2)') "P", e1, e2, e3
+    WRITE(*,'(A,6f6.2)') "P", et1
+    WRITE(*,'(A,6f6.2)') "P", et2
+    WRITE(*,'(A,6f6.2)') "P", et3
+    WRITE(*,'(A,3f6.2)') "L", e1_lapack, e2_lapack, e3_lapack
+    WRITE(*,'(A,6f6.2)') "L", et1_lapack
+    WRITE(*,'(A,6f6.2)') "L", et2_lapack
+    WRITE(*,'(A,6f6.2)') "L", et3_lapack
+    WRITE(*,'(A,3f6.2)') "K", e1_kopp, e2_kopp, e3_kopp
+    WRITE(*,'(A,6f6.2)') "K", et1_kopp
+    WRITE(*,'(A,6f6.2)') "K", et2_kopp
+    WRITE(*,'(A,6f6.2)') "K", et3_kopp
+
+    CALL EIGEN_KOPP(e1,e2,e3,tensor,et1,et2,et3,tol)
+
   RETURN
   END SUBROUTINE EIGEN
+
+!------------------------------------------------------------------------------
+!------------------------------------------------------------------------------
+!------------------------------------------------------------------------------
+
+  SUBROUTINE EIGEN_LAPACK(e1,e2,e3,tensor,et1,et2,et3,tol)
+    ! This subroutine calculates the eigenvalues and eigenprojections of a
+    ! second order tensor using LAPACK.
+    IMPLICIT NONE
+
+    EXTERNAL dsyev
+
+    REAL(iwp), INTENT(IN) :: tensor(:), tol
+    REAL(iwp), INTENT(OUT) :: et1(:), et2(:), et3(:), e1, e2, e3
+
+    INTEGER, PARAMETER :: lwork = 3*3-1
+    DOUBLE PRECISION   :: a(3,3), w(3), work(lwork)
+    INTEGER            :: info
+    DOUBLE PRECISION   :: p1(6), p2(6), p3(6), t(3,3), v(3,1)
+
+    a(1,1) = tensor(1)
+    a(2,2) = tensor(2)
+    a(3,3) = tensor(3)
+    a(1,2) = tensor(4)
+    a(2,3) = tensor(5)
+    a(1,3) = tensor(6)
+
+    CALL dsyev('V','U',3,A,3,w,work,lwork,info)
+
+    e1 = w(1)
+    e2 = w(2)
+    e3 = w(3)
+
+!!$    v(:,1) = a(:,1)
+!!$    t = MATMUL(v,transpose(v))
+!!$    et1 = (/t(1,1),t(2,2),t(3,3),t(1,2),t(2,3),t(1,3)/)
+!!$    v(:,1) = a(:,2)
+!!$    t = MATMUL(v,transpose(v))
+!!$    et2 = (/t(1,1),t(2,2),t(3,3),t(1,2),t(2,3),t(1,3)/)
+!!$    v(:,1) = a(:,3)
+!!$    t = MATMUL(v,transpose(v))
+!!$    et3 = (/t(1,1),t(2,2),t(3,3),t(1,2),t(2,3),t(1,3)/)
+    v(:,1) = a(:,1)
+    t = MATMUL(v,transpose(v))
+    p1 = (/t(1,1),t(2,2),t(3,3),t(1,2),t(2,3),t(1,3)/)
+    v(:,1) = a(:,2)
+    t = MATMUL(v,transpose(v))
+    p2 = (/t(1,1),t(2,2),t(3,3),t(1,2),t(2,3),t(1,3)/)
+    v(:,1) = a(:,3)
+    t = MATMUL(v,transpose(v))
+    p3 = (/t(1,1),t(2,2),t(3,3),t(1,2),t(2,3),t(1,3)/)
+
+    ! If all eigenvalues are different
+    IF ((DABS(e1-e2)>tol).AND.(DABS(e2-e3)>tol).AND.(DABS(e1-e3)>tol)) THEN
+      et1 = p1
+      et2 = p2
+      et3 = p3
+    ! If two eigenvalues are equal
+    ! If e1 and e2 are equal
+    ELSEIF ((DABS(e1-e2)<tol).AND.(DABS(e2-e3)>tol).AND.(DABS(e1-e3)>tol)) THEN
+      et1 = p1 + p2
+      et2 = 0
+      et3 = p3
+    ! If e1 and e3 are equal
+    ELSEIF ((DABS(e1-e3)<tol).AND.(DABS(e1-e2)>tol).AND.(DABS(e2-e3)>tol)) THEN
+      et1 = p1 + p3
+      et2 = p2
+      et3 = 0
+    ! If e2 and e3 are equal
+    ELSEIF ((DABS(e2-e3)<tol).AND.(DABS(e1-e2)>tol).AND.(DABS(e1-e3)>tol)) THEN
+      et1 = p1
+      et2 = p2 + p3
+      et3 = 0
+    ! If all eigenvalues are equal
+    ELSE
+      et1 = p1 + p2 + p3
+      et2 = 0
+      et3 = 0
+    END IF
+  END SUBROUTINE EIGEN_LAPACK
+
+!------------------------------------------------------------------------------
+!------------------------------------------------------------------------------
+!------------------------------------------------------------------------------
+
+  SUBROUTINE EIGEN_KOPP(e1,e2,e3,tensor,et1,et2,et3,tol)
+    ! This subroutine calculates the eigenvalues and eigenprojections of a
+    ! second order tensor using Kopp's hybrid algorithm for real symmetric
+    ! matrices.
+    IMPLICIT NONE
+
+    INTERFACE
+      SUBROUTINE DSYEVH3(A, Q, W)
+        DOUBLE PRECISION A(3,3)
+        DOUBLE PRECISION Q(3,3)
+        DOUBLE PRECISION W(3)
+      END SUBROUTINE DSYEVH3
+    END INTERFACE
+
+    REAL(iwp), INTENT(IN) :: tensor(:), tol
+    REAL(iwp), INTENT(OUT) :: et1(:), et2(:), et3(:), e1, e2, e3
+
+    DOUBLE PRECISION :: a(3,3), q(3,3), w(3)
+    DOUBLE PRECISION :: p1(6), p2(6), p3(6), r1(6), r2(6), r3(6), t(3,3), v(3,1)
+
+    a(1,1) = tensor(1)
+    a(2,2) = tensor(2)
+    a(3,3) = tensor(3)
+    a(1,2) = tensor(4)
+    a(2,3) = tensor(5)
+    a(1,3) = tensor(6)
+
+    CALL dsyevh3(a,q,w)
+
+    v(:,1) = q(:,1)
+    t = MATMUL(v,transpose(v))
+    r1 = (/t(1,1),t(2,2),t(3,3),t(1,2),t(2,3),t(1,3)/)
+    v(:,1) = q(:,2)
+    t = MATMUL(v,transpose(v))
+    r2 = (/t(1,1),t(2,2),t(3,3),t(1,2),t(2,3),t(1,3)/)
+    v(:,1) = q(:,3)
+    t = MATMUL(v,transpose(v))
+    r3 = (/t(1,1),t(2,2),t(3,3),t(1,2),t(2,3),t(1,3)/)
+
+!!$!!$    ! Unsorted
+!!$!!$    e1 = w(1)
+!!$!!$    e2 = w(2)
+!!$!!$    e3 = w(3)
+!!$!!$    et1 = p1
+!!$!!$    et2 = p2
+!!$!!$    et3 = p3
+!!$    ! Sort the eigenvalues to match dsyev
+!!$    IF (w(1) < w(2)) THEN
+!!$      IF (w(1) < w(3)) THEN
+!!$        e1 = w(1); et1 = p1
+!!$        IF (w(2) < w(3)) THEN
+!!$          e2 = w(2); et2 = p2; e3 = w(3); et3 = p3
+!!$        ELSE ! w(3) <= w(2)
+!!$          e2 = w(3); et2 = p3; e3 = w(2); et3 = p2
+!!$        END IF
+!!$      ELSE ! w(3) <= w(1)
+!!$        e1 = w(3); et1 = p3; e2 = w(1); et2 = p1; e3 = w(2); et3 = p2
+!!$      END IF
+!!$    ELSE ! w(2) <= w(1)
+!!$      IF (w(2) < w(3)) THEN
+!!$        e1 = w(2); et1 = p2
+!!$        IF (w(1) < w(3)) THEN
+!!$          e2 = w(1); et2 = p1; e3 = w(3); et3 = p3
+!!$        ELSE ! w(3) <= w(1)
+!!$          e2 = w(3); et2 = p3; e3 = w(1); et3 = p1
+!!$        END IF
+!!$      ELSE ! w(3) <= w(2)
+!!$        e1 = w(3); et1 = p3; e2 = w(2); et2 = p2; e3 = w(1); et3 = p1
+!!$      END IF
+!!$    END IF
+
+!!$    ! Unsorted
+!!$    e1 = w(1)
+!!$    e2 = w(2)
+!!$    e3 = w(3)
+!!$    et1 = p1
+!!$    et2 = p2
+!!$    et3 = p3
+    ! Sort the eigenvalues to match dsyev
+    IF (w(1) < w(2)) THEN
+      IF (w(1) < w(3)) THEN
+        e1 = w(1); p1 = r1
+        IF (w(2) < w(3)) THEN
+          e2 = w(2); p2 = r2; e3 = w(3); p3 = r3
+        ELSE ! w(3) <= w(2)
+          e2 = w(3); p2 = r3; e3 = w(2); p3 = r2
+        END IF
+      ELSE ! w(3) <= w(1)
+        e1 = w(3); p1 = r3; e2 = w(1); p2 = r1; e3 = w(2); p3 = r2
+      END IF
+    ELSE ! w(2) <= w(1)
+      IF (w(2) < w(3)) THEN
+        e1 = w(2); p1 = r2
+        IF (w(1) < w(3)) THEN
+          e2 = w(1); p2 = r1; e3 = w(3); p3 = r3
+        ELSE ! w(3) <= w(1)
+          e2 = w(3); p2 = r3; e3 = w(1); p3 = r1
+        END IF
+      ELSE ! w(3) <= w(2)
+        e1 = w(3); p1 = r3; e2 = w(2); p2 = r2; e3 = w(1); p3 = r1
+      END IF
+    END IF
+    ! If all eigenvalues are different
+    IF ((DABS(e1-e2)>tol).AND.(DABS(e2-e3)>tol).AND.(DABS(e1-e3)>tol)) THEN
+      et1 = p1
+      et2 = p2
+      et3 = p3
+    ! If two eigenvalues are equal
+    ! If e1 and e2 are equal
+    ELSEIF ((DABS(e1-e2)<tol).AND.(DABS(e2-e3)>tol).AND.(DABS(e1-e3)>tol)) THEN
+      et1 = p1 + p2
+      et2 = 0
+      et3 = p3
+    ! If e1 and e3 are equal
+    ELSEIF ((DABS(e1-e3)<tol).AND.(DABS(e1-e2)>tol).AND.(DABS(e2-e3)>tol)) THEN
+      et1 = p1 + p3
+      et2 = p2
+      et3 = 0
+    ! If e2 and e3 are equal
+    ELSEIF ((DABS(e2-e3)<tol).AND.(DABS(e1-e2)>tol).AND.(DABS(e1-e3)>tol)) THEN
+      et1 = p1
+      et2 = p2 + p3
+      et3 = 0
+    ! If all eigenvalues are equal
+    ELSE
+      et1 = p1 + p2 + p3
+      et2 = 0
+      et3 = 0
+    END IF
+  END SUBROUTINE EIGEN_KOPP
 
 !------------------------------------------------------------------------------
 !------------------------------------------------------------------------------
