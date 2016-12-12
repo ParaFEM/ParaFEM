@@ -74,7 +74,7 @@ plasticity_xx15.o : plasticity_xx15.F90
 	$(FC) $(FFLAGS) -o $@ $< 
 
 clean:
-	rm -f *.o
+	rm -f *.mod *.o
 
 execlean:
 	rm -f $(EXECUTABLES)
