@@ -40,19 +40,10 @@ CONTAINS
     REAL(iwp) :: d_tensor(9,9), lnderiv(9,9), strderb(9,9), bderiv(9,9),      &
      geom_comp(9,9), ddsdde(6,6), b_tensor_3x3(3,3), et1(6), et2(6), et3(6),  &
      b_tensor(6), dstran(6), btensor(6), lne1, lne2, lne3, e1, e2, e3
-    REAL(iwp), PARAMETER :: half=0.5_iwp, one=1._iwp, two=2._iwp
-    ! The tolerance is for evalue_i - evalue_j and is only valid because the
-    ! evalues are close to 1.  The tests should be done with
-    ! (evalue_i/evalue_j - 1) but that needs more tests for small evalue_j.
-    !
-    ! The tolerance must be small so that when the approximation in ln_deriv is
-    ! used the approximation error is small but must be large enough so that
-    ! when the approximation is not used the rounding error is small.
-    !
-    ! The tests must be identical in the eigen and ln_deriv subroutines.
-    REAL(iwp), PARAMETER :: tol=SQRT(EPSILON(1.0_iwp))
+    REAL(iwp), PARAMETER :: half=0.5_iwp, one=1._iwp, two=2._iwp,             &
+     tol=0.000001_iwp
     INTEGER :: ntens
-
+       
     ntens=6
 
     ! Calculate the previously converged elastic B strain tensor
@@ -69,7 +60,7 @@ CONTAINS
     b_tensor(4)=b_tensor_3x3(1,2)
     b_tensor(5)=b_tensor_3x3(2,3)
     b_tensor(6)=b_tensor_3x3(1,3)
-
+    
     CALL eigen(e1,e2,e3,b_tensor,et1,et2,et3,tol)
 
     ! Calculate logarithmic strain through the B tensor
@@ -170,7 +161,7 @@ CONTAINS
 !------------------------------------------------------------------------------
 !------------------------------------------------------------------------------
 
-  SUBROUTINE EIGEN_SCALED(e1,e2,e3,tensor,et1,et2,et3,tol)
+  SUBROUTINE EIGEN(e1,e2,e3,tensor,et1,et2,et3,tol)
     ! This subroutine calculates the eigenvalues and eigenprojections of a    
     ! second order tensor
     IMPLICIT NONE
@@ -183,6 +174,13 @@ CONTAINS
     REAL(iwp), PARAMETER :: zero=0._iwp, half=0.5_iwp, one=1._iwp, two=2._iwp,&
      three=3._iwp, nine=9._iwp, cons=5._iwp
     INTEGER :: i
+
+    REAL(iwp) :: d1, d2, d3
+    REAL(iwp) :: et1_kopp(6), et2_kopp(6), et3_kopp(6), e1_kopp, e2_kopp, e3_kopp
+    REAL(iwp) :: et1_lapack(6), et2_lapack(6), et3_lapack(6), e1_lapack, e2_lapack, e3_lapack
+
+    CALL EIGEN_KOPP(e1_kopp,e2_kopp,e3_kopp,tensor,et1_kopp,et2_kopp,et3_kopp,tol)
+    CALL EIGEN_LAPACK(e1_lapack,e2_lapack,e3_lapack,tensor,et1_lapack,et2_lapack,et3_lapack,tol)
 
     ! Scale the tolerance
     sca_tol=cons*tol
@@ -261,10 +259,39 @@ CONTAINS
     alpha=DACOS(alpha)
     pi=4._iwp*DATAN(one)
 
-    e1=-two*DSQRT(q)*DCOS(alpha/three)+sinv1/three
-    e2=-two*DSQRT(q)*DCOS((alpha+two*pi)/three)+sinv1/three
-    e3=-two*DSQRT(q)*DCOS((alpha-two*pi)/three)+sinv1/three
+    d1=-two*DSQRT(q)*DCOS(alpha/three)+sinv1/three
+    d2=-two*DSQRT(q)*DCOS((alpha+two*pi)/three)+sinv1/three
+    d3=-two*DSQRT(q)*DCOS((alpha-two*pi)/three)+sinv1/three
 
+!!$    ! Unsorted
+!!$    e1 = d1
+!!$    e2 = d2
+!!$    e3 = d3
+    ! Sort the eigenvalues to match dsyev
+    IF (d1 < d2) THEN
+      IF (d1 < d3) THEN
+        e1 = d1
+        IF (d2 < d3) THEN
+          e2 = d2; e3 = d3
+        ELSE ! d3 <= d2
+          e2 = d3; e3 = d2
+        END IF
+      ELSE ! d3 <= d1
+        e1 = d3; e2 = d1; e3 = d2
+      END IF
+    ELSE ! d2 <= d1
+      IF (d2 < d3) THEN
+        e1 = d2
+        IF (d1 < d3) THEN
+          e2 = d1; e3 = d3
+        ELSE ! d3 <= d1
+          e2 = d3; e3 = d1
+        END IF
+      ELSE ! d3 <= d2
+        e1 = d3; e2 = d2; e3 = d1
+      END IF
+    END IF
+    
     ! Calculate the eigenprojections
     ! Assign the value to the unit_tensor
     DO i=1,3
@@ -284,20 +311,20 @@ CONTAINS
 
     ! If two eigenvalues are equal
     ! If e1 and e2 are equal
-    ELSEIF ((DABS(e1-e2)<=sca_tol).and.(DABS(e2-e3)>sca_tol).and.(DABS(e1-e3)> &
+    ELSEIF ((DABS(e1-e2)<sca_tol).and.(DABS(e2-e3)>sca_tol).and.(DABS(e1-e3)> &
      sca_tol)) THEN
       et3=(e3/(two*(e3**3)-sinv1*(e3**2)+sinv3))*(scaled_tensor2-(sinv1-e3)*        &
        scaled_tensor+(sinv3/e3)*unit_tensor)
       et1=unit_tensor-et3
 
     ! If e1 and e3 are equal
-    ELSEIF ((DABS(e1-e3)<=sca_tol).and.(DABS(e1-e2)>sca_tol).and.(DABS(e2-e3)>sca_tol)) THEN
+    ELSEIF ((DABS(e1-e3)<sca_tol).and.(DABS(e1-e2)>sca_tol).and.(DABS(e2-e3)>sca_tol)) THEN
       et2=(e2/(two*(e2**3)-sinv1*(e2**2)+sinv3))*(scaled_tensor2-(sinv1-e2)*        &
        scaled_tensor+(sinv3/e2)*unit_tensor)
       et1=unit_tensor-et2
 
     ! If e2 and e3 are equal
-    ELSEIF ((DABS(e2-e3)<=sca_tol).and.(DABS(e1-e2)>sca_tol).and.(DABS(e1-e3)>sca_tol)) THEN
+    ELSEIF ((DABS(e2-e3)<sca_tol).and.(DABS(e1-e2)>sca_tol).and.(DABS(e1-e3)>sca_tol)) THEN
       et1=(e1/(two*(e1**3)-sinv1*(e1**2)+sinv3))*(scaled_tensor2-(sinv1-e1)*        &
        scaled_tensor+(sinv3/e1)*unit_tensor)
       et2=unit_tensor-et1
@@ -312,119 +339,12 @@ CONTAINS
     e2=e2/cons
     e3=e3/cons
 
+    WRITE(*,'(A)') "P"
+    WRITE(*,'(4f10.6)') e1
+    WRITE(*,'(4f10.6)') e2
+    WRITE(*,'(4f10.6)') e3
+
   RETURN
-  END SUBROUTINE EIGEN_SCALED
-
-!------------------------------------------------------------------------------
-!------------------------------------------------------------------------------
-!------------------------------------------------------------------------------
-
-  SUBROUTINE EIGEN(e1,e2,e3,tensor,et1,et2,et3,tol)
-    ! This subroutine calculates the eigenvalues and eigenprojections of a    
-    ! second order tensor
-    IMPLICIT NONE
-
-    REAL(iwp), INTENT(IN) :: tensor(:), tol
-    REAL(iwp), INTENT(OUT) :: et1(:), et2(:), et3(:), e1, e2, e3
-    REAL(iwp) :: tensor2(6), unit_tensor(6), inv1, inv2, inv3, r, q, alpha,    &
-      pi, tr2
-    REAL(iwp), PARAMETER :: zero=0._iwp, half=0.5_iwp, one=1._iwp, two=2._iwp,&
-     three=3._iwp, nine=9._iwp
-    INTEGER :: i
-
-!!$    CALL eigen_lapack(e1,e2,e3,tensor,et1,et2,et3,tol)
-!!$    WRITE(*,'(A,3e14.6)') "L", e1, e2, e3
-!!$!!$    CALL eigen_kopp(e1,e2,e3,tensor,et1,et2,et3,tol)
-!!$!!$    WRITE(*,'(A,3e14.6)') "K", e1, e2, e3
-!!$    RETURN
-
-    ! Initialize the values of the eigenprojections
-    et1=zero
-    et2=zero
-    et3=zero
-    
-    ! Create the squared tensor
-    tensor2(1)=(tensor(1)**2)+(tensor(4)**2)+(tensor(6)**2)
-    tensor2(2)=(tensor(4)**2)+(tensor(2)**2)+(tensor(5)**2)
-    tensor2(3)=(tensor(6)**2)+(tensor(5)**2)+(tensor(3)**2)
-    tensor2(4)=tensor(1)*tensor(4)+tensor(4)*tensor(2)+tensor(6)*tensor(5)
-    tensor2(5)=tensor(4)*tensor(6)+tensor(2)*tensor(5)+tensor(5)*tensor(3)
-    tensor2(6)=tensor(1)*tensor(6)+tensor(4)*tensor(5)+tensor(6)*tensor(3)
-     
-    ! Calculate the invariants of the tensor
-    inv1=tensor(1)+tensor(2)+tensor(3)
-
-    tr2=tensor2(1)+tensor2(2)+tensor2(3)
-    
-    inv2=half*((inv1**2)-tr2)
-    
-    inv3=(tensor(1)*tensor(2)*tensor(3)+two*tensor(4)*tensor(5)*tensor(6))-    &
-     ((tensor(6)**2)*tensor(2)+(tensor(5)**2)*tensor(1)+(tensor(4)**2)*tensor(3))
-    
-    ! Calculate the eigenvalues
-    r=(-two*(inv1**3)+nine*inv1*inv2-27._iwp*inv3)/54._iwp
-    q=((inv1**2)-three*inv2)/nine
-    
-    IF (q<zero) THEN
-      q=zero
-    END IF
-
-    alpha=r/DSQRT(q**3)
-
-    ! Check for other extreme cases for q
-    IF (alpha<-one) THEN
-      alpha=-one
-    ELSEIF (alpha>one) THEN
-      alpha=one
-    ELSEIF (ISNAN(alpha)) THEN
-      alpha=one
-    END IF
-    
-    alpha=DACOS(alpha)
-    pi=4._iwp*DATAN(one)
-
-    e1=-two*DSQRT(q)*DCOS(alpha/three)+inv1/three
-    e2=-two*DSQRT(q)*DCOS((alpha+two*pi)/three)+inv1/three
-    e3=-two*DSQRT(q)*DCOS((alpha-two*pi)/three)+inv1/three
-
-    ! Calculate the eigenprojections
-    ! Assign the value to the unit_tensor
-    DO i=1,3
-      unit_tensor(i)=one
-      unit_tensor(i+3)=zero
-    END DO
-
-    ! If all eigenvalues are different
-    IF ((DABS(e1-e2)>tol).and.(DABS(e2-e3)>tol).and.(DABS(e1-e3)>tol)) THEN
-      et1=(e1/(two*(e1**3)-inv1*(e1**2)+inv3))*(tensor2-(inv1-e1)*             &
-       tensor+(inv3/e1)*unit_tensor)
-      et2=(e2/(two*(e2**3)-inv1*(e2**2)+inv3))*(tensor2-(inv1-e2)*             &
-       tensor+(inv3/e2)*unit_tensor)
-      et3=(e3/(two*(e3**3)-inv1*(e3**2)+inv3))*(tensor2-(inv1-e3)*             &
-       tensor+(inv3/e3)*unit_tensor)
-    ! If two eigenvalues are equal
-    ! If e1 and e2 are equal
-    ELSEIF ((DABS(e1-e2)<=tol).and.(DABS(e2-e3)>tol).and.(DABS(e1-e3)>tol)) THEN
-      et3=(e3/(two*(e3**3)-inv1*(e3**2)+inv3))*(tensor2-(inv1-e3)*             &
-       tensor+(inv3/e3)*unit_tensor)
-      et1=unit_tensor-et3
-    ! If e1 and e3 are equal
-    ELSEIF ((DABS(e1-e3)<=tol).and.(DABS(e1-e2)>tol).and.(DABS(e2-e3)>tol)) THEN
-      et2=(e2/(two*(e2**3)-inv1*(e2**2)+inv3))*(tensor2-(inv1-e2)*             &
-       tensor+(inv3/e2)*unit_tensor)
-      et1=unit_tensor-et2
-    ! If e2 and e3 are equal
-    ELSEIF ((DABS(e2-e3)<=tol).and.(DABS(e1-e2)>tol).and.(DABS(e1-e3)>tol)) THEN
-      et1=(e1/(two*(e1**3)-inv1*(e1**2)+inv3))*(tensor2-(inv1-e1)*             &
-       tensor+(inv3/e1)*unit_tensor)
-      et2=unit_tensor-et1
-    ! If all eigenvalues are equal
-    ELSE
-      et1=unit_tensor
-    END IF
-
-    WRITE(*,'(A,3e14.6)') "P", e1, e2, e3
-
   END SUBROUTINE EIGEN
 
 !------------------------------------------------------------------------------
@@ -442,7 +362,7 @@ CONTAINS
     REAL(iwp), INTENT(OUT) :: et1(:), et2(:), et3(:), e1, e2, e3
 
     INTEGER, PARAMETER :: lwork = 3*3-1
-    DOUBLE PRECISION   :: a(3,3), w(3), work(lwork)
+    DOUBLE PRECISION   :: a(3,3), b(3,3), w(3), work(lwork)
     INTEGER            :: info
     DOUBLE PRECISION   :: p1(6), p2(6), p3(6), t(3,3), v(3,1)
 
@@ -453,18 +373,36 @@ CONTAINS
     a(2,3) = tensor(5)
     a(1,3) = tensor(6)
 
-    CALL dsyev('V','U',3,A,3,w,work,lwork,info)
+    b(1,1) = tensor(1)
+    b(2,2) = tensor(2)
+    b(3,3) = tensor(3)
+    b(1,2) = tensor(4)
+    b(2,3) = tensor(5)
+    b(1,3) = tensor(6)
+    b(2,1) = tensor(4)
+    b(3,2) = tensor(5)
+    b(3,1) = tensor(6)
 
-    ! Handle any error better than this!
-    IF (info /= 0) THEN
-      WRITE(0,'(A)') "dsyev failed in EIGEN_LAPACK"
-      STOP
-    END IF
+    WRITE(*,'(A)') "L"
+    WRITE(*,'(3e28.20)')     a(1,1), a(1,2), a(1,3)
+    WRITE(*,'(t29,2e28.20)')         a(2,2), a(2,3)
+    WRITE(*,'(t57,1e28.20)')                 a(3,3)
+
+    CALL dsyev('V','U',3,A,3,w,work,lwork,info)
 
     e1 = w(1)
     e2 = w(2)
     e3 = w(3)
 
+!!$    v(:,1) = a(:,1)
+!!$    t = MATMUL(v,transpose(v))
+!!$    et1 = (/t(1,1),t(2,2),t(3,3),t(1,2),t(2,3),t(1,3)/)
+!!$    v(:,1) = a(:,2)
+!!$    t = MATMUL(v,transpose(v))
+!!$    et2 = (/t(1,1),t(2,2),t(3,3),t(1,2),t(2,3),t(1,3)/)
+!!$    v(:,1) = a(:,3)
+!!$    t = MATMUL(v,transpose(v))
+!!$    et3 = (/t(1,1),t(2,2),t(3,3),t(1,2),t(2,3),t(1,3)/)
     v(:,1) = a(:,1)
     t = MATMUL(v,transpose(v))
     p1 = (/t(1,1),t(2,2),t(3,3),t(1,2),t(2,3),t(1,3)/)
@@ -475,6 +413,19 @@ CONTAINS
     t = MATMUL(v,transpose(v))
     p3 = (/t(1,1),t(2,2),t(3,3),t(1,2),t(2,3),t(1,3)/)
 
+    WRITE(*,'(4f10.6,e14.6)') e1, a(:,1), &
+      (b(1,1) - e1) * ( (b(2,2) - e1) * (b(3,3) - e1) - b(3,2) * b(2,3) ) &
+      - b(1,2) * ( b(2,1) * (b(3,3) - e1) - b(3,1) * b(2,3) ) &
+      + b(1,3) * ( b(2,1) * b(3,2) - b(3,1) * (b(2,2) - e1) )
+    WRITE(*,'(4f10.6,e14.6)') e2, a(:,2), &
+      (b(1,1) - e2) * ( (b(2,2) - e2) * (b(3,3) - e2) - b(3,2) * b(2,3) ) &
+      - b(1,2) * ( b(2,1) * (b(3,3) - e2) - b(3,1) * b(2,3) ) &
+      + b(1,3) * ( b(2,1) * b(3,2) - b(3,1) * (b(2,2) - e2) )
+    WRITE(*,'(4f10.6,e14.6)') e3, a(:,3), &
+      (b(1,1) - e3) * ( (b(2,2) - e3) * (b(3,3) - e3) - b(3,2) * b(2,3) ) &
+      - b(1,2) * ( b(2,1) * (b(3,3) - e3) - b(3,1) * b(2,3) ) &
+      + b(1,3) * ( b(2,1) * b(3,2) - b(3,1) * (b(2,2) - e3) )
+
     ! If all eigenvalues are different
     IF ((DABS(e1-e2)>tol).AND.(DABS(e2-e3)>tol).AND.(DABS(e1-e3)>tol)) THEN
       et1 = p1
@@ -482,17 +433,17 @@ CONTAINS
       et3 = p3
     ! If two eigenvalues are equal
     ! If e1 and e2 are equal
-    ELSEIF ((DABS(e1-e2)<=tol).AND.(DABS(e2-e3)>tol).AND.(DABS(e1-e3)>tol)) THEN
+    ELSEIF ((DABS(e1-e2)<tol).AND.(DABS(e2-e3)>tol).AND.(DABS(e1-e3)>tol)) THEN
       et1 = p1 + p2
       et2 = 0
       et3 = p3
     ! If e1 and e3 are equal
-    ELSEIF ((DABS(e1-e3)<=tol).AND.(DABS(e1-e2)>tol).AND.(DABS(e2-e3)>tol)) THEN
+    ELSEIF ((DABS(e1-e3)<tol).AND.(DABS(e1-e2)>tol).AND.(DABS(e2-e3)>tol)) THEN
       et1 = p1 + p3
       et2 = p2
       et3 = 0
     ! If e2 and e3 are equal
-    ELSEIF ((DABS(e2-e3)<=tol).AND.(DABS(e1-e2)>tol).AND.(DABS(e1-e3)>tol)) THEN
+    ELSEIF ((DABS(e2-e3)<tol).AND.(DABS(e1-e2)>tol).AND.(DABS(e1-e3)>tol)) THEN
       et1 = p1
       et2 = p2 + p3
       et3 = 0
@@ -525,8 +476,8 @@ CONTAINS
     REAL(iwp), INTENT(IN) :: tensor(:), tol
     REAL(iwp), INTENT(OUT) :: et1(:), et2(:), et3(:), e1, e2, e3
 
-    DOUBLE PRECISION :: a(3,3), q(3,3), w(3)
-    DOUBLE PRECISION :: p1(6), p2(6), p3(6), t(3,3), v(3,1)
+    DOUBLE PRECISION :: a(3,3), b(3,3), q(3,3), w(3)
+    DOUBLE PRECISION :: p1(6), p2(6), p3(6), r1(6), r2(6), r3(6), t(3,3), v(3,1)
 
     a(1,1) = tensor(1)
     a(2,2) = tensor(2)
@@ -535,21 +486,109 @@ CONTAINS
     a(2,3) = tensor(5)
     a(1,3) = tensor(6)
 
-    CALL dsyevh3(a,q,w)
+    b(1,1) = tensor(1)
+    b(2,2) = tensor(2)
+    b(3,3) = tensor(3)
+    b(1,2) = tensor(4)
+    b(2,3) = tensor(5)
+    b(1,3) = tensor(6)
+    b(2,1) = tensor(4)
+    b(3,2) = tensor(5)
+    b(3,1) = tensor(6)
 
-    e1 = w(1)
-    e2 = w(2)
-    e3 = w(3)
+    WRITE(*,'(A)') "K"
+    WRITE(*,'(3e28.20)')     a(1,1), a(1,2), a(1,3)
+    WRITE(*,'(t29,2e28.20)')         a(2,2), a(2,3)
+    WRITE(*,'(t57,1e28.20)')                 a(3,3)
+
+    CALL dsyevh3(a,q,w)
 
     v(:,1) = q(:,1)
     t = MATMUL(v,transpose(v))
-    p1 = (/t(1,1),t(2,2),t(3,3),t(1,2),t(2,3),t(1,3)/)
+    r1 = (/t(1,1),t(2,2),t(3,3),t(1,2),t(2,3),t(1,3)/)
     v(:,1) = q(:,2)
     t = MATMUL(v,transpose(v))
-    p2 = (/t(1,1),t(2,2),t(3,3),t(1,2),t(2,3),t(1,3)/)
+    r2 = (/t(1,1),t(2,2),t(3,3),t(1,2),t(2,3),t(1,3)/)
     v(:,1) = q(:,3)
     t = MATMUL(v,transpose(v))
-    p3 = (/t(1,1),t(2,2),t(3,3),t(1,2),t(2,3),t(1,3)/)
+    r3 = (/t(1,1),t(2,2),t(3,3),t(1,2),t(2,3),t(1,3)/)
+
+!!$!!$    ! Unsorted
+!!$!!$    e1 = w(1)
+!!$!!$    e2 = w(2)
+!!$!!$    e3 = w(3)
+!!$!!$    et1 = p1
+!!$!!$    et2 = p2
+!!$!!$    et3 = p3
+!!$    ! Sort the eigenvalues to match dsyev
+!!$    IF (w(1) < w(2)) THEN
+!!$      IF (w(1) < w(3)) THEN
+!!$        e1 = w(1); et1 = p1
+!!$        IF (w(2) < w(3)) THEN
+!!$          e2 = w(2); et2 = p2; e3 = w(3); et3 = p3
+!!$        ELSE ! w(3) <= w(2)
+!!$          e2 = w(3); et2 = p3; e3 = w(2); et3 = p2
+!!$        END IF
+!!$      ELSE ! w(3) <= w(1)
+!!$        e1 = w(3); et1 = p3; e2 = w(1); et2 = p1; e3 = w(2); et3 = p2
+!!$      END IF
+!!$    ELSE ! w(2) <= w(1)
+!!$      IF (w(2) < w(3)) THEN
+!!$        e1 = w(2); et1 = p2
+!!$        IF (w(1) < w(3)) THEN
+!!$          e2 = w(1); et2 = p1; e3 = w(3); et3 = p3
+!!$        ELSE ! w(3) <= w(1)
+!!$          e2 = w(3); et2 = p3; e3 = w(1); et3 = p1
+!!$        END IF
+!!$      ELSE ! w(3) <= w(2)
+!!$        e1 = w(3); et1 = p3; e2 = w(2); et2 = p2; e3 = w(1); et3 = p1
+!!$      END IF
+!!$    END IF
+
+!!$    ! Unsorted
+!!$    e1 = w(1)
+!!$    e2 = w(2)
+!!$    e3 = w(3)
+!!$    et1 = p1
+!!$    et2 = p2
+!!$    et3 = p3
+    ! Sort the eigenvalues to match dsyev
+    IF (w(1) < w(2)) THEN
+      IF (w(1) < w(3)) THEN
+        e1 = w(1); p1 = r1
+        IF (w(2) < w(3)) THEN
+          e2 = w(2); p2 = r2; e3 = w(3); p3 = r3
+        ELSE ! w(3) <= w(2)
+          e2 = w(3); p2 = r3; e3 = w(2); p3 = r2
+        END IF
+      ELSE ! w(3) <= w(1)
+        e1 = w(3); p1 = r3; e2 = w(1); p2 = r1; e3 = w(2); p3 = r2
+      END IF
+    ELSE ! w(2) <= w(1)
+      IF (w(2) < w(3)) THEN
+        e1 = w(2); p1 = r2
+        IF (w(1) < w(3)) THEN
+          e2 = w(1); p2 = r1; e3 = w(3); p3 = r3
+        ELSE ! w(3) <= w(1)
+          e2 = w(3); p2 = r3; e3 = w(1); p3 = r1
+        END IF
+      ELSE ! w(3) <= w(2)
+        e1 = w(3); p1 = r3; e2 = w(2); p2 = r2; e3 = w(1); p3 = r1
+      END IF
+    END IF
+
+    WRITE(*,'(4f10.6,e14.6)') e1, q(:,1), &
+      (b(1,1) - e1) * ( (b(2,2) - e1) * (b(3,3) - e1) - b(3,2) * b(2,3) ) &
+      - b(1,2) * ( b(2,1) * (b(3,3) - e1) - b(3,1) * b(2,3) ) &
+      + b(1,3) * ( b(2,1) * b(3,2) - b(3,1) * (b(2,2) - e1) )
+    WRITE(*,'(4f10.6,e14.6)') e2, q(:,2), &
+      (b(1,1) - e2) * ( (b(2,2) - e2) * (b(3,3) - e2) - b(3,2) * b(2,3) ) &
+      - b(1,2) * ( b(2,1) * (b(3,3) - e2) - b(3,1) * b(2,3) ) &
+      + b(1,3) * ( b(2,1) * b(3,2) - b(3,1) * (b(2,2) - e2) )
+    WRITE(*,'(4f10.6,e14.6)') e3, q(:,3), &
+      (b(1,1) - e3) * ( (b(2,2) - e3) * (b(3,3) - e3) - b(3,2) * b(2,3) ) &
+      - b(1,2) * ( b(2,1) * (b(3,3) - e3) - b(3,1) * b(2,3) ) &
+      + b(1,3) * ( b(2,1) * b(3,2) - b(3,1) * (b(2,2) - e3) )
 
     ! If all eigenvalues are different
     IF ((DABS(e1-e2)>tol).AND.(DABS(e2-e3)>tol).AND.(DABS(e1-e3)>tol)) THEN
@@ -558,17 +597,17 @@ CONTAINS
       et3 = p3
     ! If two eigenvalues are equal
     ! If e1 and e2 are equal
-    ELSEIF ((DABS(e1-e2)<=tol).AND.(DABS(e2-e3)>tol).AND.(DABS(e1-e3)>tol)) THEN
+    ELSEIF ((DABS(e1-e2)<tol).AND.(DABS(e2-e3)>tol).AND.(DABS(e1-e3)>tol)) THEN
       et1 = p1 + p2
       et2 = 0
       et3 = p3
     ! If e1 and e3 are equal
-    ELSEIF ((DABS(e1-e3)<=tol).AND.(DABS(e1-e2)>tol).AND.(DABS(e2-e3)>tol)) THEN
+    ELSEIF ((DABS(e1-e3)<tol).AND.(DABS(e1-e2)>tol).AND.(DABS(e2-e3)>tol)) THEN
       et1 = p1 + p3
       et2 = p2
       et3 = 0
     ! If e2 and e3 are equal
-    ELSEIF ((DABS(e2-e3)<=tol).AND.(DABS(e1-e2)>tol).AND.(DABS(e1-e3)>tol)) THEN
+    ELSEIF ((DABS(e2-e3)<tol).AND.(DABS(e1-e2)>tol).AND.(DABS(e1-e3)>tol)) THEN
       et1 = p1
       et2 = p2 + p3
       et3 = 0
@@ -737,21 +776,21 @@ CONTAINS
 
     ! If two eigenvalues are equal    
     ! If e1 and e2 are equal
-    ELSEIF ((DABS(e1-e2)<=tol).and.(DABS(e2-e3)>tol).and.(DABS(e1-e3)>tol)) THEN
+    ELSEIF ((DABS(e1-e2)<tol).and.(DABS(e2-e3)>tol).and.(DABS(e1-e3)>tol)) THEN
       lnderiv=(one/e1)*tensor_p_iklj(et1,et1)+                                &
        (one/e3)*tensor_p_iklj(et3,et3)+                                       &
        ((lne1-lne3)/(e1-e3))*tensor_p_iklj(et1,et3)+                          &
        ((lne3-lne1)/(e3-e1))*tensor_p_iklj(et3,et1)
     
     ! If e1 and e3 are equal
-    ELSEIF ((DABS(e1-e3)<=tol).and.(DABS(e1-e2)>tol).and.(DABS(e2-e3)>tol)) THEN
+    ELSEIF ((DABS(e1-e3)<tol).and.(DABS(e1-e2)>tol).and.(DABS(e2-e3)>tol)) THEN
       lnderiv=(one/e1)*tensor_p_iklj(et1,et1)+                                &
        (one/e2)*tensor_p_iklj(et2,et2)+                                       &
        ((lne1-lne2)/(e1-e2))*tensor_p_iklj(et1,et2)+                          &
        ((lne2-lne1)/(e2-e1))*tensor_p_iklj(et2,et1)
 
     ! If e2 and e3 are equal
-    ELSEIF ((DABS(e2-e3)<=tol).and.(DABS(e1-e2)>tol).and.(DABS(e1-e3)>tol)) THEN
+    ELSEIF ((DABS(e2-e3)<tol).and.(DABS(e1-e2)>tol).and.(DABS(e1-e3)>tol)) THEN
       lnderiv=(one/e1)*tensor_p_iklj(et1,et1)+                                &
        (one/e2)*tensor_p_iklj(et2,et2)+                                       &
        ((lne1-lne2)/(e1-e2))*tensor_p_iklj(et1,et2)+                          &
