@@ -1735,51 +1735,6 @@ CONTAINS
     END SELECT
   END FUNCTION p_describe_reason
 
-  SUBROUTINE p_print_procfile(procfilename)
-
-    !/****if* petsc/p_print_procfile
-    !*  NAME
-    !*    SUBROUTINE: p_print_procfile
-    !*  SYNOPSIS
-    !*    Usage:      p_print_procfile(procfilename)
-    !*  FUNCTION
-    !*    Print the file <procfilename>.  Usually call this on one process
-    !*    only.
-    !*  ARGUMENTS
-    !*    INTENT(IN)
-    !*
-    !*    procfilename       : Character string
-    !*                         The file to print, e.g. /proc/self/status,
-    !*                         /proc/self/smaps, /proc/self/numa_maps,
-    !*                         /proc/meminfo.
-    !*  AUTHOR
-    !*    Mark Filipiak
-    !*  CREATION DATE
-    !*    01.12.2016
-    !*  MODIFICATION HISTORY
-    !*    Version 1, 01.12.2016, Mark Filipiak
-    !*  COPYRIGHT
-    !*    (c) University of Edinburgh 2016
-    !******
-    !*  Place remarks that should not be included in the documentation here.
-    !*
-    !*  Linux only.
-    !*/
-
-    CHARACTER(len=*), INTENT(in) :: procfilename
-    
-    INTEGER :: proc,ios
-    CHARACTER(len=string_length) :: line
-    
-    OPEN(newunit=proc,file=TRIM(procfilename),action='read')
-    DO
-      READ(proc,"(A)",iostat=ios) line
-      IF (ios < 0 ) EXIT ! end of file
-      WRITE(*,"(A)") TRIM(line)
-    END DO
-    CLOSE(proc)
-  END SUBROUTINE p_print_procfile
-  
   FUNCTION p_memory_use()
 
     !/****if* petsc/p_memory_use
