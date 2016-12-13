@@ -50,9 +50,7 @@ PROGRAM xx15_quadric_linear_hardening
   LOGICAL                   :: error
   CHARACTER(:), ALLOCATABLE :: message
   CHARACTER,    PARAMETER   :: tab = ACHAR(9)
-  LOGICAL,      PARAMETER   :: detailed_memory = .FALSE.
-  REAL    :: memory_use0,memory_use1,peak_memory_use
-  REAL    :: vmsize0,vmsize1,vmpeak
+  REAL :: peak_memory_use
   
   !-------------------------- dynamic arrays-----------------------------------
   REAL(iwp), ALLOCATABLE:: points(:,:), coord(:,:), weights(:), xnew_pp(:),   &
@@ -110,25 +108,9 @@ PROGRAM xx15_quadric_linear_hardening
     CALL GETARG(1,fname_base)
   END IF
 
-  IF (detailed_memory) THEN
-    memory_use0 = p_memory_use()
-    vmsize0 = p_vmsize()
-    CALL p_release_memory
-    memory_use1 = p_memory_use()
-    vmsize1 = p_vmsize()
-    peak_memory_use = p_memory_peak()
-    vmpeak = p_vmpeak()
-    IF (numpe == 1) THEN
-      WRITE(*,'(A,3F7.2,A)')                                                   &
-      "memory use/use after release/peak at start:            ",               &
-      memory_use0, memory_use1, peak_memory_use, " GB"
-      WRITE(*,'(A,3F8.2,A)')                                                   &
-      "virtual memory use/use after release/peak at start:    ",               &
-      vmsize0, vmsize1, vmpeak, " GB"
-      CALL p_print_procfile("/proc/self/smaps")
-      CALL p_print_procfile("/proc/self/numa_maps")
-    END IF
-  END IF
+  peak_memory_use = p_memory_peak()
+  IF (numpe == 1) WRITE(*,'(A,F7.2,A)')                                        &
+    "peak memory use after at start:     ", peak_memory_use, " GB"
 
   fname = fname_base(1:INDEX(fname_base," ")-1) // ".dat"
   CALL READ_DATA_XX7(fname,numpe,nels,nn,nr,loaded_nodes,fixed_nodes,          &
@@ -170,15 +152,6 @@ PROGRAM xx15_quadric_linear_hardening
   
   ALLOCATE(points(ndim,nip), weights(nip))
   CALL GET_GAUSS_POINTS(element,points,weights)
-  IF (detailed_memory) THEN
-    memory_use0 = p_memory_use()
-    CALL p_release_memory
-    memory_use1 = p_memory_use()
-    peak_memory_use = p_memory_peak()
-    IF (numpe == 1) WRITE(*,'(A,3F7.2,A)')                                     &
-      "memory use/use after release/peak after 2:             ",               &
-      memory_use0, memory_use1, peak_memory_use, " GB"
-  END IF
 
 !------------------------------------------------------------------------------
 ! 3. Import and distribute mesh
@@ -187,85 +160,20 @@ PROGRAM xx15_quadric_linear_hardening
   CALL CALC_NELS_PP(fname_base,nels,npes,numpe,partitioner,nels_pp)
   
   ALLOCATE(g_num_pp(nod, nels_pp)) 
-  IF (detailed_memory) THEN
-    memory_use0 = p_memory_use()
-    CALL p_release_memory
-    memory_use1 = p_memory_use()
-    peak_memory_use = p_memory_peak()
-    IF (numpe == 1) WRITE(*,'(A,3F7.2,A)')                                     &
-      "memory use/use after release/peak after 3i:            ",               &
-      memory_use0, memory_use1, peak_memory_use, " GB"
-  END IF
 
   fname = fname_base(1:INDEX(fname_base," ")-1) // ".d"
   CALL READ_G_NUM_PP(fname_base,iel_start,nn,npes,numpe,g_num_pp)
   ! read_elements_2() does not work for METIS partitions
   !CALL READ_ELEMENTS_2(fname,npes,nn,numpe,g_num_pp)
-  IF (detailed_memory) THEN
-    memory_use0 = p_memory_use()
-    CALL p_release_memory
-    memory_use1 = p_memory_use()
-    peak_memory_use = p_memory_peak()
-    IF (numpe == 1) WRITE(*,'(A,3F7.2,A)')                                     &
-      "memory use/use after release/peak after 3ii:           ",               &
-      memory_use0, memory_use1, peak_memory_use, " GB"
-  END IF
 
   CALL CALC_NN_PP(g_num_pp,nn_pp,nn_start)
-  IF (detailed_memory) THEN
-    memory_use0 = p_memory_use()
-    CALL p_release_memory
-    memory_use1 = p_memory_use()
-    peak_memory_use = p_memory_peak()
-    IF (numpe == 1) WRITE(*,'(A,3F7.2,A)')                                     &
-      "memory use/use after release/peak after 3iii:          ",               &
-      memory_use0, memory_use1, peak_memory_use, " GB"
-  END IF
 
   ALLOCATE(g_coord_pp(ndim, nn_pp))
-  IF (detailed_memory) THEN
-    memory_use0 = p_memory_use()
-    CALL p_release_memory
-    memory_use1 = p_memory_use()
-    peak_memory_use = p_memory_peak()
-    IF (numpe == 1) WRITE(*,'(A,3F7.2,A)')                                     &
-      "memory use/use after release/peak after 3iv:           ",               &
-      memory_use0, memory_use1, peak_memory_use, " GB"
-  END IF
-
   CALL READ_NODES(fname,nn,nn_start,numpe,g_coord_pp)
-  IF (detailed_memory) THEN
-    memory_use0 = p_memory_use()
-    CALL p_release_memory
-    memory_use1 = p_memory_use()
-    peak_memory_use = p_memory_peak()
-    IF (numpe == 1) WRITE(*,'(A,3F7.2,A)')                                     &
-      "memory use/use after release/peak after 3v:            ",               &
-      memory_use0, memory_use1, peak_memory_use, " GB"
-  END IF
 
   ALLOCATE(rest(nr,nodof+1))
-  IF (detailed_memory) THEN
-    memory_use0 = p_memory_use()
-    CALL p_release_memory
-    memory_use1 = p_memory_use()
-    peak_memory_use = p_memory_peak()
-    IF (numpe == 1) WRITE(*,'(A,3F7.2,A)')                                     &
-      "memory use/use after release/peak after 3vi:           ",               &
-      memory_use0, memory_use1, peak_memory_use, " GB"
-  END IF
-
   fname = fname_base(1:INDEX(fname_base," ")-1) // ".bnd"
   CALL READ_RESTRAINTS(fname,numpe,rest)
-  IF (detailed_memory) THEN
-    memory_use0 = p_memory_use()
-    CALL p_release_memory
-    memory_use1 = p_memory_use()
-    peak_memory_use = p_memory_peak()
-    IF (numpe == 1) WRITE(*,'(A,3F7.2,A)')                                     &
-      "memory use/use after release/peak after 3vii:          ",               &
-      memory_use0, memory_use1, peak_memory_use, " GB"
-  END IF
 
   timest(30) = timest(30) + elap_time()-timest(2) ! 30 = read
   timest(2) = elap_time()
@@ -316,15 +224,6 @@ PROGRAM xx15_quadric_linear_hardening
   ALLOCATE(unload_pp(nels_pp,nip))
   ALLOCATE(rm_vec(npes))
   ALLOCATE(km(ntot,ntot))
-  IF (detailed_memory) THEN
-    memory_use0 = p_memory_use()
-    CALL p_release_memory
-    memory_use1 = p_memory_use()
-    peak_memory_use = p_memory_peak()
-    IF (numpe == 1) WRITE(*,'(A,3F7.2,A)')                                     &
-      "memory use/use after release/peak after 4:             ",               &
-      memory_use0, memory_use1, peak_memory_use, " GB"
-  END IF
 
 !------------------------------------------------------------------------------
 ! 5. Loop the elements to find the steering array and the number of 
@@ -338,52 +237,16 @@ PROGRAM xx15_quadric_linear_hardening
   END DO
 
   CALL CALC_NEQ(nn,rest,neq)
-  IF (detailed_memory) THEN
-    memory_use0 = p_memory_use()
-    CALL p_release_memory
-    memory_use1 = p_memory_use()
-    peak_memory_use = p_memory_peak()
-    IF (numpe == 1) WRITE(*,'(A,3F7.2,A)')                                     &
-      "memory use/use after release/peak after 5:             ",               &
-      memory_use0, memory_use1, peak_memory_use, " GB"
-  END IF
 
 !------------------------------------------------------------------------------
 ! 6. Create interprocessor communications tables
 !------------------------------------------------------------------------------  
   
   CALL CALC_NPES_PP(npes,npes_pp)
-  IF (detailed_memory) THEN
-    memory_use0 = p_memory_use()
-    CALL p_release_memory
-    memory_use1 = p_memory_use()
-    peak_memory_use = p_memory_peak()
-    IF (numpe == 1) WRITE(*,'(A,3F7.2,A)')                                     &
-      "memory use/use after release/peak after 6i:            ",               &
-      memory_use0, memory_use1, peak_memory_use, " GB"
-  END IF
 
   CALL CALC_NEQ_PP
-  IF (detailed_memory) THEN
-    memory_use0 = p_memory_use()
-    CALL p_release_memory
-    memory_use1 = p_memory_use()
-    peak_memory_use = p_memory_peak()
-    IF (numpe == 1) WRITE(*,'(A,3F7.2,A)')                                     &
-      "memory use/use after release/peak after 6ii:           ",               &
-      memory_use0, memory_use1, peak_memory_use, " GB"
-  END IF
 
   CALL MAKE_GGL(npes_pp,npes,g_g_pp)
-  IF (detailed_memory) THEN
-    memory_use0 = p_memory_use()
-    CALL p_release_memory
-    memory_use1 = p_memory_use()
-    peak_memory_use = p_memory_peak()
-    IF (numpe == 1) WRITE(*,'(A,3F7.2,A)')                                     &
-      "memory use/use after release/peak after 6iii:          ",               &
-      memory_use0, memory_use1, peak_memory_use, " GB"
-  END IF
 
   timest(31) = timest(31) + elap_time()-timest(2) ! 31 = setup
   timest(2) = elap_time()
@@ -436,15 +299,6 @@ PROGRAM xx15_quadric_linear_hardening
     END DO
     
     DEALLOCATE(fixed_node, fixed_dof, fixed_value)
-    IF (detailed_memory) THEN
-      memory_use0 = p_memory_use()
-      CALL p_release_memory
-      memory_use1 = p_memory_use()
-      peak_memory_use = p_memory_peak()
-      IF (numpe == 1) WRITE(*,'(A,3F7.2,A)')                                   &
-        "memory use/use after release/peak after 7i:            ",             &
-        memory_use0, memory_use1, peak_memory_use, " GB"
-    END IF
 
     IF (solvers == petsc_solvers) THEN
       ! storekm_pp is only used by the ParaFEM solvers but would also be needed
@@ -455,15 +309,6 @@ PROGRAM xx15_quadric_linear_hardening
       ! changes in gather and scatter I think) to pass them through as zeroes in
       ! the matrix.
       ALLOCATE(fixkm_pp(ntot,ntot,numfix_pp))
-    END IF
-    IF (detailed_memory) THEN
-      memory_use0 = p_memory_use()
-      CALL p_release_memory
-      memory_use1 = p_memory_use()
-      peak_memory_use = p_memory_peak()
-      IF (numpe == 1) WRITE(*,'(A,3F7.2,A)')                                   &
-        "memory use/use after release/peak after 7ii:           ",             &
-        memory_use0, memory_use1, peak_memory_use, " GB"
     END IF
 
   END IF
@@ -489,15 +334,6 @@ PROGRAM xx15_quadric_linear_hardening
     DEALLOCATE(load_node,load_value)
 
   END IF
-  IF (detailed_memory) THEN
-    memory_use0 = p_memory_use()
-    CALL p_release_memory
-    memory_use1 = p_memory_use()
-    peak_memory_use = p_memory_peak()
-    IF (numpe == 1) WRITE(*,'(A,3F7.2,A)')                                     &
-      "memory use/use after release/peak after 8:             ",               &
-      memory_use0, memory_use1, peak_memory_use, " GB"
-  END IF
 
   timest(30) = timest(30) + elap_time()-timest(2) ! 30 = read
   timest(2) = elap_time()
@@ -521,15 +357,6 @@ PROGRAM xx15_quadric_linear_hardening
   xnewprev_pp      = zero
 
   ALLOCATE(diag_precon_tmp(ntot,nels_pp))
-  IF (detailed_memory) THEN
-    memory_use0 = p_memory_use()
-    CALL p_release_memory
-    memory_use1 = p_memory_use()
-    peak_memory_use = p_memory_peak()
-    IF (numpe == 1) WRITE(*,'(A,3F7.2,A)')                                     &
-      "memory use/use after release/peak after 9:             ",               &
-      memory_use0, memory_use1, peak_memory_use, " GB"
-  END IF
 
   !-----------------------------------------------------------------------------
   ! 9a. Start up PETSc after find_pe_procs (so that MPI has been started) and
@@ -547,19 +374,10 @@ PROGRAM xx15_quadric_linear_hardening
       CALL shutdown
     END IF
   END IF
-  IF (detailed_memory) THEN
-    memory_use0 = p_memory_use()
-    CALL p_release_memory
-    memory_use1 = p_memory_use()
-    peak_memory_use = p_memory_peak()
-    IF (numpe == 1) WRITE(*,'(A,3F7.2,A)')                                     &
-      "memory use/use after release/peak after setup:         ",               &
-      memory_use0, memory_use1, peak_memory_use, " GB"
-  ELSE
-    peak_memory_use = p_memory_peak()
-    IF (numpe == 1) WRITE(*,'(A,F7.2,A)')                                      &
-      "peak memory use after setup:        ", peak_memory_use, " GB"
-  END IF
+
+  peak_memory_use = p_memory_peak()
+  IF (numpe == 1) WRITE(*,'(A,F7.2,A)')                                        &
+    "peak memory use after setup:        ", peak_memory_use, " GB"
 
   !----------------------------------------------------------------------------
   ! 10. Initialise the solution vector to 0.0
@@ -577,15 +395,6 @@ PROGRAM xx15_quadric_linear_hardening
   lnstrainelas_mat_con = zero
   statevar_con         = zero
   stiffness_mat_con    = zero
-  IF (detailed_memory) THEN
-    memory_use0 = p_memory_use()
-    CALL p_release_memory
-    memory_use1 = p_memory_use()
-    peak_memory_use = p_memory_peak()
-    IF (numpe == 1) WRITE(*,'(A,3F7.2,A)')                                     &
-      "memory use/use after release/peak 10i:                 ",               &
-      memory_use0, memory_use1, peak_memory_use, " GB"
-  END IF
 
   ! Limit for Newton-Raphson iterations
   limit_2=10
@@ -696,15 +505,6 @@ PROGRAM xx15_quadric_linear_hardening
     fixvalpiece_pp(1:)=fixval_pp(1:)*lambda
     fixvaltot_pp(1:)=fixval_pp(1:)*lambda_total
     fixvalprev_pp(1:)=fixval_pp(1:)*lambda_prev
-    IF (detailed_memory) THEN
-      memory_use0 = p_memory_use()
-      CALL p_release_memory
-      memory_use1 = p_memory_use()
-      peak_memory_use = p_memory_peak()
-      IF (numpe == 1) WRITE(*,'(A,3F7.2,A)')                                   &
-        "memory use/use after release/peak 10ii:                ",             &
-        memory_use0, memory_use1, peak_memory_use, " GB"
-    END IF
 
 !------------------------------------------------------------------------------
 !----------------------- Start Newton-Raphson iterations ----------------------
@@ -723,41 +523,14 @@ PROGRAM xx15_quadric_linear_hardening
       inewton = inewton + 1
 
       storefint_pp = zero
-      IF (detailed_memory) THEN
-        memory_use0 = p_memory_use()
-        CALL p_release_memory
-        memory_use1 = p_memory_use()
-        peak_memory_use = p_memory_peak()
-        IF (numpe == 1) WRITE(*,'(A,3F7.2,A)')                                 &
-          "memory use/use after release/peak 10iii:               ",           &
-          memory_use0, memory_use1, peak_memory_use, " GB"
-      END IF
 
       CALL GATHER(xnew_pp(1:),xnewel_pp)
       CALL GATHER(deltax_pp_temp(1:),xnewelinc_pp)
       CALL GATHER(xnew_pp_previous(1:),xnewel_pp_previous)
-      IF (detailed_memory) THEN
-        memory_use0 = p_memory_use()
-        CALL p_release_memory
-        memory_use1 = p_memory_use()
-        peak_memory_use = p_memory_peak()
-        IF (numpe == 1) WRITE(*,'(A,3F7.2,A)')                                 &
-          "memory use/use after release/peak 10iv:                ",           &
-          memory_use0, memory_use1, peak_memory_use, " GB"
-      END IF
 
       DO i = 1,numfix_pp
         xnewel_pp_previous(fixdof_pp(i),fixelem_pp(i))=fixvalprev_pp(i)
       END DO
-      IF (detailed_memory) THEN
-        memory_use0 = p_memory_use()
-        CALL p_release_memory
-        memory_use1 = p_memory_use()
-        peak_memory_use = p_memory_peak()
-        IF (numpe == 1) WRITE(*,'(A,3F7.2,A)')                                 &
-          "memory use/use after release/peak 10v:                 ",           &
-          memory_use0, memory_use1, peak_memory_use, " GB"
-      END IF
 
       IF (inewton>1 .AND. numfix_pp>0) THEN
         DO i = 1,numfix_pp
@@ -767,30 +540,12 @@ PROGRAM xx15_quadric_linear_hardening
           xnewelinc_pp(fixdof_pp(i),fixelem_pp(i)) = fixvalpiece_pp(i)
         END DO
       END IF
-      IF (detailed_memory) THEN
-        memory_use0 = p_memory_use()
-        CALL p_release_memory
-        memory_use1 = p_memory_use()
-        peak_memory_use = p_memory_peak()
-        IF (numpe == 1) WRITE(*,'(A,3F7.2,A)')                                 &
-          "memory use/use after release/peak 10vi:                ",           &
-          memory_use0, memory_use1, peak_memory_use, " GB"
-      END IF
 
       IF (iload>1 .AND. inewton==1 .AND. numfix_pp>0) THEN
         DO i = 1,numfix_pp
           xnewel_pp(fixdof_pp(i),fixelem_pp(i))=fixvalprev_pp(i)
         END DO
       END IF      
-      IF (detailed_memory) THEN
-        memory_use0 = p_memory_use()
-        CALL p_release_memory
-        memory_use1 = p_memory_use()
-        peak_memory_use = p_memory_peak()
-        IF (numpe == 1) WRITE(*,'(A,3F7.2,A)')                                 &
-          "memory use/use after release/peak 10vii:               ",           &
-          memory_use0, memory_use1, peak_memory_use, " GB"
-      END IF
 
 !------------------------------------------------------------------------------
 ! 11. Element stiffness integration and storage
@@ -799,32 +554,12 @@ PROGRAM xx15_quadric_linear_hardening
       timest(32) = timest(32) + elap_time()-timest(2) ! 32 = other work in load loop
       timest(2) = elap_time()
       
-      IF (detailed_memory) THEN
-        memory_use0 = p_memory_use()
-        CALL p_release_memory
-        memory_use1 = p_memory_use()
-        peak_memory_use = p_memory_peak()
-        IF (numpe == 1) WRITE(*,'(A,3F7.2,A)')                                 &
-          "memory use/use after release/peak 11i:                 ",           &
-          memory_use0, memory_use1, peak_memory_use, " GB"
-      END IF
-
       IF (solvers == parafem_solvers) THEN
         storekm_pp = zero
       ELSE IF (solvers == petsc_solvers) THEN
         CALL p_zero_matrix
       END IF
       
-      IF (detailed_memory) THEN
-        memory_use0 = p_memory_use()
-        CALL p_release_memory
-        memory_use1 = p_memory_use()
-        peak_memory_use = p_memory_peak()
-        IF (numpe == 1) WRITE(*,'(A,3F7.2,A)')                                 &
-          "memory use/use after release/peak before add elements: ",           &
-          memory_use0, memory_use1, peak_memory_use, " GB"
-      END IF
-
       DO iel = 1,nels_pp
 
         km = zero
@@ -898,56 +633,19 @@ PROGRAM xx15_quadric_linear_hardening
 
       200 CONTINUE
 
-      IF (detailed_memory) THEN
-        memory_use0 = p_memory_use()
-        CALL p_release_memory
-        memory_use1 = p_memory_use()
-        peak_memory_use = p_memory_peak()
-        IF (numpe == 1) WRITE(*,'(A,3F7.2,A)')                                 &
-          "memory use/use after release/peak after add elements:  ",           &
-          memory_use0, memory_use1, peak_memory_use, " GB"
-      ELSE
-        peak_memory_use = p_memory_peak()
-        IF (numpe == 1) WRITE(*,'(A,F7.2,A)')                                  &
-          "peak memory use after add elements: ", peak_memory_use, " GB"
-      END IF
+      peak_memory_use = p_memory_peak()
+      IF (numpe == 1) WRITE(*,'(A,F7.2,A)')                                  &
+        "peak memory use after add elements: ", peak_memory_use, " GB"
 
       ! When using PETSc, even if local convergence fails, the matrix has to be
       ! assembled to be in the correct state for p_zero_matrix().
       IF (solvers == petsc_solvers) THEN
         CALL p_assemble
       END IF
-      IF (detailed_memory) THEN
-        memory_use0 = p_memory_use()
-        CALL p_release_memory
-        memory_use1 = p_memory_use()
-        peak_memory_use = p_memory_peak()
-        IF (numpe == 1) WRITE(*,'(A,3F7.2,A)')                                 &
-          "memory use/use after release/peak after assemble:      ",           &
-          memory_use0, memory_use1, peak_memory_use, " GB"
-      ELSE
-        peak_memory_use = p_memory_peak()
-        IF (numpe == 1) WRITE(*,'(A,F7.2,A)')                                  &
-          "peak memory use after assemble:     ", peak_memory_use, " GB"
-      END IF
-            
-  IF (detailed_memory) THEN
-    memory_use0 = p_memory_use()
-    vmsize0 = p_vmsize()
-    CALL p_release_memory
-    memory_use1 = p_memory_use()
-    vmsize1 = p_vmsize()
-    peak_memory_use = p_memory_peak()
-    vmpeak = p_vmpeak()
-    IF (numpe == 1) THEN
-      WRITE(*,'(A,6F7.2,A)')                                                   &
-      "memory use/use after release/peak after assemble:      ",           &
-      memory_use0, memory_use1, peak_memory_use,                               &
-      vmsize0, vmsize1, vmpeak, " GB"
-      CALL p_print_procfile("/proc/self/smaps")
-      CALL p_print_procfile("/proc/self/numa_maps")
-    END IF
-  END IF
+
+      peak_memory_use = p_memory_peak()
+      IF (numpe == 1) WRITE(*,'(A,F7.2,A)')                                  &
+        "peak memory use after assemble:     ", peak_memory_use, " GB"
 
       timest(33) = timest(33) + elap_time()-timest(2) ! 33 = matrix assemble
       timest(2) = elap_time()
@@ -1410,7 +1108,8 @@ PROGRAM xx15_quadric_linear_hardening
     END IF
     
 !-----print out displacements, stress, principal stress and reactions -------
-    GOTO 500 ! remove this to print at every load step
+    GOTO 500 ! remove this to print at every load step; but this prints an
+             ! extra output at the end
 400 CONTINUE 
     !IF (print_output) THEN
       writetimes = writetimes + 1
@@ -1599,26 +1298,6 @@ PROGRAM xx15_quadric_linear_hardening
 !!$            CALL mesh_ensi(TRIM(fname_base),LEN(TRIM(fname_base),g_coord,g_num,element,etype,nf,          &
 !!$                           oldlds(1:),nstep,npri,dtim,solid)
 !!$
-  IF (detailed_memory) THEN
-    memory_use0 = p_memory_use()
-    vmsize0 = p_vmsize()
-    CALL p_release_memory
-    memory_use1 = p_memory_use()
-    vmsize1 = p_vmsize()
-    peak_memory_use = p_memory_peak()
-    vmpeak = p_vmpeak()
-    IF (numpe == 1) THEN
-      WRITE(*,'(A,3F7.2,A)')                                                   &
-      "memory use/use after release/peak at end:              ",               &
-      memory_use0, memory_use1, peak_memory_use, " GB"
-      WRITE(*,'(A,3F8.2,A)')                                                   &
-      "virtual memory use/use after release/peak at end:      ",               &
-      vmsize0, vmsize1, vmpeak, " GB"
-      CALL p_print_procfile("/proc/self/smaps")
-      CALL p_print_procfile("/proc/self/numa_maps")
-    END IF
-  END IF
-
   peak_memory_use = p_memory_peak()
 
   IF (numpe==1) THEN
