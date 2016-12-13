@@ -89,6 +89,10 @@ PROGRAM xx15_quadric_linear_hardening
 
   CALL FIND_PE_PROCS(numpe,npes)
 
+  peak_memory_use = p_memory_peak()
+  IF (numpe == 1) WRITE(*,'(A,F7.2,A)')                                        &
+    "peak memory use at start:           ", peak_memory_use, " GB"
+
   argc = IARGC()
 !     Output:  argc i: Number of arguments in the command line,
 !                      ./par131 arg1 arg2 arg3 ... argn
@@ -107,10 +111,6 @@ PROGRAM xx15_quadric_linear_hardening
   IF (argc >= 1) THEN
     CALL GETARG(1,fname_base)
   END IF
-
-  peak_memory_use = p_memory_peak()
-  IF (numpe == 1) WRITE(*,'(A,F7.2,A)')                                        &
-    "peak memory use after at start:     ", peak_memory_use, " GB"
 
   fname = fname_base(1:INDEX(fname_base," ")-1) // ".dat"
   CALL READ_DATA_XX7(fname,numpe,nels,nn,nr,loaded_nodes,fixed_nodes,          &

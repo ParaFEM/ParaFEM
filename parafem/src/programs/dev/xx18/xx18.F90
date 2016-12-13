@@ -76,6 +76,12 @@ PROGRAM xx18
 
   timest(1)=elap_time()
 
+  CALL find_pe_procs(numpe,npes)
+
+  peak_memory_use = p_memory_peak()
+  IF (numpe == 1) WRITE(*,'(A,F7.2,A)')                                        &
+    "peak memory use at start:           ", peak_memory_use, " GB"
+
   CALL getname(argv,nlen) 
   CALL read_p121(argv,numpe,e,element,limit,loaded_nodes,meshgen,nels,         &
                  nip,nn,nod,nr,partitioner,tol,v)
