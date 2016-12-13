@@ -1424,8 +1424,9 @@ CONTAINS
 
     IF (solver < 1 .OR. solver > p_object%nsolvers) THEN
       IF (numpe == 1) THEN
-        WRITE(error_unit,'(A,I0,A,I0)') "Error: p_use_solver uses solver ",solver,      &
-                               " but nsolvers is ",p_object%nsolvers
+        WRITE(error_unit,'(A,I0,A,I0)')                                        &
+          "Error: p_use_solver uses solver ",solver,                           &
+          " but nsolvers is ",p_object%nsolvers
       END IF
       error = .TRUE.
       RETURN
@@ -1611,7 +1612,7 @@ CONTAINS
 
     !/****if* petsc/p_describe_reason
     !*  NAME
-    !*    SUBROUTINE: p_describe_reason
+    !*    FUNCTION: p_describe_reason
     !*  SYNOPSIS
     !*    Usage:      p_describe_reason(p_reason)
     !*  FUNCTION
@@ -1734,11 +1735,124 @@ CONTAINS
     END SELECT
   END FUNCTION p_describe_reason
 
+  SUBROUTINE p_print_procfile(procfilename)
+
+    !/****if* petsc/p_print_procfile
+    !*  NAME
+    !*    SUBROUTINE: p_print_procfile
+    !*  SYNOPSIS
+    !*    Usage:      p_print_procfile(procfilename)
+    !*  FUNCTION
+    !*    Print the file <procfilename>.  Usually call this on one process
+    !*    only.
+    !*  ARGUMENTS
+    !*    INTENT(IN)
+    !*
+    !*    procfilename       : Character string
+    !*                         The file to print, e.g. /proc/self/status,
+    !*                         /proc/self/smaps, /proc/self/numa_maps,
+    !*                         /proc/meminfo.
+    !*  AUTHOR
+    !*    Mark Filipiak
+    !*  CREATION DATE
+    !*    01.12.2016
+    !*  MODIFICATION HISTORY
+    !*    Version 1, 01.12.2016, Mark Filipiak
+    !*  COPYRIGHT
+    !*    (c) University of Edinburgh 2016
+    !******
+    !*  Place remarks that should not be included in the documentation here.
+    !*
+    !*  Linux only.
+    !*/
+
+    CHARACTER(len=*), INTENT(in) :: procfilename
+    
+    INTEGER :: proc,ios
+    CHARACTER(len=string_length) :: line
+    
+    OPEN(newunit=proc,file=TRIM(procfilename),action='read')
+    DO
+      READ(proc,"(A)",iostat=ios) line
+      IF (ios < 0 ) EXIT ! end of file
+      WRITE(*,"(A)") TRIM(line)
+    END DO
+    CLOSE(proc)
+  END SUBROUTINE p_print_procfile
+  
+  FUNCTION p_vmpeak()
+    REAL    :: p_vmpeak
+
+    INTEGER :: proc,ios,start,finish
+    CHARACTER(len=string_length) :: line
+
+    INTEGER(int64) :: kbytes
+    ! real32 matches MPI_REAL4
+    REAL(real32)   :: VmPeak,sum_VmPeak
+
+    kbytes = 0
+
+    OPEN(newunit=proc,file="/proc/self/status",action='read')
+    DO
+      READ(proc,"(A)",iostat=ios) line
+      IF (ios < 0 ) EXIT ! end of file
+
+      ! test for a line like "VmPeak:       972 kB"
+      IF (INDEX(line,"VmPeak:") == 1 .AND. INDEX(line,"kB") /= 0) THEN
+        start  = LEN("VmPeak:") + 1
+        finish = INDEX(line,"kB") - 1
+        READ(line(start:finish),*) kbytes
+        EXIT
+      END IF
+    END DO
+    CLOSE(proc)
+
+    VmPeak = kbytes / 1048576.0 ! VmPeak in GB
+    ! MPI_REAL4 matches real32
+    CALL MPI_Allreduce(VmPeak,sum_VmPeak,1,MPI_REAL4,MPI_SUM,MPI_COMM_WORLD,   &
+                       m_ierr)
+    p_vmpeak = sum_VmPeak
+  END FUNCTION p_vmpeak
+  
+  FUNCTION p_vmsize()
+    REAL    :: p_vmsize
+
+    INTEGER :: proc,ios,start,finish
+    CHARACTER(len=string_length) :: line
+
+    INTEGER(int64) :: kbytes
+    ! real32 matches MPI_REAL4
+    REAL(real32)   :: VmSize,sum_VmSize
+
+    kbytes = 0
+
+    OPEN(newunit=proc,file="/proc/self/status",action='read')
+    DO
+      READ(proc,"(A)",iostat=ios) line
+      IF (ios < 0 ) EXIT ! end of file
+
+      ! test for a line like "VmSize:       972 kB"
+      IF (INDEX(line,"VmSize:") == 1 .AND. INDEX(line,"kB") /= 0) THEN
+        start  = LEN("VmSize:") + 1
+        finish = INDEX(line,"kB") - 1
+        READ(line(start:finish),*) kbytes
+        EXIT
+      END IF
+    END DO
+    CLOSE(proc)
+
+    VmSize = kbytes / 1048576.0 ! VmSize in GB
+    ! MPI_REAL4 matches real32
+    CALL MPI_Allreduce(VmSize,sum_VmSize,1,MPI_REAL4,MPI_SUM,MPI_COMM_WORLD,   &
+                       m_ierr)
+    p_vmsize = sum_VmSize
+  END FUNCTION p_vmsize
+  
   FUNCTION p_memory_use()
 
     !/****if* petsc/p_memory_use
     !*  NAME
-    !*    SUBROUTINE: p_memory_use
+    !*    FUNCTION: p_memory_use
     !*  SYNOPSIS
     !*    Usage:      p_memory_use()
     !*  FUNCTION
@@ -1772,8 +1886,6 @@ CONTAINS
     ! real32 matches MPI_REAL4
     REAL(real32)   :: VmRSS,sum_VmRSS
 
-    INTEGER :: ierr
-
     kbytes = 0
 
     OPEN(newunit=proc,file="/proc/self/status",action='read')
@@ -1793,7 +1905,8 @@ CONTAINS
 
     VmRSS = kbytes / 1048576.0 ! VmRSS in GB
     ! MPI_REAL4 matches real32
-    CALL MPI_Allreduce(VmRSS,sum_VmRSS,1,MPI_REAL4,MPI_SUM,MPI_COMM_WORLD,ierr)
+    CALL MPI_Allreduce(VmRSS,sum_VmRSS,1,MPI_REAL4,MPI_SUM,MPI_COMM_WORLD,     &
+                       m_ierr)
     p_memory_use = sum_VmRSS
   END FUNCTION p_memory_use
   
@@ -1801,7 +1914,7 @@ CONTAINS
 
     !/****if* petsc/p_memory_peak
     !*  NAME
-    !*    SUBROUTINE: p_memory_peak
+    !*    FUNCTION: p_memory_peak
     !*  SYNOPSIS
     !*    Usage:      p_memory_peak()
     !*  FUNCTION
@@ -1831,8 +1944,6 @@ CONTAINS
     ! real32 matches MPI_REAL4
     REAL(real32)   :: VmHWM,sum_VmHWM
 
-    INTEGER :: ierr
-
     kbytes = 0
 
     OPEN(newunit=proc,file="/proc/self/status",action='read')
@@ -1852,7 +1963,8 @@ CONTAINS
 
     VmHWM = kbytes / 1048576.0 ! VmHWM in GB
     ! MPI_REAL4 matches real32
-    CALL MPI_Allreduce(VmHWM,sum_VmHWM,1,MPI_REAL4,MPI_SUM,MPI_COMM_WORLD,ierr)
+    CALL MPI_Allreduce(VmHWM,sum_VmHWM,1,MPI_REAL4,MPI_SUM,MPI_COMM_WORLD,     &
+                       m_ierr)
     p_memory_peak = sum_VmHWM
   END FUNCTION p_memory_peak
   
