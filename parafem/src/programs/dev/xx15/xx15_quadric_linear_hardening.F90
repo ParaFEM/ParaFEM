@@ -1301,7 +1301,13 @@ PROGRAM xx15_quadric_linear_hardening
   peak_memory_use = p_memory_peak()
 
   IF (numpe==1) THEN
-    WRITE(11,'(a,i5,a)') "This job ran on ",npes," processors"
+    IF (solvers == parafem_solvers) THEN
+      WRITE(11,'(A)') "ParaFEM revision "//REVISION
+    ELSE IF (solvers == petsc_solvers) THEN
+      WRITE(11,'(A)') "ParaFEM revision "//REVISION//"; "//p_version()
+    END IF
+    WRITE(11,'(A)') "ParaFEM revision "//REVISION//" PETSc version "//p_version()
+    WRITE(11,'(A,I5,A)') "This job ran on ",npes," processors"
     WRITE(11,'(A,3(I8,A))') "There are ",nn," nodes",nels," elements and ",    &
                             neq," equations"
     WRITE(11,'(A,F10.4)') "Time to read input:       ", timest(30)
@@ -1319,7 +1325,7 @@ PROGRAM xx15_quadric_linear_hardening
     WRITE(11,*)
     ! REVISION is substituted with a string like "2108" (including the double
     ! quotes) by the preprocessor, see the makefile.
-    WRITE(11,'(2A,2(I0,A),4(F0.2,A),F0.2)')                                    &
+    WRITE(11,'(2A,2(I0,A),4(F0.2,A),F0.2)',advance='no')                       &
       REVISION,tab,                                                            &
       npes,tab,                                                                &
       neq,tab,                                                                 &
@@ -1328,6 +1334,9 @@ PROGRAM xx15_quadric_linear_hardening
       timest(34),tab,                                                          &
       timest(31)+timest(33)+timest(34),tab,                                    &
       peak_memory_use
+    IF (solvers == petsc_solvers) THEN
+      WRITE(11,'(2A)') tab,p_version()
+    END IF
 !   CALL FLUSH(11)
     CLOSE(11)
   END IF

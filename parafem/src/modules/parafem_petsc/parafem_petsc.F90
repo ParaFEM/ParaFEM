@@ -84,7 +84,7 @@ MODULE parafem_petsc
     KSP,         DIMENSION(:), ALLOCATABLE :: ksp
     ! KSPGetOptionsPrefix and PCGetOptionsPrefix don't work in Fortran yet
     ! (PETSc 3.7), so keep a record of the prefixes here.
-    CHARACTER(len=string_length), DIMENSION(:), ALLOCATABLE :: prefix(:)
+    CHARACTER(len=string_length), DIMENSION(:), ALLOCATABLE :: prefix
     PetscInt,    DIMENSION(:), ALLOCATABLE :: rows,cols
     PetscScalar, DIMENSION(:), ALLOCATABLE :: values
     PetscInt            :: its
@@ -104,6 +104,59 @@ MODULE parafem_petsc
   PRIVATE :: collect_elements,row_nnz
  
 CONTAINS
+  
+  FUNCTION p_version()
+
+    !/****if* petsc/p_version
+    !*  NAME
+    !*    FUNCTION: p_version
+    !*  SYNOPSIS
+    !*    Usage:      p_version()
+    !*  FUNCTION
+    !*    Return the PETSc version.
+    !*  ARGUMENTS
+    !*    None.
+    !*  AUTHOR
+    !*    Mark Filipiak
+    !*  CREATION DATE
+    !*    14.12.2016
+    !*  MODIFICATION HISTORY
+    !*    Version 1, 14.12.2016, Mark Filipiak
+    !*  COPYRIGHT
+    !*    (c) University of Edinburgh 2016
+    !******
+    !*  Place remarks that should not be included in the documentation here.
+    !*
+    !*/
+
+    USE, INTRINSIC :: iso_c_binding, ONLY: c_char,c_null_char,c_size_t
+
+    CHARACTER(:),ALLOCATABLE :: p_version
+
+    INTERFACE
+      FUNCTION PetscGetVersion(version,length) BIND(c,name="PetscGetVersion")
+        USE, INTRINSIC :: iso_c_binding, ONLY: c_char,c_size_t
+        ! this assumes Fortran PetscErrorCode == C PetscErrorCode
+        PetscErrorCode :: PetscGetVersion
+        INTEGER(c_size_t), VALUE, INTENT(in) :: length
+        CHARACTER(len=length,kind=c_char), INTENT(out) :: version
+      END FUNCTION PetscGetVersion
+    END INTERFACE
+
+    INTEGER :: last
+    INTEGER(c_size_t) :: length
+    CHARACTER(len=string_length,kind=c_char) :: version
+
+    length = LEN(version)
+    p_ierr = PetscGetVersion(version,length)
+    ! Convert null termination to spaces filling the end of the string.
+    last = INDEX(version,c_null_char) - 1
+    IF (last /= -1) THEN
+      p_version = version(1:last)
+    ELSE ! no null termination
+      p_version = version
+    END IF
+  END FUNCTION p_version
   
   SUBROUTINE p_initialize(fname_base,error)
 
