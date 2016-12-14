@@ -303,6 +303,11 @@ PROGRAM xx18
   peak_memory_use = p_memory_peak()
 
   IF(numpe==1)THEN
+    IF (solvers == parafem_solvers) THEN
+      WRITE(11,'(A)') "ParaFEM revision "//REVISION
+    ELSE IF (solvers == petsc_solvers) THEN
+      WRITE(11,'(A)') "ParaFEM revision "//REVISION//"; "//p_version()
+    END IF
     WRITE(11,'(A,F10.2)') "Time to read input:       ",                        &
                           timest(2)-timest(1) + timest(6)-timest(5)
     WRITE(11,'(A,F10.2)') "Time for setup:           ",timest(3)-timest(2)
@@ -317,16 +322,19 @@ PROGRAM xx18
     WRITE(11,*)
     ! REVISION is substituted with a string like "2108" (including the double
     ! quotes) by the preprocessor, see the makefile.
-    WRITE(11,'(2A,2(I0,A),4(F0.2,A),F0.2)')                                    &
+    WRITE(11,'(2A,2(I0,A),4(F0.2,A),F0.2)',advance='no')                       &
       REVISION,tab,                                                            &
       npes,tab,                                                                &
       neq,tab,                                                                 &
       timest(3)-timest(2),tab,                                                 &
-      timest(4)-timest(3),tab,                         &
+      timest(4)-timest(3),tab,                                                 &
       timest(5)-timest(4) + timest(7)-timest(6),tab,                           &
       timest(3)-timest(2) + timest(4)-timest(3)                                &
       + timest(5)-timest(4) + timest(7)-timest(6),tab,                         &
       peak_memory_use
+    IF (solvers == petsc_solvers) THEN
+      WRITE(11,'(2A)') tab,p_version()
+    END IF
   END IF
   
   !-----------------------------------------------------------------------------
