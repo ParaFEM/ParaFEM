@@ -9,15 +9,12 @@
 #PETSC_INCLUDE=
 #PETSC_LIB=
 #PETSC_L=
-#PETSC_INCLUDE=-I/work/z01/z01/mjf/ecse0604/petsc/64-cray-debug/INCLUDE
+#PETSC_INCLUDE=-I/work/z01/z01/mjf/ecse0604/petsc/64-cray-debug/include
 #PETSC_LIB=-L/work/z01/z01/mjf/ecse0604/petsc/64-cray-debug/lib
 #PETSC_L=-lpetsc
 PETSC_INCLUDE=-I/work/z01/z01/mjf/ecse0604/petsc/64-cray-opt/include
 PETSC_LIB=-L/work/z01/z01/mjf/ecse0604/petsc/64-cray-opt/lib
 PETSC_L=-lpetsc
-#PETSC_INCLUDE=-I/work/z01/z01/mjf/ecse0604/petsc_lomem/64-cray/include
-#PETSC_LIB=-L/work/z01/z01/mjf/ecse0604/petsc_lomem/64-cray/lib
-#PETSC_L=-lpetsc
 
 # ------------------------------------------------------------------------------
 # Generic settings for compilation
