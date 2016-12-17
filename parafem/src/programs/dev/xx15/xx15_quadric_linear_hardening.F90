@@ -1306,7 +1306,6 @@ PROGRAM xx15_quadric_linear_hardening
     ELSE IF (solvers == petsc_solvers) THEN
       WRITE(11,'(A)') "ParaFEM revision "//REVISION//"; "//p_version()
     END IF
-    WRITE(11,'(A)') "ParaFEM revision "//REVISION//" PETSc version "//p_version()
     WRITE(11,'(A,I5,A)') "This job ran on ",npes," processors"
     WRITE(11,'(A,3(I8,A))') "There are ",nn," nodes",nels," elements and ",    &
                             neq," equations"
