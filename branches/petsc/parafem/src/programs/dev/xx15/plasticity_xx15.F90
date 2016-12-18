@@ -2,7 +2,7 @@ MODULE plasticity_xx15
   
   USE PRECISION
   USE MATHS
-  USE NEW_LIBRARY 
+  USE NEW_LIBRARY
   
 CONTAINS
   
@@ -40,10 +40,19 @@ CONTAINS
     REAL(iwp) :: d_tensor(9,9), lnderiv(9,9), strderb(9,9), bderiv(9,9),      &
      geom_comp(9,9), ddsdde(6,6), b_tensor_3x3(3,3), et1(6), et2(6), et3(6),  &
      b_tensor(6), dstran(6), btensor(6), lne1, lne2, lne3, e1, e2, e3
-    REAL(iwp), PARAMETER :: half=0.5_iwp, one=1._iwp, two=2._iwp,             &
-     tol=0.000001_iwp
+    REAL(iwp), PARAMETER :: half=0.5_iwp, one=1._iwp, two=2._iwp
+    ! The tolerance is for evalue_i - evalue_j and is only valid because the
+    ! evalues are close to 1.  The tests should be done with
+    ! (evalue_i/evalue_j - 1) but that needs more tests for small evalue_j.
+    !
+    ! The tolerance must be small so that when the approximation in ln_deriv is
+    ! used the approximation error is small but must be large enough so that
+    ! when the approximation is not used the rounding error is small.
+    !
+    ! The tests must be identical in the eigen and ln_deriv subroutines.
+    REAL(iwp), PARAMETER :: tol=SQRT(EPSILON(1.0_iwp))
     INTEGER :: ntens
-       
+
     ntens=6
 
     ! Calculate the previously converged elastic B strain tensor
@@ -60,7 +69,7 @@ CONTAINS
     b_tensor(4)=b_tensor_3x3(1,2)
     b_tensor(5)=b_tensor_3x3(2,3)
     b_tensor(6)=b_tensor_3x3(1,3)
-    
+
     CALL eigen(e1,e2,e3,b_tensor,et1,et2,et3,tol)
 
     ! Calculate logarithmic strain through the B tensor
@@ -168,16 +177,14 @@ CONTAINS
 
     REAL(iwp), INTENT(IN) :: tensor(:), tol
     REAL(iwp), INTENT(OUT) :: et1(:), et2(:), et3(:), e1, e2, e3
-    REAL(iwp) :: tensor2(6), unit_tensor(6), scaled_tensor(6),                &
-     scaled_tensor2(6), inv1, inv2, inv3, r, q, alpha, pi, tr2, sinv1, sinv2, &
-     sinv3, str2, sca_tol
-    REAL(iwp), PARAMETER :: zero=0._iwp, half=0.5_iwp, one=1._iwp, two=2._iwp,&
-     three=3._iwp, nine=9._iwp, cons=5._iwp
+    REAL(iwp) :: tensor2(6), unit_tensor(6), scaled_tensor(6),                 &
+      scaled_tensor2(6), inv1, inv2, inv3, r, q, alpha, pi, tr2, sinv1, sinv2, &
+      sinv3, str2
+    REAL(iwp) :: se1, se2, se3
+    REAL(iwp), PARAMETER :: zero=0._iwp, half=0.5_iwp, one=1._iwp, two=2._iwp, &
+      three=3._iwp, nine=9._iwp, cons=5._iwp
     INTEGER :: i
 
-    ! Scale the tolerance
-    sca_tol=cons*tol
-    
     ! Initialize the values of the eigenprojections
     et1=zero
     et2=zero
@@ -195,18 +202,18 @@ CONTAINS
     scaled_tensor=cons*tensor
 
     ! Create the scaled squared tensor
-    scaled_tensor2(1)=(scaled_tensor(1)**2)+(scaled_tensor(4)**2)+                   &
-     (scaled_tensor(6)**2)
-    scaled_tensor2(2)=(scaled_tensor(4)**2)+(scaled_tensor(2)**2)+                   &
-     (scaled_tensor(5)**2)
-    scaled_tensor2(3)=(scaled_tensor(6)**2)+(scaled_tensor(5)**2)+                   &
-     (scaled_tensor(3)**2)
-    scaled_tensor2(4)=scaled_tensor(1)*scaled_tensor(4)+scaled_tensor(4)*            &
-     scaled_tensor(2)+scaled_tensor(6)*scaled_tensor(5)
-    scaled_tensor2(5)=scaled_tensor(4)*scaled_tensor(6)+scaled_tensor(2)*            &
-     scaled_tensor(5)+scaled_tensor(5)*scaled_tensor(3)
-    scaled_tensor2(6)=scaled_tensor(1)*scaled_tensor(6)+scaled_tensor(4)*            &
-     scaled_tensor(5)+scaled_tensor(6)*scaled_tensor(3)
+    scaled_tensor2(1)=(scaled_tensor(1)**2)+(scaled_tensor(4)**2)+             &
+      (scaled_tensor(6)**2)
+    scaled_tensor2(2)=(scaled_tensor(4)**2)+(scaled_tensor(2)**2)+             &
+      (scaled_tensor(5)**2)
+    scaled_tensor2(3)=(scaled_tensor(6)**2)+(scaled_tensor(5)**2)+             &
+      (scaled_tensor(3)**2)
+    scaled_tensor2(4)=scaled_tensor(1)*scaled_tensor(4)+scaled_tensor(4)*      &
+      scaled_tensor(2)+scaled_tensor(6)*scaled_tensor(5)
+    scaled_tensor2(5)=scaled_tensor(4)*scaled_tensor(6)+scaled_tensor(2)*      &
+      scaled_tensor(5)+scaled_tensor(5)*scaled_tensor(3)
+    scaled_tensor2(6)=scaled_tensor(1)*scaled_tensor(6)+scaled_tensor(4)*      &
+      scaled_tensor(5)+scaled_tensor(6)*scaled_tensor(3)
     
     ! Calculate the invariants of the tensor
     inv1=tensor(1)+tensor(2)+tensor(3)
@@ -215,8 +222,9 @@ CONTAINS
     
     inv2=half*((inv1**2)-tr2)
     
-    inv3=(tensor(1)*tensor(2)*tensor(3)+two*tensor(4)*tensor(5)*tensor(6))-                     &
-     ((tensor(6)**2)*tensor(2)+(tensor(5)**2)*tensor(1)+(tensor(4)**2)*tensor(3))
+    inv3=(tensor(1)*tensor(2)*tensor(3)+two*tensor(4)*tensor(5)*tensor(6))-    &
+      ((tensor(6)**2)*tensor(2)+(tensor(5)**2)*tensor(1)+                      &
+      (tensor(4)**2)*tensor(3))
     
     ! Calculate the invariants of the scaled tensor
     sinv1=scaled_tensor(1)+scaled_tensor(2)+scaled_tensor(3)
@@ -226,9 +234,9 @@ CONTAINS
     sinv2=half*((sinv1**2)-str2)
     
     sinv3=(scaled_tensor(1)*scaled_tensor(2)*scaled_tensor(3)+two*             &
-     scaled_tensor(4)*scaled_tensor(5)*scaled_tensor(6))-                     &
-     ((scaled_tensor(6)**2)*scaled_tensor(2)+(scaled_tensor(5)**2)*           &
-     scaled_tensor(1)+(scaled_tensor(4)**2)*scaled_tensor(3))
+      scaled_tensor(4)*scaled_tensor(5)*scaled_tensor(6))-                     &
+      ((scaled_tensor(6)**2)*scaled_tensor(2)+(scaled_tensor(5)**2)*           &
+      scaled_tensor(1)+(scaled_tensor(4)**2)*scaled_tensor(3))
     
     ! Calculate the eigenvalues
     r=(-two*(sinv1**3)+nine*sinv1*sinv2-27._iwp*sinv3)/54._iwp
@@ -252,9 +260,12 @@ CONTAINS
     alpha=DACOS(alpha)
     pi=4._iwp*DATAN(one)
 
-    e1=-two*DSQRT(q)*DCOS(alpha/three)+sinv1/three
-    e2=-two*DSQRT(q)*DCOS((alpha+two*pi)/three)+sinv1/three
-    e3=-two*DSQRT(q)*DCOS((alpha-two*pi)/three)+sinv1/three
+    se1=-two*DSQRT(q)*DCOS(alpha/three)+sinv1/three
+    se2=-two*DSQRT(q)*DCOS((alpha+two*pi)/three)+sinv1/three
+    se3=-two*DSQRT(q)*DCOS((alpha-two*pi)/three)+sinv1/three
+    e1=se1/cons
+    e2=se2/cons
+    e3=se3/cons
     
     ! Calculate the eigenprojections
     ! Assign the value to the unit_tensor
@@ -264,46 +275,33 @@ CONTAINS
     END DO
 
     ! If all eigenvalues are different
-    IF ((DABS(e1-e2)>sca_tol).and.(DABS(e2-e3)>sca_tol).and.(DABS(e1-e3)>     &
-     sca_tol)) THEN
-      et1=(e1/(two*(e1**3)-sinv1*(e1**2)+sinv3))*(scaled_tensor2-(sinv1-e1)*        &
-       scaled_tensor+(sinv3/e1)*unit_tensor)
-      et2=(e2/(two*(e2**3)-sinv1*(e2**2)+sinv3))*(scaled_tensor2-(sinv1-e2)*        &
-       scaled_tensor+(sinv3/e2)*unit_tensor)
-      et3=(e3/(two*(e3**3)-sinv1*(e3**2)+sinv3))*(scaled_tensor2-(sinv1-e3)*        &
-       scaled_tensor+(sinv3/e3)*unit_tensor)
-
+    IF ((DABS(e1-e2)>tol).and.(DABS(e2-e3)>tol).and.(DABS(e1-e3)>tol)) THEN
+      et1=(se1/(two*(se1**3)-sinv1*(se1**2)+sinv3))*(scaled_tensor2-(sinv1-se1)*&
+        scaled_tensor+(sinv3/se1)*unit_tensor)
+      et2=(se2/(two*(se2**3)-sinv1*(se2**2)+sinv3))*(scaled_tensor2-(sinv1-se2)*&
+        scaled_tensor+(sinv3/se2)*unit_tensor)
+      et3=(se3/(two*(se3**3)-sinv1*(se3**2)+sinv3))*(scaled_tensor2-(sinv1-se3)*&
+        scaled_tensor+(sinv3/se3)*unit_tensor)
     ! If two eigenvalues are equal
     ! If e1 and e2 are equal
-    ELSEIF ((DABS(e1-e2)<sca_tol).and.(DABS(e2-e3)>sca_tol).and.(DABS(e1-e3)> &
-     sca_tol)) THEN
-      et3=(e3/(two*(e3**3)-sinv1*(e3**2)+sinv3))*(scaled_tensor2-(sinv1-e3)*        &
-       scaled_tensor+(sinv3/e3)*unit_tensor)
+    ELSEIF ((DABS(e1-e2)<=tol).and.(DABS(e2-e3)>tol).and.(DABS(e1-e3)>tol)) THEN
+      et3=(se3/(two*(se3**3)-sinv1*(se3**2)+sinv3))*(scaled_tensor2-(sinv1-se3)*&
+        scaled_tensor+(sinv3/se3)*unit_tensor)
       et1=unit_tensor-et3
-
     ! If e1 and e3 are equal
-    ELSEIF ((DABS(e1-e3)<sca_tol).and.(DABS(e1-e2)>sca_tol).and.(DABS(e2-e3)>sca_tol)) THEN
-      et2=(e2/(two*(e2**3)-sinv1*(e2**2)+sinv3))*(scaled_tensor2-(sinv1-e2)*        &
-       scaled_tensor+(sinv3/e2)*unit_tensor)
+    ELSEIF ((DABS(e1-e3)<=tol).and.(DABS(e1-e2)>tol).and.(DABS(e2-e3)>tol)) THEN
+      et2=(se2/(two*(se2**3)-sinv1*(se2**2)+sinv3))*(scaled_tensor2-(sinv1-se2)*&
+        scaled_tensor+(sinv3/se2)*unit_tensor)
       et1=unit_tensor-et2
-
     ! If e2 and e3 are equal
-    ELSEIF ((DABS(e2-e3)<sca_tol).and.(DABS(e1-e2)>sca_tol).and.(DABS(e1-e3)>sca_tol)) THEN
-      et1=(e1/(two*(e1**3)-sinv1*(e1**2)+sinv3))*(scaled_tensor2-(sinv1-e1)*        &
-       scaled_tensor+(sinv3/e1)*unit_tensor)
+    ELSEIF ((DABS(e2-e3)<=tol).AND.(DABS(e1-e2)>tol).AND.(DABS(e1-e3)>tol)) THEN
+      et1=(se1/(two*(se1**3)-sinv1*(se1**2)+sinv3))*(scaled_tensor2-(sinv1-se1)*&
+        scaled_tensor+(sinv3/se1)*unit_tensor)
       et2=unit_tensor-et1
-
     ! If all eigenvalues are equal
     ELSE
       et1=unit_tensor
-
     END IF
-
-    e1=e1/cons
-    e2=e2/cons
-    e3=e3/cons
-    
-  RETURN
   END SUBROUTINE EIGEN
 
 !------------------------------------------------------------------------------
@@ -540,21 +538,21 @@ CONTAINS
 
     ! If two eigenvalues are equal    
     ! If e1 and e2 are equal
-    ELSEIF ((DABS(e1-e2)<tol).and.(DABS(e2-e3)>tol).and.(DABS(e1-e3)>tol)) THEN
+    ELSEIF ((DABS(e1-e2)<=tol).and.(DABS(e2-e3)>tol).and.(DABS(e1-e3)>tol)) THEN
       lnderiv=(one/e1)*tensor_p_iklj(et1,et1)+                                &
        (one/e3)*tensor_p_iklj(et3,et3)+                                       &
        ((lne1-lne3)/(e1-e3))*tensor_p_iklj(et1,et3)+                          &
        ((lne3-lne1)/(e3-e1))*tensor_p_iklj(et3,et1)
     
     ! If e1 and e3 are equal
-    ELSEIF ((DABS(e1-e3)<tol).and.(DABS(e1-e2)>tol).and.(DABS(e2-e3)>tol)) THEN
+    ELSEIF ((DABS(e1-e3)<=tol).and.(DABS(e1-e2)>tol).and.(DABS(e2-e3)>tol)) THEN
       lnderiv=(one/e1)*tensor_p_iklj(et1,et1)+                                &
        (one/e2)*tensor_p_iklj(et2,et2)+                                       &
        ((lne1-lne2)/(e1-e2))*tensor_p_iklj(et1,et2)+                          &
        ((lne2-lne1)/(e2-e1))*tensor_p_iklj(et2,et1)
 
     ! If e2 and e3 are equal
-    ELSEIF ((DABS(e2-e3)<tol).and.(DABS(e1-e2)>tol).and.(DABS(e1-e3)>tol)) THEN
+    ELSEIF ((DABS(e2-e3)<=tol).and.(DABS(e1-e2)>tol).and.(DABS(e1-e3)>tol)) THEN
       lnderiv=(one/e1)*tensor_p_iklj(et1,et1)+                                &
        (one/e2)*tensor_p_iklj(et2,et2)+                                       &
        ((lne1-lne2)/(e1-e2))*tensor_p_iklj(et1,et2)+                          &
