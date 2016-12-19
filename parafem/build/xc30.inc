@@ -12,14 +12,8 @@
 #PETSC_INCLUDE=-I/work/z01/z01/mjf/ecse0604/petsc/64-cray-debug/include
 #PETSC_LIB=-L/work/z01/z01/mjf/ecse0604/petsc/64-cray-debug/lib
 #PETSC_L=-lpetsc
-#PETSC_INCLUDE=-I/work/z01/z01/mjf/ecse0604/petsc/64-cray-opt/include
-#PETSC_LIB=-L/work/z01/z01/mjf/ecse0604/petsc/64-cray-opt/lib
-#PETSC_L=-lpetsc
-#PETSC_INCLUDE=-I/work/z01/z01/mjf/ecse0604/petsc/64-cray-opt-myhash/include
-#PETSC_LIB=-L/work/z01/z01/mjf/ecse0604/petsc/64-cray-opt-myhash/lib
-#PETSC_L=-lpetsc
-PETSC_INCLUDE=-I/work/z01/z01/mjf/ecse0604/petsc/64-cray-opt-newhash/include
-PETSC_LIB=-L/work/z01/z01/mjf/ecse0604/petsc/64-cray-opt-newhash/lib
+PETSC_INCLUDE=-I/work/z01/z01/mjf/ecse0604/petsc/64-cray-opt/include
+PETSC_LIB=-L/work/z01/z01/mjf/ecse0604/petsc/64-cray-opt/lib
 PETSC_L=-lpetsc
 
 # ------------------------------------------------------------------------------
