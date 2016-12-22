@@ -330,32 +330,26 @@ PROGRAM p12meshgen
 
             ! modify mesh_ensi for optional arguments
 
-            ALLOCATE(etype(nels),nf(nodof,nn),oldlds(nn*ndim)) 
+            ALLOCATE(etype(nels),nf(nodof,nn)) 
 
             etype  = 1   ! Only one material type in this mesh
             nf     = 0
-            oldlds = zero
 
             nstep=1; npri=1; dtim=1.0; solid=.true. 
 
-            k=0 
-            DO j=1,loaded_freedoms
-              k=k+1
-              found=.false.
-              DO i=1,nn
-                IF(i==no(k)) THEN
-                  l=i*3
-                  oldlds(l)=val(k)
-                  found=.true.
-                END IF
-                IF(found)CYCLE
-              END DO
+            CALL rest_to_nf(rest,nf)
+            CALL formnf(nf)
+
+            ALLOCATE(oldlds(maxval(nf)))
+            ! Any loaded nodes that are also fixed nodes have load = 0.0 
+            oldlds = zero
+            DO i = 1, loaded_freedoms
+              j = nf(3,no(i))
+              IF (j /= 0) oldlds(j) = val(i)
             END DO
 
-            CALL rest_to_nf(rest,nf)
-
-            CALL mesh_ensi(argv,nlen,g_coord,g_num,element,etype,nf,          &
-                           oldlds(1:),nstep,npri,dtim,solid)
+            CALL mesh_ensi(argv,nlen,g_coord,g_num,element,etype,nf,           &
+                           oldlds,nstep,npri,dtim,solid)
 
           CASE DEFAULT
 
@@ -613,35 +607,28 @@ PROGRAM p12meshgen
   
     CASE('paraview')
 
-    ! modify mesh_ensi for optional arguments
-
-      ALLOCATE(etype(nels),nf(nodof,nn),oldlds(nn*ndim)) 
-
-      etype  = 1
+      ! modify mesh_ensi for optional arguments
+      
+      ALLOCATE(etype(nels),nf(nodof,nn)) 
+      
+      etype  = 1   ! Only one material type in this mesh
       nf     = 0
-      oldlds = zero
-
-      nstep=incs; npri=1; dtim=1.0; solid=.true. 
-    
-      k=1 
-      DO j=1,loaded_freedoms
-        k=k+1
-        found=.false.
-        DO i=1,nn
-          IF(i==no(k)) THEN
-            l=i*3
-            oldlds(l)=val(k)
-            found=.true.
-          END IF
-          IF(found) EXIT
-        END DO
-      END DO
-        
+      
+      nstep=1; npri=1; dtim=1.0; solid=.TRUE. 
+      
       CALL rest_to_nf(rest,nf)
-
-      CALL mesh_ensi(argv,nlen,g_coord,g_num,element,etype,nf,                &
-                     oldlds(1:),nstep,npri,dtim,solid)
-
+      CALL formnf(nf)
+      
+      ALLOCATE(oldlds(MAXVAL(nf)))
+      ! Any loaded nodes that are also fixed nodes have load = 0.0 
+      oldlds = zero
+      DO i = 1, loaded_freedoms
+        j = nf(3,no(i))
+        IF (j /= 0) oldlds(j) = val(i)
+      END DO
+      
+      CALL mesh_ensi(argv,nlen,g_coord,g_num,element,etype,nf,                 &
+                     oldlds,nstep,npri,dtim,solid)
 
     CASE DEFAULT
 
