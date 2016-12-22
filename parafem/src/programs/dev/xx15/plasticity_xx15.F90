@@ -17,6 +17,8 @@ CONTAINS
     ! in the SUBROUTINE LN_DERIV
     ! B is the derivative of B with respect to F, obtained in the SUBROUTINE 
     ! BDERIVF
+    !
+    ! Are the factors of 2 and 1/2 correct in this subroutine and in ln_strain?
     IMPLICIT NONE
 
     REAL(iwp), INTENT(IN) :: jacF(:,:), jacFinc(:,:), detF
@@ -39,30 +41,30 @@ CONTAINS
     
     REAL(iwp) :: d_tensor(9,9), lnderiv(9,9), strderb(9,9), bderiv(9,9),      &
      geom_comp(9,9), ddsdde(6,6), b_tensor_3x3(3,3), et1(6), et2(6), et3(6),  &
-     b_tensor(6), dstran(6), btensor(6), lne1, lne2, lne3, e1, e2, e3
+     b_tensor(6), dstran(6), lne1, lne2, lne3, e1, e2, e3
     REAL(iwp), PARAMETER :: half=0.5_iwp, one=1._iwp, two=2._iwp
-    ! The tolerance is for evalue_i - evalue_j and is only valid because the
-    ! evalues are close to 1.  The tests should be done with
-    ! (evalue_i/evalue_j - 1) but that needs more tests for small evalue_j.
-    !
-    ! The tolerance must be small so that when the approximation in ln_deriv is
-    ! used the approximation error is small but must be large enough so that
-    ! when the approximation is not used the rounding error is small.
-    !
-    ! The tests must be identical in the eigen and ln_deriv subroutines.
-    REAL(iwp), PARAMETER :: tol=SQRT(EPSILON(1.0_iwp))
     INTEGER :: ntens
 
     ntens=6
 
     ! Calculate the previously converged elastic B strain tensor
-    lnstrainelas=two*lnstrainelas
-    
-    CALL exp_tensor(lnstrainelas,b_tensor_3x3,e1,e2,e3,et1,et2,et3,tol)
-    
+    CALL eigen_lapack(two*lnstrainelas,e1,e2,e3,et1,et2,et3)
+
+    CALL exp_tensor(e1,e2,e3,et1,et2,et3,b_tensor)
+
+    b_tensor_3x3(1,1)=b_tensor(1)
+    b_tensor_3x3(2,2)=b_tensor(2)
+    b_tensor_3x3(3,3)=b_tensor(3)
+    b_tensor_3x3(1,2)=b_tensor(4)
+    b_tensor_3x3(2,3)=b_tensor(5)
+    b_tensor_3x3(1,3)=b_tensor(6)
+    b_tensor_3x3(2,1)=b_tensor_3x3(1,2)
+    b_tensor_3x3(3,2)=b_tensor_3x3(2,3)
+    b_tensor_3x3(3,1)=b_tensor_3x3(1,3)
+
     ! Calculate the trial elastic B strain tensor
     b_tensor_3x3=MATMUL(MATMUL(jacFinc,b_tensor_3x3),TRANSPOSE(jacFinc))
-    
+
     b_tensor(1)=b_tensor_3x3(1,1)
     b_tensor(2)=b_tensor_3x3(2,2)
     b_tensor(3)=b_tensor_3x3(3,3)
@@ -70,10 +72,11 @@ CONTAINS
     b_tensor(5)=b_tensor_3x3(2,3)
     b_tensor(6)=b_tensor_3x3(1,3)
 
-    CALL eigen(e1,e2,e3,b_tensor,et1,et2,et3,tol)
+    CALL eigen_lapack(b_tensor,e1,e2,e3,et1,et2,et3)
 
-    ! Calculate logarithmic strain through the B tensor
-    CALL ln_strain(lne1,lne2,lne3,e1,e2,e3,et1,et2,et3,lnstrainelas,tol)
+    ! Calculate logarithmic strain through the B tensor and the logarithms of
+    ! the eigenvalues of the B tensor
+    CALL ln_strain(e1,e2,e3,et1,et2,et3,lnstrainelas,lne1,lne2,lne3)
     
     ! Assign the values so that the umat is as similar as possible to ABAQUS 
     ! umat
@@ -115,7 +118,7 @@ CONTAINS
     
     ! Computes the derivative of the logarithmic strain with respect to the 
     ! Left Cauchy-Green deformation tensor
-    CALL ln_deriv(lnderiv,e1,e2,e3,lne1,lne2,lne3,et1,et2,et3,tol)
+    CALL ln_deriv(e1,e2,e3,et1,et2,et3,lne1,lne2,lne3,lnderiv)
     
     ! Computes the derivative of the Left Cauchy-Green deformation tensor with
     ! respect to the deformation gradient
@@ -132,196 +135,39 @@ CONTAINS
     
     ! Enforce symmetry (correcting minor errors)
     deeF=(deeF+TRANSPOSE(deeF))*half
-
-  RETURN
   END SUBROUTINE PLASTICITY
 
 !------------------------------------------------------------------------------
 !------------------------------------------------------------------------------
 !------------------------------------------------------------------------------
 
-  SUBROUTINE EXP_TENSOR(tensor,tensor_exp_3x3,e1,e2,e3,et1,et2,et3,tol)
-    ! Calculates the tensor exponential from a symmetric tensor argument
+  SUBROUTINE EXP_TENSOR(e1,e2,e3,et1,et2,et3,tensor_exp)
+    ! Calculates the tensor exponential
     IMPLICIT NONE
 
-    REAL(iwp), INTENT(IN) :: tensor(:), tol
-    REAL(iwp), INTENT(OUT) :: tensor_exp_3x3(:,:), et1(:), et2(:), et3(:),e1, &
-     e2, e3
-    REAL(iwp) :: tensor_exp(6)
+    REAL(iwp), INTENT(IN)  :: e1,e2,e3,et1(:),et2(:),et3(:)
+    REAL(iwp), INTENT(OUT) :: tensor_exp(:)
 
-    CALL eigen(e1,e2,e3,tensor,et1,et2,et3,tol)
-
-    tensor_exp=DEXP(e1)*et1+DEXP(e2)*et2+DEXP(e3)*et3
-
-    tensor_exp_3x3(1,1)=tensor_exp(1)
-    tensor_exp_3x3(2,2)=tensor_exp(2)
-    tensor_exp_3x3(3,3)=tensor_exp(3)
-    tensor_exp_3x3(1,2)=tensor_exp(4)
-    tensor_exp_3x3(2,3)=tensor_exp(5)
-    tensor_exp_3x3(1,3)=tensor_exp(6)
-    tensor_exp_3x3(2,1)=tensor_exp_3x3(1,2)
-    tensor_exp_3x3(3,2)=tensor_exp_3x3(2,3)
-    tensor_exp_3x3(3,1)=tensor_exp_3x3(1,3)
-
-  RETURN
+    tensor_exp = EXP(e1)*et1 + EXP(e2)*et2 + EXP(e3)*et3
   END SUBROUTINE EXP_TENSOR
 
 !------------------------------------------------------------------------------
 !------------------------------------------------------------------------------
 !------------------------------------------------------------------------------
 
-  SUBROUTINE EIGEN(e1,e2,e3,tensor,et1,et2,et3,tol)
-    ! This subroutine calculates the eigenvalues and eigenprojections of a    
-    ! second order tensor
-    IMPLICIT NONE
-
-    REAL(iwp), INTENT(IN) :: tensor(:), tol
-    REAL(iwp), INTENT(OUT) :: et1(:), et2(:), et3(:), e1, e2, e3
-    REAL(iwp) :: tensor2(6), unit_tensor(6), scaled_tensor(6),                 &
-      scaled_tensor2(6), inv1, inv2, inv3, r, q, alpha, pi, tr2, sinv1, sinv2, &
-      sinv3, str2
-    REAL(iwp) :: se1, se2, se3
-    REAL(iwp), PARAMETER :: zero=0._iwp, half=0.5_iwp, one=1._iwp, two=2._iwp, &
-      three=3._iwp, nine=9._iwp, cons=5._iwp
-    INTEGER :: i
-
-    ! Initialize the values of the eigenprojections
-    et1=zero
-    et2=zero
-    et3=zero
-    
-    ! Create the squared tensor
-    tensor2(1)=(tensor(1)**2)+(tensor(4)**2)+(tensor(6)**2)
-    tensor2(2)=(tensor(4)**2)+(tensor(2)**2)+(tensor(5)**2)
-    tensor2(3)=(tensor(6)**2)+(tensor(5)**2)+(tensor(3)**2)
-    tensor2(4)=tensor(1)*tensor(4)+tensor(4)*tensor(2)+tensor(6)*tensor(5)
-    tensor2(5)=tensor(4)*tensor(6)+tensor(2)*tensor(5)+tensor(5)*tensor(3)
-    tensor2(6)=tensor(1)*tensor(6)+tensor(4)*tensor(5)+tensor(6)*tensor(3)
-     
-    ! Initialize the scaled tensor
-    scaled_tensor=cons*tensor
-
-    ! Create the scaled squared tensor
-    scaled_tensor2(1)=(scaled_tensor(1)**2)+(scaled_tensor(4)**2)+             &
-      (scaled_tensor(6)**2)
-    scaled_tensor2(2)=(scaled_tensor(4)**2)+(scaled_tensor(2)**2)+             &
-      (scaled_tensor(5)**2)
-    scaled_tensor2(3)=(scaled_tensor(6)**2)+(scaled_tensor(5)**2)+             &
-      (scaled_tensor(3)**2)
-    scaled_tensor2(4)=scaled_tensor(1)*scaled_tensor(4)+scaled_tensor(4)*      &
-      scaled_tensor(2)+scaled_tensor(6)*scaled_tensor(5)
-    scaled_tensor2(5)=scaled_tensor(4)*scaled_tensor(6)+scaled_tensor(2)*      &
-      scaled_tensor(5)+scaled_tensor(5)*scaled_tensor(3)
-    scaled_tensor2(6)=scaled_tensor(1)*scaled_tensor(6)+scaled_tensor(4)*      &
-      scaled_tensor(5)+scaled_tensor(6)*scaled_tensor(3)
-    
-    ! Calculate the invariants of the tensor
-    inv1=tensor(1)+tensor(2)+tensor(3)
-
-    tr2=tensor2(1)+tensor2(2)+tensor2(3)
-    
-    inv2=half*((inv1**2)-tr2)
-    
-    inv3=(tensor(1)*tensor(2)*tensor(3)+two*tensor(4)*tensor(5)*tensor(6))-    &
-      ((tensor(6)**2)*tensor(2)+(tensor(5)**2)*tensor(1)+                      &
-      (tensor(4)**2)*tensor(3))
-    
-    ! Calculate the invariants of the scaled tensor
-    sinv1=scaled_tensor(1)+scaled_tensor(2)+scaled_tensor(3)
-
-    str2=scaled_tensor2(1)+scaled_tensor2(2)+scaled_tensor2(3)
-    
-    sinv2=half*((sinv1**2)-str2)
-    
-    sinv3=(scaled_tensor(1)*scaled_tensor(2)*scaled_tensor(3)+two*             &
-      scaled_tensor(4)*scaled_tensor(5)*scaled_tensor(6))-                     &
-      ((scaled_tensor(6)**2)*scaled_tensor(2)+(scaled_tensor(5)**2)*           &
-      scaled_tensor(1)+(scaled_tensor(4)**2)*scaled_tensor(3))
-    
-    ! Calculate the eigenvalues
-    r=(-two*(sinv1**3)+nine*sinv1*sinv2-27._iwp*sinv3)/54._iwp
-    q=((sinv1**2)-three*sinv2)/nine
-    
-    IF (q<zero) THEN
-      q=zero
-    END IF
-
-    alpha=r/DSQRT(q**3)
-
-    ! Check for other extreme cases for q
-    IF (alpha<-one) THEN
-      alpha=-one
-    ELSEIF (alpha>one) THEN
-      alpha=one
-    ELSEIF (ISNAN(alpha)) THEN
-      alpha=one
-    END IF
-    
-    alpha=DACOS(alpha)
-    pi=4._iwp*DATAN(one)
-
-    se1=-two*DSQRT(q)*DCOS(alpha/three)+sinv1/three
-    se2=-two*DSQRT(q)*DCOS((alpha+two*pi)/three)+sinv1/three
-    se3=-two*DSQRT(q)*DCOS((alpha-two*pi)/three)+sinv1/three
-    e1=se1/cons
-    e2=se2/cons
-    e3=se3/cons
-    
-    ! Calculate the eigenprojections
-    ! Assign the value to the unit_tensor
-    DO i=1,3
-      unit_tensor(i)=one
-      unit_tensor(i+3)=zero
-    END DO
-
-    ! If all eigenvalues are different
-    IF ((DABS(e1-e2)>tol).and.(DABS(e2-e3)>tol).and.(DABS(e1-e3)>tol)) THEN
-      et1=(se1/(two*(se1**3)-sinv1*(se1**2)+sinv3))*(scaled_tensor2-(sinv1-se1)*&
-        scaled_tensor+(sinv3/se1)*unit_tensor)
-      et2=(se2/(two*(se2**3)-sinv1*(se2**2)+sinv3))*(scaled_tensor2-(sinv1-se2)*&
-        scaled_tensor+(sinv3/se2)*unit_tensor)
-      et3=(se3/(two*(se3**3)-sinv1*(se3**2)+sinv3))*(scaled_tensor2-(sinv1-se3)*&
-        scaled_tensor+(sinv3/se3)*unit_tensor)
-    ! If two eigenvalues are equal
-    ! If e1 and e2 are equal
-    ELSEIF ((DABS(e1-e2)<=tol).and.(DABS(e2-e3)>tol).and.(DABS(e1-e3)>tol)) THEN
-      et3=(se3/(two*(se3**3)-sinv1*(se3**2)+sinv3))*(scaled_tensor2-(sinv1-se3)*&
-        scaled_tensor+(sinv3/se3)*unit_tensor)
-      et1=unit_tensor-et3
-    ! If e1 and e3 are equal
-    ELSEIF ((DABS(e1-e3)<=tol).and.(DABS(e1-e2)>tol).and.(DABS(e2-e3)>tol)) THEN
-      et2=(se2/(two*(se2**3)-sinv1*(se2**2)+sinv3))*(scaled_tensor2-(sinv1-se2)*&
-        scaled_tensor+(sinv3/se2)*unit_tensor)
-      et1=unit_tensor-et2
-    ! If e2 and e3 are equal
-    ELSEIF ((DABS(e2-e3)<=tol).AND.(DABS(e1-e2)>tol).AND.(DABS(e1-e3)>tol)) THEN
-      et1=(se1/(two*(se1**3)-sinv1*(se1**2)+sinv3))*(scaled_tensor2-(sinv1-se1)*&
-        scaled_tensor+(sinv3/se1)*unit_tensor)
-      et2=unit_tensor-et1
-    ! If all eigenvalues are equal
-    ELSE
-      et1=unit_tensor
-    END IF
-  END SUBROUTINE EIGEN
-
-!------------------------------------------------------------------------------
-!------------------------------------------------------------------------------
-!------------------------------------------------------------------------------
-
-  SUBROUTINE EIGEN_LAPACK(e1,e2,e3,tensor,et1,et2,et3,tol)
+  SUBROUTINE eigen_lapack(tensor,e1,e2,e3,et1,et2,et3)
     ! This subroutine calculates the eigenvalues and eigenprojections of a
     ! second order tensor using LAPACK.
     IMPLICIT NONE
 
     EXTERNAL dsyev
 
-    REAL(iwp), INTENT(IN) :: tensor(:), tol
-    REAL(iwp), INTENT(OUT) :: et1(:), et2(:), et3(:), e1, e2, e3
+    REAL(iwp), INTENT(IN)  :: tensor(:)
+    REAL(iwp), INTENT(OUT) :: e1,e2,e3,et1(:),et2(:),et3(:)
 
     INTEGER, PARAMETER :: lwork = 3*3-1
     DOUBLE PRECISION   :: a(3,3), w(3), work(lwork)
     INTEGER            :: info
-    DOUBLE PRECISION   :: p1(6), p2(6), p3(6), t(3,3), v(3,1)
 
     a(1,1) = tensor(1)
     a(2,2) = tensor(2)
@@ -334,7 +180,7 @@ CONTAINS
 
     ! Handle any error better than this!
     IF (info /= 0) THEN
-      WRITE(0,'(A)') "dsyev failed in EIGEN_LAPACK"
+      WRITE(0,'(A)') "dsyev failed in eigen_lapack"
       STOP
     END IF
 
@@ -342,64 +188,33 @@ CONTAINS
     e2 = w(2)
     e3 = w(3)
 
-    v(:,1) = a(:,1)
-    t = MATMUL(v,transpose(v))
-    p1 = (/t(1,1),t(2,2),t(3,3),t(1,2),t(2,3),t(1,3)/)
-    v(:,1) = a(:,2)
-    t = MATMUL(v,transpose(v))
-    p2 = (/t(1,1),t(2,2),t(3,3),t(1,2),t(2,3),t(1,3)/)
-    v(:,1) = a(:,3)
-    t = MATMUL(v,transpose(v))
-    p3 = (/t(1,1),t(2,2),t(3,3),t(1,2),t(2,3),t(1,3)/)
-
-    ! If all eigenvalues are different
-    IF ((DABS(e1-e2)>tol).AND.(DABS(e2-e3)>tol).AND.(DABS(e1-e3)>tol)) THEN
-      et1 = p1
-      et2 = p2
-      et3 = p3
-    ! If two eigenvalues are equal
-    ! If e1 and e2 are equal
-    ELSEIF ((DABS(e1-e2)<=tol).AND.(DABS(e2-e3)>tol).AND.(DABS(e1-e3)>tol)) THEN
-      et1 = p1 + p2
-      et2 = 0
-      et3 = p3
-    ! If e1 and e3 are equal
-    ELSEIF ((DABS(e1-e3)<=tol).AND.(DABS(e1-e2)>tol).AND.(DABS(e2-e3)>tol)) THEN
-      et1 = p1 + p3
-      et2 = p2
-      et3 = 0
-    ! If e2 and e3 are equal
-    ELSEIF ((DABS(e2-e3)<=tol).AND.(DABS(e1-e2)>tol).AND.(DABS(e1-e3)>tol)) THEN
-      et1 = p1
-      et2 = p2 + p3
-      et3 = 0
-    ! If all eigenvalues are equal
-    ELSE
-      et1 = p1 + p2 + p3
-      et2 = 0
-      et3 = 0
-    END IF
-  END SUBROUTINE EIGEN_LAPACK
+    et1 = (/a(1,1)*a(1,1), a(2,1)*a(2,1), a(3,1)*a(3,1),                       &
+            a(1,1)*a(2,1), a(2,1)*a(3,1), a(1,1)*a(3,1)/)
+    et2 = (/a(1,2)*a(1,2), a(2,2)*a(2,2), a(3,2)*a(3,2),                       &
+            a(1,2)*a(2,2), a(2,2)*a(3,2), a(1,2)*a(3,2)/)
+    et3 = (/a(1,3)*a(1,3), a(2,3)*a(2,3), a(3,3)*a(3,3),                       &
+            a(1,3)*a(2,3), a(2,3)*a(3,3), a(1,3)*a(3,3)/)
+  END SUBROUTINE eigen_lapack
 
 !------------------------------------------------------------------------------
 !------------------------------------------------------------------------------
 !------------------------------------------------------------------------------
 
-  SUBROUTINE LN_STRAIN(lne1,lne2,lne3,e1,e2,e3,et1,et2,et3,lnstrainelas,tol)
+  SUBROUTINE LN_STRAIN(e1,e2,e3,et1,et2,et3,lnstrainelas,lne1,lne2,lne3)
     ! Computes the Left Cauchy-Green deformation tensor and then the          
     ! logarithmic strain tensor eigenvalues
+    !
+    ! Are the factors of 2 and 1/2 correct in this subroutine and in plasticity?
     IMPLICIT NONE
 
-    REAL(iwp), INTENT(IN) :: et1(:), et2(:), et3(:), e1, e2, e3, tol
-    REAL(iwp), INTENT(OUT) :: lnstrainelas(:), lne1, lne2, lne3
+    REAL(iwp), INTENT(IN)  :: e1,e2,e3,et1(:),et2(:),et3(:)
+    REAL(iwp), INTENT(OUT) :: lnstrainelas(:),lne1,lne2,lne3
 
-    lne1=DLOG(e1)
-    lne2=DLOG(e2)
-    lne3=DLOG(e3)
+    lne1 = LOG(e1)
+    lne2 = LOG(e2)
+    lne3 = LOG(e3)
 
-    lnstrainelas=0.5_iwp*(lne1*et1+lne2*et2+lne3*et3)
-
-  RETURN
+    lnstrainelas = 0.5_iwp * (lne1*et1 + lne2*et2 + lne3*et3)
   END SUBROUTINE LN_STRAIN
 
 !------------------------------------------------------------------------------
@@ -512,58 +327,63 @@ CONTAINS
 !------------------------------------------------------------------------------
 !------------------------------------------------------------------------------
 
-  SUBROUTINE LN_DERIV(lnderiv,e1,e2,e3,lne1,lne2,lne3,et1,et2,et3,tol)
+  SUBROUTINE LN_DERIV(e1,e2,e3,et1,et2,et3,lne1,lne2,lne3,lnderiv)
     ! Computes the derivative of the logarithmic strain with respect to the   
     ! Left Cauchy-Green deformation tensor (according to CS Jog)
     IMPLICIT NONE
 
-    REAL(iwp), INTENT(IN) :: et1(:), et2(:), et3(:), e1, e2, e3, lne1, lne2,  &
-     lne3, tol
-    REAL(iwp), INTENT(OUT) :: lnderiv(:,:)
+    ! The tolerance must be small so that the approximation error is small but
+    ! must be large enough so that when the approximation is not used the
+    ! rounding error is small.  For these calculations, we expect the
+    ! eigenvalues to be near 1.
+    REAL(iwp), PARAMETER :: tol=SQRT(EPSILON(1.0_iwp))
     REAL(iwp), PARAMETER :: one=1.0_iwp
+
+    REAL(iwp), INTENT(IN)  :: e1,e2,e3,et1(:),et2(:),et3(:),lne1,lne2,lne3
+    REAL(iwp), INTENT(OUT) :: lnderiv(:,:)
+
+    REAL(iwp) :: t(6)
 
     ! Calculate the derivative of the logarithmic strain with respect to the   
     ! Left Cauchy-Green tensor
     ! If all eigenvalues are different
-    IF ((DABS(e1-e2)>tol).and.(DABS(e2-e3)>tol).and.(DABS(e1-e3)>tol)) THEN
-      lnderiv=(one/e1)*tensor_p_iklj(et1,et1)+                                &
-       (one/e2)*tensor_p_iklj(et2,et2)+                                       &
-       (one/e3)*tensor_p_iklj(et3,et3)+                                       &
-       ((lne1-lne2)/(e1-e2))*tensor_p_iklj(et1,et2)+                          &
-       ((lne1-lne3)/(e1-e3))*tensor_p_iklj(et1,et3)+                          &
-       ((lne2-lne1)/(e2-e1))*tensor_p_iklj(et2,et1)+                          &
-       ((lne2-lne3)/(e2-e3))*tensor_p_iklj(et2,et3)+                          &
-       ((lne3-lne1)/(e3-e1))*tensor_p_iklj(et3,et1)+                          &
-       ((lne3-lne2)/(e3-e2))*tensor_p_iklj(et3,et2)
-
+    IF ((ABS(e1-e2)>tol).AND.(ABS(e2-e3)>tol).AND.(ABS(e1-e3)>tol)) THEN
+      lnderiv =      (one/e1)*tensor_p_iklj(et1,et1)+                          &
+                     (one/e2)*tensor_p_iklj(et2,et2)+                          &
+                     (one/e3)*tensor_p_iklj(et3,et3)+                          &
+        ((lne1-lne2)/(e1-e2))*tensor_p_iklj(et1,et2)+                          &
+        ((lne1-lne3)/(e1-e3))*tensor_p_iklj(et1,et3)+                          &
+        ((lne2-lne1)/(e2-e1))*tensor_p_iklj(et2,et1)+                          &
+        ((lne2-lne3)/(e2-e3))*tensor_p_iklj(et2,et3)+                          &
+        ((lne3-lne1)/(e3-e1))*tensor_p_iklj(et3,et1)+                          &
+        ((lne3-lne2)/(e3-e2))*tensor_p_iklj(et3,et2)
     ! If two eigenvalues are equal    
     ! If e1 and e2 are equal
-    ELSEIF ((DABS(e1-e2)<=tol).and.(DABS(e2-e3)>tol).and.(DABS(e1-e3)>tol)) THEN
-      lnderiv=(one/e1)*tensor_p_iklj(et1,et1)+                                &
-       (one/e3)*tensor_p_iklj(et3,et3)+                                       &
-       ((lne1-lne3)/(e1-e3))*tensor_p_iklj(et1,et3)+                          &
-       ((lne3-lne1)/(e3-e1))*tensor_p_iklj(et3,et1)
-    
+    ELSEIF ((ABS(e1-e2)<=tol).and.(ABS(e2-e3)>tol).and.(ABS(e1-e3)>tol)) THEN
+      t = et1 + et2
+      lnderiv =      (one/e1)*tensor_p_iklj(  t,  t)+                          &
+                     (one/e3)*tensor_p_iklj(et3,et3)+                          &
+        ((lne1-lne3)/(e1-e3))*tensor_p_iklj(  t,et3)+                          &
+        ((lne3-lne1)/(e3-e1))*tensor_p_iklj(et3,  t)
     ! If e1 and e3 are equal
-    ELSEIF ((DABS(e1-e3)<=tol).and.(DABS(e1-e2)>tol).and.(DABS(e2-e3)>tol)) THEN
-      lnderiv=(one/e1)*tensor_p_iklj(et1,et1)+                                &
-       (one/e2)*tensor_p_iklj(et2,et2)+                                       &
-       ((lne1-lne2)/(e1-e2))*tensor_p_iklj(et1,et2)+                          &
-       ((lne2-lne1)/(e2-e1))*tensor_p_iklj(et2,et1)
-
+    ELSEIF ((ABS(e1-e3)<=tol).AND.(ABS(e1-e2)>tol).AND.(ABS(e2-e3)>tol)) THEN
+      t = et1 + et3
+      lnderiv =      (one/e1)*tensor_p_iklj(  t,  t)+                          &
+                     (one/e2)*tensor_p_iklj(et2,et2)+                          &
+        ((lne1-lne2)/(e1-e2))*tensor_p_iklj(  t,et2)+                          &
+        ((lne2-lne1)/(e2-e1))*tensor_p_iklj(et2,  t)
     ! If e2 and e3 are equal
-    ELSEIF ((DABS(e2-e3)<=tol).and.(DABS(e1-e2)>tol).and.(DABS(e1-e3)>tol)) THEN
-      lnderiv=(one/e1)*tensor_p_iklj(et1,et1)+                                &
-       (one/e2)*tensor_p_iklj(et2,et2)+                                       &
-       ((lne1-lne2)/(e1-e2))*tensor_p_iklj(et1,et2)+                          &
-       ((lne2-lne1)/(e2-e1))*tensor_p_iklj(et2,et1)
-
+    ELSEIF ((ABS(e2-e3)<=tol).and.(ABS(e1-e2)>tol).and.(ABS(e1-e3)>tol)) THEN
+      t = et2 + et3
+      lnderiv =      (one/e1)*tensor_p_iklj(et1,et1)+                          &
+                     (one/e2)*tensor_p_iklj(  t,  t)+                          &
+        ((lne1-lne2)/(e1-e2))*tensor_p_iklj(et1,  t)+                          &
+        ((lne2-lne1)/(e2-e1))*tensor_p_iklj(  t,et1)
     ! If all eigenvalues are equal
     ELSE
-      lnderiv=(one/e1)*tensor_p_iklj(et1,et1)
+      t = et1 + et2 + et3
+      lnderiv =      (one/e1)*tensor_p_iklj(  t,  t)
     END IF
-
-  RETURN
   END SUBROUTINE LN_DERIV
 
 !------------------------------------------------------------------------------
