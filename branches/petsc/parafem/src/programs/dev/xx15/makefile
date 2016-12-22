@@ -25,8 +25,7 @@ MODULE_MPI            = ../../../../include/mpi
 MODULE_CHOOSE_SOLVERS = ../../../../include/choose_solvers
 MODULE_PARAFEM_PETSC  = ../../../../include/parafem_petsc
 LIB	    = ../../../../lib
-EXECUTABLES = xx15_elastic xx15_quadric_linear_hardening xx15_vm_nonlinear_hardening
-
+EXECUTABLES = xx15_elastic xx15_quadric_linear_hardening xx15_vm_nonlinear_hardening normdiff
 .SUFFIXES: .o .F90 .f90
 
 all:	release
@@ -61,6 +60,9 @@ xx15_vm_nonlinear_hardening: xx15_vm_nonlinear_hardening.o plasticity_xx15.o
 xx15_original: xx15_original.o plasticity_xx15.o
 	$(FC) $(LDFLAGS) -o $@ $+ $(LIBS)
 
+normdiff: normdiff.o
+	$(FC) $(LDFLAGS) -o $@ $+ $(LIBS)
+
 # Compiling the xx15 objects needs the plasticity_xx15 module already
 # compiled.
 xx15_%.o : xx15_%.F90 plasticity_xx15.o
@@ -71,6 +73,9 @@ xx15_%.o : xx15_%.F90 plasticity_xx15.o
 	$(FC) $(FFLAGS) -D REVISION=\""$$REVISION"\" -o $@ $< 
 
 plasticity_xx15.o : plasticity_xx15.F90
+	$(FC) $(FFLAGS) -o $@ $< 
+
+normdiff.o : normdiff.F90
 	$(FC) $(FFLAGS) -o $@ $< 
 
 clean:
