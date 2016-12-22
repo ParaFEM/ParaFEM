@@ -6856,7 +6856,12 @@ END SUBROUTINE bcast_inputdata_p127
     WRITE(16,'(A/A/A)') "part", "      1","coordinates"
     DO j=1,UBOUND(nf,1)
       DO i=1, UBOUND(nf,2)
-        WRITE(16,'(E12.5)') loads(nf(j,i))
+        k = nf(j,i)
+        IF (k /= 0) THEN
+          WRITE(16,'(E12.5)') loads(k)
+        ELSE
+          WRITE(16,'(E12.5)') 0.0
+        END IF
       END DO
     END DO
     CLOSE(16)
