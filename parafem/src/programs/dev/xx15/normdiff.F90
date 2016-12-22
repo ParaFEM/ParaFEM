@@ -135,9 +135,9 @@ PROGRAM normdiff
   rms1 = SQRT(sumsq1 / n)
   rms2 = SQRT(sumsq2 / n)
   mean = (rms1 + rms2) / 2
-  small = relval * mean
+  small = MAX(0.0d0, relval * mean)
 
-  WRITE(*,'(a,(1p,e14.6),a,(1p,e14.6))') "rms norm = ", mean, ", ignoring norms < ", small
+  WRITE(*,'(a,(1p,e14.6),a,(1p,e14.6))') "rms norm = ", mean, ", ignoring norms <= ", small
 
   OPEN(newunit=f1,file=filename1,status='old',action='read',iostat=stat1)
   OPEN(newunit=f2,file=filename2,status='old',action='read',iostat=stat2)
@@ -216,12 +216,9 @@ PROGRAM normdiff
         absdiff = SQRT(SUM(diff(1:3)**2) + 2 * SUM(diff(4:6)**2))
       END IF
       mean_norm = (norm1 + norm2) / 2
-      IF (mean_norm >= small) THEN
-        IF (mean_norm /= 0.0) THEN
-          reldiff = absdiff / mean_norm
-        ELSE
-          reldiff = 0.0
-        END IF
+      IF (mean_norm > small) THEN
+        ! small is always >= 0
+        reldiff = absdiff / mean_norm
         IF (reldiff > reltol) THEN
           WRITE(*,'(8(1p,e14.6))') absdiff,mean_norm,var1(1:numvar)
           WRITE(*,'(28x,6(1p,e14.6))')               var2(1:numvar)
