@@ -32,14 +32,23 @@ export modulefile=$HOME/modulefiles/parafem/$version
 # When the default modules are up to date, then only this line is
 # needed.
 #module load cray-petsc-64
+#module unload modules
+#module load modules/3.2.10.5
+#source $MODULESHOME/init/bash
+#module load cdt/16.09 &> /dev/null
 module unload modules
-module load modules/3.2.10.5
+module load modules/3.2.10.3
 source $MODULESHOME/init/bash
-module load cdt/16.09 &> /dev/null
+module use $HOME/modulefiles
+module load mycdt/16.09 &> /dev/null
+
+module unload cray-petsc
+module unload cray-tpsl
 module unload cray-petsc-64
 module unload cray-tpsl-64
 module load cray-tpsl-64/16.07.1
-#module load cray-petsc-64/3.7.2.1
+# comment out the following line when using your own PETSc
+module load cray-petsc-64/3.7.2.1
 
 ## CrayPat
 #module unload perftools
