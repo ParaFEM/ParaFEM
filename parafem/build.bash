@@ -32,15 +32,10 @@ export modulefile=$HOME/modulefiles/parafem/$version
 # When the default modules are up to date, then only this line is
 # needed.
 #module load cray-petsc-64
-#module unload modules
-#module load modules/3.2.10.5
-#source $MODULESHOME/init/bash
-#module load cdt/16.09 &> /dev/null
 module unload modules
-module load modules/3.2.10.3
+module load modules/3.2.10.5
 source $MODULESHOME/init/bash
-module use $HOME/modulefiles
-module load mycdt/16.09 &> /dev/null
+module load cdt/16.09 &> /dev/null
 
 module unload cray-petsc
 module unload cray-tpsl
@@ -60,14 +55,12 @@ module list -t 2>&1 | head -n 1 > $log
 module list -t 2>&1 | tail -n +2 | LC_ALL=POSIX sort >> $log
 echo >> $log
 
-# There is clock skew between TDS and /home so sleeps are needed.
+# There is clock skew between TDS and /home.
 
 (
     export PARAFEM_HOME=$(readlink --canonicalize $PWD)
     if [[ $build == 'xx' ]]; then
-	sleep 1 # TDS and /home are sleepy
-	./make-parafem MACHINE=xc30 --no-libs --no-tools -mpi -parafem_petsc --install-mpi-parafem_petsc-only -xx >> $log 2>&1
-	sleep 1 # TDS and /home are sleepy
+	./make-parafem MACHINE=xc30 --no-libs --no-tools -mpi -parafem_petsc -xx >> $log 2>&1
 	cat > $modulefile <<EOF
 #%Module
 #
@@ -89,22 +82,14 @@ prepend-path PATH \$PARAFEM_DIR/bin
 module-whatis "xx15 and xx18: ParaFEM with PETSc"
 
 EOF
-	sleep 1 # TDS and /home are sleepy
     elif [[ $build == 'modules' ]]; then
-	sleep 1 # TDS and /home are sleepy
-	./make-parafem MACHINE=xc30 --no-libs --no-tools -mpi -parafem_petsc --install-mpi-parafem_petsc-only --only-modules >> $log 2>&1
-	sleep 1 # TDS and /home are sleepy
-	./make-parafem MACHINE=xc30 --no-libs -mpi -parafem_petsc --install-mpi-parafem_petsc-only --only-tools -preproc >> $log 2>&1
-	sleep 1 # TDS and /home are sleepy
+	./make-parafem MACHINE=xc30 --no-libs --no-tools -mpi -parafem_petsc --only-modules >> $log 2>&1
+	./make-parafem MACHINE=xc30 --no-libs -mpi -parafem_petsc --only-tools -preproc >> $log 2>&1
     elif [[ $build == 'clean' ]]; then
-	sleep 1 # TDS and /home are sleepy
-	./make-parafem MACHINE=xc30 clean execlean >> $log 2>&1
+	./make-parafem MACHINE=xc30 -parafem_petsc clean execlean >> $log 2>&1
 	rm -f $modulefile
-	sleep 1 # TDS and /home are sleepy
     elif [[ $build == 'xxclean' ]]; then
-	sleep 1 # TDS and /home are sleepy
-	./make-parafem MACHINE=xc30 --only-programs -xx clean execlean >> $log 2>&1
+	./make-parafem MACHINE=xc30 -parafem_petsc --only-programs -xx clean execlean >> $log 2>&1
 	rm -f $modulefile
-	sleep 1 # TDS and /home are sleepy
     fi
 )

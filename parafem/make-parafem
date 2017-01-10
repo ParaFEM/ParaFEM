@@ -36,7 +36,6 @@ export VERSION
 DO_RELEASE=1
 DO_DEBUG=0
 DO_INSTALL=1
-DO_INSTALL_MPI_PARAFEM_PETSC_ONLY=0
 DO_CLEAN=0
 DO_EXECLEAN=0
 
@@ -79,7 +78,7 @@ BUILD_LIBRARIES_OPT=
 # options are: 5ed, xx, prog8, gaitfem, rfem
 BUILD_PROGRAMS_OPT=
 BUILD_GROUP_5ED="p121 p122 p123 p124 p125 p126 p127 p128 p129 p1210" # p1211
-BUILD_GROUP_XX="xx15 xx18" #"xx1 xx11 xx12 xx12_b xx7 xx8 xx14 xx15 xx18" 
+BUILD_GROUP_XX="xx15 xx18" # temporary for testing "xx1 xx11 xx12 xx12_b xx7 xx8 xx14 xx15 xx17 xx18"
 BUILD_GROUP_PROG8="prog81 prog82 prog83"
 BUILD_GROUP_GAITFEM="gaitfem"
 BUILD_GROUP_RFEM="rfemsolve rfemsolve_te"
@@ -91,7 +90,7 @@ BUILD_GROUP_POSTPROC="d2off bnd2dis mat2numpe upvw2dis pf2ensi pf2ensibin pf2ens
 
 # DEFAULT build options for LIBRARIES, MODULES, PROGRAMS and TOOLS
 BUILD_LIBRARIES_DEFAULTS="arpack gaf77" # + metis
-BUILD_MODULES_DEFAULTS="mpi choose_solvers parafem_petsc serial bem_lib bem_lib_p"
+BUILD_MODULES_DEFAULTS="mpi serial bem_lib bem_lib_p"
 BUILD_PROGRAMS_DEFAULTS="5ed xx rfem" # + prog8 + gaitfem
 BUILD_TOOLS_DEFAULTS="preproc postproc"
 
@@ -123,7 +122,7 @@ showusage() {
     echo 
     echo "Building the PROGRAMS:"
     echo "  -5ed will build the programs in the 5ed group: $BUILD_GROUP_5ED"
-    echo "  -xx will build the programs in the xx group - only xx15 and xx18: $BUILD_GROUP_XX"
+    echo "  -xx will build the programs in the xx group: $BUILD_GROUP_XX"
     echo "  -prog8 will build the programs in the prog8 group: $BUILD_GROUP_PROG8"
     echo "  -gaitfem will build the programs in the gaitfem group: $BUILD_GROUP_GAITFEM"
     echo "  -rfem will build the programs in the rfem group: $BUILD_GROUP_RFEM"
@@ -152,7 +151,6 @@ showusage() {
     echo "  --no-libs will disable the building of the external libraries"
     echo "  --no-tools will disable the building of the tools"
     echo "  --no-install will compile the libraries, modules, programs and tools but not install then in bin/"
-    echo "  --install-mpi-parafem_petsc-only will install only the MPI, choose_solvers, and PETSc interface modules"
     echo
 }
 
@@ -224,7 +222,7 @@ while [ $# -gt 0 ]; do
 	# ----------------------------------------------------------------------
 	# tool group module options
 	-preproc) BUILD_TOOLS_OPT="$BUILD_TOOLS_OPT preproc"; BUILD_TOOLS_GIVEN=1;;
-	-postproc) BUILD_TOOLS_OPT="%BUILD_TOOLS_OPT postproc"; BUILD_TOOLS_GIVEN=1;;
+	-postproc) BUILD_TOOLS_OPT="$BUILD_TOOLS_OPT postproc"; BUILD_TOOLS_GIVEN=1;;
 
 	# ----------------------------------------------------------------------
 	# build restriction options
@@ -235,7 +233,6 @@ while [ $# -gt 0 ]; do
 	--no-libs) BUILD_LIBRARIES=0;;
 	--no-tools) BUILD_TOOLS=0;;
 	--no-install) DO_INSTALL=0;;
-	--install-mpi-parafem_petsc-only) DO_INSTALL_MPI_PARAFEM_PETSC_ONLY=1;;
 	machine=*) MACHINE=`echo $ARG | sed -e 's/machine=//g'`;;
     esac
     shift
@@ -338,11 +335,9 @@ else
     fi
     # append install rule if set
     if [ $DO_INSTALL = 1 ]; then
-	if [ $DO_INSTALL_MPI_PARAFEM_PETSC_ONLY = 1 ]; then
-	    MODULES_TARGET="$MODULES_TARGET install-mpi install-choose_solvers install-parafem_petsc"
-	else
-	    MODULES_TARGET="$MODULES_TARGET install"
-	fi
+	for TYPE in $BUILD_MODULES_OPT; do
+	    MODULES_TARGET="$MODULES_TARGET install-$TYPE"
+	done
 	TARGET="$TARGET install"
     fi
 fi
@@ -397,7 +392,6 @@ if [ $BUILD_PROGRAMS = 1 ]; then
 		    cd src/programs/5th_ed/$PROG && make $TARGET && cd ../../../..
 		    if [ $? = 2 ]; then	error "BUILD_GROUP_5ED/$PROG/$TARGET"; fi
 		done;;
-
 	    xx)
 		for PROG in $BUILD_GROUP_XX; do
 		    separator
