@@ -4,20 +4,31 @@
 # Include file for the xc30 (ARCHER) architecture.
 # ------------------------------------------------------------------------------
 
-# Where PETSc is.  Usually this is the library provided by Cray, so
-# all the variables are empty.
+# Where PETSc is.  Usually this is the library provided by the
+# compiler wrapper, so the variables do not need to be (and should not
+# be) set.
 PETSC_INCLUDE=
-PETSC_LIB=
-PETSC_L=
+PETSC_LDFLAGS=
 #PETSC_INCLUDE=-I/work/z01/z01/mjf/ecse0604/petsc/64-cray-debug/include
-#PETSC_LIB=-L/work/z01/z01/mjf/ecse0604/petsc/64-cray-debug/lib
-#PETSC_L=-lpetsc
-#PETSC_INCLUDE=-I/work/z01/z01/mjf/ecse0604/petsc/64-cray-opt/include
-#PETSC_LIB=-L/work/z01/z01/mjf/ecse0604/petsc/64-cray-opt/lib
-#PETSC_L=-lpetsc
-#PETSC_INCLUDE=-I/work/z01/z01/mjf/ecse0604/petsc/64-cray-opt+3rd-party/include
-#PETSC_LIB=-L/work/z01/z01/mjf/ecse0604/petsc/64-cray-opt+3rd-party/lib
-#PETSC_L=-lpetsc
+#PETSC_LDFLAGS=-L/work/z01/z01/mjf/ecse0604/petsc/64-cray-debug/lib -lpetsc
+
+# When you modify a program to use the ParaFEM-PETSc interface,
+# override the program group defaults to include the PETSc library
+# location and name, e.g.
+
+# XX18_MPI_REL_FFLAGS=$(DEFAULT_XX_MPI_REL_FFLAGS)
+# XX18_MPI_REL_LDFLAGS=$(DEFAULT_XX_MPI_REL_LDFLAGS) $(PETSC_LDFLAGS)
+# XX18_MPI_DBG_FFLAGS=$(DEFAULT_XX_MPI_DBG_FFLAGS)
+# XX18_MPI_DBG_LDFLAGS=$(DEFAULT_XX_MPI_DBG_LDFLAGS) $(PETSC_LDFLAGS)
+
+# When you modify a program to use PETSc directly, override the
+# program group defaults to include the PETSc modules and library
+# location and name, e.g.
+
+# XX18_MPI_REL_FFLAGS=$(DEFAULT_XX_MPI_REL_FFLAGS) $(PETSC_INCLUDE)
+# XX18_MPI_REL_LDFLAGS=$(DEFAULT_XX_MPI_REL_LDFLAGS) $(PETSC_LDFLAGS)
+# XX18_MPI_DBG_FFLAGS=$(DEFAULT_XX_MPI_DBG_FFLAGS) $(PETSC_INCLUDE)
+# XX18_MPI_DBG_LDFLAGS=$(DEFAULT_XX_MPI_DBG_LDFLAGS) $(PETSC_LDFLAGS)
 
 # ------------------------------------------------------------------------------
 # Generic settings for compilation
@@ -49,20 +60,20 @@ EXT_LIB_METIS_RANLIB=ranlib
 # Form is LIB_(MPI|SERIAL|OPENMP|GPU|CHOOSE_SOLVERS|PARAFEM_PETSC)_(REL|DBG)_(FFLAGS|LDFLAGS)
 # These flags are directly used by the module makefiles
 # ------------------------------------------------------------------------------
-LIB_MPI_REL_FFLAGS=-O3 -em -s real64 $(PETSC_INCLUDE)
-LIB_MPI_DBG_FFLAGS=-g -em -s real64 $(PETSC_INCLUDE)
+LIB_MPI_REL_FFLAGS=-O3 -em -s real64
+LIB_MPI_DBG_FFLAGS=-g -em -s real64
   
-LIB_SERIAL_REL_FFLAGS=-O3 -em -s real64 $(PETSC_INCLUDE)
-LIB_SERIAL_DBG_FFLAGS=-g -em -s real64 $(PETSC_INCLUDE)
+LIB_SERIAL_REL_FFLAGS=-O3 -em -s real64
+LIB_SERIAL_DBG_FFLAGS=-g -em -s real64
   
-LIB_BEM_REL_FFLAGS=-O3 -em -s real64 $(PETSC_INCLUDE)
-LIB_BEM_DBG_FFLAGS=-g -em -s real64 $(PETSC_INCLUDE)
+LIB_BEM_REL_FFLAGS=-O3 -em -s real64
+LIB_BEM_DBG_FFLAGS=-g -em -s real64
   
-LIB_BEM_P_REL_FFLAGS=-O3 -em -s real64 $(PETSC_INCLUDE)
-LIB_BEM_P_DBG_FFLAGS=-g -em -s real64 $(PETSC_INCLUDE)
+LIB_BEM_P_REL_FFLAGS=-O3 -em -s real64
+LIB_BEM_P_DBG_FFLAGS=-g -em -s real64
 
-LIB_CHOOSE_SOLVERS_REL_FFLAGS=-O3 -em -s real64 $(PETSC_INCLUDE)
-LIB_CHOOSE_SOLVERS_DBG_FFLAGS=-g -em -s real64 $(PETSC_INCLUDE)
+LIB_CHOOSE_SOLVERS_REL_FFLAGS=-O3 -em -s real64
+LIB_CHOOSE_SOLVERS_DBG_FFLAGS=-g -em -s real64
   
 LIB_PARAFEM_PETSC_REL_FFLAGS=-O3 -em -s real64 $(PETSC_INCLUDE)
 LIB_PARAFEM_PETSC_DBG_FFLAGS=-g -em -s real64 $(PETSC_INCLUDE)
@@ -83,22 +94,22 @@ LIB_PARAFEM_PETSC_DBG_FFLAGS=-g -em -s real64 $(PETSC_INCLUDE)
 # ------------------------------------------------------------------------------
 
 # generic P12 group FFLAGS and LDFLAGS
-DEFAULT_P12_MPI_REL_FFLAGS=-V -O3 -em -s real64 $(PETSC_INCLUDE)
-DEFAULT_P12_MPI_DBG_FFLAGS=-V -g -em -s real64 $(PETSC_INCLUDE)
-DEFAULT_P12_MPI_REL_LDFLAGS=$(PETSC_LIB)
-DEFAULT_P12_MPI_DBG_LDFLAGS=$(PETSC_LIB)
+DEFAULT_P12_MPI_REL_FFLAGS=-V -O3 -em -s real64
+DEFAULT_P12_MPI_DBG_FFLAGS=-V -g -em -s real64
+DEFAULT_P12_MPI_REL_LDFLAGS=
+DEFAULT_P12_MPI_DBG_LDFLAGS=
 
 # generic 5ED group FFLAGS and LDFLAGS
-DEFAULT_5ED_MPI_REL_FFLAGS=-V -O3 -em -s real64 $(PETSC_INCLUDE)
-DEFAULT_5ED_MPI_DBG_FFLAGS=-V -g -em -s real64 $(PETSC_INCLUDE)
-DEFAULT_5ED_MPI_REL_LDFLAGS=$(PETSC_LIB)
-DEFAULT_5ED_MPI_DBG_LDFLAGS=$(PETSC_LIB)
+DEFAULT_5ED_MPI_REL_FFLAGS=-V -O3 -em -s real64
+DEFAULT_5ED_MPI_DBG_FFLAGS=-V -g -em -s real64
+DEFAULT_5ED_MPI_REL_LDFLAGS=
+DEFAULT_5ED_MPI_DBG_LDFLAGS=
 
 # generic XX group FFLAGS and LDFLAGS
-DEFAULT_XX_MPI_REL_FFLAGS=-V -O3 -em -s real64 $(PETSC_INCLUDE)
-DEFAULT_XX_MPI_DBG_FFLAGS=-V -g -em -s real64 $(PETSC_INCLUDE)
-DEFAULT_XX_MPI_REL_LDFLAGS=$(PETSC_LIB)
-DEFAULT_XX_MPI_DBG_LDFLAGS=$(PETSC_LIB)
+DEFAULT_XX_MPI_REL_FFLAGS=-V -O3 -em -s real64
+DEFAULT_XX_MPI_DBG_FFLAGS=-V -g -em -s real64
+DEFAULT_XX_MPI_REL_LDFLAGS=
+DEFAULT_XX_MPI_DBG_LDFLAGS=
 
 # generic PROG8 group FFLAGS and LDFLAGS
 DEFAULT_PROG8_BEM_REL_FFLAGS=
@@ -132,19 +143,19 @@ DEFAULT_RFEM_MPI_DBG_LDFLAGS=
 # ------------------------------------------------------------------------------
 
 # generic PREPROC group FFLAGS and LDFLAGS
-DEFAULT_PREPROC_MPI_REL_FFLAGS=-V -O3 -em -s real64 $(PETSC_INCLUDE)
-DEFAULT_PREPROC_MPI_DBG_FFLAGS=-V -g -em -s real64 $(PETSC_INCLUDE)
+DEFAULT_PREPROC_MPI_REL_FFLAGS=-V -O3 -em -s real64
+DEFAULT_PREPROC_MPI_DBG_FFLAGS=-V -g -em -s real64
 DEFAULT_PREPROC_MPI_REL_LDFLAGS=
 DEFAULT_PREPROC_MPI_DBG_LDFLAGS=
 
 DEFAULT_PREPROC_CC_REL_FFLAGS=-c -O2
 DEFAULT_PREPROC_CC_DBG_FFLAGS=-c -g
-DEFAULT_PREPROC_FC_REL_FFLAGS=-V -O3 -em -s real64 $(PETSC_INCLUDE)
-DEFAULT_PREPROC_FC_DBG_FFLAGS=-V -g -em -s real64 $(PETSC_INCLUDE)
+DEFAULT_PREPROC_FC_REL_FFLAGS=-V -O3 -em -s real64
+DEFAULT_PREPROC_FC_DBG_FFLAGS=-V -g -em -s real64
 
 # generic POSTPROC group FFLAGS and LDFLAGS
-DEFAULT_POSTPROC_MPI_REL_FFLAGS=-V -O3 -em -s real64 $(PETSC_INCLUDE)
-DEFAULT_POSTPROC_MPI_DBG_FFLAGS=-V -g -em -s real64 $(PETSC_INCLUDE)
+DEFAULT_POSTPROC_MPI_REL_FFLAGS=-V -O3 -em -s real64
+DEFAULT_POSTPROC_MPI_DBG_FFLAGS=-V -g -em -s real64
 DEFAULT_POSTPROC_MPI_REL_LDFLAGS=
 DEFAULT_POSTPROC_MPI_DBG_LDFLAGS=
 
@@ -339,14 +350,14 @@ XX13_MPI_DBG_FFLAGS=$(DEFAULT_XX_MPI_DBG_FFLAGS)
 XX13_MPI_DBG_LDFLAGS=$(DEFAULT_XX_MPI_DBG_LDFLAGS)
 
 XX15_MPI_REL_FFLAGS=$(DEFAULT_XX_MPI_REL_FFLAGS)
-XX15_MPI_REL_LDFLAGS=$(DEFAULT_XX_MPI_REL_LDFLAGS)
+XX15_MPI_REL_LDFLAGS=$(DEFAULT_XX_MPI_REL_LDFLAGS) $(PETSC_LDFLAGS)
 XX15_MPI_DBG_FFLAGS=$(DEFAULT_XX_MPI_DBG_FFLAGS)
-XX15_MPI_DBG_LDFLAGS=$(DEFAULT_XX_MPI_DBG_LDFLAGS)
+XX15_MPI_DBG_LDFLAGS=$(DEFAULT_XX_MPI_DBG_LDFLAGS) $(PETSC_LDFLAGS)
 
 XX18_MPI_REL_FFLAGS=$(DEFAULT_XX_MPI_REL_FFLAGS)
-XX18_MPI_REL_LDFLAGS=$(DEFAULT_XX_MPI_REL_LDFLAGS)
+XX18_MPI_REL_LDFLAGS=$(DEFAULT_XX_MPI_REL_LDFLAGS) $(PETSC_LDFLAGS)
 XX18_MPI_DBG_FFLAGS=$(DEFAULT_XX_MPI_DBG_FFLAGS)
-XX18_MPI_DBG_LDFLAGS=$(DEFAULT_XX_MPI_DBG_LDFLAGS)
+XX18_MPI_DBG_LDFLAGS=$(DEFAULT_XX_MPI_DBG_LDFLAGS) $(PETSC_LDFLAGS)
 
 # ------------------------------------------------------------------------------
 # TOOL FLAGS for selected tools.
