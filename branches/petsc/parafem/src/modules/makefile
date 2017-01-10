@@ -116,16 +116,16 @@ install:
 	$(MAKE) install-mpi install-choose_solvers install-parafem_petsc install-serial install-bem_lib install-bem_lib_p
 
 install-mpi:
-	@cd mpi && $(MAKE) install & cd ..
+	@cd mpi && $(MAKE) install && cd ..
 
 install-choose_solvers:
-	@cd choose_solvers && $(MAKE) install & cd ..
+	@cd choose_solvers && $(MAKE) install && cd ..
 
 install-parafem_petsc:
-	@cd parafem_petsc && $(MAKE) install & cd ..
+	@cd parafem_petsc && $(MAKE) install && cd ..
 
 install-serial:
-	@cd serial && $(MAKE) install & cd ..
+	@cd serial && $(MAKE) install && cd ..
 
 install-bem_lib:
 	@cd bem && $(MAKE) install && cd ..
