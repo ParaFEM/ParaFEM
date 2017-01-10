@@ -25,7 +25,7 @@ MODULE parafem_petsc
   !*
   !*  The arguments for PETSc routines are mostly PetscInt and PetscScalar.
   !*  Arguments with INTENT(in) are copied to local variables of the correct
-  !*  TYPE to PASS to the PETSc routines.
+  !*  type to pass to the PETSc routines.
   !*/
   
   USE, INTRINSIC :: iso_fortran_env, ONLY: int64, real32, error_unit
@@ -62,10 +62,8 @@ MODULE parafem_petsc
 #include <petsc/finclude/petscksp.h90>
 #include <petsc/finclude/petscpc.h>
 #include <petsc/finclude/petscpc.h90>
-! PETSc Viewers can be used for testing, see p_assemble for commented-out
-! example.
-#include <petsc/finclude/petscviewer.h>
-#include <petsc/finclude/petscviewer.h90>
+! PETSc Viewers can be used for testing, see p_assemble in revision 2166 for
+! commented-out example.
   
   ! Private parameters
   INTEGER,          PARAMETER, PRIVATE :: string_length = 1024
