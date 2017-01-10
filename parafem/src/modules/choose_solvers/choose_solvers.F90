@@ -52,7 +52,6 @@ CONTAINS
     !*
     !*    solvers            : Character
     !*                         Name of the solvers
-    !*                         If there is an error SHUTDOWN is called.
     !*  AUTHOR
     !*    Mark Filipiak
     !*  CREATION DATE
