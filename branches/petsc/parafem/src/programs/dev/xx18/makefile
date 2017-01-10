@@ -35,8 +35,7 @@ release:
 	@echo "Building xx18 RELEASE"
 	$(MAKE) xx18 \
 	FFLAGS="-c -I$(MODULE_MPI) -I$(MODULE_CHOOSE_SOLVERS) -I$(MODULE_PARAFEM_PETSC) $(XX18_MPI_REL_FFLAGS)" \
-	LDFLAGS="-L$(LIB) $(XX18_MPI_REL_LDFLAGS)" \
-	LIBS="-lParaFEM_mpi.$(VERSION) -lParaFEM_choose_solvers.$(VERSION) -lParaFEM_parafem_petsc.$(VERSION) $(PETSC_L)"
+	LDFLAGS="-L$(LIB) -lParaFEM_mpi.$(VERSION) -lParaFEM_choose_solvers.$(VERSION) -lParaFEM_parafem_petsc.$(VERSION) $(XX18_MPI_REL_LDFLAGS)"
 	@echo "Done xx18 RELEASE"
 
 debug:
@@ -44,12 +43,11 @@ debug:
 	@echo "Building xx18 DEBUG"
 	$(MAKE) xx18 \
 	FFLAGS="-c -I$(MODULE_MPI) -I$(MODULE_CHOOSE_SOLVERS) -I$(MODULE_PARAFEM_PETSC) $(XX18_MPI_DBG_FFLAGS)" \
-	LDFLAGS="-L$(LIB) $(XX18_MPI_DBG_LDFLAGS)" \
-	LIBS="-lParaFEM_mpi_D.$(VERSION) -lParaFEM_choose_solvers_D.$(VERSION) -lParaFEM_parafem_petsc_D.$(VERSION) $(PETSC_L)"
+	LDFLAGS="-L$(LIB) -lParaFEM_mpi_D.$(VERSION) -lParaFEM_choose_solvers_D.$(VERSION) -lParaFEM_parafem_petsc_D.$(VERSION) $(XX18_MPI_DBG_LDFLAGS)"
 	@echo "Done xx18 DEBUG"
 
 xx18: xx18.o
-	$(FC) $(LDFLAGS) -o $@ $+ $(LIBS)
+	$(FC) -o $@ $+ $(LDFLAGS)
 
 xx18.o: xx18.F90 makefile
 # The \"\" are to include "" around the text when it is substituted in
