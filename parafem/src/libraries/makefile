@@ -73,5 +73,5 @@ execlean:
 #	$(MAKE) install-mpi install-serial install-bem_lib install-bem_lib_p
 
 #install-mpi:
-#	@cd mpi && $(MAKE) install & cd ..
+#	@cd mpi && $(MAKE) install && cd ..
 
