@@ -37,8 +37,8 @@ MODULE BICG
 !------------------------------------------------------------------------------
 !------------------------------------------------------------------------------
 
-SUBROUTINE BICGSTABL_P(b_pp,cjiters,cjits,cjtol,ell,ieq_start,no_pp,pmul_pp,  &
-                       store_pp,storke_pp,x_pp)
+SUBROUTINE BICGSTABL_P(b_pp,cjiters,cjits,cjtol,ell,kappa,ieq_start,no_pp,     &
+                       pmul_pp,store_pp,storke_pp,x_pp)
 
 USE precision
 USE global_variables
@@ -48,7 +48,7 @@ IMPLICIT NONE
 
 INTEGER, INTENT(IN)      :: cjits,ell,ieq_start,no_pp(:)
 INTEGER, INTENT(OUT)     :: cjiters
-REAL(iwp), INTENT(IN)    :: b_pp(:),cjtol,store_pp(:),storke_pp(:,:,:)
+REAL(iwp), INTENT(IN)    :: b_pp(:),cjtol,kappa,store_pp(:),storke_pp(:,:,:)
 REAL(iwp), INTENT(INOUT) :: pmul_pp(:,:),x_pp(:)
 
 !------------------------------------------------------------------------------
@@ -61,7 +61,7 @@ REAL(iwp), INTENT(INOUT) :: pmul_pp(:,:),x_pp(:)
  REAL(iwp),PARAMETER    :: zero = 0.0_iwp
  REAL(iwp),PARAMETER    :: one  = 1.0_iwp
  REAL(iwp)              :: gama,omega,norm_r,r0_norm,error,rho1,beta
- REAL(iwp)              :: alpha,kappa
+ REAL(iwp)              :: alpha
  REAL(iwp),ALLOCATABLE  :: y_pp(:),y1_pp(:),rt_pp(:),r_pp(:,:),u_pp(:,:)
  REAL(iwp),ALLOCATABLE  :: utemp_pp(:,:),GG(:,:),s(:),Gamma(:)
  
