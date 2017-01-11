@@ -146,8 +146,8 @@ PROGRAM xx17
 !---------- solve the equations element-by-element using BiCGSTAB --------
  IF(iters==1) x_pp = x0
 
- CALL bicgstabl_p(b_pp,cjiters,cjits,cjtol,ell,ieq_start,no_pp,pmul_pp,  &
-                  store_pp,storke_pp,x_pp)
+ CALL bicgstabl_p(b_pp,cjiters,cjits,cjtol,ell,kappa,ieq_start,no_pp,          &
+                  pmul_pp,store_pp,storke_pp,x_pp)
 
  b_pp=x_pp-xold_pp; pp=norm_p(b_pp); cj_tot=cj_tot+cjiters
 
