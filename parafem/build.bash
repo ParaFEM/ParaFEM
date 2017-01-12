@@ -87,9 +87,11 @@ EOF
 	./make-parafem MACHINE=xc30 --no-libs -mpi -parafem_petsc --only-tools -preproc >> $log 2>&1
     elif [[ $build == 'clean' ]]; then
 	./make-parafem MACHINE=xc30 -parafem_petsc clean execlean >> $log 2>&1
+	rm -f modules.log xx.log
 	rm -f $modulefile
     elif [[ $build == 'xxclean' ]]; then
 	./make-parafem MACHINE=xc30 -parafem_petsc --only-programs -xx clean execlean >> $log 2>&1
+	rm -f xx.log
 	rm -f $modulefile
     fi
 )
