@@ -797,7 +797,7 @@ PROGRAM xx15_quadric_linear_hardening
       timest(2) = elap_time()
 
       IF (solvers == petsc_solvers) THEN
-        CALL p_print_info(11)
+        CALL p_print_info(1,11)
       END IF
 
       timest(32) = timest(32) + elap_time()-timest(2) ! 32 = other work in load loop
@@ -1651,7 +1651,7 @@ CONTAINS
     ! in vector notation, as following, alpha=AijCij
     IMPLICIT NONE
     
-	real(iwp), INTENT(IN) :: vector_input_1(:), vector_input_2(:)
+    real(iwp), INTENT(IN) :: vector_input_1(:), vector_input_2(:)
     real(iwp) :: double_contraction_22
     integer :: i
     
@@ -1680,7 +1680,7 @@ CONTAINS
     ! Aijkl=BijCkl
     IMPLICIT NONE
     
-	real(iwp), INTENT(IN) :: vector_input_1(:), vector_input_2(:)
+    real(iwp), INTENT(IN) :: vector_input_1(:), vector_input_2(:)
     real(iwp) :: tensor_product_22(6,6)
     integer :: i, j
     
@@ -1703,7 +1703,7 @@ CONTAINS
     ! dimension of both vectors
     IMPLICIT NONE
     
-	real(iwp), INTENT(IN) :: vector_input_1(:), vector_input_2(:)
+    real(iwp), INTENT(IN) :: vector_input_1(:), vector_input_2(:)
     integer, INTENT(IN) :: dimen
     real(iwp) :: dot_prod
     integer :: i
