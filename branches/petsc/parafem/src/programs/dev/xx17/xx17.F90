@@ -335,7 +335,6 @@ PROGRAM xx17
      b_pp=x_pp-xold_pp; pp=norm_p(b_pp); cj_tot=cj_tot+cjiters
 
      IF(numpe==it) THEN
-       WRITE(11,'(A,E12.4)') "Norm of the error is:", pp
        WRITE(11,'(A,I6,A)') "It took BiCGSTAB(L) ", cjiters,               &
           " iterations to converge"
      END IF
@@ -345,9 +344,10 @@ PROGRAM xx17
 
      b_pp=x_pp-xold_pp; pp=norm_p(b_pp)
 
-     IF(numpe==it) THEN
-       WRITE(11,'(A,E12.4)') "Norm of the error is:", pp
-     END IF
+   END IF
+   IF(numpe==it) THEN
+     WRITE(11,'(A,E12.4)') "Norm of the error is:", pp
+     FLUSH(11)
    END IF
 
    timest(34) = timest(34) + elap_time()-timest(2) ! 34 = solve
