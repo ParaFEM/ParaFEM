@@ -44,6 +44,14 @@ MODULE GATHER_SCATTER
   USE input, ONLY: read_nels_pp
 
 !------------------------------------------------------------------------------
+! 0. Parameters restricted to gather_scatter module:
+!------------------------------------------------------------------------------
+
+  ! ordered = .true. will force updates in processor order in scatter and
+  ! scatter_noadd.
+  LOGICAL, PARAMETER, PRIVATE :: ordered = .FALSE.
+
+!------------------------------------------------------------------------------
 ! 1. Variables restricted to gather_scatter module:
 !------------------------------------------------------------------------------
   
@@ -732,6 +740,8 @@ MODULE GATHER_SCATTER
     LOGICAL                  :: lflag
     INTEGER,   ALLOCATABLE   :: vrequest(:), vstatus(:,:)
     REAL(iwp), ALLOCATABLE   :: ul_pp(:)
+    REAL(iwp), ALLOCATABLE   :: tempputs(:,:)
+    INTEGER,   ALLOCATABLE   :: pes(:)
 
     status     = 0 ; temp_status = 0
     recbufsize = 0 ; ier         = 0 ; nstart = 0
@@ -740,6 +750,10 @@ MODULE GATHER_SCATTER
     ALLOCATE(vrequest(numpesget))
     ALLOCATE(vstatus(MPI_STATUS_SIZE,numpesgetput))
     ALLOCATE(ul_pp(0:len_pl_pp))
+    IF (ordered) THEN
+      ALLOCATE(tempputs(SIZE(tempput),numpesput))
+      ALLOCATE(pes(numpesput))
+    END IF
 
     vrequest   = 0 ; vstatus     = 0 ; ul_pp  = 0.0_iwp
 
@@ -826,10 +840,17 @@ MODULE GATHER_SCATTER
 !    for the receives as these are blocking receives.
 !------------------------------------------------------------------------------
 
-      DO j = 1,lenput(pe_number)
-        u_pp(toput(j,putpes(pe_number))) = u_pp(toput(j,putpes(pe_number))) + &
-                                           tempput(j)
-      END DO
+      IF (ordered) THEN
+        DO j = 1,lenput(pe_number)
+          tempputs(j,i) = tempput(j)
+          pes(i) = pe_number
+        END DO
+      ELSE
+        DO j = 1,lenput(pe_number)
+          u_pp(toput(j,putpes(pe_number))) =                                   &
+            u_pp(toput(j,putpes(pe_number))) + tempput(j)
+        END DO
+      END IF
     END DO
 
 !------------------------------------------------------------------------------
@@ -842,10 +863,27 @@ MODULE GATHER_SCATTER
       CALL MPERROR('Error in MPI_WAITALL', ier)
     END IF
 
+    IF (ordered) THEN
+      DO k = 1,npes
+        DO i = 1, numpesput
+          IF (pes(i) == k) THEN
+            pe_number = k
+            DO j = 1,lenput(pe_number)
+              u_pp(toput(j,putpes(pe_number))) =                             &
+                u_pp(toput(j,putpes(pe_number))) + tempputs(j,i)
+            END DO
+          END IF
+        END DO
+      END DO
+    END IF
+
     ibar = 24
     CALL MY_BARRIER(numpe,ibar,details,'Last barrier in scatter')
 
     DEALLOCATE(vrequest,vstatus,ul_pp)
+    IF (ordered) THEN
+      DEALLOCATE(tempputs,pes)
+    END IF
 
   END SUBROUTINE SCATTER
 
@@ -895,10 +933,16 @@ MODULE GATHER_SCATTER
     INTEGER                :: temp_status(MPI_STATUS_SIZE)
     INTEGER,   ALLOCATABLE :: vrequest(:), vstatus(:,:)
     REAL(iwp), ALLOCATABLE :: ul_pp(:)
+    REAL(iwp), ALLOCATABLE   :: tempputs(:,:)
+    INTEGER,   ALLOCATABLE   :: pes(:)
 
     ALLOCATE(vrequest(numpesget))
     ALLOCATE(vstatus(MPI_STATUS_SIZE,numpesgetput))
     ALLOCATE(ul_pp(0:len_pl_pp))
+    IF (ordered) THEN
+      ALLOCATE(tempputs(SIZE(tempput),numpesput))
+      ALLOCATE(pes(numpesput))
+    END IF
 
     vrequest   = 0 ; vstatus = 0 ; ul_pp  = 0.0_iwp
     recbufsize = 0 ; ier     = 0 ; nstart = 0
@@ -973,9 +1017,16 @@ MODULE GATHER_SCATTER
       IF (ier.NE.MPI_SUCCESS) THEN
         CALL MPERROR('Error in (B5) receive',ier)
       END IF
-      DO j = 1,lenput(pe_number)
-        u_pp(toput(j,putpes(pe_number))) = tempput(j)
-      END DO
+      IF (ordered) THEN
+        DO j = 1,lenput(pe_number)
+          tempputs(j,i) = tempput(j)
+          pes(i) = pe_number
+        END DO
+      ELSE
+        DO j = 1,lenput(pe_number)
+          u_pp(toput(j,putpes(pe_number))) = tempput(j)
+        END DO
+      END IF
     END DO
 
 !------------------------------------------------------------------------------
@@ -988,7 +1039,23 @@ MODULE GATHER_SCATTER
       CALL MPERROR('Error in MPI_WAITALL',ier)
     END IF
 
+    IF (ordered) THEN
+      DO k = 1,npes
+        DO i = 1, numpesput
+          IF (pes(i) == k) THEN
+            pe_number = k
+            DO j = 1,lenput(pe_number)
+              u_pp(toput(j,putpes(pe_number))) = tempputs(j,i)
+            END DO
+          END IF
+        END DO
+      END DO
+    END IF
+
     DEALLOCATE(vrequest,vstatus,ul_pp)
+    IF (ordered) THEN
+      DEALLOCATE(tempputs,pes)
+    END IF
 
   END SUBROUTINE SCATTER_NOADD
 
