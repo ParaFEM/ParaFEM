@@ -76,9 +76,10 @@ PROGRAM xx17
  INTEGER,ALLOCATABLE::rest(:,:),g_num_pp(:,:),g_g_pp(:,:),no(:),g_t(:),  &
    no_pp(:),no_pp_temp(:)
 !---------------------- input and initialisation -------------------------
- ALLOCATE(timest(20)); timest=zero
+ ALLOCATE(timest(40)); timest=zero
 
- timest(1)=elap_time()
+ timest(1) = elap_time()
+ timest(2) = elap_time()
 
  CALL find_pe_procs(numpe,npes)
 
@@ -104,7 +105,8 @@ PROGRAM xx17
  CALL read_g_coord_pp(argv,g_num_pp,nn,npes,numpe,g_coord_pp)
  CALL read_rest(argv,numpe,rest)
 
- timest(2)=elap_time()
+ timest(30) = timest(30) + elap_time()-timest(2) ! 30 = read
+ timest(2) = elap_time()
 
  ALLOCATE(points(nip,ndim),derivf(ndim,nodf),pmul_pp(ntot,nels_pp),      &
    jac(ndim,ndim),kay(ndim,ndim),der(ndim,nod),deriv(ndim,nod),          &
@@ -135,21 +137,18 @@ PROGRAM xx17
  IF (solvers == parafem_solvers) THEN
    DEALLOCATE(g_g_pp)
  END IF
+
  DO i=1,neq_pp; IF(nres==ieq_start+i-1)THEN;it=numpe;is=i;END IF;END DO
  IF(numpe==it) THEN
    OPEN(11,FILE=argv(1:nlen)//".res",STATUS='REPLACE',ACTION='WRITE')
-   WRITE(11,'(A,I6,A)') "This job ran on ",npes," processes"
-   WRITE(11,'(A,3(I12,A))') "There are ",nn," nodes ",nr,                &
-     " restrained and ", neq," equations"
-   WRITE(11,'(A,F10.4)') "Time to read input was:",timest(2)-timest(1)
-   WRITE(11,'(A,F10.4)') "Time after setup was:",elap_time()-timest(1)
  END IF
+
  ALLOCATE(x_pp(neq_pp),b_pp(neq_pp),                                     &
    diag_pp(neq_pp),xold_pp(neq_pp),                                      &
    store_pp(neq_pp))
  x_pp=zero; b_pp=zero; diag_pp=zero
  xold_pp=zero; store_pp=zero
-  
+
  !-----------------------------------------------------------------------------
  ! 4. Start up PETSc after find_pe_procs (so that MPI has been started) and
  !    after find_g3 so that neq_pp and g_g_pp are set up.
@@ -170,6 +169,9 @@ PROGRAM xx17
  IF (numpe == 1) WRITE(*,'(A,F7.2,A)')                                         &
    "peak memory use after setup:        ", peak_memory_use," GB "
 
+ timest(31) = timest(31) + elap_time()-timest(2) ! 31 = setup
+ timest(2) = elap_time()
+
 !-------------------------- organise fixed equations ---------------------
  CALL read_loads_ns(argv,numpe,no,val)
  CALL reindex(ieq_start,no,no_pp_temp,fixed_freedoms_pp,                       &
@@ -178,11 +180,21 @@ PROGRAM xx17
  no_pp = no_pp_temp(1:fixed_freedoms_pp)
  val_pp = val(fixed_freedoms_start:fixed_freedoms_start+fixed_freedoms_pp-1)
  DEALLOCATE(no_pp_temp,val)
+
+ timest(30) = timest(30) + elap_time()-timest(2) ! 30 = read
+ timest(2) = elap_time()
+
 !------------------------- main iteration loop ---------------------------
  CALL sample(element,points,weights); uvel=zero; vvel=zero; wvel=zero
  kay=zero; iters=0; cj_tot=0; kay(1,1)=visc/rho; kay(2,2)=visc/rho
  kay(3,3)=visc/rho; timest(3)=elap_time()
+
+ timest(31) = timest(31) + elap_time()-timest(2) ! 31 = setup
+ timest(2) = elap_time()
+
  iterations: DO
+
+   timest(2) = elap_time()
 
    IF(numpe==1) THEN
      WRITE(iters_s,'(i2.2)') iters
@@ -203,6 +215,9 @@ PROGRAM xx17
    END DO; IF(numpe==1) CLOSE(12)
    DEALLOCATE(upvw_pp,temp)         
      
+   timest(35) = timest(35) + elap_time()-timest(2) ! 35 = write
+   timest(2) = elap_time()
+
    iters=iters+1
 
    IF (solvers == parafem_solvers) THEN
@@ -214,6 +229,10 @@ PROGRAM xx17
    diag_pp=zero; utemp_pp=zero
    b_pp=zero; pmul_pp=zero; CALL gather(x_pp,utemp_pp)
    CALL gather(xold_pp,pmul_pp)
+
+   timest(32) = timest(32) + elap_time()-timest(2) ! 32 = other work in main loop
+   timest(2) = elap_time()
+
 !-------------------- element stiffness integration ----------------------
    elements_2: DO iel=1,nels_pp
      uvel=(utemp_pp(1:nod,iel)+pmul_pp(1:nod,iel))*.5_iwp
@@ -273,6 +292,9 @@ PROGRAM xx17
    IF (numpe == 1) WRITE(*,'(A,F7.2,A)')                                        &
      "peak memory use after assemble:     ", peak_memory_use," GB "
 
+   timest(33) = timest(33) + elap_time()-timest(2) ! 33 = matrix assemble
+   timest(2) = elap_time()
+
 !----------------------- build the preconditioner ------------------------
    IF (solvers == parafem_solvers) THEN
      diag_tmp=zero
@@ -280,6 +302,10 @@ PROGRAM xx17
        diag_tmp(k,iel)=diag_tmp(k,iel)+storke_pp(k,k,iel); END DO
      END DO elements_2a; CALL scatter(diag_pp,diag_tmp)
    END IF
+
+   timest(34) = timest(34) + elap_time()-timest(2) ! 34 = solve
+   timest(2) = elap_time()
+
 !------------------- prescribed values of velocity and pressure ----------
    IF (solvers == parafem_solvers) THEN
      DO i=1,fixed_freedoms_pp; k=no_pp(i)-ieq_start+1
@@ -295,6 +321,9 @@ PROGRAM xx17
      ! and therefore requires a different adjustment to the RHS.
      CALL p_zero_rows(no_pp,penalty,val_pp,b_pp)
    END IF
+
+   timest(32) = timest(32) + elap_time()-timest(2) ! 32 = other work in main loop
+   timest(2) = elap_time()
 
 !---------- solve the equations element-by-element using BiCGSTAB --------
    IF(iters==1) x_pp = x0
@@ -321,12 +350,18 @@ PROGRAM xx17
      END IF
    END IF
 
+   timest(34) = timest(34) + elap_time()-timest(2) ! 34 = solve
+   timest(2) = elap_time()
+
    CALL checon_par(x_pp,tol,converged,xold_pp)
+
+   timest(32) = timest(32) + elap_time()-timest(2) ! 32 = other work in main loop
+   timest(2) = elap_time()
+
    IF(converged.OR.iters==limit)EXIT
 
  END DO iterations
 
- timest(4)=elap_time()
  DEALLOCATE(b_pp,diag_pp,xold_pp,store_pp)
  DEALLOCATE(pmul_pp)
  IF (solvers == parafem_solvers) THEN
@@ -337,15 +372,6 @@ PROGRAM xx17
    DEALLOCATE(g_g_pp)
  END IF
 !------------------------- output results --------------------------------
- IF(numpe==it) THEN
-   WRITE(11,'(A)') "The pressure at the corner of the box is: "
-   WRITE(11,'(A)') "Freedom  Pressure "
-   WRITE(11,'(I6,E12.4)') nres, x_pp(is)
-   WRITE(11,'(A,I6)')"The total number of BiCGSTAB iterations was:",cj_tot
-   WRITE(11,'(A,I5,A)')"The solution took",iters," iterations to converge"
-   WRITE(11,'(A,F10.4)')"Time spent in solver was:",timest(4)-timest(3)
- END IF
-
  IF(numpe==1) THEN
    WRITE(iters_s,'(i2.2)') iters
    OPEN(12,file=argv(1:nlen)//".ensi.VEL-"//iters_s,status='replace',          &
@@ -414,8 +440,61 @@ PROGRAM xx17
    CLOSE(12)
  END IF
      
- IF(numpe==it) THEN 
-   WRITE(11,'(A,F10.4)') "This analysis took :", elap_time()-timest(1)
-   CLOSE(11); END IF; CALL SHUTDOWN() 
+ timest(35) = timest(35) + elap_time()-timest(2) ! 35 = write
+ timest(2) = elap_time()
+
+ peak_memory_use = p_memory_peak()
+
+ IF (numpe==it) THEN
+   WRITE(11,'(A)') "The pressure at the corner of the box is: "
+   WRITE(11,'(A)') "Freedom  Pressure "
+   WRITE(11,'(I6,E12.4)') nres, x_pp(is)
+   IF (solvers == parafem_solvers) THEN
+     WRITE(11,'(A,I6)')"The total number of BiCGSTAB iterations was:",cj_tot
+   END IF
+   WRITE(11,'(A,I5,A)')"The solution took",iters," iterations to converge"
+
+   IF (solvers == parafem_solvers) THEN
+     WRITE(11,'(A)') "ParaFEM revision "//REVISION
+   ELSE IF (solvers == petsc_solvers) THEN
+     WRITE(11,'(A)') "ParaFEM revision "//REVISION//"; "//p_version()
+   END IF
+   WRITE(11,'(A,I5,A)') "This job ran on ",npes," processors"
+   WRITE(11,'(A,3(I8,A))') "There are ",nn," nodes",nels," elements and ",    &
+                           neq," equations"
+   WRITE(11,'(A,F10.4)') "Time to read input:       ", timest(30)
+   WRITE(11,'(A,F10.4)') "Time for setup:           ", timest(31)
+   WRITE(11,'(A,F10.4)') "Time for matrix assemble: ", timest(33)
+   WRITE(11,'(A,F10.4)') "Time for linear solve:    ", timest(34)
+   WRITE(11,'(A,F10.4)') "Other time in main loop:  ", timest(32)
+   WRITE(11,'(A,F10.4)') "Time to write results:    ", timest(35)
+   WRITE(11,'(A)')       "                          ----------"
+   WRITE(11,'(A,F10.4)') "Total:                    ", SUM(timest(30:35))
+   WRITE(11,'(A)')       "                          ----------"
+   WRITE(11,'(A,F10.4)') "This analysis took:       ", elap_time()-timest(1)
+   WRITE(11,*)
+   WRITE(11,'(A,F10.2,A)') "Peak memory use: ",peak_memory_use," GB"
+   WRITE(11,*)
+   ! REVISION is substituted with a string like "2108" (including the double
+   ! quotes) by the preprocessor, see the makefile.
+   WRITE(11,'(2A,2(I0,A),4(F0.2,A),F0.2)',advance='no')                       &
+     REVISION,tab,                                                            &
+     npes,tab,                                                                &
+     neq,tab,                                                                 &
+     timest(31),tab,                                                          &
+     timest(33),tab,                                                          &
+     timest(34),tab,                                                          &
+     timest(31)+timest(33)+timest(34),tab,                                    &
+     peak_memory_use
+   IF (solvers == petsc_solvers) THEN
+     WRITE(11,'(2A)') tab,p_version()
+   END IF
+   CLOSE(11)
+ END IF
+
+ IF (solvers == petsc_solvers) THEN
+   CALL p_shutdown
+ END IF
+ CALL SHUTDOWN() 
 
 END PROGRAM xx17
