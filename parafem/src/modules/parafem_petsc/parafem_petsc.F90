@@ -1240,7 +1240,7 @@ CONTAINS
     !*    g(:)               : Integer
     !*                         Array of shape (ntot)
     !*                         Gives the global equation number for each dof in
-    !*                         the element. 
+    !*                         the element.
     !*    km(:,:)            : Real
     !*                         Array of shape (ntot,ntot)
     !*                         The element matrix.
@@ -1264,8 +1264,8 @@ CONTAINS
     !*  structure will remain fixed.
     !*/
 
-    INTEGER, INTENT(in) :: g(:)
-    REAL,    INTENT(in) :: km(:,:)
+    INTEGER,   INTENT(in) :: g(:)
+    REAL(iwp), INTENT(in) :: km(:,:)
 
     PetscInt :: p_ntot
 
@@ -1279,6 +1279,97 @@ CONTAINS
     CALL MatSetValues(p_object%A,p_ntot,p_object%rows,p_ntot,p_object%cols,    &
                       p_object%values,ADD_VALUES,p_ierr)
   END SUBROUTINE p_add_element
+
+  SUBROUTINE p_zero_rows(fixed_eqns,diag,fixed_values,r_pp)
+
+    !/****if* petsc/p_zero_rows
+    !*  NAME
+    !*    SUBROUTINE: p_zero_rows
+    !*  SYNOPSIS
+    !*    Usage:      p_zero_rows(fixed_eqns,diag,fixed_values,r_pp)
+    !*  FUNCTION
+    !*    Zeroes the rows in the global matrix corresponding to the fixed
+    !*    freedoms, setting the diagonal entry in those rows to a constant.  The
+    !*    entries in the right-hand side vector corresponding to the fixed
+    !*    freedoms is set to the constant times the fixed values.
+    !*
+    !*    This subroutine is suitable for unsymmetric matrices only, since it
+    !*    does not maintain the symmetry of the matrix.
+    !*  ARGUMENTS
+    !*    INTENT(IN)
+    !*
+    !*    fixed_eqns(:)      : Integer
+    !*                         Gives the global equation number for each fixed
+    !*                         freedom.
+    !*    diag               : Real
+    !*                         The diagonal entry in the rows in the global
+    !*                         matrix corresponding to the fixed freedoms is set
+    !*                         to diag.
+    !*    fixed_values(:)    : Real
+    !*                         The value of each fixed freedom.
+    !*    INTENT(INOUT)
+    !*    r_pp(:)            : Real
+    !*                         RHS on this process.
+    !*  AUTHOR
+    !*    Mark Filipiak
+    !*  CREATION DATE
+    !*    14.01.2017
+    !*  MODIFICATION HISTORY
+    !*    Version 1, 14.01.2017, Mark Filipiak
+    !*  COPYRIGHT
+    !*    (c) University of Edinburgh 2017
+    !******
+    !*  Place remarks that should not be included in the documentation here.
+    !*
+    !*  The non-zero pattern of the matrix is.  Although there will be some
+    !*  extra operations (multiplies by zeroes), the structure needs to be kept
+    !*  so that the matrix can be re-used in non-linear solves in ParaFEM.
+    !*
+    !*  It would be nicer to adjust the RHS as held by p_object%b but that is
+    !*  set in p_solve.  Perhaps setting the RHS needs to be broken out of
+    !*  p_solve?
+    !*
+    !*  Note this is NOT the penalty method.
+    !*/
+
+    INTEGER,   INTENT(in)    :: fixed_eqns(:)
+    REAL(iwp), INTENT(in)    :: diag
+    REAL(iwp), INTENT(in)    :: fixed_values(:)
+    REAL(iwp), INTENT(inout) :: r_pp(:)
+
+    PetscInt    :: n
+    PetscScalar :: p_diag
+    PetscInt,    DIMENSION(SIZE(fixed_eqns)) :: rows
+    PetscScalar, DIMENSION(SIZE(fixed_eqns)) :: values
+    Vec         :: b
+    PetscScalar,POINTER :: a(:)
+
+    ! Convert arguments to PETSc.
+    n = SIZE(fixed_eqns)
+    rows = fixed_eqns - 1
+    values = fixed_values
+    p_diag = diag
+    CALL VecDuplicate(p_object%b,b,p_ierr)
+    CALL VecGetArrayF90(b,a,p_ierr)
+    a = r_pp
+    CALL VecRestoreArrayF90(b,a,p_ierr)
+
+    ! Zero the rows for the fixed freedoms, setting the diagonal entry to
+    ! a constant.
+    CALL MatSetOption(p_object%A,MAT_KEEP_NONZERO_PATTERN,PETSC_TRUE,p_ierr) 
+    CALL MatZeroRows(p_object%A,n,rows,p_diag,                                 &
+                     PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,p_ierr)
+
+    ! Adjust the RHS.
+    CALL VecSetValues(b,n,rows,p_diag*values,INSERT_VALUES,p_ierr)
+    CALL VecAssemblyBegin(b,p_ierr)
+    CALL VecAssemblyEnd(b,p_ierr)
+    CALL VecGetArrayReadF90(b,a,p_ierr)
+    r_pp = a
+    CALL VecRestoreArrayReadF90(b,a,p_ierr)
+
+    CALL VecDestroy(b,p_ierr)
+  END SUBROUTINE p_zero_rows
 
   SUBROUTINE p_assemble
 
@@ -1341,7 +1432,7 @@ CONTAINS
     !*  been distributed in ParaFEM.
     !*/
 
-    REAL, INTENT(in) :: r_pp(:)
+    REAL(iwp), INTENT(in) :: r_pp(:)
 
     PetscScalar,POINTER :: varray(:)
 
@@ -1382,7 +1473,7 @@ CONTAINS
     !*  been distributed in ParaFEM.
     !*/
 
-    REAL, INTENT(in) :: x_pp(:)
+    REAL(iwp), INTENT(in) :: x_pp(:)
 
     PetscScalar,POINTER :: varray(:)
 
@@ -1423,7 +1514,7 @@ CONTAINS
     !*  been distributed in ParaFEM.
     !*/
 
-    REAL, INTENT(out) :: x_pp(:)
+    REAL(iwp), INTENT(out) :: x_pp(:)
 
     PetscScalar,POINTER :: varray(:)
 
@@ -1541,10 +1632,10 @@ CONTAINS
     !*
     !*/
 
-    REAL,    INTENT(in)           :: r_pp(:)
-    REAL,    INTENT(inout)        :: x_pp(:)
-    LOGICAL, INTENT(in), OPTIONAL :: initial_guess_nonzero
-    LOGICAL, INTENT(in), OPTIONAL :: reuse_preconditioner
+    REAL(iwp), INTENT(in)           :: r_pp(:)
+    REAL(iwp), INTENT(inout)        :: x_pp(:)
+    LOGICAL,   INTENT(in), OPTIONAL :: initial_guess_nonzero
+    LOGICAL,   INTENT(in), OPTIONAL :: reuse_preconditioner
 
     KSP,POINTER :: ksp
 
@@ -1579,18 +1670,20 @@ CONTAINS
     CALL p_get_solution(x_pp)
   END SUBROUTINE p_solve
 
-  SUBROUTINE p_print_info(unit)
+  SUBROUTINE p_print_info(output_pe,unit)
 
     !/****if* petsc/p_print_info
     !*  NAME
     !*    SUBROUTINE: p_print_info
     !*  SYNOPSIS
-    !*    Usage:      p_print_info(unit)
+    !*    Usage:      p_print_info(output_pe,unit)
     !*  FUNCTION
     !*    Prints the convergence information
     !*  ARGUMENTS
     !*    INTENT(IN)
     !*
+    !*    output_pe          : Integer
+    !*                         Only process with numpe == output_pe will print.
     !*    unit               : Integer
     !*                         File unit to print to.
     !*  AUTHOR
@@ -1599,13 +1692,24 @@ CONTAINS
     !*    29.05.2016
     !*  MODIFICATION HISTORY
     !*    Version 1, 06.06.2016, Mark Filipiak
+    !*    Version 2, 12.01.2017, Mark Filipiak
     !*  COPYRIGHT
-    !*    (c) University of Edinburgh 2016
+    !*    (c) University of Edinburgh 2016-2017
     !******
     !*  Place remarks that should not be included in the documentation here.
     !*
+    !*  All processes need to call this routine.  In the p126/xx17 programs, the
+    !*  process that opens the output file need not be numpe == 1, so the
+    !*  process that writes is given as an argument.  The alternative, to test
+    !*  if the unit is open - only one process should have the unit open - is
+    !*  less clear.
+    !*
+    !*  It might be better to have two routines, one called by all processes
+    !*  to create the info in the p_object structure, and one called by one
+    !*  process to print the info in the p_object structure.
     !*/
 
+    INTEGER, INTENT(in) :: output_pe
     INTEGER, INTENT(in) :: unit
 
     Vec         :: w,y
@@ -1639,8 +1743,8 @@ CONTAINS
     CALL KSPGetIterationNumber(ksp,p_object%its,p_ierr)
     CALL KSPGetConvergedReason(ksp,p_object%reason,p_ierr)
     p_object%description = p_describe_reason(p_object%reason)
-  
-    IF (numpe == 1)THEN
+
+    IF (numpe == output_pe) THEN
       IF (.NOT. p_object%nsolvers_set) THEN
         WRITE(unit,'(A)') "Solver"
       ELSE
@@ -1772,8 +1876,16 @@ CONTAINS
                       //"(residual norm became NaN or Inf likely due to 0/0.)"
     CASE (KSP_DIVERGED_INDEFINITE_MAT)
       p_describe_reason = "KSP_DIVERGED_INDEFINITE_MAT"
-    ! not in PETSc Fortran CASE (KSP_DIVERGED_PCSETUP_FAILED)
-    ! not in PETSc Fortran   p_describe_reason = "KSP_DIVERGED_PCSETUP_FAILED"
+    CASE (KSP_DIVERGED_PCSETUP_FAILED)
+      p_describe_reason = "KSP_DIVERGED_PCSETUP_FAILED "                       &
+                      //"(It was not possible to build the requested "         &
+                      //"preconditioner. This is usually due to a zero pivot " &
+                      //"in a factorization. It can also RESULT from a "       &
+                      //"failure in a subpreconditioner inside a nested "      &
+                      //"preconditioner such as PCFIELDSPLIT.  Notes: Run "    &
+                      //"with -ksp_error_if_not_converged to stop the program "&
+                      //"when the error is detected and print an error "       &
+                      //"message with details." 
     ! Still iterating.
     CASE (KSP_CONVERGED_ITERATING)
       p_describe_reason = "KSP_CONVERGED_ITERATING "                           &

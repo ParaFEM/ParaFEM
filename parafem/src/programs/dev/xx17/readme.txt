@@ -10,4 +10,5 @@
   AUTHOR
 
   lee.margetts@manchester.ac.uk
+  Mark Filipiak     mjf@staffmail.ed.ac.uk 
 
