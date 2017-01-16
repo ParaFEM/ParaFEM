@@ -711,7 +711,7 @@ PROGRAM xx15_elastic
           CALL shutdown
         END IF
         CALL p_solve(r_pp(1:),deltax_pp(1:))
-        CALL p_print_info(11)
+        CALL p_print_info(1,11)
       END IF
 
       timest(34) = timest(34) + elap_time()-timest(2) ! 34 = solve
