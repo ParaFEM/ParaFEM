@@ -1177,7 +1177,7 @@ PROGRAM p12meshgen
 !------------------------------------------------------------------------------
 !------------------------------------------------------------------------------
 
-  CASE('p126')
+  CASE('p126','xx17')
 
     READ(10,*) iotype, nels, nxe, nze, nip
     READ(10,*) aa, bb, cc
@@ -1306,7 +1306,7 @@ PROGRAM p12meshgen
       partitioner = 1 ! current default
       nres        = nze*(nxe+1)+3*nxe+1
 
-      WRITE(14,'(A)') "'p126'"
+      WRITE(14,'(A)') "'"//trim(program_name)//"'"
       WRITE(14,'(2I4)') meshgen, partitioner
       WRITE(14,'(7I9)') nels, nn, nres, nr, fixed_freedoms, nip
       WRITE(14,'(3E12.4,I8)') visc, rho, tol, limit
@@ -1761,7 +1761,7 @@ PROGRAM p12meshgen
 
     PRINT*
     PRINT*, "Mesh only generated for programs: "
-    PRINT*, "  p121, xx18, p122, p123, p124, p125, p126"
+    PRINT*, "  p121, xx18, p122, p123, p124, p125, p126, xx17"
     PRINT*, "  p128, p129 and p1210"
     PRINT*
 
