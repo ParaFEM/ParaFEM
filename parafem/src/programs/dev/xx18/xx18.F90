@@ -34,6 +34,18 @@ PROGRAM xx18
 
   IMPLICIT NONE
 
+  ! To use PETSc directly and use parafem_petsc, include only the PETSc Fortran
+  ! types.  The Fortran interfaces for the most useful PETSc subroutines are
+  ! included in the parafem_petsc module: see parafem_petsc.F90 for the
+  ! interfaces that are included.  If you need the interfaces for others then
+  ! add the includes after the PETSc types.
+  ! PETSc types
+  !#include <petsc/finclude/petscdef.h>
+  ! Use Fortran interfaces for the PETSc routines not included by the
+  ! parafem_petsc module, for example, to use PETSc viewers:
+  !#include <petsc/finclude/petscviewer.h>
+  !#include <petsc/finclude/petscviewer.h90>
+
   ! neq,ntot are now global variables - must not be declared
   
   INTEGER,PARAMETER   :: nodof=3,ndim=3,nst=6
@@ -244,7 +256,7 @@ PROGRAM xx18
       CALL shutdown
     END IF
     CALL p_solve(r_pp,xnew_pp)
-    CALL p_print_info(11)
+    CALL p_print_info(1,11)
   END IF
 
   timest(7) = elap_time()
