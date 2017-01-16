@@ -43,14 +43,14 @@ MODULE GATHER_SCATTER
   USE global_variables
   USE input, ONLY: read_nels_pp
 
-!------------------------------------------------------------------------------
-! 0. Parameters restricted to gather_scatter module:
-!------------------------------------------------------------------------------
-
-  ! ordered = .true. will force updates in processor order in scatter and
-  ! scatter_noadd.
-  LOGICAL, PARAMETER, PRIVATE :: ordered = .FALSE.
-
+!ordered!------------------------------------------------------------------------------
+!ordered! 0. Parameters restricted to gather_scatter module:
+!ordered!------------------------------------------------------------------------------
+!ordered
+!ordered  ! ordered = .true. will force updates in processor order in scatter and
+!ordered  ! scatter_noadd.
+!ordered  LOGICAL, PARAMETER, PRIVATE :: ordered = .FALSE.
+!ordered
 !------------------------------------------------------------------------------
 ! 1. Variables restricted to gather_scatter module:
 !------------------------------------------------------------------------------
@@ -740,8 +740,8 @@ MODULE GATHER_SCATTER
     LOGICAL                  :: lflag
     INTEGER,   ALLOCATABLE   :: vrequest(:), vstatus(:,:)
     REAL(iwp), ALLOCATABLE   :: ul_pp(:)
-    REAL(iwp), ALLOCATABLE   :: tempputs(:,:)
-    INTEGER,   ALLOCATABLE   :: pes(:)
+!ordered    REAL(iwp), ALLOCATABLE   :: tempputs(:,:)
+!ordered    INTEGER,   ALLOCATABLE   :: pes(:)
 
     status     = 0 ; temp_status = 0
     recbufsize = 0 ; ier         = 0 ; nstart = 0
@@ -750,10 +750,10 @@ MODULE GATHER_SCATTER
     ALLOCATE(vrequest(numpesget))
     ALLOCATE(vstatus(MPI_STATUS_SIZE,numpesgetput))
     ALLOCATE(ul_pp(0:len_pl_pp))
-    IF (ordered) THEN
-      ALLOCATE(tempputs(SIZE(tempput),numpesput))
-      ALLOCATE(pes(numpesput))
-    END IF
+!ordered    IF (ordered) THEN
+!ordered      ALLOCATE(tempputs(SIZE(tempput),numpesput))
+!ordered      ALLOCATE(pes(numpesput))
+!ordered    END IF
 
     vrequest   = 0 ; vstatus     = 0 ; ul_pp  = 0.0_iwp
 
@@ -840,17 +840,17 @@ MODULE GATHER_SCATTER
 !    for the receives as these are blocking receives.
 !------------------------------------------------------------------------------
 
-      IF (ordered) THEN
+!ordered      IF (ordered) THEN
+!ordered        DO j = 1,lenput(pe_number)
+!ordered          tempputs(j,i) = tempput(j)
+!ordered          pes(i) = pe_number
+!ordered        END DO
+!ordered      ELSE
         DO j = 1,lenput(pe_number)
-          tempputs(j,i) = tempput(j)
-          pes(i) = pe_number
+          u_pp(toput(j,putpes(pe_number))) = u_pp(toput(j,putpes(pe_number))) + &
+                                             tempput(j)
         END DO
-      ELSE
-        DO j = 1,lenput(pe_number)
-          u_pp(toput(j,putpes(pe_number))) =                                   &
-            u_pp(toput(j,putpes(pe_number))) + tempput(j)
-        END DO
-      END IF
+!ordered      END IF
     END DO
 
 !------------------------------------------------------------------------------
@@ -863,27 +863,27 @@ MODULE GATHER_SCATTER
       CALL MPERROR('Error in MPI_WAITALL', ier)
     END IF
 
-    IF (ordered) THEN
-      DO k = 1,npes
-        DO i = 1, numpesput
-          IF (pes(i) == k) THEN
-            pe_number = k
-            DO j = 1,lenput(pe_number)
-              u_pp(toput(j,putpes(pe_number))) =                             &
-                u_pp(toput(j,putpes(pe_number))) + tempputs(j,i)
-            END DO
-          END IF
-        END DO
-      END DO
-    END IF
+!ordered    IF (ordered) THEN
+!ordered      DO k = 1,npes
+!ordered        DO i = 1, numpesput
+!ordered          IF (pes(i) == k) THEN
+!ordered            pe_number = k
+!ordered            DO j = 1,lenput(pe_number)
+!ordered              u_pp(toput(j,putpes(pe_number))) =                             &
+!ordered                u_pp(toput(j,putpes(pe_number))) + tempputs(j,i)
+!ordered            END DO
+!ordered          END IF
+!ordered        END DO
+!ordered      END DO
+!ordered    END IF
 
     ibar = 24
     CALL MY_BARRIER(numpe,ibar,details,'Last barrier in scatter')
 
     DEALLOCATE(vrequest,vstatus,ul_pp)
-    IF (ordered) THEN
-      DEALLOCATE(tempputs,pes)
-    END IF
+!ordered    IF (ordered) THEN
+!ordered      DEALLOCATE(tempputs,pes)
+!ordered    END IF
 
   END SUBROUTINE SCATTER
 
@@ -933,16 +933,16 @@ MODULE GATHER_SCATTER
     INTEGER                :: temp_status(MPI_STATUS_SIZE)
     INTEGER,   ALLOCATABLE :: vrequest(:), vstatus(:,:)
     REAL(iwp), ALLOCATABLE :: ul_pp(:)
-    REAL(iwp), ALLOCATABLE   :: tempputs(:,:)
-    INTEGER,   ALLOCATABLE   :: pes(:)
+!ordered    REAL(iwp), ALLOCATABLE   :: tempputs(:,:)
+!ordered    INTEGER,   ALLOCATABLE   :: pes(:)
 
     ALLOCATE(vrequest(numpesget))
     ALLOCATE(vstatus(MPI_STATUS_SIZE,numpesgetput))
     ALLOCATE(ul_pp(0:len_pl_pp))
-    IF (ordered) THEN
-      ALLOCATE(tempputs(SIZE(tempput),numpesput))
-      ALLOCATE(pes(numpesput))
-    END IF
+!ordered    IF (ordered) THEN
+!ordered      ALLOCATE(tempputs(SIZE(tempput),numpesput))
+!ordered      ALLOCATE(pes(numpesput))
+!ordered    END IF
 
     vrequest   = 0 ; vstatus = 0 ; ul_pp  = 0.0_iwp
     recbufsize = 0 ; ier     = 0 ; nstart = 0
@@ -1017,16 +1017,16 @@ MODULE GATHER_SCATTER
       IF (ier.NE.MPI_SUCCESS) THEN
         CALL MPERROR('Error in (B5) receive',ier)
       END IF
-      IF (ordered) THEN
-        DO j = 1,lenput(pe_number)
-          tempputs(j,i) = tempput(j)
-          pes(i) = pe_number
-        END DO
-      ELSE
+!ordered      IF (ordered) THEN
+!ordered        DO j = 1,lenput(pe_number)
+!ordered          tempputs(j,i) = tempput(j)
+!ordered          pes(i) = pe_number
+!ordered        END DO
+!ordered      ELSE
         DO j = 1,lenput(pe_number)
           u_pp(toput(j,putpes(pe_number))) = tempput(j)
         END DO
-      END IF
+!ordered      END IF
     END DO
 
 !------------------------------------------------------------------------------
@@ -1039,23 +1039,23 @@ MODULE GATHER_SCATTER
       CALL MPERROR('Error in MPI_WAITALL',ier)
     END IF
 
-    IF (ordered) THEN
-      DO k = 1,npes
-        DO i = 1, numpesput
-          IF (pes(i) == k) THEN
-            pe_number = k
-            DO j = 1,lenput(pe_number)
-              u_pp(toput(j,putpes(pe_number))) = tempputs(j,i)
-            END DO
-          END IF
-        END DO
-      END DO
-    END IF
+!ordered    IF (ordered) THEN
+!ordered      DO k = 1,npes
+!ordered        DO i = 1, numpesput
+!ordered          IF (pes(i) == k) THEN
+!ordered            pe_number = k
+!ordered            DO j = 1,lenput(pe_number)
+!ordered              u_pp(toput(j,putpes(pe_number))) = tempputs(j,i)
+!ordered            END DO
+!ordered          END IF
+!ordered        END DO
+!ordered      END DO
+!ordered    END IF
 
     DEALLOCATE(vrequest,vstatus,ul_pp)
-    IF (ordered) THEN
-      DEALLOCATE(tempputs,pes)
-    END IF
+!ordered    IF (ordered) THEN
+!ordered      DEALLOCATE(tempputs,pes)
+!ordered    END IF
 
   END SUBROUTINE SCATTER_NOADD
 
