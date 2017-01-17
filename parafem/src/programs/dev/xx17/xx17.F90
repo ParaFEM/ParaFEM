@@ -39,7 +39,7 @@ PROGRAM xx17
  ! interfaces that are included.  If you need the interfaces for others then add
  ! the includes after the PETSc types.
  ! PETSc types
-#include <petsc/finclude/petscdef.h>
+ !#include <petsc/finclude/petscdef.h>
  ! Use Fortran interfaces for the PETSc routines not included by the
  ! parafem_petsc module, for example, to use PETSc viewers:
  !#include <petsc/finclude/petscviewer.h>
@@ -74,11 +74,6 @@ PROGRAM xx17
    diag_tmp(:,:),pmul_pp(:,:),timest(:),upvw_pp(:),ke(:,:,:),val_pp(:)
  INTEGER,ALLOCATABLE::rest(:,:),g_num_pp(:,:),g_g_pp(:,:),no(:),g_t(:),  &
    no_pp(:),no_pp_temp(:)
-
- Mat A,B
- PetscErrorCode :: p_ierr
- PetscReal :: p_norma, p_normb, p_normdiff
- PetscScalar :: p_a
 !---------------------- input and initialisation -------------------------
  ALLOCATE(timest(40)); timest=zero
 
@@ -202,8 +197,6 @@ PROGRAM xx17
 
    iters=iters+1
 
-   DO k = 1, 2
-
    IF (solvers == parafem_solvers) THEN
      storke_pp=zero
    ELSE IF (solvers == petsc_solvers) THEN
@@ -272,24 +265,6 @@ PROGRAM xx17
  
    IF (solvers == petsc_solvers) THEN
      CALL p_assemble
-     IF (k == 1) THEN
-       CALL MatDuplicate(p_object%A,MAT_COPY_VALUES,A,p_ierr)
-     ELSE
-       CALL MatDuplicate(p_object%A,MAT_COPY_VALUES,B,p_ierr)
-     END IF
-   END IF
-
-   END DO
-   IF (solvers == petsc_solvers) THEN
-     p_a = -1.0
-     CALL MatNorm(A,NORM_INFINITY,p_norma,p_ierr)
-     CALL MatNorm(B,NORM_INFINITY,p_normb,p_ierr)
-     CALL MatAXPY(B,p_a,A,SAME_NONZERO_PATTERN,p_ierr)
-     CALL MatNorm(B,NORM_INFINITY,p_normdiff,p_ierr)
-     IF (numpe == 1) THEN
-       WRITE(*,*) p_normdiff / SQRT(p_norma*p_normb)
-       WRITE(*,*) p_normdiff, p_norma, p_normb
-     END IF
    END IF
    peak_memory_use = p_memory_peak()
    IF (numpe == 1) WRITE(*,'(A,F7.2,A)')                                        &
