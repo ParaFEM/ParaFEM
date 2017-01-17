@@ -3038,10 +3038,12 @@ subroutine formupvw(storke,iel,c11,c12,c21,c23,c32,c24,c42)
 !   forms unsymmetrical 'stiffness' matrix in 3-d for
 !   u-p-v-w version of navier stokes
  implicit none
+ REAL(iwp),PARAMETER :: zero=0.0_iwp
  real(iwp),intent(in)::c11(:,:),c12(:,:),c21(:,:),c23(:,:),c32(:,:),     &
                   c24(:,:),c42(:,:)
  real(iwp),intent(out):: storke(:,:,:); integer:: nod,nodf,ntot,iel
- nod=ubound(c11,1); nodf=ubound(c21,1); ntot=nod+nodf+nod+nod
+ nod=UBOUND(c11,1); nodf=UBOUND(c21,1); ntot=nod+nodf+nod+nod
+ storke(:,:,iel) = zero
  storke(1:nod,1:nod,iel) = c11; storke(1:nod,nod+1:nod+nodf,iel) = c12 
  storke(nod+1:nod+nodf,1:nod,iel) = c21
  storke(nod+1:nod+nodf,nod+nodf+1:nod+nodf+nod,iel) = c23
