@@ -274,6 +274,7 @@ PROGRAM xx17
      END DO gauss_points_1
       ! ke is (ntot,ntot,1) so that formupvw can be used (formupvw cannot be
       ! changed until a new edition of the book).
+      ke = zero
       CALL formupvw(ke,1,c11,c12,c21,c23,c32,c24,c42)
       IF (solvers == parafem_solvers) THEN
         storke_pp(:,:,iel) = ke(:,:,1)
