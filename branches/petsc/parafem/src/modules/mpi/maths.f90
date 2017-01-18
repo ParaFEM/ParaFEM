@@ -1060,7 +1060,10 @@ MODULE MATHS
   converged = ((maxdiff/maxloads)<=tol)
   oldlds    = loads
 
-! PRINT *, "MAXDIFF/MAXLOADS = ", maxdiff/maxloads
+!  IF (numpe == 1) THEN
+!    PRINT *, "MAXDIFF, MAXLOADS, MAXDIFF/MAXLOADS = ", maxdiff, maxloads,&
+!      & maxdiff/maxloads
+!  END IF
 ! Need to modify this subroutine to output convergence history
  
   RETURN
