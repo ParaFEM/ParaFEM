@@ -417,6 +417,11 @@ CONTAINS
     ! setting MAT_ROW_ORIENTED false (at least for the Mat types used so far:
     ! SEQAIJ and MPIAIJ).
     CALL MatSetOption(p_object%A,MAT_ROW_ORIENTED,PETSC_FALSE,p_ierr)
+    ! The non-zero pattern of the matrix is retained if rows are zeroed.
+    ! Although there will be some extra operations (multiplies by zeroes), the
+    ! structure needs to be kept so that the matrix can be re-used in non-linear
+    ! solves in ParaFEM.
+    CALL MatSetOption(p_object%A,MAT_KEEP_NONZERO_PATTERN,PETSC_TRUE,p_ierr) 
   END SUBROUTINE p_create_matrix
 
   SUBROUTINE p_destroy_matrix
@@ -1274,7 +1279,8 @@ CONTAINS
     p_object%cols(1:p_ntot) = p_object%rows(1:p_ntot)
     ! PETSc uses C array order, so normally a transpose would be needed, but
     ! MAT_ROW_ORIENTED is set to false in p_create_matrix to make MatSetValues
-    ! work with Fortran-order arrays.
+    ! work with Fortran-order arrays.  NB, this hasn't actually been checked for
+    ! unsymmetric matrices.
     p_object%values(1:p_ntot*p_ntot) = RESHAPE(km,(/p_ntot*p_ntot/))
     CALL MatSetValues(p_object%A,p_ntot,p_object%rows,p_ntot,p_object%cols,    &
                       p_object%values,ADD_VALUES,p_ierr)
@@ -1321,13 +1327,14 @@ CONTAINS
     !******
     !*  Place remarks that should not be included in the documentation here.
     !*
-    !*  The non-zero pattern of the matrix is.  Although there will be some
+    !*  The non-zero pattern of the matrix is retained (MAT_KEEP_NONZERO_PATTERN
+    !*  is set to PETSC_TRUE in p_create_matrix).  Although there will be some
     !*  extra operations (multiplies by zeroes), the structure needs to be kept
     !*  so that the matrix can be re-used in non-linear solves in ParaFEM.
     !*
-    !*  It would be nicer to adjust the RHS as held by p_object%b but that is
-    !*  set in p_solve.  Perhaps setting the RHS needs to be broken out of
-    !*  p_solve?
+    !*  It would be nicer to adjust the RHS as held by p_object%b (this can be
+    !*  done with MatZeroRows, given a vector of fixed values) but that is set
+    !*  in p_solve.  Perhaps setting the RHS needs to be broken out of p_solve?
     !*
     !*  Note this is NOT the penalty method.
     !*/
@@ -1342,7 +1349,7 @@ CONTAINS
     PetscInt,    DIMENSION(SIZE(fixed_eqns)) :: rows
     PetscScalar, DIMENSION(SIZE(fixed_eqns)) :: values
     Vec         :: b
-    PetscScalar,POINTER :: a(:)
+    PetscScalar,POINTER :: varray(:)
 
     ! Convert arguments to PETSc.
     n = SIZE(fixed_eqns)
@@ -1350,13 +1357,12 @@ CONTAINS
     values = fixed_values
     p_diag = diag
     CALL VecDuplicate(p_object%b,b,p_ierr)
-    CALL VecGetArrayF90(b,a,p_ierr)
-    a = r_pp
-    CALL VecRestoreArrayF90(b,a,p_ierr)
+    CALL VecGetArrayF90(b,varray,p_ierr)
+    varray = r_pp
+    CALL VecRestoreArrayF90(b,varray,p_ierr)
 
     ! Zero the rows for the fixed freedoms, setting the diagonal entry to
     ! a constant.
-    CALL MatSetOption(p_object%A,MAT_KEEP_NONZERO_PATTERN,PETSC_TRUE,p_ierr) 
     CALL MatZeroRows(p_object%A,n,rows,p_diag,                                 &
                      PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,p_ierr)
 
@@ -1364,9 +1370,11 @@ CONTAINS
     CALL VecSetValues(b,n,rows,p_diag*values,INSERT_VALUES,p_ierr)
     CALL VecAssemblyBegin(b,p_ierr)
     CALL VecAssemblyEnd(b,p_ierr)
-    CALL VecGetArrayReadF90(b,a,p_ierr)
-    r_pp = a
-    CALL VecRestoreArrayReadF90(b,a,p_ierr)
+
+    ! Convert PETSc back to arguments.
+    CALL VecGetArrayReadF90(b,varray,p_ierr)
+    r_pp = varray
+    CALL VecRestoreArrayReadF90(b,varray,p_ierr)
 
     CALL VecDestroy(b,p_ierr)
   END SUBROUTINE p_zero_rows
@@ -1518,12 +1526,12 @@ CONTAINS
 
     PetscScalar,POINTER :: varray(:)
 
-    CALL VecGetArrayF90(p_object%x,varray,p_ierr)
+    CALL VecGetArrayReadF90(p_object%x,varray,p_ierr)
     ! This is OK as long as ParaFEM reals are not smaller than PetscScalars.
     ! There should be a test for sizes of PetscScalars (and PetscInts) and
     ! ParaFEM reals (and indices).
     x_pp = varray
-    CALL VecRestoreArrayF90(p_object%x,varray,p_ierr)
+    CALL VecRestoreArrayReadF90(p_object%x,varray,p_ierr)
   END SUBROUTINE p_get_solution
 
   SUBROUTINE p_use_solver(solver,error)
@@ -1602,7 +1610,10 @@ CONTAINS
     !*
     !*    initial_guess_nonzero : Logical
     !*                            x_pp contains the initial guess for the
-    !*                            solution.
+    !*                            solution.  In this case use the norm of the
+    !*                            initial residual ||b - Ax|| instead of the
+    !*                            norm of the RHS ||b|| as the initial norm in
+    !*                            the convergence test.
     !*    reuse_preconditioner  : Logical
     !*                            Normally the preconditioner is recalculated
     !*                            before each solve because in non-linear
@@ -1653,6 +1664,9 @@ CONTAINS
         ! initial guess: copy the ParaFEM solution vector to PETSc.
         CALL KSPSetInitialGuessNonzero(ksp,PETSC_TRUE,p_ierr)
         CALL p_set_solution(x_pp)
+        ! And in this case the norm of the initial residual ||b - Ax|| is used
+        ! instead of the norm of the RHS ||b|| in the convergence test.
+        CALL KSPConvergedDefaultSetUIRNorm(ksp,p_ierr)
       END IF
     END IF
 
