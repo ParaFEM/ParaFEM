@@ -114,8 +114,8 @@ PROGRAM xx17
    c24(nodf,nod),c42(nod,nodf),c32(nod,nodf),fun(nod),row2(1,nod),       &
    c23(nodf,nod),uvel(nod),vvel(nod),row1(1,nod),funnyf(nodf,1),         &
    rowf(1,nodf),no_pp_temp(fixed_freedoms),wvel(nod),row3(1,nod),        &
-   ! ke is (ntot,ntot,1) so that formupvw can be used (formupvw cannot be
-   ! changed until a new edition of the book).
+   ! ke is (ntot,ntot,1) so that formupvw can be used (the formupvw
+   ! arguments cannot be changed until a new edition of the book).
    ke(ntot,ntot,1),g_t(n_t),                                             &
    no(fixed_freedoms),val(fixed_freedoms),weights(nip),                  &
    diag_tmp(ntot,nels_pp),utemp_pp(ntot,nels_pp))
@@ -249,15 +249,15 @@ PROGRAM xx17
        c23=c23+MATMUL(funnyf,row2)*det*weights(i) 
        c24=c24+MATMUL(funnyf,row3)*det*weights(i)
      END DO gauss_points_1
-      ! ke is (ntot,ntot,1) so that formupvw can be used (formupvw cannot be
-      ! changed until a new edition of the book).
-      ke = zero
-      CALL formupvw(ke,1,c11,c12,c21,c23,c32,c24,c42)
-      IF (solvers == parafem_solvers) THEN
-        storke_pp(:,:,iel) = ke(:,:,1)
-      ELSE IF (solvers == petsc_solvers) THEN
-        CALL p_add_element(g_g_pp(:,iel),ke(:,:,1))
-      END IF
+     ! ke is (ntot,ntot,1) so that formupvw can be used (the formupvw arguments
+     ! cannot be changed until a new edition of the book).
+     ke = zero
+     CALL formupvw(ke,1,c11,c12,c21,c23,c32,c24,c42)
+     IF (solvers == parafem_solvers) THEN
+       storke_pp(:,:,iel) = ke(:,:,1)
+     ELSE IF (solvers == petsc_solvers) THEN
+       CALL p_add_element(g_g_pp(:,iel),ke(:,:,1))
+     END IF
    END DO elements_2
    peak_memory_use = p_memory_peak()
    IF (numpe == 1) WRITE(*,'(A,F7.2,A)')                                        &
