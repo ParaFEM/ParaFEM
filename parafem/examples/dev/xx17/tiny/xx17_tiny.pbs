@@ -1,0 +1,35 @@
+#!/bin/bash
+
+#PBS -N xx17
+#PBS -l select=1
+#PBS -l walltime=00:20:00
+#PBS -A z19-csetds
+
+export PBS_O_WORKDIR=$(readlink -f $PBS_O_WORKDIR)
+cd $PBS_O_WORKDIR
+
+module unload modules
+module load modules/3.2.10.5
+source $MODULESHOME/init/bash
+module load cdt/16.09 &> /dev/null
+
+module use $HOME/modulefiles
+module load parafem
+
+# If you find variation in results from run to run, use these and the
+# ordered version of gather_scatter.f90 to get consistent reductions
+# to compare runs.
+#export MPICH_ALLREDUCE_NO_SMP=1
+#export MPICH_REDUCE_NO_SMP=1
+
+nodes=$(qstat -f $PBS_JOBID | awk '/Resource_List\.nodect/{print $3}')
+
+mkdir -p parafem
+rm -f log *.res *.ensi.VEL
+aprun -n $((24*nodes)) xx17 xx17_tiny &> log
+mv log *.res *.ensi.VEL parafem
+
+mkdir -p petsc
+rm -f log *.res *.ensi.VEL
+aprun -n $((24*nodes)) xx17 xx17_tiny petsc &> log
+mv log *.res *.ensi.VEL petsc

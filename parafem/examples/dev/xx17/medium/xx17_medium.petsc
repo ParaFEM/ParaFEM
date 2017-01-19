@@ -1,0 +1,12 @@
+# Tolerance and maximum number of iterations for PETSc solvers
+# are set in this file.  The values from the ParaFEM control
+# file are not used.  Note that relative tolerance for PETSc is
+# for the preconditioned residual.
+# 
+-ksp_type bcgsl
+-ksp_rtol 0.1e-4
+-ksp_max_it 5000
+-ksp_bcgsl_ell 4
+#-ksp_view
+-pc_type none
+#-pc_view
