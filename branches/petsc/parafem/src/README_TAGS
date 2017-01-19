@@ -1,6 +1,7 @@
 In ..../parafem/src do
 
-ctags -e -R --languages=Fortran modules/{mpi,shared,choose_solvers,parafem_petsc} programs/dev/xx{15,18}
+ctags -e -R --languages=Fortran modules/{mpi,shared,choose_solvers,parafem_petsc} tools/preprocessing/p12meshgen programs/dev/xx{15,17,18}
 
 to generate the TAGS file for navigation and for Lawrence Mitchell's
 F90 Emacs library.
+
