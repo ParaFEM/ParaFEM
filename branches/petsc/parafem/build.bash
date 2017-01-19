@@ -21,8 +21,8 @@ else
     echo 'Usage:
 build.bash clean to clean everything
 build.bash modules to re-build the ParaFEM modules and p12meshgen
-build.bash xx to build xx15 and xx18 only
-build.bash xxclean to clean xx15 and xx18 only'
+build.bash xx to build xx15, xx17, xx18 only
+build.bash xxclean to clean xx15, xx17, xx18 only'
     exit 2 # incorrect usage
 fi
 
@@ -71,7 +71,7 @@ set PARAFEM_DIR $PARAFEM_HOME
 setenv PARAFEM_DIR \$PARAFEM_DIR
 
 proc ModulesHelp { } {
-    puts stderr "xx15 and xx18: ParaFEM with PETSc"
+    puts stderr "xx15, xx17, xx18: ParaFEM with PETSc"
     puts stderr {=================================
 
 Maintained by: Mark Filipiak, EPCC
@@ -79,7 +79,7 @@ Maintained by: Mark Filipiak, EPCC
 }
 prepend-path PATH \$PARAFEM_DIR/bin
 
-module-whatis "xx15 and xx18: ParaFEM with PETSc"
+module-whatis "xx15, xx17, xx18: ParaFEM with PETSc"
 
 EOF
     elif [[ $build == 'modules' ]]; then
