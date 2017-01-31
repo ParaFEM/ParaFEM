@@ -21,7 +21,7 @@ program XX7
   INTEGER :: nels, nn, nr, nip, nodof=3, nod, nst=6, loaded_nodes, nn_pp
   INTEGER :: nf_start, fmt=1, i, j, k, ndim=3, iters, limit, iel, nn_start
   INTEGER :: num_load_steps, iload, igauss, dimH, inewton, jump, npes_pp
-  INTEGER :: partitioner=1
+  INTEGER :: partitioner
   REAL(iwp) :: e, v, det, tol, maxdiff, tol2, detF
   REAL(iwp) :: energy, energy1, rn0
   CHARACTER(len=15) :: element
@@ -87,7 +87,7 @@ program XX7
  
   fname = fname_base(1:INDEX(fname_base," ")-1) // ".dat"
   CALL READ_DATA_XX7(fname,numpe,nels,nn,nr,loaded_nodes,fixed_nodes,nip,     &
-                     limit,tol,e,v,nod,num_load_steps,jump,tol2)
+                     limit,tol,e,v,nod,num_load_steps,jump,tol2,partitioner)
 
   IF (nels < npes) THEN
     CALL SHUTDOWN
