@@ -47,9 +47,9 @@ PROGRAM xx15_quadric_linear_hardening
    tol_inc=.FALSE., lambda_inc=.TRUE., noncon_flag=.FALSE.,exit_iload=.false.
 
   CHARACTER(len=choose_solvers_string_length) :: solvers
-  LOGICAL                   :: error
-  CHARACTER,    PARAMETER   :: tab = ACHAR(9)
-  REAL :: peak_memory_use
+  LOGICAL              :: error
+  CHARACTER, PARAMETER :: tab = ACHAR(9)
+  REAL                 :: peak_memory_use
   
   !-------------------------- dynamic arrays-----------------------------------
   REAL(iwp), ALLOCATABLE:: points(:,:), coord(:,:), weights(:), xnew_pp(:),   &

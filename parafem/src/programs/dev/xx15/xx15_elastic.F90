@@ -21,7 +21,7 @@ PROGRAM xx15_elastic
 
   INTEGER :: nels, nn, nr, nip, nodof=3, nod, nst=6, loaded_nodes, nn_pp,     &
    nf_start, fmt=1, i, j, k, l, ndim=3, iters, limit, iel, nn_start,          &
-   num_load_steps, iload, igauss, dimH, inewton, jump, npes_pp, partitioner  ,&
+   num_load_steps, iload, igauss, dimH, inewton, jump, npes_pp, partitioner,  &
    argc, iargc, limit_2, fixed_nodes, numfix_pp, fixdim, writetimes=0,        &
    nodes_pp, node_start, node_end, idx1, idx2
 
@@ -38,15 +38,15 @@ PROGRAM xx15_elastic
 
   CHARACTER(len=15) :: element
   CHARACTER(len=50) :: text, fname_base, fname
+  CHARACTER(LEN=6)  :: ch 
  
   LOGICAL :: converged, timewrite=.TRUE., flag=.FALSE., print_output=.FALSE., &
    tol_inc=.FALSE., lambda_inc=.TRUE., noncon_flag=.FALSE.
 
   CHARACTER(len=choose_solvers_string_length) :: solvers
-  LOGICAL                  :: error
-  CHARACTER(:),ALLOCATABLE :: message
-  CHARACTER,PARAMETER      :: tab = ACHAR(9)
-  REAL                     :: memory_use,peak_memory_use
+  LOGICAL              :: error
+  CHARACTER, PARAMETER :: tab = ACHAR(9)
+  REAL                 :: peak_memory_use
   
   !-------------------------- dynamic arrays-----------------------------------
   REAL(iwp), ALLOCATABLE:: points(:,:), coord(:,:), weights(:), xnew_pp(:),   &
@@ -66,7 +66,8 @@ PROGRAM xx15_elastic
    value_shape(:), shape_integral_pp(:,:), stress_integral_pp(:,:),           &
    stressnodes_pp(:), strain_integral_pp(:,:), strainnodes_pp(:),             &
    principal_integral_pp(:,:), princinodes_pp(:), principal(:),               &
-   reacnodes_pp(:), stiffness_mat_con(:,:,:,:), km(:,:), fixkm_pp(:,:,:)
+   reacnodes_pp(:), stiffness_mat_con(:,:,:,:), km(:,:), fixkm_pp(:,:,:),     &
+   temp(:,:)
 
   INTEGER, ALLOCATABLE  :: num(:), g_num(:,:), g_num_pp(:,:), g_g_pp(:,:),    &
    load_node(:), rest(:,:), nf_pp(:,:), no_pp(:), comp(:,:), fixed_node(:),   &
@@ -84,6 +85,10 @@ PROGRAM xx15_elastic
 
   CALL FIND_PE_PROCS(numpe,npes)
 
+  peak_memory_use = p_memory_peak()
+  IF (numpe == 1) WRITE(*,'(A,F7.2,A)')                                        &
+    "peak memory use at start:           ", peak_memory_use, " GB"
+
   argc = IARGC()
 !     Output:  argc i: Number of arguments in the command line,
 !                      ./par131 arg1 arg2 arg3 ... argn
@@ -98,7 +103,7 @@ PROGRAM xx15_elastic
     STOP
   END IF
 
-! Input:  1: The first argument in the command line (arg1) 
+! Input:  1: The first argument in the command line (arg1)
   IF (argc >= 1) THEN
     CALL GETARG(1,fname_base)
   END IF
@@ -151,21 +156,21 @@ PROGRAM xx15_elastic
   CALL CALC_NELS_PP(fname_base,nels,npes,numpe,partitioner,nels_pp)
   
   ALLOCATE(g_num_pp(nod, nels_pp)) 
-  
+
   fname = fname_base(1:INDEX(fname_base," ")-1) // ".d"
   CALL READ_G_NUM_PP(fname_base,iel_start,nn,npes,numpe,g_num_pp)
   ! read_elements_2() does not work for METIS partitions
-  CALL READ_ELEMENTS_2(fname,npes,nn,numpe,g_num_pp)
-  
+  !CALL READ_ELEMENTS_2(fname,npes,nn,numpe,g_num_pp)
+
   CALL CALC_NN_PP(g_num_pp,nn_pp,nn_start)
-  
+
   ALLOCATE(g_coord_pp(ndim, nn_pp))
   CALL READ_NODES(fname,nn,nn_start,numpe,g_coord_pp)
-  
+
   ALLOCATE(rest(nr,nodof+1))
   fname = fname_base(1:INDEX(fname_base," ")-1) // ".bnd"
   CALL READ_RESTRAINTS(fname,numpe,rest)
-  
+
   timest(30) = timest(30) + elap_time()-timest(2) ! 30 = read
   timest(2) = elap_time()
 
@@ -226,7 +231,7 @@ PROGRAM xx15_elastic
   END DO
 
   CALL CALC_NEQ(nn,rest,neq)
-  
+
 !------------------------------------------------------------------------------
 ! 6. Create interprocessor communications tables
 !------------------------------------------------------------------------------  
@@ -239,7 +244,7 @@ PROGRAM xx15_elastic
 
   timest(31) = timest(31) + elap_time()-timest(2) ! 31 = setup
   timest(2) = elap_time()
-  
+
 !------------------------------------------------------------------------------
 ! 7. Read and distribute essential boundary conditions
 !------------------------------------------------------------------------------
@@ -301,7 +306,7 @@ PROGRAM xx15_elastic
     END IF
 
   END IF
-  
+
   !----------------------------------------------------------------------------
   ! 8. Read and distribute natural boundary conditions
   !----------------------------------------------------------------------------
@@ -323,7 +328,7 @@ PROGRAM xx15_elastic
     DEALLOCATE(load_node,load_value)
 
   END IF
-  
+
   timest(30) = timest(30) + elap_time()-timest(2) ! 30 = read
   timest(2) = elap_time()
 
@@ -363,11 +368,10 @@ PROGRAM xx15_elastic
       CALL shutdown
     END IF
   END IF
-  memory_use = p_memory_use()
+
   peak_memory_use = p_memory_peak()
-  IF (numpe == 1) WRITE(*,'(A,2F7.2,A)')                                       &
-    "current and peak memory use after setup:        ",                        &
-    memory_use,peak_memory_use," GB "
+  IF (numpe == 1) WRITE(*,'(A,F7.2,A)')                                        &
+    "peak memory use after setup:        ", peak_memory_use, " GB"
 
   !----------------------------------------------------------------------------
   ! 10. Initialise the solution vector to 0.0
@@ -430,7 +434,7 @@ PROGRAM xx15_elastic
     ! previously converged full increments (not affected by the output  
     ! requests) are below 6
     IF ((iter<6).AND.(prev_iter<6).AND.(iload>2)) THEN
-      IF (numpe==1) THEN
+      IF(numpe==1) THEN
         WRITE(*,*) 'The load increment is increased by 50%'
       END IF
       lambda=1.5*lambda
@@ -504,7 +508,7 @@ PROGRAM xx15_elastic
       inewton = inewton + 1
 
       storefint_pp = zero
-      
+
       CALL GATHER(xnew_pp(1:),xnewel_pp)
       CALL GATHER(deltax_pp_temp(1:),xnewelinc_pp)
       CALL GATHER(xnew_pp_previous(1:),xnewel_pp_previous)
@@ -512,7 +516,7 @@ PROGRAM xx15_elastic
       DO i = 1,numfix_pp
         xnewel_pp_previous(fixdof_pp(i),fixelem_pp(i))=fixvalprev_pp(i)
       END DO
-        
+
       IF (inewton>1 .AND. numfix_pp>0) THEN
         DO i = 1,numfix_pp
           xnewel_pp(fixdof_pp(i),fixelem_pp(i)) = fixvaltot_pp(i)
@@ -606,21 +610,18 @@ PROGRAM xx15_elastic
           FORALL (i = 1:numfix_pp, fixelem_pp(i) == iel) fixkm_pp(:,:,i) = km
         END IF
       END DO
-      memory_use = p_memory_use()
       peak_memory_use = p_memory_peak()
-      IF (numpe == 1) WRITE(*,'(A,2F7.2,A)')                                  &
-        "current and peak memory use after add elements: ",                   &
-         memory_use,peak_memory_use," GB "
+      IF (numpe == 1) WRITE(*,'(A,F7.2,A)')                                  &
+        "peak memory use after add elements: ", peak_memory_use, " GB"
 
       IF (solvers == petsc_solvers) THEN
         CALL p_assemble
       END IF
-      memory_use = p_memory_use()
+
       peak_memory_use = p_memory_peak()
-      IF (numpe == 1) WRITE(*,'(A,2F7.2,A)')                                  &
-        "current and peak memory use after assemble:     ",                   &
-        memory_use,peak_memory_use," GB "
-      
+      IF (numpe == 1) WRITE(*,'(A,F7.2,A)')                                  &
+        "peak memory use after assemble:     ", peak_memory_use, " GB"
+
       timest(33) = timest(33) + elap_time()-timest(2) ! 33 = matrix assemble
       timest(2) = elap_time()
       
@@ -673,7 +674,7 @@ PROGRAM xx15_elastic
       fint_pp = zero
       CALL SCATTER(fint_pp(1:),storefint_pp)
 
-      r_pp(1:) = fext_pp(1:) - fint_pp(1:) 
+      r_pp(1:) = fext_pp(1:) - fint_pp(1:)       !Residual
       r_pp(0) = zero
 
       ! Compute maxdiff of residual 
@@ -711,10 +712,16 @@ PROGRAM xx15_elastic
           CALL shutdown
         END IF
         CALL p_solve(r_pp(1:),deltax_pp(1:))
-        CALL p_print_info(1,11)
       END IF
 
       timest(34) = timest(34) + elap_time()-timest(2) ! 34 = solve
+      timest(2) = elap_time()
+
+      IF (solvers == petsc_solvers) THEN
+        CALL p_print_info(1,11)
+      END IF
+
+      timest(32) = timest(32) + elap_time()-timest(2) ! 32 = other work in load loop
       timest(2) = elap_time()
 
       IF (numpe==1) THEN
@@ -752,9 +759,6 @@ PROGRAM xx15_elastic
           converged = .TRUE.
         END IF 
       END IF
-
-      timest(32) = timest(32) + elap_time()-timest(2) ! 32 = other work in load loop
-      timest(2) = elap_time()
 
       ! The time increment is cut in half if one of the following situations
       ! happen:
@@ -891,6 +895,7 @@ PROGRAM xx15_elastic
     IF (numpe==1) THEN
       WRITE(11,'(a,i3,a,f12.4,a,i4,a)') "Time after load step ",iload,": ", &
       ELAP_TIME() - timest(1),"     (",inewton," iterations )"
+      FLUSH(11)
     END IF
 
     !IF (iload==1) THEN
@@ -913,6 +918,12 @@ PROGRAM xx15_elastic
         fname = fname_base(1:INDEX(fname_base, " ")-1) // "_est.res"
         OPEN(27, file=fname, status='replace', action='write')
         
+        WRITE(ch,'(I6.6)') numpe
+        OPEN(112,file=fname_base(1:INDEX(fname_base, " ")-1)//".ensi.DISPL-"   &
+                      //ch,status='replace',action='write')
+        WRITE(112,'(A)') "Alya Ensight Gold --- Vector per-node variable file"
+        WRITE(112,'(A/A/A)') "part", "     1","coordinates"
+
         !fname = fname_base(1:INDEX(fname_base, " ")-1) // "_str.res"
         !OPEN(25, file=fname, status='replace', action='write')
         !fname = fname_base(1:INDEX(fname_base, " ")-1) // "_rea.res"
@@ -1012,7 +1023,15 @@ PROGRAM xx15_elastic
               node_start,node_end,xnewel_pp,xnewnodes_pp,1)
       CALL WRITE_NODAL_VARIABLE(text,24,iload,nodes_pp,npes,numpe,nodof, &
                                 xnewnodes_pp)
-	  DEALLOCATE(xnewnodes_pp)
+
+      ALLOCATE(temp(nodof,nodes_pp))
+      temp = RESHAPE(xnewnodes_pp,(/nodof,nodes_pp/))
+      DO i = 1, nodof
+        CALL dismsh_ensi_p(112,iload,nodes_pp,npes,numpe,1,temp(i,:))
+      END DO
+      DEALLOCATE(temp)
+
+      DEALLOCATE(xnewnodes_pp)
 
 !      text = "*STRESS"
       !CALL NODAL_PROJECTION(npes,nn,nels_pp,g_num_pp,nod,nst,nodes_pp,  &
@@ -1067,6 +1086,7 @@ PROGRAM xx15_elastic
     IF (iload==max_inc) THEN
       EXIT
     END IF
+
   END DO !iload
   
   timest(2) = elap_time()
@@ -1079,6 +1099,7 @@ PROGRAM xx15_elastic
     !CLOSE(29)
     !CLOSE(30)
     !CLOSE(31)
+    CLOSE(112)
   END IF
 
 !------------------------------------------------------------------------------
@@ -1089,12 +1110,44 @@ PROGRAM xx15_elastic
 !------------------------------------------------------------------------------
 !------------------------------------------------------------------------------
 
+!!$            ALLOCATE(etype(nels),nf(nodof,nn),oldlds(nn*ndim)) 
+!!$
+!!$            etype  = 1   ! Only one material type in this mesh
+!!$            nf     = 0
+!!$            oldlds = zero
+!!$
+!!$            nstep=1; npri=1; dtim=1.0; solid=.true. 
+!!$
+!!$            k=0 
+!!$            DO j=1,loaded_freedoms
+!!$              k=k+1
+!!$              found=.false.
+!!$              DO i=1,nn
+!!$                IF(i==no(k)) THEN
+!!$                  l=i*3
+!!$                  oldlds(l)=val(k)
+!!$                  found=.true.
+!!$                END IF
+!!$                IF(found)CYCLE
+!!$              END DO
+!!$            END DO
+!!$
+!!$            CALL rest_to_nf(rest,nf)
+!!$
+!!$            CALL mesh_ensi(TRIM(fname_base),LEN(TRIM(fname_base),g_coord,g_num,element,etype,nf,          &
+!!$                           oldlds(1:),nstep,npri,dtim,solid)
+!!$
   peak_memory_use = p_memory_peak()
 
   IF (numpe==1) THEN
-    WRITE(11,'(a,i5,a)') "This job ran on ",npes," processors"
-    WRITE(11,'(A,3(I8,A))')"There are ",nn," nodes",nels," elements and ",&
-                           neq," equations"
+    IF (solvers == parafem_solvers) THEN
+      WRITE(11,'(A)') "ParaFEM revision "//REVISION
+    ELSE IF (solvers == petsc_solvers) THEN
+      WRITE(11,'(A)') "ParaFEM revision "//REVISION//"; "//p_version()
+    END IF
+    WRITE(11,'(A,I5,A)') "This job ran on ",npes," processors"
+    WRITE(11,'(A,3(I8,A))') "There are ",nn," nodes",nels," elements and ",    &
+                            neq," equations"
     WRITE(11,'(A,F10.4)') "Time to read input:       ", timest(30)
     WRITE(11,'(A,F10.4)') "Time for setup:           ", timest(31)
     WRITE(11,'(A,F10.4)') "Time for matrix assemble: ", timest(33)
@@ -1105,6 +1158,23 @@ PROGRAM xx15_elastic
     WRITE(11,'(A,F10.4)') "Total:                    ", SUM(timest(30:35))
     WRITE(11,'(A)')       "                          ----------"
     WRITE(11,'(A,F10.4)') "This analysis took:       ", elap_time()-timest(1)
+    WRITE(11,*)
+    WRITE(11,'(A,F10.2,A)') "Peak memory use: ",peak_memory_use," GB"
+    WRITE(11,*)
+    ! REVISION is substituted with a string like "2108" (including the double
+    ! quotes) by the preprocessor, see the makefile.
+    WRITE(11,'(2A,2(I0,A),4(F0.2,A),F0.2)',advance='no')                       &
+      REVISION,tab,                                                            &
+      npes,tab,                                                                &
+      neq,tab,                                                                 &
+      timest(31),tab,                                                          &
+      timest(33),tab,                                                          &
+      timest(34),tab,                                                          &
+      timest(31)+timest(33)+timest(34),tab,                                    &
+      peak_memory_use
+    IF (solvers == petsc_solvers) THEN
+      WRITE(11,'(2A)') tab,p_version()
+    END IF
 !   CALL FLUSH(11)
     CLOSE(11)
   END IF
