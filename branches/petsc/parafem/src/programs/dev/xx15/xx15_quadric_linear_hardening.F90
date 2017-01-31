@@ -48,7 +48,6 @@ PROGRAM xx15_quadric_linear_hardening
 
   CHARACTER(len=choose_solvers_string_length) :: solvers
   LOGICAL                   :: error
-  CHARACTER(:), ALLOCATABLE :: message
   CHARACTER,    PARAMETER   :: tab = ACHAR(9)
   REAL :: peak_memory_use
   
@@ -368,7 +367,7 @@ PROGRAM xx15_quadric_linear_hardening
       CALL shutdown
     END IF
     ! Set up PETSc.
-    CALL p_setup(ntot,g_g_pp,error)
+    CALL p_create(ntot,g_g_pp,error)
     IF (error) THEN
       CALL p_finalize
       CALL shutdown

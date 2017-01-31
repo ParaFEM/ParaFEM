@@ -357,7 +357,7 @@ PROGRAM xx15_elastic
       CALL shutdown
     END IF
     ! Set up PETSc.
-    CALL p_setup(ntot,g_g_pp,error)
+    CALL p_create(ntot,g_g_pp,error)
     IF (error) THEN
       CALL p_finalize
       CALL shutdown

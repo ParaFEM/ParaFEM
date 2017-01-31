@@ -217,15 +217,42 @@ CONTAINS
     CALL PetscInitialize(fname,p_ierr)
   END SUBROUTINE p_initialize
 
-  SUBROUTINE p_setup(ntot_max,g_g_pp,error)
+  SUBROUTINE p_finalize
 
-    !/****if* petsc/p_setup
+    !/****if* petsc/p_finalize
     !*  NAME
-    !*    SUBROUTINE: p_setup
+    !*    SUBROUTINE: p_finalize
     !*  SYNOPSIS
-    !*    Usage:      p_setup(ntot_max,g_g_pp,error)
+    !*    Usage:      p_finalize
     !*  FUNCTION
-    !*      Initialises PETSc and its matrices, vectors and solvers
+    !*      Finalizes (i.e., tidies up) PETSc.
+    !*  ARGUMENTS
+    !*    None
+    !*  AUTHOR
+    !*    Mark Filipiak
+    !*  CREATION DATE
+    !*    18.05.2016
+    !*  MODIFICATION HISTORY
+    !*    Version 1, 31.05.2016, Mark Filipiak
+    !*  COPYRIGHT
+    !*    (c) University of Edinburgh 2016
+    !******
+    !*  Place remarks that should not be included in the documentation here.
+    !*
+    !*/
+
+    CALL PetscFinalize(p_ierr)
+  END SUBROUTINE p_finalize
+
+  SUBROUTINE p_create(ntot_max,g_g_pp,error)
+
+    !/****if* petsc/p_create
+    !*  NAME
+    !*    SUBROUTINE: p_create
+    !*  SYNOPSIS
+    !*    Usage:      p_create(ntot_max,g_g_pp,error)
+    !*  FUNCTION
+    !*      Creates the PETSc matrices, vectors and solvers.
     !*  ARGUMENTS
     !*    INTENT(IN)
     !*
@@ -281,34 +308,38 @@ CONTAINS
       RETURN
     END IF
     CALL p_create_workspace(ntot_max)
-  END SUBROUTINE p_setup
+  END SUBROUTINE p_create
 
-  SUBROUTINE p_finalize
+  SUBROUTINE p_destroy()
 
-    !/****if* petsc/p_finalize
+    !/****if* petsc/p_destroy
     !*  NAME
-    !*    SUBROUTINE: p_finalize
+    !*    SUBROUTINE: p_destroy
     !*  SYNOPSIS
-    !*    Usage:      p_finalize
+    !*    Usage:      p_destroy()
     !*  FUNCTION
-    !*      Finalizes (i.e., tidies up) PETSc.
+    !*      Destroys the PETSc matrices, vectors and solvers.
     !*  ARGUMENTS
     !*    None
     !*  AUTHOR
     !*    Mark Filipiak
     !*  CREATION DATE
-    !*    18.05.2016
+    !*    27.01.2017
     !*  MODIFICATION HISTORY
-    !*    Version 1, 31.05.2016, Mark Filipiak
+    !*    Version 1, 27.01.2017, Mark Filipiak
     !*  COPYRIGHT
-    !*    (c) University of Edinburgh 2016
+    !*    (c) University of Edinburgh 2017
     !******
     !*  Place remarks that should not be included in the documentation here.
     !*
     !*/
 
-    CALL PetscFinalize(p_ierr)
-  END SUBROUTINE p_finalize
+    ! Destroy the objects
+    CALL p_destroy_workspace
+    CALL p_destroy_ksps
+    CALL p_destroy_vectors
+    CALL p_destroy_matrix
+  END SUBROUTINE p_destroy
 
   SUBROUTINE p_shutdown
 
@@ -336,10 +367,7 @@ CONTAINS
     !*  There should be a p_destroy routine for each p_create routine
     !*/
 
-    CALL p_destroy_workspace
-    CALL p_destroy_ksps
-    CALL p_destroy_vectors
-    CALL p_destroy_matrix
+    CALL p_destroy
     CALL p_finalize
   END SUBROUTINE p_shutdown
 
@@ -1543,7 +1571,7 @@ CONTAINS
     !*    Usage:      p_use_solver(solver,error)
     !*  FUNCTION
     !*    Choose one of the PETSc solvers specified by options and read in by
-    !*    p_create_ksps (which is called by p_setup).
+    !*    p_create_ksps (which is called by p_create).
     !*  ARGUMENTS
     !*    INTENT(IN)
     !*
@@ -1585,13 +1613,14 @@ CONTAINS
     p_object%solver = solver
   END SUBROUTINE p_use_solver
 
-  SUBROUTINE p_solve(r_pp,x_pp,initial_guess_nonzero,reuse_preconditioner)
+  SUBROUTINE p_solve(r_pp,x_pp,reason,                                         &
+                     initial_guess_nonzero,reuse_preconditioner)
 
     !/****if* petsc/p_solve
     !*  NAME
     !*    SUBROUTINE: p_solve
     !*  SYNOPSIS
-    !*    Usage:      p_solve(r_pp,x_pp,
+    !*    Usage:      p_solve(r_pp,x_pp,reason,
     !*                        initial_guess_nonzero,reuse_preconditioner)
     !*  FUNCTION
     !*    Solve using PETSc, using the only solver, or the current solver
@@ -1606,6 +1635,14 @@ CONTAINS
     !*
     !*    x_pp(:)            : Real
     !*                         Solution on this process.
+    !*    INTENT(OUT), OPTIONAL
+    !*
+    !*    reason             : Integer
+    !*                         Reason for convergence (or divergence) to the
+    !*                         solution.  Use p_print_info to print out a full
+    !*                         description of the reason.  The success/failure
+    !*                         of the solver can be tested using this argument:
+    !*                         reason > 0 if converged, reason < 0 if diverged.
     !*    INTENT(IN), OPTIONAL
     !*
     !*    initial_guess_nonzero : Logical
@@ -1636,17 +1673,19 @@ CONTAINS
     !*    17.05.2016
     !*  MODIFICATION HISTORY
     !*    Version 1, 13.06.2016, Mark Filipiak
+    !*    Version 2, 27.01.2017, Mark Filipiak
     !*  COPYRIGHT
-    !*    (c) University of Edinburgh 2016
+    !*    (c) University of Edinburgh 2016,2017
     !******
     !*  Place remarks that should not be included in the documentation here.
     !*
     !*/
 
-    REAL(iwp), INTENT(in)           :: r_pp(:)
-    REAL(iwp), INTENT(inout)        :: x_pp(:)
-    LOGICAL,   INTENT(in), OPTIONAL :: initial_guess_nonzero
-    LOGICAL,   INTENT(in), OPTIONAL :: reuse_preconditioner
+    REAL(iwp), INTENT(in)            :: r_pp(:)
+    REAL(iwp), INTENT(inout)         :: x_pp(:)
+    INTEGER,   INTENT(out), OPTIONAL :: reason
+    LOGICAL,   INTENT(in),  OPTIONAL :: initial_guess_nonzero
+    LOGICAL,   INTENT(in),  OPTIONAL :: reuse_preconditioner
 
     KSP,POINTER :: ksp
 
@@ -1682,6 +1721,11 @@ CONTAINS
     CALL KSPSolve(ksp,p_object%b,p_object%x,p_ierr)
 
     CALL p_get_solution(x_pp)
+
+    IF (PRESENT(reason)) THEN
+      CALL KSPGetConvergedReason(ksp,p_object%reason,p_ierr)
+      reason = p_object%reason
+    END IF
   END SUBROUTINE p_solve
 
   SUBROUTINE p_print_info(output_pe,unit)
