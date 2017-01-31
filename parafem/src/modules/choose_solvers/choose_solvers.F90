@@ -41,9 +41,9 @@ CONTAINS
 
     !/****if* choose_solvers/get_solvers
     !*  NAME
-    !*    SUBROUTINE: get_solvers
+    !*    FUNCTION: get_solvers
     !*  SYNOPSIS
-    !*    Usage:      get_solvers
+    !*    Usage:      get_solvers()
     !*  FUNCTION
     !*      Gets the type of solvers (e.g. ParaFEM or PETSc) to use
     !*  ARGUMENTS
@@ -91,7 +91,7 @@ CONTAINS
 
     !/****if* choose_solvers/solvers_valid
     !*  NAME
-    !*    SUBROUTINE: solvers_valid
+    !*    FUNCTION: solvers_valid
     !*  SYNOPSIS
     !*    Usage:      solvers_valid(solvers)
     !*  FUNCTION
@@ -135,7 +135,7 @@ CONTAINS
 
     !/****if* choose_solvers/solvers_list
     !*  NAME
-    !*    SUBROUTINE: solvers_list
+    !*    FUNCTION: solvers_list
     !*  SYNOPSIS
     !*    Usage:      solvers_list()
     !*  FUNCTION
