@@ -1,4 +1,4 @@
-pPROGRAM xx15_vm_nonlinear_hardening
+PROGRAM xx15_vm_nonlinear_hardening
 !------------------------------------------------------------------------------
 !   program xx15:  finite strain elasto-plastic analysis with Newton-Raphson
 !------------------------------------------------------------------------------
@@ -520,7 +520,7 @@ pPROGRAM xx15_vm_nonlinear_hardening
       timest(32) = timest(32) + elap_time()-timest(2) ! 32 = other work in load loop
       timest(2) = elap_time()
       
-p      EXIT
+      EXIT
     END IF
 
     ! Display the incremental, total and previous load increments
@@ -537,7 +537,7 @@ p      EXIT
     fixvaltot_pp(1:)=fixval_pp(1:)*lambda_total
     fixvalprev_pp(1:)=fixval_pp(1:)*lambda_prev
 
-p    !IF (print_output) THEN
+    !IF (print_output) THEN
     !  !lambda=(1.0/number_output)
     !  temp_inc=lambda
     !  lambda=prev_inc
@@ -963,7 +963,7 @@ p    !IF (print_output) THEN
             CALL invert_matrix_3x3 (jacftrans,jacFtransinv)
             S_mat=detF*MATMUL(jacFinv,MATMUL(sigma,jacFtransinv))
              
-p            ! ------------------------------------------------------
+            ! ------------------------------------------------------
             sum_stress_pp=sum_stress_pp+S_mat*det*weights(igauss)
             sum_strain_pp=sum_strain_pp+E_mat*det*weights(igauss)                
             ! ------------------------------------------------------       
