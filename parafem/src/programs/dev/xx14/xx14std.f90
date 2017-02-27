@@ -7,8 +7,6 @@ PROGRAM xx14std
 ! Program xx14 - linking ParaFEM with CGPACK, specifically
 ! modifying p121 from 5th edition to link with the cgca module.
 !
-! Reproducible RND seed routine (cgca_ins) is used here.
-!
 ! 12.1 is a three dimensional analysis of an elastic solid
 ! using 20-node brick elements, preconditioned conjugate gradient
 ! solver; diagonal preconditioner diag_precon; parallel version
@@ -443,6 +441,15 @@ if ( cgca_img .eq. 1 ) then
               [ 1, 1, cgca_ir(3)/2 ] = cgca_clvg_state_100_edge
 end if
 
+! Must be slightly bigger than the characteristic length of FE.
+cgca_charlen = 1.1
+
+! Each image will update its own cgca_space coarray.
+!subroutine cgca_pfem_partin( coarray, cadim, lres, bcol, charlen, &
+! debug )
+call cgca_pfem_partin( cgca_space, cgca_c, cgca_lres, cgca_bcol,       &
+  cgca_charlen, cgca_yesdebug )
+
          ! cgca_space changed locally on every image
 sync all !
          ! cgca_space used
@@ -452,7 +459,7 @@ sync all !
 ! required, to avoid extra sync.
 call cgca_pfem_ctdalloc
 
-! Img 1 dumps space arrays to files
+! Img 1 dumps space arrays to files.
 ! Remote comms, no sync inside, so most likely want to sync afterwards
 if ( cgca_img .eq. 1 ) write (*,*) "dumping model to files"
 !call cgca_fwci( cgca_space, cgca_state_type_grain, "zg0text.raw" )
