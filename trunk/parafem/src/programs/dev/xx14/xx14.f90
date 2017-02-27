@@ -7,8 +7,6 @@ PROGRAM xx14
 ! Program xx14 - linking ParaFEM with CGPACK, specifically
 ! modifying p121 from 5th edition to link with the cgca module.
 !
-! Random RND seed routine (cgca_irs) is used here.
-!
 ! 12.1 is a three dimensional analysis of an elastic solid
 ! using 20-node brick elements, preconditioned conjugate gradient
 ! solver; diagonal preconditioner diag_precon; parallel version
@@ -75,8 +73,8 @@ logical( kind=ldef ), parameter :: cgca_yesdebug = .true.,             &
  cgca_nodebug = .false.
 real( kind=rdef ), parameter :: cgca_zero = 0.0_rdef,                  &
  cgca_one = 1.0_rdef,                                                  &
- ! cleavage stress on 100, 110, 111 planes for BCC,
- ! see the manual for derivation, GPa.
+ ! Cleavage stress on 100, 110, 111 planes for BCC,
+ ! in the units of FE stress!!!
  cgca_scrit(3) = (/ 1.05e1_rdef, 1.25e1_rdef, 4.90e1_rdef /)
 
 ! CGPACK variables
@@ -86,6 +84,7 @@ integer( kind=idef ) ::                                                &
    cgca_nimgs,            &
    cgca_ng,               & ! number of grains in the whole model
    cgca_clvg_iter,        & ! number of cleavage iterations
+   cgca_extent(3),        & ! extent of the CA space
 !   cgca_lc(3),            & ! local coordinates of a cell with its image
 !   cgca_lowr(3),          & ! local coordinates of the lower box corner
 !   cgca_uppr(3),          & ! local coordinates of the upper box corner
@@ -269,12 +268,12 @@ sync all
 ! Must be fully within the FE model, which for xx14
 ! is a cube with lower bound at (0,0,-10), and the
 ! upper bound at (10,10,0)
-cgca_bsz = (/ 10.0, 10.0, 10.0 /)
+cgca_bsz = (/ 12.0, 12.0, 20.0 /)
 
 ! Origin of the box cs, in the same units.
 ! This gives the upper limits of the box at 0+10=10, 0+10=10, -10+10=0
 ! all within the FE model.
-cgca_origin = (/ 0.0, 0.0, -10.0 /)
+cgca_origin = (/ -6.0, -6.0, 60.0 /)
 
 ! Rotation tensor *from* FE cs *to* CA cs.
 ! The box cs is aligned with the box.
@@ -294,9 +293,11 @@ cgca_res = 1.0e5_rdef
 ! i.e. per second. Let's say 1 km/s = 1.0e3 m/s = 1.0e6 mm/s. 
 cgca_length = 1.0e6_rdef
 
-! In p121_medium, each element is 0.25 x 0.25 x 0.25 mm, so
-! the charlen must be bigger than that.
-cgca_charlen = 0.4
+! Charlen must be a bit greater than the characteristic FE length.
+! Cells which are cgca_charlen away from any FE centroid are set
+! to cgca_state_null. These cells are excluded from any fracture
+! analysis 
+cgca_charlen = 0.6
 
 ! each image calculates the coarray grid dimensions
 call cgca_gdim( cgca_nimgs, cgca_ir, cgca_qual )
@@ -305,6 +306,10 @@ call cgca_gdim( cgca_nimgs, cgca_ir, cgca_qual )
 ! subroutine cgca_cadim( bsz, res, dm, ir, c, lres, ng )
 call cgca_cadim( cgca_bsz, cgca_res, cgca_dm, cgca_ir, cgca_c,         &
                  cgca_lres, cgca_ng )
+
+! Extent of the CA space, a 3D array with CA space sizes along
+! 3 coord. axes.
+cgca_extent = cgca_c*cgca_ir
 
 ! dump some stats from img 1
 if (cgca_img .eq. 1 ) then
@@ -315,7 +320,10 @@ if (cgca_img .eq. 1 ) then
      "] "  , cgca_ng   ,                                               &
     cgca_qual, cgca_lres,                                              &
          " (", cgca_bsz(1), ",", cgca_bsz(2), ",", cgca_bsz(3), ")"
-  write (*,*) "dataset sizes for ParaView", cgca_c*cgca_ir
+  write (*,*) "ParaView Data Origin:  ", cgca_origin
+  write (*,*) "ParaView Data Spacing: ",                               &
+              cgca_bsz / real( cgca_extent, kind=rdef )
+  write (*,*) "ParaView Data Extent:  ", cgca_extent
   write (*,"(a, es10.2, a, i0)") "Total cells in the model (real): ",  &
     product( real(cgca_c) * real(cgca_ir) ), " (int): ",               &
     product( int(cgca_c, kind=ilrg) * int(cgca_ir, kind=ilrg) )
@@ -437,11 +445,26 @@ sync all
 ! update grain connectivity, local routine, no sync needed
 call cgca_gcu( cgca_space )
 
-! Set a single crack nucleus in the centre of the x1=x2=0 edge
+! Set a single crack nucleus near the centre of the CA space.
 if ( cgca_img .eq. 1 ) then
-  cgca_space( 1, 1, cgca_c(3)/2, cgca_state_type_frac )                &
-              [ 1, 1, cgca_ir(3)/2 ] = cgca_clvg_state_100_edge
+  cgca_space( cgca_c(1)/2, cgca_c(2)/2, cgca_c(3)/2,                   &
+                                             cgca_state_type_frac )    &
+       [ cgca_ir(1)/2, cgca_ir(2)/2, cgca_ir(3)/2 ] =                  &
+                                          cgca_clvg_state_100_edge
 end if
+
+! Must be slightly bigger than the characteristic length of FE.
+cgca_charlen = 1.1
+
+         ! cgca_space changed locally on every image
+sync all !
+         ! cgca_space used
+
+! Each image will update its own cgca_space coarray.
+!subroutine cgca_pfem_partin( coarray, cadim, lres, bcol, charlen, &
+! debug )
+call cgca_pfem_partin( cgca_space, cgca_c, cgca_lres, cgca_bcol,       &
+   cgca_charlen, cgca_nodebug )
 
          ! cgca_space changed locally on every image
 sync all !
@@ -455,8 +478,8 @@ call cgca_pfem_ctdalloc
 ! Img 1 dumps space arrays to files.
 ! Remote comms, no sync inside, so most likely want to sync afterwards
 if ( cgca_img .eq. 1 ) write (*,*) "dumping model to files"
-call cgca_fwci( cgca_space, cgca_state_type_grain, "zg0text.raw" )
-call cgca_fwci( cgca_space, cgca_state_type_frac,  "zf0text.raw" )
+!call cgca_fwci( cgca_space, cgca_state_type_grain, "zg0text.raw" )
+!call cgca_fwci( cgca_space, cgca_state_type_frac,  "zf0text.raw" )
 call cgca_swci( cgca_space, cgca_state_type_grain, 10, "zg0.raw" )
 call cgca_swci( cgca_space, cgca_state_type_frac,  10, "zf0.raw" )
 if ( cgca_img .eq. 1 ) write (*,*) "finished dumping model to files"

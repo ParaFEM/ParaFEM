@@ -7,6 +7,8 @@ PROGRAM xx14rstd
 ! Program xx14 - linking ParaFEM with CGPACK, specifically
 ! modifying p121 from 5th edition to link with the cgca module.
 !
+! Reproducible RND seed routine (cgca_ins) is used here.
+!
 ! 12.1 is a three dimensional analysis of an elastic solid
 ! using 20-node brick elements, preconditioned conjugate gradient
 ! solver; diagonal preconditioner diag_precon; parallel version
@@ -243,7 +245,7 @@ cgca_nimgs = num_images()
 ! Argument:
 ! .false. - no debug output
 !  .true. - with debug output
-call cgca_irs( .false. )
+call cgca_ins( .false. )
 
 ! dump CGPACK parameters and some ParaFEM settings
 if ( cgca_img .eq. 1 ) then
