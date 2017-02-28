@@ -14,3 +14,7 @@
 
   lee.margetts@manchester.ac.uk
 
+  NOTES
+
+  Subroutine READ_G_NUM_PP is different to the book version. The argument
+  NELS is no longer required.
