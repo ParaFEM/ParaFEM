@@ -13,7 +13,7 @@ PROGRAM xx19
  INTEGER::nn,nr,nip,nod,i,j,k,l,iel,ndim=3,nstep,npri,iters,limit,ndof,  &
    nels,npes_pp,node_end,node_start,nodes_pp,loaded_nodes,nlen,nres,     &
    meshgen,partitioner,it,is
- REAL(iwp),PARAMETER::zero=0.0_iwp    
+ REAL(iwp),PARAMETER::zero=0.0_iwp,one=1.0_iwp    
  REAL(iwp)::e,v,det,rho,alpha1,beta1,omega,theta,period,pi,dtim,volume,  &
    c1,c2,c3,c4,real_time,tol,big,up,alpha,beta,tload     
  CHARACTER(LEN=15)::element; CHARACTER(LEN=50)::argv; CHARACTER(LEN=6)::ch
@@ -25,7 +25,7 @@ PROGRAM xx19
    d2x0_pp(:),store_km_pp(:,:,:),vu_pp(:),store_mm_pp(:,:,:),u_pp(:),    &
    p_pp(:),d_pp(:),x_pp(:),xnew_pp(:),pmul_pp(:,:),utemp_pp(:,:),temp(:),&
    diag_precon_pp(:),diag_precon_tmp(:,:),temp_pp(:,:,:),disp_pp(:),     &
-   val(:,:),timest(:),eld_pp(:,:)
+   val(:,:),timest(:),eld_pp(:,:),r_pp(:)
  INTEGER,ALLOCATABLE::rest(:,:),g_num_pp(:,:),g_g_pp(:,:),node(:)       
 !----------------------- input and initialisation ------------------------
  ALLOCATE(timest(20)); timest=zero; timest(1)=elap_time()
@@ -67,10 +67,12 @@ PROGRAM xx19
  ALLOCATE(x0_pp(neq_pp),d1x0_pp(neq_pp),x1_pp(neq_pp),vu_pp(neq_pp),     &
    diag_precon_pp(neq_pp),u_pp(neq_pp),d2x0_pp(neq_pp),loads_pp(neq_pp), &
    d1x1_pp(neq_pp),d2x1_pp(neq_pp),d_pp(neq_pp),p_pp(neq_pp),            &
-   x_pp(neq_pp),xnew_pp(neq_pp),fext_pp(neq_pp))
+   x_pp(neq_pp),xnew_pp(neq_pp),fext_pp(neq_pp),r_pp(neq_pp))
  x0_pp=zero; d1x0_pp=zero; x1_pp=zero; vu_pp=zero; diag_precon_pp=zero
  u_pp=zero; d2x0_pp=zero; loads_pp=zero; d1x1_pp=zero; d2x1_pp=zero
- d_pp=zero; p_pp=zero; x_pp=zero; xnew_pp=zero; fext_pp=zero 
+ d_pp=zero; p_pp=zero; x_pp=zero; xnew_pp=zero; fext_pp=zero
+ r_pp = zero
+ 
 !--- element stiffness and mass integration, storage and preconditioner --
  CALL deemat(dee,e,v); CALL sample(element,points,weights)
  store_km_pp=zero; store_mm_pp=zero; diag_precon_tmp=zero
@@ -116,6 +118,9 @@ PROGRAM xx19
    CALL load(g_g_pp,g_num_pp,node,val,fext_pp(1:))
    tload=SUM_P(fext_pp(1:)); DEALLOCATE(node,val)
  END IF
+ IF(numpe==it) THEN
+   WRITE(11,'(A,F10.4)')"Time after element matrices:",elap_time()-timest(1)
+ END IF
 !---------------------------- initial conditions -------------------------
  x0_pp=zero; d1x0_pp=zero; d2x0_pp=zero; real_time=zero
 !---------------------------- time stepping loop ------------------------- 
@@ -124,29 +129,78 @@ PROGRAM xx19
  END IF
  timesteps: DO j=1,nstep
    real_time=real_time+dtim; loads_pp=zero; u_pp=zero; vu_pp=zero
-   elements_3: DO iel=1,nels_pp    ! gather for rhs multiply
-     temp_pp(:,:,iel)=store_km_pp(:,:,iel)*c2+store_mm_pp(:,:,iel)*c3
-   END DO elements_3; CALL gather(x0_pp,pmul_pp)
+
+!  elements_3: DO iel=1,nels_pp    ! gather for rhs multiply
+!    temp_pp(:,:,iel)=store_km_pp(:,:,iel)*c2+store_mm_pp(:,:,iel)*c3
+!  END DO elements_3; CALL gather(x0_pp,pmul_pp)
+
+   temp_pp = store_km_pp*c2+store_mm_pp*c3
+   
+   CALL gather(x0_pp,pmul_pp)
+
    DO iel=1,nels_pp
-     utemp_pp(:,iel)=MATMUL(temp_pp(:,:,iel),pmul_pp(:,iel))
-   END DO; CALL scatter(u_pp,utemp_pp)
+!    utemp_pp(:,iel)=MATMUL(temp_pp(:,:,iel),pmul_pp(:,iel))
+     CALL DGEMV('N',ntot,ntot,one,temp_pp(:,:,iel),ntot,                &
+                pmul_pp(:,iel),1,zero,utemp_pp(:,iel),1)
+   END DO
+
+   CALL scatter(u_pp,utemp_pp)
+
 !---------------------------- velocity part ------------------------------
-   temp_pp=store_mm_pp/theta; CALL gather(d1x0_pp,pmul_pp)
+   temp_pp=store_mm_pp/theta
+   CALL gather(d1x0_pp,pmul_pp)
+
    DO iel=1,nels_pp
-     utemp_pp(:,iel)=MATMUL(temp_pp(:,:,iel),pmul_pp(:,iel))
-   END DO; CALL scatter(vu_pp,utemp_pp)   ! doesn't add to last u_pp
+!    utemp_pp(:,iel)=MATMUL(temp_pp(:,:,iel),pmul_pp(:,iel))
+     CALL DGEMV('N',ntot,ntot,one,temp_pp(:,:,iel),ntot,                &
+                pmul_pp(:,iel),1,zero,utemp_pp(:,iel),1)
+   END DO
+
+   CALL scatter(vu_pp,utemp_pp)   ! doesn't add to last u_pp
+
    loads_pp=fext_pp*(theta*dtim*cos(omega*real_time)+c1*                 &
                            cos(omega*(real_time-dtim))) 
    loads_pp=u_pp+vu_pp+loads_pp
+
 !----------- solve simultaneous equations by PCG -------------------------
-   d_pp=diag_precon_pp*loads_pp; p_pp=d_pp; x_pp=zero; iters=0
+
+   iters     = 0
+   converged = .false.
+   r_pp      = zero
+   pmul_pp   = zero
+   utemp_pp  = zero
+   temp_pp   = store_mm_pp*c3+store_km_pp*c4
+
+!  IF(j==1) THEN
+     x_pp = zero
+!  ELSE
+!    x_pp = x0_pp
+!    CALL gather(x_pp,pmul_pp)
+!    DO iel = 1,nels_pp
+!      utemp_pp(:,iel) = MATMUL(temp_pp(:,:,iel),pmul_pp(:,iel))
+!    END DO
+!    CALL scatter(r_pp,utemp_pp)
+!    loads_pp  = loads_pp - r_pp
+!  END IF
+
+   d_pp      = diag_precon_pp*loads_pp
+   p_pp      = d_pp
+
    iterations: DO 
-     iters=iters+1; u_pp=zero; vu_pp=zero
-     temp_pp=store_mm_pp*c3+store_km_pp*c4
+  
+     iters    = iters+1
+     u_pp     = zero   !; vu_pp=zero
+     pmul_pp  = zero
+     utemp_pp = zero
+
      CALL gather(p_pp,pmul_pp)
      elements_4: DO iel=1,nels_pp
-       utemp_pp(:,iel)=MATMUL(temp_pp(:,:,iel),pmul_pp(:,iel))
-     END DO elements_4; CALL scatter(u_pp,utemp_pp)
+!      utemp_pp(:,iel)=MATMUL(temp_pp(:,:,iel),pmul_pp(:,iel))
+       CALL DGEMV('N',ntot,ntot,one,temp_pp(:,:,iel),ntot,                &
+                   pmul_pp(:,iel),1,zero,utemp_pp(:,iel),1)
+     END DO elements_4
+     CALL scatter(u_pp,utemp_pp)
+
      up=DOT_PRODUCT_P(loads_pp,d_pp); alpha=up/DOT_PRODUCT_P(p_pp,u_pp)
      xnew_pp=x_pp+p_pp*alpha; loads_pp=loads_pp-u_pp*alpha
      d_pp=diag_precon_pp*loads_pp; beta=DOT_PRODUCT_P(loads_pp,d_pp)/up
