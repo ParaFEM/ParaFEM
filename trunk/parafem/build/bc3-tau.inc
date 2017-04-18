@@ -12,7 +12,8 @@
 # --------------------------------------------------------------------------------
 
 # TAU settings
-TAU_MAKEFILE=   $(HOME)/tau-2.25.1/x86_64/lib/Makefile.tau-icpc-papi-mpi-pdt
+#TAU_MAKEFILE=   $(HOME)/tau-2.25.1/x86_64/lib/Makefile.tau-icpc-papi-mpi-pdt
+TAU_MAKEFILE=   $(HOME)/tau-2.25.2-intel/x86_64/lib/Makefile.tau-icpc-papi-mpi-pdt
 include $(TAU_MAKEFILE)
 
 TAU_FFLAGS=	-debug full -g $(TAU_INCLUDE) $(TAU_MPI_INCLUDE)
@@ -42,7 +43,7 @@ EXT_LIB_METIS_RANLIB=	ranlib
 # Form is LIB_(MPI|SERIAL|OPENMP|GPU)_(REL|DBG)_(FFLAGS|LDFLAGS)
 # These flags are directly used by the module makefiles
 # --------------------------------------------------------------------------------
-BC3_FFLAGS=		-O2 -r8 -mt_mpi -warn all -stand f08 -traceback $(TAU_FLAGS)
+BC3_FFLAGS=		-O2 -r8 -mt_mpi -warn -stand f08 -traceback $(TAU_FLAGS)
 LIB_MPI_REL_FFLAGS=			$(BC3_FFLAGS)
 LIB_MPI_DBG_FFLAGS=			$(BC3_FFLAGS)
   

@@ -123,19 +123,19 @@ timest( 1 ) = elap_time()
 !* intent( out ):
 !*          numpe - integer, process number (rank)
 !*           npes - integer, total number of processes (size)
-!CALL find_pe_procs( numpe, npes )
-! CAnnot use MPI_INIT in a coarray program with ifort 15!
-    CALL MPI_COMM_RANK(MPI_COMM_WORLD, numpe, ier)
-    IF (ier /= MPI_SUCCESS) THEN
-      WRITE(*,'(A,A,I5)')'Error in MPI_COMM_RANK: errcode = ',ier
-    END IF
-
-    CALL MPI_COMM_SIZE(MPI_COMM_WORLD, npes, ier)
-    IF (ier /= MPI_SUCCESS) THEN
-      WRITE(*,'(A,A,I5)')'Error in MPI_COMM_SIZE: errcode = ',ier
-    END IF
-
-    numpe = numpe + 1
+CALL find_pe_procs( numpe, npes )
+! CAnnot use MPI_INIT in a coarray program with ifort 16!
+!    CALL MPI_COMM_RANK(MPI_COMM_WORLD, numpe, ier)
+!    IF (ier /= MPI_SUCCESS) THEN
+!      WRITE(*,'(A,A,I5)')'Error in MPI_COMM_RANK: errcode = ',ier
+!    END IF
+!
+!    CALL MPI_COMM_SIZE(MPI_COMM_WORLD, npes, ier)
+!    IF (ier /= MPI_SUCCESS) THEN
+!      WRITE(*,'(A,A,I5)')'Error in MPI_COMM_SIZE: errcode = ',ier
+!    END IF
+!
+!    numpe = numpe + 1
 
 !*    Returns the base name of the data file.
 !* intent( out ):
@@ -262,7 +262,7 @@ end if
 ! Try to separate stdout output
 sync all
 
-! physical dimensions of the box, must be the same
+! The physical dimensions of the box, must be the same
 ! units as in the ParaFEM.
 ! Must be fully within the FE model, which for xx14
 ! is a cube with lower bound at (0,0,-10), and the
