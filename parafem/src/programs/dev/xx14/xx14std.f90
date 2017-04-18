@@ -123,19 +123,19 @@ timest( 1 ) = elap_time()
 !* intent( out ):
 !*          numpe - integer, process number (rank)
 !*           npes - integer, total number of processes (size)
-CALL find_pe_procs( numpe, npes )
+!CALL find_pe_procs( numpe, npes )
 ! CAnnot use MPI_INIT in a coarray program with ifort 16!
-!    CALL MPI_COMM_RANK(MPI_COMM_WORLD, numpe, ier)
-!    IF (ier /= MPI_SUCCESS) THEN
-!      WRITE(*,'(A,A,I5)')'Error in MPI_COMM_RANK: errcode = ',ier
-!    END IF
-!
-!    CALL MPI_COMM_SIZE(MPI_COMM_WORLD, npes, ier)
-!    IF (ier /= MPI_SUCCESS) THEN
-!      WRITE(*,'(A,A,I5)')'Error in MPI_COMM_SIZE: errcode = ',ier
-!    END IF
-!
-!    numpe = numpe + 1
+    CALL MPI_COMM_RANK(MPI_COMM_WORLD, numpe, ier)
+    IF (ier /= MPI_SUCCESS) THEN
+      WRITE(*,'(A,A,I5)')'Error in MPI_COMM_RANK: errcode = ',ier
+    END IF
+
+    CALL MPI_COMM_SIZE(MPI_COMM_WORLD, npes, ier)
+    IF (ier /= MPI_SUCCESS) THEN
+      WRITE(*,'(A,A,I5)')'Error in MPI_COMM_SIZE: errcode = ',ier
+    END IF
+
+    numpe = numpe + 1
 
 !*    Returns the base name of the data file.
 !* intent( out ):
