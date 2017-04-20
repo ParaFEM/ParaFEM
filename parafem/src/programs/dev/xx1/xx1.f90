@@ -184,7 +184,7 @@ PROGRAM xx1
 ! This part required if there is more than one type of material in the mesh
 
  IF(io_binary) THEN
-   CALL READ_ENSI_MATID_BIN
+   CALL READ_ENSI_MATID_BIN(job_name,npes,numpe,etype_pp)
    !CALL read_etype_pp_be(job_name,npes,numpe,etype_pp)
  ELSE
    PRINT *, "Different material types not supported for ASCII files"
