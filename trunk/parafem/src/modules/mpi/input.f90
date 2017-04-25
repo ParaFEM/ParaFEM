@@ -571,7 +571,7 @@ MODULE INPUT
   !*  CREATION DATE
   !*    22 September 2014
   !*  COPYRIGHT
-  !*    (c) University of Manchester 2007-2014
+  !*    (c) University of Manchester 2007-2017
   !******
   !*  THIS SUBROUTINE IS WORK IN PROGRESS
   !*/
@@ -582,7 +582,7 @@ MODULE INPUT
 
   CHARACTER(LEN=50),INTENT(IN) :: job_name
   CHARACTER(LEN=50)            :: fname
-  CHARACTER(LEN=80,KIND=C_CHAR)            :: cbuffer
+  CHARACTER(LEN=80,KIND=C_CHAR):: cbuffer
   INTEGER, INTENT(IN)          :: nn, npes, numpe
   INTEGER, INTENT(IN)          :: g_num_pp(:,:)
   INTEGER                      :: ndim
@@ -679,7 +679,8 @@ MODULE INPUT
       IF(numpe == 1) THEN
         READ(10) ord(1:readCount)
       END IF
-      CALL MPI_BCAST(ord,bufsize,MPI_REAL4,0,MPI_COMM_WORLD,ier)
+!     CALL MPI_BCAST(ord,bufsize,MPI_REAL4,0,MPI_COMM_WORLD,ier)
+      CALL MPI_BCAST(ord,bufsize,MPI_REAL,0,MPI_COMM_WORLD,ier)
       DO iel = 1, nels_pp
         DO k = 1, nod
           IF(g_num_pp(k,iel) < nnStart) CYCLE
@@ -690,6 +691,8 @@ MODULE INPUT
       END DO
     END DO
   
+    IF(verbose) PRINT *, "Read most coordinate values for ordinate ",m
+
 !------------------------------------------------------------------------------
 ! 5. If READREMAINDER > 0, collect remaining entries
 !------------------------------------------------------------------------------
@@ -709,7 +712,8 @@ MODULE INPUT
       IF(numpe == 1) THEN
         READ(10) ord(1:readRemainder)
       END IF
-      CALL MPI_BCAST(ord,bufsize,MPI_REAL4,0,MPI_COMM_WORLD,ier)
+!     CALL MPI_BCAST(ord,bufsize,MPI_REAL4,0,MPI_COMM_WORLD,ier)
+      CALL MPI_BCAST(ord,bufsize,MPI_REAL,0,MPI_COMM_WORLD,ier)
       DO iel = 1, nels_pp
         DO k = 1, nod
           IF(g_num_pp(k,iel) < nnStart) CYCLE
@@ -720,6 +724,8 @@ MODULE INPUT
       END DO
     END IF
 
+    IF(verbose) PRINT *, "Read remaining coordinate values for ordinate ",m
+
   END DO ! Coordinates
   
 !------------------------------------------------------------------------------
@@ -728,6 +734,8 @@ MODULE INPUT
 
   DEALLOCATE(ord)    
   IF(numpe==1) CLOSE(10)
+
+  IF(verbose) PRINT *, "Read coordinate values completed"
 
   RETURN
   
@@ -1221,6 +1229,7 @@ MODULE INPUT
   CHARACTER(LEN=50)             :: fname
   CHARACTER(LEN=80)             :: cbuffer
   REAL(KIND=C_FLOAT)            :: rdummy
+  REAL(KIND=C_DOUBLE)           :: rdummyd
   INTEGER, INTENT(IN)           :: iel_start, nn, npes, numpe
   INTEGER, INTENT(INOUT)        :: g_num_pp(:,:)
   INTEGER(KIND=C_INT)           :: nn_in,nels_in,part
@@ -1295,18 +1304,26 @@ MODULE INPUT
 !------------------------------------------------------------------------------
 ! 5. Go around READSTEPS loop, read data, and send to appropriate processor
 !
-!    Use INQUIRE to find out file position then skip coordinate data nn*ndim 
-!    entries. Assumes single precision 4 byte reals for each value skipped.
+!    Aspiration: Use INQUIRE to find out file position then skip coordinate
+!                data nn*ndim entries. Assumes single precision 4 byte reals
+!                for each value skipped.
+!
+!    Reality:    The above did not work, so currently reading each record into
+!                a dummy variable rdummy 
+!
 !------------------------------------------------------------------------------
 
   DO i=1,npes
     IF(i == 1) THEN  ! local data
       IF(numpe == 1) THEN
-        ipos = 0
-        INQUIRE(UNIT=10,POS=ipos)
-        ipos = ipos + (4 * nn * ndim) ; IF(verbose) PRINT *, "POS = ", ipos
-        READ(10,POS=ipos) cbuffer     ; IF(verbose) PRINT *, cbuffer
-        READ(10) nels_in              ; IF(verbose) PRINT *, nels_in
+!       ipos = 0
+!       INQUIRE(UNIT=10,POS=ipos)     ; IF(verbose) PRINT *, "POS = ", ipos
+        DO j = 1,nn*ndim
+                              IF(verbose) PRINT *, "j =", j
+          READ(10)   rdummy;  IF(verbose) PRINT *, "rdummy =" , rdummy
+        END DO
+        READ(10) cbuffer   ; IF(verbose) PRINT *, cbuffer
+        READ(10) nels_in   ; IF(verbose) PRINT *, nels_in
         iel = readCount(i)
         READ(10) g_num_pp(:,1:iel)
       END IF
