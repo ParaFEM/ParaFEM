@@ -45,8 +45,8 @@ PROGRAM xx1
   LOGICAL               :: converged=.false.
 ! LOGICAL               :: sym_storkm=.true.
   LOGICAL               :: sym_storkm=.false.
-! LOGICAL               :: io_binary=.false.
-  LOGICAL               :: io_binary=.true.
+  LOGICAL               :: io_binary=.false.
+! LOGICAL               :: io_binary=.true.
 
 !------------------------------------------------------------------------------ 
 ! 1a. Declare variables used in the UMAT
@@ -147,8 +147,8 @@ PROGRAM xx1
   timest(2) = elap_time()
   
   IF(io_binary) THEN
-    !CALL read_g_num_pp_be(job_name,iel_start,nn,npes,numpe,g_num_pp)
-    !CALL read_g_coord_pp_be(job_name,g_num_pp,nn,npes,numpe,g_coord_pp)
+!   CALL read_g_num_pp_be(job_name,iel_start,nn,npes,numpe,g_num_pp)
+!   CALL read_g_coord_pp_be(job_name,g_num_pp,nn,npes,numpe,g_coord_pp)
     CALL READ_ENSI_GEO_BIN(job_name,g_num_pp,nn,npes,numpe,g_coord_pp,iel_start)
   ELSE 
     CALL read_g_num_pp(job_name,iel_start,nn,npes,numpe,g_num_pp)
@@ -171,7 +171,7 @@ PROGRAM xx1
 
   timest(5) = elap_time()
 
-  !CALL read_rest(job_name,numpe,rest)
+  CALL read_rest(job_name,numpe,rest)
 
   timest(6) = elap_time()
 
@@ -381,6 +381,8 @@ PROGRAM xx1
 ! 10. Read in fixed nodal displacements and assign to equations
 !------------------------------------------------------------------------------
 
+  PRINT *, "Entering read fixed nodal displacements section"
+
   fixed_freedoms_pp = 0
 
   IF(fixed_freedoms > 0) THEN
@@ -412,6 +414,8 @@ PROGRAM xx1
 ! 11. Read in loaded nodes and get starting r_pp
 !------------------------------------------------------------------------------
  
+  PRINT *, "Entering read loaded nodes section"
+
   IF(loaded_nodes > 0) THEN
 
     ALLOCATE(node(loaded_nodes),val(ndim,loaded_nodes))
