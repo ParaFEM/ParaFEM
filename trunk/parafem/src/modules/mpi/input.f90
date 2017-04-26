@@ -7607,7 +7607,7 @@ END SUBROUTINE bcast_inputdata_p127
   ! 1. Initialisation
   !-----------------------------------------------------------------------------
   
-    ndim = UBOUND(nf,1)-1  
+    ndim = UBOUND(nf,1)  
     nn   = UBOUND(nf,2)
  
     PRINT *, "ndim=",ndim
@@ -7617,7 +7617,7 @@ END SUBROUTINE bcast_inputdata_p127
   !-----------------------------------------------------------------------------
   ! 2. Write boundary conditions. Encoded using formula: 4z + 2y + 1x
   !
-  !    110 = 1   010 = 2   100 = 3   011 = 4   101 = 5   001 = 6   000 = 7
+  !    011 = 1   101 = 2   001 = 3   110 = 4   101 = 5   100 = 6   000 = 7
   !-----------------------------------------------------------------------------
   
     IF(solid) THEN
@@ -7634,11 +7634,12 @@ END SUBROUTINE bcast_inputdata_p127
       IF(ndim==3) THEN
         DO i=1,nn 
           nfe=0
-          IF(nf(2,i)==0) nfe=nfe+1
-          IF(nf(3,i)==0) nfe=nfe+2
-          IF(nf(4,i)==0) nfe=nfe+4
+          IF(nf(1,i)==0) nfe=nfe+1
+          IF(nf(2,i)==0) nfe=nfe+2
+          IF(nf(3,i)==0) nfe=nfe+4
           WRITE(15) real(nfe,kind=c_float) 
          !WRITE(15) int(nfe,kind=c_int)
+          PRINT *, "node ", i, "nf ", nf(1,i),nf(2,i),nf(3,i),"value ", nfe
         END DO
       ELSE IF(ndim==2) THEN
         DO i=1,nn
@@ -7652,7 +7653,6 @@ END SUBROUTINE bcast_inputdata_p127
       END IF   
     END IF
   
-	
     CLOSE(15)
   
     RETURN
