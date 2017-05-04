@@ -67,13 +67,13 @@ MODULE INPUT
   !*    MESH_ENSI_NDLDS_BIN    Creates BINARY ensight LDS files *not tested*
   !*    MESH_ENSI_CASE
   !*    MESH_ENSI_GEO
-
-
+  !*    READ_ENSI_GEO_BIN      Reads BINARY ensight geo files *not tested*
+  !*    READ_ENSI_MATID_BIN    Reads BINARY ensight MATID files *not tested*
   !*
   !*  AUTHOR
   !*    L. Margetts
   !*  COPYRIGHT
-  !*    2004-2014 University of Manchester
+  !*    2004-2017 University of Manchester
   !******
   !*  Place remarks that should not be included in the documentation here.
   !*  If you contribute to this module, add your author name.
@@ -2529,16 +2529,20 @@ MODULE INPUT
     REAL(iwp),INTENT(INOUT)       :: materialValues(:,:)
     CHARACTER(LEN=50), INTENT(in) :: fname
     CHARACTER(LEN=10)             :: keyword
+    LOGICAL                       :: verbose = .true.
+!   LOGICAL                       :: verbose = .false.
 
     IF(numpe==1)THEN
      OPEN(21,FILE=fname, STATUS='OLD', ACTION='READ')
      !Read the *MATERIAL keyword, num of materials in file and num values 
      !per material line (2)
      READ(21,*) keyword, nmats, nvals
+     IF(verbose) PRINT *, "nmats = ", nmats, "nvals = ", nvals
      !Read the material labels line
      READ(21,*)                  ! skip line
      DO i = 1,nmats
        READ(21,*)k, materialValues(:,i)
+       IF(verbose) PRINT *, "i =", i, "materialValues =",materialValues(:,i)
      END DO
      CLOSE(21)
     END IF
@@ -7708,6 +7712,8 @@ SUBROUTINE MESH_ENSI_NDLDS_BIN(argv,nlen,nn,val,node)
     CHARACTER(LEN=15), INTENT(IN) :: argv
     CHARACTER(LEN=80)             :: cbuffer
     REAL(iwp),PARAMETER           :: zero=0.0_iwp
+    LOGICAL                       :: verbose=.true.
+!   LOGICAL                       :: verbose=.false.
 
     ndim = UBOUND(val,1)  
 
@@ -7731,10 +7737,12 @@ SUBROUTINE MESH_ENSI_NDLDS_BIN(argv,nlen,nn,val,node)
      k=1
       DO j=1,nn
         IF(j==node(k)) THEN
-          k=k+1
           WRITE(16) REAL(val(i,k), kind=c_float)
+          k=k+1
+          IF(verbose) PRINT *, "dim ", i, "node ", j, "val ", val(i,k)
         ELSE
           WRITE(16) REAL(zero, kind=c_float)
+          IF(verbose) PRINT *, "dim ", i, "node ", j, "val ", zero
         END IF
       END DO
     END DO
@@ -8074,7 +8082,8 @@ SUBROUTINE MESH_ENSI_NDLDS_BIN(argv,nlen,nn,val,node)
 !------------------------------------------------------------------------------
 !------------------------------------------------------------------------------
 
-  SUBROUTINE READ_ENSI_GEO_BIN(job_name,g_num_pp,nn,npes,numpe,g_coord_pp,iel_start)
+  SUBROUTINE READ_ENSI_GEO_BIN(job_name,g_num_pp,nn,npes,numpe,g_coord_pp,    &
+                               iel_start)
 
   !/****f* input/read_ensi_geo_bin
   !*  NAME
@@ -8091,7 +8100,7 @@ SUBROUTINE MESH_ENSI_NDLDS_BIN(argv,nlen,nn,val,node)
   !*  CREATION DATE
   !*    27 May 2016
   !*  COPYRIGHT
-  !*    (c) University of Manchester 2007-2014
+  !*    (c) University of Manchester 2007-2017
   !******
   !*  THIS SUBROUTINE IS WORK IN PROGRESS
   !*
@@ -8117,11 +8126,11 @@ SUBROUTINE MESH_ENSI_NDLDS_BIN(argv,nlen,nn,val,node)
     
   SUBROUTINE READ_ENSI_MATID_BIN(job_name,npes,numpe,etype_pp)
 
-  !/****f* input/read_etype_pp_be
+  !/****f* input/read_ensi_matid_bin
   !*  NAME
-  !*    SUBROUTINE: read_etype_pp_be
+  !*    SUBROUTINE: read_ensi_matid_bin
   !*  SYNOPSIS
-  !*    Usage:      CALL read_etype_pp_be(job_name,npes,numpe,etype_pp)
+  !*    Usage:      CALL read_ensi_matid_bin(job_name,npes,numpe,etype_pp)
   !*  FUNCTION
   !*    The master process reads the element property type for each element 
   !*    and broadcasts that data to the slave processes. Each process only 
@@ -8133,11 +8142,9 @@ SUBROUTINE MESH_ENSI_NDLDS_BIN(argv,nlen,nn,val,node)
   !*
   !*    The following scalar integer arguments have the INTENT(IN) attribute:
   !*
-  !*    npes                  : Integer
-  !*                          : Total number of processors
+  !*    npes                  : Total number of processors
   !*
-  !*    numpe                 : Integer
-  !*                          : Process number
+  !*    numpe                 : Process ID number
   !*
   !*    The following scalar array argument has the INTENT(INOUT) attribute:
   !*
@@ -8147,7 +8154,7 @@ SUBROUTINE MESH_ENSI_NDLDS_BIN(argv,nlen,nn,val,node)
   !*    L. Margetts
   !*    Ll. Evans
   !*  COPYRIGHT
-  !*    (c) University of Manchester 2007-2014
+  !*    (c) University of Manchester 2007-2017
   !******
   !*  Place remarks that should not be included in the documentation here.
   !*  This subroutine can be modified to use MPI I/O
