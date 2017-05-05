@@ -45,8 +45,8 @@ PROGRAM xx1
   LOGICAL               :: converged=.false.
 ! LOGICAL               :: sym_storkm=.true.
   LOGICAL               :: sym_storkm=.false.
-  LOGICAL               :: io_binary=.false.
-! LOGICAL               :: io_binary=.true.
+! LOGICAL               :: io_binary=.false.
+  LOGICAL               :: io_binary=.true.
 
 !------------------------------------------------------------------------------ 
 ! 1a. Declare variables used in the UMAT
@@ -171,12 +171,19 @@ PROGRAM xx1
 
   timest(5) = elap_time()
 
-  CALL read_rest(job_name,numpe,rest)
+  IF(io_binary) THEN
+    PRINT *, "Read restraints"
+    CALL READ_ENSI_NDBND_BIN(job_name,nn,npes,numpe,rest)
+  ELSE
+    CALL read_rest(job_name,numpe,rest)
+  END IF
 
   timest(6) = elap_time()
 
-  !fname = job_name(1:LEN_TRIM(job_name)) // ".mat"
-  !CALL read_materialValue(prop,fname,numpe,npes)
+  PRINT *, "Read material property values"
+
+  fname = job_name(1:LEN_TRIM(job_name)) // ".mat"
+  CALL read_materialValue(prop,fname,numpe,npes)
 
 
  PRINT *, "Read before material properties"
@@ -193,7 +200,7 @@ PROGRAM xx1
 !
  PRINT *, "Read until material properties"
 
- !PRINT *, "etype_pp" ,etype_pp
+  PRINT *, "etype_pp" ,etype_pp
 
   !etype_pp = 1  ! all elements have the material ID "1"
 
@@ -307,6 +314,9 @@ PROGRAM xx1
       km = zero
       e  = prop(1,etype_pp(iel))  ! if each element has own properties
       v  = prop(2,etype_pp(iel))
+
+      PRINT *, "Element ", iel, "e = ", e, "v = ", v
+
       dee = zero
       CALL deemat(dee,e,v)
       gauss_pts_1: DO i=1,nip
@@ -330,6 +340,7 @@ PROGRAM xx1
     elements_3a: DO iel=1,nels_pp
       e  = prop(1,etype_pp(iel))  ! if each element has own properties
       v  = prop(2,etype_pp(iel))
+      PRINT *, "Element ", iel, "e = ", e, "v = ", v
       dee = zero
       CALL deemat(dee,e,v)
       gauss_pts_1a: DO i=1,nip
