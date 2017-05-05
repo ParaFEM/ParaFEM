@@ -6825,11 +6825,13 @@ END SUBROUTINE bcast_inputdata_p127
   
     CLOSE(14)
   
-  !------------------------------------------------------------------------------
-  ! 5. Write boundary conditions. Encoded using formula: 4z + 2y + 1x
+  !-------------------------------------------------------------------------
+  ! 5. Write boundary conditions. 
+  !    Encoded using formula: 4z + 2y + 1x
+  !    1 = free; 0 = restrained.
   !
-  !    110 = 1   010 = 2   100 = 3   011 = 4   101 = 5   001 = 6   000 = 7
-  !------------------------------------------------------------------------------
+  !    011 = 1   101 = 2   001 = 3   110 = 4   010 = 5   100 = 6   000 = 7
+  !-------------------------------------------------------------------------
   
     IF(solid) THEN
       OPEN(15,FILE=argv(1:nlen)//'.ensi.NDBND')
@@ -8267,6 +8269,262 @@ SUBROUTINE MESH_ENSI_NDLDS_BIN(argv,nlen,nn,val,node)
 
   END SUBROUTINE READ_ENSI_MATID_BIN
 
+!---------------------------------------------------------------------------
+!---------------------------------------------------------------------------
+!---------------------------------------------------------------------------
 
+  SUBROUTINE READ_ENSI_NDBND_BIN(job_name,nn,npes,numpe,rest)
+
+  !/****f* input/read_ensi_ndbnd_bin
+  !*  NAME
+  !*    SUBROUTINE: read_ensi_ndbnd_bin
+  !*  SYNOPSIS
+  !*    Usage:      CALL read_ensi_ndbnd_bin(job_name,nn,npes,numpe,rest)
+  !*  FUNCTION
+  !*    Document the transformation
+  !*  INPUTS
+  !*
+  !*  AUTHOR
+  !*    Lee Margetts
+  !*  CREATION DATE
+  !*    4 May 2017
+  !*  COPYRIGHT
+  !*    (c) University of Manchester 2007-2017
+  !******
+  !*  THIS SUBROUTINE IS WORK IN PROGRESS
+  !*
+  !*  At the time of writing this subroutine, there was an issue reading
+  !*  integers into Paraview. NDBND should be written using integers, but
+  !*  reals are used instead.
+  !*/
+
+  USE, INTRINSIC :: ISO_C_BINDING
+
+  IMPLICIT NONE
+
+  CHARACTER(LEN=50),INTENT(IN) :: job_name
+  CHARACTER(LEN=50)            :: fname
+  CHARACTER(LEN=80,KIND=C_CHAR):: cbuffer
+  INTEGER, INTENT(IN)          :: nn, npes, numpe
+  INTEGER, INTENT(INOUT)       :: rest(:,:) 
+  INTEGER, ALLOCATABLE         :: temp(:,:)
+  INTEGER                      :: ndim
+  INTEGER                      :: nels_pp
+  INTEGER                      :: nod
+  INTEGER                      :: nnStart         ! first node ID in g_coord
+  INTEGER                      :: nnEnd           ! last node ID in g_coord
+  INTEGER                      :: bufsize         ! packet size for bcast data
+  INTEGER                      :: ier             ! MPI error code
+  INTEGER                      :: iel,i,j,k,l,m,n,p   ! loop counters
+  INTEGER                      :: bitBucket
+  INTEGER                      :: readSteps
+  INTEGER                      :: readCount
+  INTEGER                      :: readRemainder    
+  INTEGER(KIND=C_INT)          :: nn_in,part
+  REAL(KIND=C_FLOAT),ALLOCATABLE :: ord(:)          ! temporary array
+  REAL(iwp)                    :: zero = 0.0_iwp
+  LOGICAL                      :: verbose=.true.
+! LOGICAL                      :: verbose=.false.
+
+!------------------------------------------------------------------------------
+! 1. Find READSTEPS, the number of steps in which the read will be carried
+!    out, READCOUNT, the size of each read and READREMAINDER, the number
+!    of entries to be read after the last READSTEP.
+!------------------------------------------------------------------------------
+
+  ndim = UBOUND(rest,1)-1 
+
+  IF(verbose) PRINT *, "ndim =", ndim
+
+  fname     = job_name(1:INDEX(job_name, " ")-1) // ".bin.ensi.NDBND"  
+
+  IF(npes > nn) THEN
+    readSteps     = 1
+    readRemainder = 0
+    readCount     = nn
+  ELSE
+    readSteps     = npes
+    readRemainder = MOD(nn,readSteps)
+    readCount     = (nn - readRemainder) / npes
+  END IF
+  
+!------------------------------------------------------------------------------
+! 2. Master process opens the data file and skips the header information
+!------------------------------------------------------------------------------
+
+  IF(numpe==1)THEN
+    
+    OPEN(10,FILE=fname,STATUS='OLD',FORM='UNFORMATTED',ACTION='READ',         &
+                       ACCESS='STREAM')
+
+    READ(10)   cbuffer ; IF(verbose) PRINT *, cbuffer
+    READ(10)   cbuffer ; IF(verbose) PRINT *, cbuffer
+    READ(10)   part    ; IF(verbose) PRINT *, part
+    READ(10)   cbuffer ; IF(verbose) PRINT *, cbuffer
+    
+  END IF
+
+!------------------------------------------------------------------------------
+! 3. Go round READSTEPS loop, read boundary conditions, broadcast and
+!    copy into REST() array.
+!
+!    Encoded using the formula: 4z + 2y + 1x
+!
+!    1 = free; 0 = restrained.
+!
+!    011 = 1   101 = 2   001 = 3   110 = 4   010 = 5   100 = 6   000 = 7
+!------------------------------------------------------------------------------
+
+    ALLOCATE(temp(3,7))
+
+    temp(:,1) = (/ 0,1,1 /)
+    temp(:,2) = (/ 1,0,1 /)
+    temp(:,3) = (/ 0,0,1 /)
+    temp(:,4) = (/ 1,1,0 /)
+    temp(:,5) = (/ 0,1,0 /)
+    temp(:,6) = (/ 1,0,0 /)
+    temp(:,7) = (/ 0,0,0 /)
+
+    IF(ALLOCATED(ord)) DEALLOCATE(ord)
+    ALLOCATE(ord(readCount))
+    ord     = zero
+    bufsize = readCount
+    p       = 0
+    k       = 1
+
+    DO i = 1, readSteps
+      ord     = zero
+      nnStart = (i-1) * readCount + 1
+      nnEnd   =  i    * readCount 
+      IF(numpe == 1) THEN
+        READ(10) ord(1:readCount)
+      END IF
+      CALL MPI_BCAST(ord,bufsize,MPI_REAL8,0,MPI_COMM_WORLD,ier)
+
+!     Extract restraints from ord and add to restraints array
+
+      PRINT *, "ord =", ord
+
+      DO j = 1,readCount
+        IF(nint(ord(j))==1) THEN
+          PRINT *, "node =", j, "bnd = ",nint(ord(j))
+          rest(k,1)   = j
+          rest(k,2:4) = temp(:,1)
+          k = k+1
+        ELSE IF(nint(ord(j))==2) THEN
+          PRINT *,  "node =", j, "bnd = ",nint(ord(j))
+          rest(k,1)   = j
+          rest(k,2:4) = temp(:,2)
+          k = k+1
+        ELSE IF(nint(ord(j))==3) THEN
+          PRINT *,  "node =", j, "bnd = ",nint(ord(j))
+          rest(k,1)   = j
+          rest(k,2:4) = temp(:,3)
+          k = k+1
+        ELSE IF(nint(ord(j))==4) THEN
+          PRINT *,  "node =", j, "bnd = ",nint(ord(j))
+          rest(k,1)   = j
+          rest(k,2:4) = temp(:,4)
+          k = k+1
+        ELSE IF(nint(ord(j))==5) THEN
+          PRINT *,  "node =", j, "bnd = ",nint(ord(j))
+          rest(k,1)   = j
+          rest(k,2:4) = temp(:,5)
+          k = k+1
+        ELSE IF(nint(ord(j))==6) THEN
+          PRINT *,  "node =", j, "bnd = ",nint(ord(j))
+          rest(k,1)   = j
+          rest(k,2:4) = temp(:,6)
+          k = k+1
+        ELSE IF(nint(ord(j))==7) THEN
+          PRINT *,  "node =", j, "bnd = ",nint(ord(j))
+          rest(k,1)   = j
+          rest(k,2:4) = temp(:,7)
+          k = k+1
+        END IF
+      END DO
+
+    END DO
+  
+!------------------------------------------------------------------------------
+! 5. If READREMAINDER > 0, collect remaining entries
+!------------------------------------------------------------------------------
+  
+    IF(readRemainder > 0) THEN
+      IF(ALLOCATED(ord)) DEALLOCATE(ord)
+      ALLOCATE(ord(readRemainder))
+      ord      = zero
+      bufsize  = readRemainder
+      nnStart  = (readSteps * readCount) + 1
+      nnEnd    = nnStart + readRemainder - 1
+      IF(nnEnd > nn) THEN
+        PRINT *, "Too many nodes"
+        CALL shutdown()
+        STOP
+      END IF
+      IF(numpe == 1) THEN
+        READ(10) ord(1:readRemainder)
+      END IF
+      CALL MPI_BCAST(ord,bufsize,MPI_REAL8,0,MPI_COMM_WORLD,ier)
+
+!     Extract restraints from ord and add to restraints array
+
+      DO j = 1,readCount
+        IF(nint(ord(j))==1) THEN
+          PRINT *, "node =", j, "bnd = ",nint(ord(j))
+          rest(k,1)   = j
+          rest(k,2:4) = temp(:,1)
+          k = k+1
+        ELSE IF(nint(ord(j))==2) THEN
+          PRINT *,  "node =", j, "bnd = ",nint(ord(j))
+          rest(k,1)   = j
+          rest(k,2:4) = temp(:,2)
+          k = k+1
+        ELSE IF(nint(ord(j))==3) THEN
+          PRINT *,  "node =", j, "bnd = ",nint(ord(j))
+          rest(k,1)   = j
+          rest(k,2:4) = temp(:,3)
+          k = k+1
+        ELSE IF(nint(ord(j))==4) THEN
+          PRINT *,  "node =", j, "bnd = ",nint(ord(j))
+          rest(k,1)   = j
+          rest(k,2:4) = temp(:,4)
+          k = k+1
+        ELSE IF(nint(ord(j))==5) THEN
+          PRINT *,  "node =", j, "bnd = ",nint(ord(j))
+          rest(k,1)   = j
+          rest(k,2:4) = temp(:,5)
+          k = k+1
+        ELSE IF(nint(ord(j))==6) THEN
+          PRINT *,  "node =", j, "bnd = ",nint(ord(j))
+          rest(k,1)   = j
+          rest(k,2:4) = temp(:,6)
+          k = k+1
+        ELSE IF(nint(ord(j))==7) THEN
+          PRINT *,  "node =", j, "bnd = ",nint(ord(j))
+          rest(k,1)   = j
+          rest(k,2:4) = temp(:,7)
+          k = k+1
+        END IF
+      END DO
+
+    END IF
+
+    IF(verbose) PRINT *, "Read ", k-1," restraints"
+
+!------------------------------------------------------------------------------
+! 6. Deallocate global arrays and close data file
+!------------------------------------------------------------------------------
+
+  IF(ALLOCATED(ord))  DEALLOCATE(ord)
+  IF(ALLOCATED(temp)) DEALLOCATE(temp)
+
+  IF(numpe==1) CLOSE(10)
+
+  IF(verbose) PRINT *, "Read restraints completed"
+
+  RETURN
+  
+  END SUBROUTINE READ_ENSI_NDBND_BIN
 
 END MODULE INPUT
