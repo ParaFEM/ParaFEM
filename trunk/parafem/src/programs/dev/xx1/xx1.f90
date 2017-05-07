@@ -45,8 +45,8 @@ PROGRAM xx1
   LOGICAL               :: converged=.false.
 ! LOGICAL               :: sym_storkm=.true.
   LOGICAL               :: sym_storkm=.false.
-! LOGICAL               :: io_binary=.false.
-  LOGICAL               :: io_binary=.true.
+  LOGICAL               :: io_binary=.false.
+! LOGICAL               :: io_binary=.true.
 
 !------------------------------------------------------------------------------ 
 ! 1a. Declare variables used in the UMAT
@@ -194,8 +194,9 @@ PROGRAM xx1
    CALL READ_ENSI_MATID_BIN(job_name,npes,numpe,etype_pp)
    !CALL read_etype_pp_be(job_name,npes,numpe,etype_pp)
  ELSE
-   PRINT *, "Different material types not supported for ASCII files"
-   CALL shutdown()
+   PRINT *, "Warning: Different material types not supported for ASCII files"
+   PRINT *, "         All elements set to material type = 1"
+   etype_pp=1
  END IF
 !
  PRINT *, "Read until material properties"
