@@ -582,12 +582,13 @@ PROGRAM xx12
       IF(loaded_freedoms_pp > 0) THEN
         DO i = 1, loaded_freedoms_pp
           IF(prog==12)THEN
-            IF(amp(j_loc)==0.0)THEN
-              loads_pp(no_pp(i)-ieq_start+1) = val(loaded_freedoms_start+i-1,1)&
-                                               *dtim*(1.0E-34)
+            IF(amp(j_glob)<=0.000001)THEN
+!              loads_pp(no_pp(i)-ieq_start+1) = val(loaded_freedoms_start+i-1,1)&
+!                                               *dtim*(1.0E-34)
+              loads_pp(no_pp(i)-ieq_start+1) = (1.0E-15)
             ELSE
               loads_pp(no_pp(i)-ieq_start+1) = val(loaded_freedoms_start+i-1,1)&
-                                               *dtim*amp(j_loc)
+                                               *dtim*amp(j_glob)
             END IF
           END IF
           IF(prog==11)THEN
