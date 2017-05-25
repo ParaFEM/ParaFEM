@@ -78,7 +78,7 @@ BUILD_LIBRARIES_OPT=
 # options are: 5ed, xx, prog8, gaitfem, rfem
 BUILD_PROGRAMS_OPT=
 BUILD_GROUP_5ED="p121 p122 p123 p124 p125 p126 p127 p128 p129 p1210" # p1211
-BUILD_GROUP_XX="xx1 xx11 xx12 xx12_b xx7 xx8 xx14 xx15 xx18 xx19" 
+BUILD_GROUP_XX="xx1 xx11 xx12 xx12_b xx12_te xx7 xx8 xx14 xx15 xx18 xx19" 
 BUILD_GROUP_PROG8="prog81 prog82 prog83"
 BUILD_GROUP_GAITFEM="gaitfem"
 BUILD_GROUP_RFEM="rfemsolve rfemsolve_te"
