@@ -24,6 +24,7 @@ MODULE INPUT
   !*    READ_ELEMENTS_2        Reads the element nodal steering array
   !*    READ_ETYPE_PP          Reads the element material ID
   !*    READ_ETYPE_PP_BE       Reads the element material ID (binary ensi)
+  !*    READ_ENSI_SCALAR_PN    Reads ASCII ensight scalar per node files *not tested*
   !*    READ_G_NUM_PP2
   !*    READ_LOADS             Reads nodal forces
   !*    READ_LOADS_NS          Reads lid velocities for p126
@@ -1950,6 +1951,200 @@ MODULE INPUT
   RETURN
 
   END SUBROUTINE READ_ETYPE_PP_BE
+
+!------------------------------------------------------------------------------
+!------------------------------------------------------------------------------
+!------------------------------------------------------------------------------
+
+  SUBROUTINE READ_ENSI_SCALAR_PN(job_name,g_num_pp,nn,npes,numpe,stepnum,ndscal_pp)
+  
+  !/****f* input/read_ensi_scalar_pn
+  !*  NAME
+  !*    SUBROUTINE: read_ensi_scalar_pn
+  !*  SYNOPSIS
+  !*    Usage:      CALL read_ensi_scalar_pn(job_name,g_num_pp,nn,npes,
+  !*                                         numpe,stepnum,ndscal_pp)
+  !*  FUNCTION
+  !*    The master process reads the nodal property type for each node 
+  !*    and broadcasts that data to the slave processes. Each process only 
+  !*    records its local data.
+  !*  INPUTS
+  !*    The following character argument has the INTENT(IN) attribute:
+  !*
+  !*    job_name              : Used to create file name to read
+  !*
+  !*    The following scalar integer arguments have the INTENT(IN) attribute:
+  !*
+  !*    g_num_pp              : 
+  !*                          : 
+  !*
+  !*    nn                    : 
+  !*                          : 
+  !*
+  !*    npes                  : Integer
+  !*                          : Total number of processors
+  !*
+  !*    numpe                 : Integer
+  !*                          : Process number
+  !*
+  !*    stepnum               : 
+  !*                          : 
+  !*
+  !*    The following scalar array argument has the INTENT(INOUT) attribute:
+  !*
+  !*    ndscal_pp(nodes_pp)   : Nodal scalar value vector     
+  !*
+  !*  AUTHOR
+  !*    L. Margetts
+  !*    Ll. Evans
+  !*  COPYRIGHT
+  !*    (c) University of Manchester 2007-2017
+  !******
+  !*  Place remarks that should not be included in the documentation here.
+  !*  This subroutine can be modified to use MPI I/O
+  !*
+  !*/
+  
+  IMPLICIT NONE
+
+  CHARACTER(LEN=50), INTENT(IN)     :: job_name,stepnum
+  CHARACTER(LEN=50)                 :: fname
+  CHARACTER(LEN=80)                 :: cbuffer
+  INTEGER, INTENT(IN)               :: nn, npes, numpe
+  INTEGER, INTENT(IN)               :: g_num_pp(:,:)
+  INTEGER                           :: ndim, nels_pp, nod
+!  INTEGER, INTENT(INOUT)            :: etype_pp(:)
+  INTEGER                           :: nnStart,nnEnd,bufsize,ier
+  INTEGER                           :: int_in
+!,etype_int
+  INTEGER                           :: iel,i,j,k,l,m,n,p   ! loop counters
+  INTEGER                           :: readSteps,readRemainder,readCount
+  INTEGER                           :: max_nels_pp
+  INTEGER                           :: status(MPI_STATUS_SIZE)
+  INTEGER, ALLOCATABLE              :: localCount(:)
+!,readCount(:)
+  REAL(iwp), INTENT(INOUT)          :: ndscal_pp(:,:)
+!  REAL(iwp), ALLOCATABLE            :: ndscal(:)
+  REAL(iwp), ALLOCATABLE            :: ord(:)    ! temporary array
+!  REAL(iwp)                         :: etype_r
+  REAL(iwp)                    :: zero = 0.0_iwp
+  LOGICAL                           :: verbose=.true.
+! LOGICAL                           :: verbose=.false.
+
+!------------------------------------------------------------------------------
+! 1. Find READSTEPS, the number of steps in which the read will be carried
+!    out, READCOUNT, the size of each read and READREMAINDER, the number
+!    of entries to be read after the last READSTEP.
+!------------------------------------------------------------------------------
+
+!NEED TO ADD READ IN OF TIME STEP NUMBER FROM ARG
+  fname     = job_name(1:INDEX(job_name, " ")-1) // ".ensi.NDTTR-"//stepnum  
+
+  IF(npes > nn) THEN
+    readSteps     = 1
+    readRemainder = 0
+    readCount     = nn
+  ELSE
+    readSteps     = npes
+    readRemainder = MOD(nn,readSteps)
+    readCount     = (nn - readRemainder) / npes
+  END IF
+
+!------------------------------------------------------------------------------
+! 2. Allocate temporary array
+!------------------------------------------------------------------------------
+
+!  nod      = UBOUND(g_coord_pp,1)
+!  ndim     = UBOUND(g_coord_pp,2)
+!  nels_pp  = UBOUND(g_coord_pp,3)
+  nod      = UBOUND(ndscal_pp,1)
+  nels_pp  = UBOUND(ndscal_pp,2)
+
+  ALLOCATE(ord(readCount))
+ 
+!------------------------------------------------------------------------------
+! 3. Master processor opens the data file and advances to the start of the 
+!    data
+!------------------------------------------------------------------------------
+
+  IF(numpe==1)THEN
+    OPEN(10,FILE=fname,STATUS='OLD',ACTION='READ')
+    READ(10,*)   cbuffer ; IF(verbose) PRINT *, cbuffer !header
+    READ(10,*)   cbuffer ; IF(verbose) PRINT *, cbuffer !header
+    READ(10,*)   int_in  ; IF(verbose) PRINT *, int_in  !header
+    READ(10,*)   cbuffer ; IF(verbose) PRINT *, cbuffer !header
+  END IF
+
+!------------------------------------------------------------------------------
+! 4. Go round READSTEPS loop, read data, broadcast and populate ndscal_pp
+!------------------------------------------------------------------------------
+  
+  IF(ALLOCATED(ord)) DEALLOCATE(ord)
+  ALLOCATE(ord(readCount))
+  ord     = zero
+  bufsize = readCount
+  p       = 0
+
+  DO i = 1, readSteps
+    ord     = zero
+    nnStart = (i-1) * readCount + 1
+    nnEnd   =  i    * readCount 
+    IF(numpe == 1) THEN
+      READ(10,*) ord(1:readCount)
+    END IF
+    CALL MPI_BCAST(ord,bufsize,MPI_REAL8,0,MPI_COMM_WORLD,ier)
+    DO iel = 1, nels_pp
+      DO k = 1, nod
+        IF(g_num_pp(k,iel) < nnStart) CYCLE
+        IF(g_num_pp(k,iel) > nnEnd)   CYCLE
+        l                  = g_num_pp(k,iel) - nnStart + 1
+!        g_coord_pp(k,m,iel)= ord(l)
+        ndscal_pp(k,iel)= ord(l)
+      END DO
+    END DO
+  END DO
+  
+!------------------------------------------------------------------------------
+! 5. If READREMAINDER > 0, collect remaining entries
+!------------------------------------------------------------------------------
+  
+  IF(readRemainder > 0) THEN
+    DEALLOCATE(ord)
+    ALLOCATE(ord(readRemainder))
+    ord      = zero
+    bufsize  = readRemainder
+    nnStart  = (readSteps * readCount) + 1
+    nnEnd    = nnStart + readRemainder - 1
+    IF(nnEnd > nn) THEN
+      PRINT *, "Too many nodes"
+      CALL shutdown()
+      STOP
+    END IF
+    IF(numpe == 1) THEN
+      READ(10,*) ord(1:readRemainder)
+    END IF
+    CALL MPI_BCAST(ord,bufsize,MPI_REAL8,0,MPI_COMM_WORLD,ier)
+    DO iel = 1, nels_pp
+      DO k = 1, nod
+        IF(g_num_pp(k,iel) < nnStart) CYCLE
+        IF(g_num_pp(k,iel) > nnEnd)   CYCLE
+        l                  = g_num_pp(k,iel) - nnStart + 1
+!        g_coord_pp(k,m,iel)= ord(l)
+        ndscal_pp(k,iel)= ord(l)
+      END DO
+    END DO
+  END IF
+  
+!------------------------------------------------------------------------------
+! 6. Close file and deallocate global arrays
+!------------------------------------------------------------------------------
+
+  DEALLOCATE(ord)
+  IF(numpe==1) CLOSE(10)
+  
+  RETURN
+  
+  END SUBROUTINE READ_ENSI_SCALAR_PN
 
 !------------------------------------------------------------------------------
 !------------------------------------------------------------------------------
