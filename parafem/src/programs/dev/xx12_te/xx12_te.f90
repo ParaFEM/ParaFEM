@@ -1,10 +1,10 @@
-PROGRAM rfemsolve_te
+PROGRAM xx12_te
 !------------------------------------------------------------------------------ 
-!      Program rfemsolve_te three dimensional analysis of an elastic solid
+!      Program xx12_te three dimensional analysis of an elastic solid
 !                        load control or displacement control; multiple
 !                        material types; sequential version
 !      
-!      Author(s): David Arregui and Lee Margetts
+!      Author(s): Llion Evans, David Arregui and Lee Margetts
 !
 !      Cite DOI : 10.1016/j.nucmat.2015.05.058
 !                 10.1007/s11831-014-9139-3
@@ -16,8 +16,10 @@ PROGRAM rfemsolve_te
   USE precision     ; USE global_variables ; USE mp_interface
   USE input         ; USE output           ; USE loading
   USE timing        ; USE maths            ; USE gather_scatter
-! USE partition     ; USE elements         ; USE steering        ; USE pcg
-  USE new_library
+  USE partition     ; USE elements         ; USE steering
+  USE geometry      ; USE pcg              ; USE new_library
+
+  USE, INTRINSIC :: ISO_C_BINDING ! to output C binary file
   
   IMPLICIT NONE
 
@@ -27,22 +29,24 @@ PROGRAM rfemsolve_te
 
  ! neq,ntot are now global variables - not declared
 
-  INTEGER,PARAMETER     :: nodof=3,ndim=3,nst=6,nprops=2
+  INTEGER,PARAMETER     :: nodof=3,ndim=3,nst=6,nprops=8
   INTEGER               :: loaded_nodes,fixed_freedoms,iel,i,j,k,l,idx1,idx2
   INTEGER               :: iters,limit,nn,nr,nip,nod,nels,ndof,npes_pp
-  INTEGER               :: node_end,node_start,nodes_pp
+  INTEGER               :: node_end,node_start,nodes_pp,int_in
   INTEGER               :: argc,iargc,meshgen,partitioner,np_types
   INTEGER               :: fixed_freedoms_pp,fixed_freedoms_start
   INTEGER               :: nodecount_pp(1) ! count of local nodes
   INTEGER               :: nodecount    ! global count of nodes 
   REAL(iwp)             :: e,v,det,tol,up,alpha,beta,tload
+!  REAL(iwp)             :: test
   REAL(iwp)             :: mises        ! threshold for mises stress
   REAL(iwp),PARAMETER   :: zero    = 0.0_iwp
   REAL(iwp),PARAMETER   :: penalty = 1.0e20_iwp
   CHARACTER(LEN=15)     :: element
   CHARACTER(LEN=15)     :: keyword
-  CHARACTER(LEN=50)     :: program_name='rfemsolve'
-  CHARACTER(LEN=50)     :: fname,inst_in,job_in,label,instance_id
+  CHARACTER(LEN=50)     :: program_name='xx12_te'
+  CHARACTER(LEN=50)     :: fname,inst_in,job_in,label,instance_id,job_name,stepnum
+  CHARACTER(LEN=80)     :: cbuffer
   LOGICAL               :: converged = .false.
   
 
@@ -68,6 +72,7 @@ PROGRAM rfemsolve_te
   REAL(iwp),ALLOCATABLE :: stress_integral_pp(:,:),stressnodes_pp(:)
   REAL(iwp),ALLOCATABLE :: principal_integral_pp(:,:),princinodes_pp(:)
   REAL(iwp),ALLOCATABLE :: principal(:),reacnodes_pp(:)  
+  REAL(iwp),ALLOCATABLE :: ndscal_pp(:,:)
   INTEGER,  ALLOCATABLE :: rest(:,:),g_num_pp(:,:),g_g_pp(:,:),node(:)
   INTEGER,  ALLOCATABLE :: no(:),no_pp(:),no_pp_temp(:),sense(:),etype_pp(:)
     
@@ -110,7 +115,7 @@ PROGRAM rfemsolve_te
   argc = iargc()
   IF( argc /= 2 ) THEN
      PRINT*
-     PRINT*, "Usage:  rfemsolve <model_name> <instance-id>"
+     PRINT*, "Usage:  xx12_te <model_name> <instance-id>"
      PRINT*
      PRINT*, "        program expects as input:"
      PRINT*, "          <model_name>-<instance-id>.d"
@@ -128,14 +133,19 @@ PROGRAM rfemsolve_te
      PRINT*, "          <model_name>-<instance-id>.tnc" 
      PRINT*, "          <model_name>-<instance-id>.res" 
      PRINT*
-     CALL job_name_error(numpe,program_name)
+!     CALL job_name_error(numpe,program_name)
      
   END IF
   CALL GETARG(1, job_in) 
+  job_name = job_in
   CALL GETARG(2, instance_id) 
+  CALL GETARG(3, stepnum)
 
   inst_in = job_in(1:LEN_TRIM(job_in)) // "-" // instance_id(1:LEN_TRIM(instance_id))
+!  fname = job_name(1:INDEX(job_name, " ")-1) // "-" // instance_id(1:LEN_TRIM(instance_id))
+!  fname = job_name(1:INDEX(job_name, " ")-1)
   CALL read_rfemsolve(inst_in,numpe,element,fixed_freedoms,limit,loaded_nodes, &
+!  CALL read_rfemsolve(fname,numpe,element,fixed_freedoms,limit,loaded_nodes, &
                 meshgen,mises,nels,nip,nn,nod,np_types,nr,partitioner,tol)
 
   CALL calc_nels_pp(inst_in,nels,npes,numpe,partitioner,nels_pp)
@@ -194,6 +204,32 @@ PROGRAM rfemsolve_te
 
   !OPEN TEMPERATURE FILES
   !Read the temperature change at each node and assign to the dtemp vector
+
+  ALLOCATE(ndscal_pp(nod,nels_pp))
+  ndscal_pp = zero
+!  CALL read_ensi_scalar_pn(job_name,g_num_pp,nn,npes,numpe,stepnum,ndscal_pp)
+  CALL read_ensi_scalar_pn(inst_in,g_num_pp,nn,npes,numpe,stepnum,ndscal_pp)
+
+!!!!!!!!!!!!!!!!
+!  fname = inst_in(1:INDEX(inst_in, " ")-1) // ".ensi.NDTTR-000056"
+!  PRINT *, "fname = ",fname
+!  IF(numpe==1)THEN
+!    OPEN(10,FILE=fname,STATUS='OLD',ACTION='READ')
+!!    OPEN(10,FILE='Tethra-elem-1.ensi.NDTTR-000056',STATUS='OLD',ACTION='READ')
+!    READ(10,*)   cbuffer
+!    READ(10,*)   cbuffer
+!    READ(10,*)  int_in
+!    READ(10,*)   cbuffer
+!!    READ(10,'(A)')   cbuffer
+!    DO i=1, nn
+!      READ(10,*)  test
+!      PRINT *, test
+!    END DO
+!    CLOSE(10)
+!  END IF
+!!!!!!!!!!!!!!!!
+  PRINT *, "ndscal_pp = "
+  PRINT *, ndscal_pp
   
   OPEN(55,File='Temperature.txt',STATUS='OLD',ACTION='read')
   READ(55,*)keyword
@@ -313,15 +349,16 @@ PROGRAM rfemsolve_te
    
   elements_3: DO iel=1,nels_pp
                 
-    cte (1)   = prop(1,etype_pp(iel))
-    cte (2)   = prop(1,etype_pp(iel))
-    cte (3)   = prop(1,etype_pp(iel))
+    cte (1)   = prop(8,etype_pp(iel))
+    cte (2)   = prop(8,etype_pp(iel))
+    cte (3)   = prop(8,etype_pp(iel))
     dee = zero
    
 !Relationship between CTE and Young's modulus
     !e = constant/prop(1,etype_pp(iel))
-    v = prop(2,etype_pp(iel))
-    e = 10000
+    e = prop(6,etype_pp(iel))
+    v = prop(7,etype_pp(iel))
+    !e = 10000
          
     CALL deemat(dee,e,v)
          
@@ -745,4 +782,4 @@ PROGRAM rfemsolve_te
  
   CALL shutdown() 
  
-END PROGRAM rfemsolve_te
+END PROGRAM xx12_te
