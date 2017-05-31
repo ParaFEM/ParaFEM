@@ -32,16 +32,16 @@ release:
 	@echo
 	@echo "Building xx12_b RELEASE"
 	$(MAKE) xx12_b \
-	FFLAGS="-c -I$(MODULE) $(xx12_b_MPI_REL_FFLAGS)" \
-	LDFLAGS="-L$(LIB) -lParaFEM_mpi.$(VERSION) $(xx12_b_MPI_REL_LDFLAGS)"
+	FFLAGS="-c -I$(MODULE) $(XX12_MPI_REL_FFLAGS)" \
+	LDFLAGS="-L$(LIB) -lParaFEM_mpi.$(VERSION) $(XX12_MPI_REL_LDFLAGS)"
 	@echo "Done xx12_b RELEASE"
 
 debug:
 	@echo
 	@echo "Building xx12_b DEBUG"
 	$(MAKE) xx12_b \
-	FFLAGS="-c -I$(MODULE) $(xx12_b_MPI_DBG_FFLAGS)" \
-	LDFLAGS="-L$(LIB) -lParaFEM_mpi_D.$(VERSION) $(xx12_b_MPI_DBG_LDFLAGS)"
+	FFLAGS="-c -I$(MODULE) $(XX12_MPI_DBG_FFLAGS)" \
+	LDFLAGS="-L$(LIB) -lParaFEM_mpi_D.$(VERSION) $(XX12_MPI_DBG_LDFLAGS)"
 	@echo "Done xx12_b DEBUG"
 
 xx12_b: xx12_b.o
