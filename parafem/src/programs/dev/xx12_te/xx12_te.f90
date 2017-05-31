@@ -36,7 +36,8 @@ PROGRAM xx12_te
   INTEGER               :: argc,iargc,meshgen,partitioner,np_types
   INTEGER               :: fixed_freedoms_pp,fixed_freedoms_start
   INTEGER               :: nodecount_pp(1) ! count of local nodes
-  INTEGER               :: nodecount    ! global count of nodes 
+  INTEGER               :: nodecount    ! global count of nodes
+  INTEGER               :: prog
   REAL(iwp)             :: e,v,det,tol,up,alpha,beta,tload
 !  REAL(iwp)             :: test
   REAL(iwp)             :: mises        ! threshold for mises stress
@@ -45,7 +46,7 @@ PROGRAM xx12_te
   CHARACTER(LEN=15)     :: element
   CHARACTER(LEN=15)     :: keyword
   CHARACTER(LEN=50)     :: program_name='xx12_te'
-  CHARACTER(LEN=50)     :: fname,inst_in,job_in,label,instance_id,job_name,stepnum
+  CHARACTER(LEN=50)     :: fname,inst_in,job_name,label,instance_id,stepnum
   CHARACTER(LEN=80)     :: cbuffer
   LOGICAL               :: converged = .false.
   
@@ -103,53 +104,65 @@ PROGRAM xx12_te
 ! teps      
 
 !------------------------------------------------------------------------------
-! 3. Read job_in and instance_id from the command line. 
+! 3. Read job_name and instance_id from the command line. 
 !    Read control data, mesh data, boundary and loading conditions. 
 !------------------------------------------------------------------------------
    
+      !-- To run in rfem_te mode set prog=11, for xx12_te prog=12   
+      prog=12
+  
   ALLOCATE(timest(20))
   timest    = zero 
   timest(1) = elap_time()
   
   CALL find_pe_procs(numpe,npes)
   argc = iargc()
-  IF( argc /= 2 ) THEN
-     PRINT*
-     PRINT*, "Usage:  xx12_te <model_name> <instance-id>"
-     PRINT*
-     PRINT*, "        program expects as input:"
-     PRINT*, "          <model_name>-<instance-id>.d"
-     PRINT*, "          <model_name>-<instance-id>.dat"
-     PRINT*, "          <model_name>-<instance-id>.bnd"
-     PRINT*, "          <model_name>-<instance-id>.fix"
-     PRINT*, "          <model_name>-<instance-id>.mat"
-     PRINT*
-     PRINT*, "        and outputs:"
-     PRINT*, "          <model_name>-<instance-id>.dis" 
-     PRINT*, "          <model_name>-<instance-id>.pri" 
-     PRINT*, "          <model_name>-<instance-id>.str" 
-     PRINT*, "          <model_name>-<instance-id>.vms" 
-     PRINT*, "          <model_name>-<instance-id>.rea" 
-     PRINT*, "          <model_name>-<instance-id>.tnc" 
-     PRINT*, "          <model_name>-<instance-id>.res" 
-     PRINT*
-!     CALL job_name_error(numpe,program_name)
-     
-  END IF
-  CALL GETARG(1, job_in) 
-  job_name = job_in
-  CALL GETARG(2, instance_id) 
-  CALL GETARG(3, stepnum)
-
-  inst_in = job_in(1:LEN_TRIM(job_in)) // "-" // instance_id(1:LEN_TRIM(instance_id))
-!  fname = job_name(1:INDEX(job_name, " ")-1) // "-" // instance_id(1:LEN_TRIM(instance_id))
-!  fname = job_name(1:INDEX(job_name, " ")-1)
-  CALL read_rfemsolve(inst_in,numpe,element,fixed_freedoms,limit,loaded_nodes, &
-!  CALL read_rfemsolve(fname,numpe,element,fixed_freedoms,limit,loaded_nodes, &
+  IF(prog==11)THEN
+    IF( argc /= 2 ) THEN
+      PRINT*
+      PRINT*, "Usage:  xx12_te <model_name> <instance-id>"
+      PRINT*
+      PRINT*, "        program expects as input:"
+      PRINT*, "          <model_name>-<instance-id>.d"
+      PRINT*, "          <model_name>-<instance-id>.dat"
+      PRINT*, "          <model_name>-<instance-id>.bnd"
+      PRINT*, "          <model_name>-<instance-id>.fix"
+      PRINT*, "          <model_name>-<instance-id>.mat"
+      PRINT*
+      PRINT*, "        and outputs:"
+      PRINT*, "          <model_name>-<instance-id>.dis" 
+      PRINT*, "          <model_name>-<instance-id>.pri" 
+      PRINT*, "          <model_name>-<instance-id>.str" 
+      PRINT*, "          <model_name>-<instance-id>.vms" 
+      PRINT*, "          <model_name>-<instance-id>.rea" 
+      PRINT*, "          <model_name>-<instance-id>.tnc" 
+      PRINT*, "          <model_name>-<instance-id>.res" 
+      PRINT*
+!      CALL job_name_error(numpe,program_name)
+    END IF
+    CALL GETARG(1, job_name) 
+    CALL GETARG(2, instance_id)
+    
+    inst_in = job_name(1:LEN_TRIM(job_name)) // "-" // instance_id(1:LEN_TRIM(instance_id))
+    CALL read_rfemsolve(inst_in,numpe,element,fixed_freedoms,limit,loaded_nodes, &
                 meshgen,mises,nels,nip,nn,nod,np_types,nr,partitioner,tol)
-
-  CALL calc_nels_pp(inst_in,nels,npes,numpe,partitioner,nels_pp)
-
+    
+    CALL calc_nels_pp(inst_in,nels,npes,numpe,partitioner,nels_pp)
+    
+  END IF
+  IF(prog==12)THEN
+    CALL GETARG(1, job_name)
+    CALL GETARG(2, stepnum)
+    CALL read_rfemsolve(job_name,numpe,element,fixed_freedoms,limit,loaded_nodes, &
+                meshgen,mises,nels,nip,nn,nod,np_types,nr,partitioner,tol)
+    
+!    inst_in = job_name(1:LEN_TRIM(job_name)) // "-" // instance_id(1:LEN_TRIM(instance_id))
+!    fname = job_name(1:INDEX(job_name, " ")-1) // "-" // instance_id(1:LEN_TRIM(instance_id))
+!    fname = job_name(1:INDEX(job_name, " ")-1)
+    
+    CALL calc_nels_pp(job_name,nels,npes,numpe,partitioner,nels_pp)
+  END IF
+  
   ndof = nod*nodof
   ntot = ndof
  
@@ -178,24 +191,39 @@ PROGRAM xx12_te
   
   timest(2) = elap_time()
   
-  CALL read_elements(inst_in,iel_start,nn,npes,numpe,etype_pp,g_num_pp)
+  IF(prog==11)THEN
+    CALL read_elements(inst_in,iel_start,nn,npes,numpe,etype_pp,g_num_pp)
+  END IF
+  IF(prog==12)THEN
+    CALL read_elements(job_name,iel_start,nn,npes,numpe,etype_pp,g_num_pp)
+  END IF
   timest(3) = elap_time()
   IF(numpe==1) PRINT *, "READ_ELEMENTS COMPLETED"
 
-! CALL read_g_num_pp(job_in,iel_start,nels,nn,numpe,g_num_pp)
+! CALL read_g_num_pp(job_name,iel_start,nels,nn,numpe,g_num_pp)
 
   IF(meshgen == 2) CALL abaqus2sg(element,g_num_pp)
   timest(4) = elap_time()
-
-  CALL read_g_coord_pp(inst_in,g_num_pp,nn,npes,numpe,g_coord_pp)
+  
+  IF(prog==11)THEN
+    CALL read_g_coord_pp(inst_in,g_num_pp,nn,npes,numpe,g_coord_pp)
+  END IF
+  IF(prog==12)THEN
+    CALL read_g_coord_pp(job_name,g_num_pp,nn,npes,numpe,g_coord_pp)
+  END IF
   timest(5) = elap_time()
   IF(numpe==1) PRINT *, "READ_G_COORD_PP COMPLETED"
 
-  CALL read_rest(job_in,numpe,rest)
+  CALL read_rest(job_name,numpe,rest)
   timest(6) = elap_time()
   IF(numpe==1) PRINT *, "READ_REST COMPLETED"
   
-  fname = inst_in(1:LEN_TRIM(inst_in)) // ".mat" ! Move to subroutine
+  IF(prog==11)THEN
+    fname = inst_in(1:LEN_TRIM(inst_in)) // ".mat" ! Move to subroutine
+  END IF
+  IF(prog==12)THEN
+    fname = job_name(1:INDEX(job_name, " ")-1) // ".mat" ! Move to subroutine
+  END IF
   CALL read_materialValue(prop,fname,numpe,npes)       ! CALL read_prop? 
   
 !------------------------------------------------------------------------------
@@ -204,12 +232,24 @@ PROGRAM xx12_te
 
   !OPEN TEMPERATURE FILES
   !Read the temperature change at each node and assign to the dtemp vector
-
-  ALLOCATE(ndscal_pp(nod,nels_pp))
-  ndscal_pp = zero
-!  CALL read_ensi_scalar_pn(job_name,g_num_pp,nn,npes,numpe,stepnum,ndscal_pp)
-  CALL read_ensi_scalar_pn(inst_in,g_num_pp,nn,npes,numpe,stepnum,ndscal_pp)
-
+  
+  ALLOCATE(cte(3))
+  
+  IF(prog==11)THEN
+    OPEN(55,File='Temperature.txt',STATUS='OLD',ACTION='read')
+    READ(55,*)keyword
+    READ(55,*)
+    
+    DO i=1, nn
+        READ(55,*)k,dtemp(i)
+    END DO
+    
+    CLOSE(55) 
+    
+    bufsize = nn
+    CALL MPI_BCAST(dtemp,bufsize,MPI_REAL8,0,MPI_COMM_WORLD,ier)
+  END IF
+  
 !!!!!!!!!!!!!!!!
 !  fname = inst_in(1:INDEX(inst_in, " ")-1) // ".ensi.NDTTR-000056"
 !  PRINT *, "fname = ",fname
@@ -228,31 +268,18 @@ PROGRAM xx12_te
 !    CLOSE(10)
 !  END IF
 !!!!!!!!!!!!!!!!
-  PRINT *, "ndscal_pp = "
-  PRINT *, ndscal_pp
   
-  OPEN(55,File='Temperature.txt',STATUS='OLD',ACTION='read')
-  READ(55,*)keyword
-
-  READ(55,*)
-     
-  ALLOCATE(cte(3))
-
-  DO i=1, nn
-      READ(55,*)k,dtemp(i)
-  END DO
-
-  CLOSE(55) 
+  IF(prog==12)THEN
+    ALLOCATE(ndscal_pp(nod,nels_pp))
+    ndscal_pp = zero
+    CALL read_ensi_scalar_pn(job_name,g_num_pp,nn,npes,numpe,stepnum,ndscal_pp)
   
-  bufsize = nn
- 
-  CALL MPI_BCAST(dtemp,bufsize,MPI_REAL8,0,MPI_COMM_WORLD,ier)
-
-!------------------------------------------------------------------------------  
+    PRINT *, "ndscal_pp = "
+    PRINT *, ndscal_pp
+  END IF
+  
   PRINT *, "READ_MATERIALVALUE COMPLETED"
   
-  
-
 !------------------------------------------------------------------------------
 ! 4. Allocate dynamic arrays used in main program
 !------------------------------------------------------------------------------
@@ -331,7 +358,8 @@ PROGRAM xx12_te
 !------------------------------------------------------------------------------
 
   points = zero
-
+  
+!  IF(numpe==1) PRINT *, "Reached 'CALL sample'"
   CALL sample(element,points,weights)
 
   teps      = zero
@@ -346,30 +374,34 @@ PROGRAM xx12_te
 ! doi:10.1016/j.jnucmat.2015.05.058
 
 !  constant  = 0.0435
-   
+!  IF(numpe==1) PRINT *, "Reached elements_3 loop"
   elements_3: DO iel=1,nels_pp
-                
+    
     cte (1)   = prop(8,etype_pp(iel))
     cte (2)   = prop(8,etype_pp(iel))
     cte (3)   = prop(8,etype_pp(iel))
     dee = zero
-   
+    
 !Relationship between CTE and Young's modulus
     !e = constant/prop(1,etype_pp(iel))
     e = prop(6,etype_pp(iel))
     v = prop(7,etype_pp(iel))
     !e = 10000
-         
+    
     CALL deemat(dee,e,v)
-         
-    !Extraction of nodal numbers for each element
-    num=g_num_pp(:,iel)
     
     !Extraction of nodal temperature changes for each element
-    dtel=dtemp(num)
-                  
+    IF(prog==11)THEN
+      !Extraction of nodal numbers for each element
+      num=g_num_pp(:,iel)
+      dtel=dtemp(num)
+    END IF
+    IF(prog==12)THEN
+      dtel=ndscal_pp(:,iel)
+    END IF
+    
     etl=zero
-        
+    
     gauss_pts_1: DO i=1,nip
                
       CALL shape_fun(fun,points,i)
@@ -445,7 +477,7 @@ PROGRAM xx12_te
     
     node = 0 ; no = 0 ; no_pp_temp = 0 ; sense = 0 ; valf = zero
 
-    CALL read_fixed(job_in,numpe,node,sense,valf)
+    CALL read_fixed(job_name,numpe,node,sense,valf)
     CALL find_no(node,rest,sense,no)
     CALL reindex(ieq_start,no,no_pp_temp,fixed_freedoms_pp,                   &
                              fixed_freedoms_start,neq_pp)
@@ -476,7 +508,7 @@ PROGRAM xx12_te
     
     val  = zero ; node = 0
 
-    CALL read_loads(job_in,numpe,node,val)
+    CALL read_loads(job_name,numpe,node,val)
     CALL load(g_g_pp,g_num_pp,node,val,r_pp(1:))
 
     !CHECK
@@ -582,19 +614,35 @@ PROGRAM xx12_te
 
   CALL calc_nodes_pp(nn,npes,numpe,node_end,node_start,nodes_pp)
   
-  IF(numpe==1) THEN
-    fname = inst_in(1:LEN_TRIM(inst_in)) // ".dis"
-    OPEN(24, file=fname, status='replace', action='write')
-    fname = inst_in(1:LEN_TRIM(inst_in)) // ".str"
-    OPEN(25, file=fname, status='replace', action='write')
-    fname = inst_in(1:LEN_TRIM(inst_in)) // ".pri"
-    OPEN(26, file=fname, status='replace', action='write')
-    fname = inst_in(1:LEN_TRIM(inst_in)) // ".vms"
-    OPEN(27, file=fname, status='replace', action='write')
-    fname = inst_in(1:LEN_TRIM(inst_in)) // ".rea"
-    OPEN(28, file=fname, status='replace', action='write')
+  IF(prog==11)THEN
+    IF(numpe==1) THEN
+      fname = inst_in(1:LEN_TRIM(inst_in)) // ".dis"
+      OPEN(24, file=fname, status='replace', action='write')
+      fname = inst_in(1:LEN_TRIM(inst_in)) // ".str"
+      OPEN(25, file=fname, status='replace', action='write')
+      fname = inst_in(1:LEN_TRIM(inst_in)) // ".pri"
+      OPEN(26, file=fname, status='replace', action='write')
+      fname = inst_in(1:LEN_TRIM(inst_in)) // ".vms"
+      OPEN(27, file=fname, status='replace', action='write')
+      fname = inst_in(1:LEN_TRIM(inst_in)) // ".rea"
+      OPEN(28, file=fname, status='replace', action='write')
+    END IF
   END IF
-
+  IF(prog==12)THEN
+    IF(numpe==1) THEN
+      fname = job_name(1:LEN_TRIM(job_name)) // ".dis"
+      OPEN(24, file=fname, status='replace', action='write')
+      fname = job_name(1:LEN_TRIM(job_name)) // ".str"
+      OPEN(25, file=fname, status='replace', action='write')
+      fname = job_name(1:LEN_TRIM(job_name)) // ".pri"
+      OPEN(26, file=fname, status='replace', action='write')
+      fname = job_name(1:LEN_TRIM(job_name)) // ".vms"
+      OPEN(27, file=fname, status='replace', action='write')
+      fname = job_name(1:LEN_TRIM(job_name)) // ".rea"
+      OPEN(28, file=fname, status='replace', action='write')
+    END IF
+  END IF
+  
 !------------------------------------------------------------------------------
 ! 16a. Displacements
 !------------------------------------------------------------------------------
@@ -776,9 +824,15 @@ PROGRAM xx12_te
 !------------------------------------------------------------------------------
 ! 17. Output performance data
 !------------------------------------------------------------------------------
-
-  CALL WRITE_RFEMSOLVE(fixed_freedoms,iters,inst_in,loaded_nodes,mises,neq,   &
-                       nn,nodecount,npes,nr,numpe,timest,tload)
+  
+  IF(prog==11)THEN
+    CALL WRITE_RFEMSOLVE(fixed_freedoms,iters,inst_in,loaded_nodes,mises,neq,   &
+                         nn,nodecount,npes,nr,numpe,timest,tload)
+  END IF
+  IF(prog==12)THEN
+    CALL WRITE_RFEMSOLVE(fixed_freedoms,iters,job_name,loaded_nodes,mises,neq,   &
+                         nn,nodecount,npes,nr,numpe,timest,tload)
+  END IF
  
   CALL shutdown() 
  
