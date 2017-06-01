@@ -49,7 +49,6 @@ PROGRAM xx12_te
   CHARACTER(LEN=50)     :: fname,inst_in,job_name,label,instance_id,stepnum
   CHARACTER(LEN=80)     :: cbuffer
   LOGICAL               :: converged = .false.
-  
 
   !New variables
   !Temporal variable
@@ -84,7 +83,6 @@ PROGRAM xx12_te
   REAL(iwp),ALLOCATABLE :: etl_pp(:,:)
   REAL(iwp),ALLOCATABLE :: tload_pp(:) 
  
-  
 !------------------------------------------------------------------------------
 ! 2a. Definition of variable names not listed in the 5th edition
 !------------------------------------------------------------------------------
@@ -107,9 +105,9 @@ PROGRAM xx12_te
 ! 3. Read job_name and instance_id from the command line. 
 !    Read control data, mesh data, boundary and loading conditions. 
 !------------------------------------------------------------------------------
-   
-      !-- To run in rfem_te mode set prog=11, for xx12_te prog=12   
-      prog=12
+  
+  !-- To run in rfem_te mode set prog=11, for xx12_te prog=12   
+  prog=12
   
   ALLOCATE(timest(20))
   timest    = zero 
@@ -117,6 +115,7 @@ PROGRAM xx12_te
   
   CALL find_pe_procs(numpe,npes)
   argc = iargc()
+  
   IF(prog==11)THEN
     IF( argc /= 2 ) THEN
       PRINT*
@@ -148,7 +147,6 @@ PROGRAM xx12_te
                 meshgen,mises,nels,nip,nn,nod,np_types,nr,partitioner,tol)
     
     CALL calc_nels_pp(inst_in,nels,npes,numpe,partitioner,nels_pp)
-    
   END IF
   IF(prog==12)THEN
     CALL GETARG(1, job_name)
@@ -165,21 +163,19 @@ PROGRAM xx12_te
   
   ndof = nod*nodof
   ntot = ndof
- 
+  
   ALLOCATE(g_num_pp(nod, nels_pp)) 
   ALLOCATE(g_coord_pp(nod,ndim,nels_pp)) 
   ALLOCATE(rest(nr,nodof+1)) 
   ALLOCATE(etype_pp(nels_pp))
   ALLOCATE(prop(nprops,np_types))
-
+  
   !Force Vector
   ALLOCATE(num(nod))
   ALLOCATE(etl(ndof))
   ALLOCATE(dtel(nod))
   ALLOCATE(dtemp(nn))
   ALLOCATE(teps(nst))
-   
-
   
   ALLOCATE(etl_pp(ndof,nels_pp))
  
@@ -195,7 +191,12 @@ PROGRAM xx12_te
     CALL read_elements(inst_in,iel_start,nn,npes,numpe,etype_pp,g_num_pp)
   END IF
   IF(prog==12)THEN
-    CALL read_elements(job_name,iel_start,nn,npes,numpe,etype_pp,g_num_pp)
+!    CALL read_elements(job_name,iel_start,nn,npes,numpe,etype_pp,g_num_pp)
+    !---Open ascii ENSIGHT GOLD
+    IF(numpe==1) PRINT *, "CALL read_g_num_pp_e"
+    CALL read_g_num_pp_e(job_name,iel_start,nn,npes,numpe,g_num_pp)
+    IF(numpe==1) PRINT *, "CALL read_etype_pp"
+    CALL read_etype_pp(job_name,npes,numpe,etype_pp)
   END IF
   timest(3) = elap_time()
   IF(numpe==1) PRINT *, "READ_ELEMENTS COMPLETED"
@@ -209,22 +210,21 @@ PROGRAM xx12_te
     CALL read_g_coord_pp(inst_in,g_num_pp,nn,npes,numpe,g_coord_pp)
   END IF
   IF(prog==12)THEN
-    CALL read_g_coord_pp(job_name,g_num_pp,nn,npes,numpe,g_coord_pp)
+!    CALL read_g_coord_pp(job_name,g_num_pp,nn,npes,numpe,g_coord_pp)
+    !---Open ascii ENSIGHT GOLD
+    IF(numpe==1) PRINT *, "CALL read_g_coord_pp_e"
+    CALL read_g_coord_pp_e(job_name,g_num_pp,nn,npes,numpe,g_coord_pp)
   END IF
   timest(5) = elap_time()
   IF(numpe==1) PRINT *, "READ_G_COORD_PP COMPLETED"
 
-  CALL read_rest(job_name,numpe,rest)
+  IF (nr>0) CALL read_rest(job_name,numpe,rest)
   timest(6) = elap_time()
   IF(numpe==1) PRINT *, "READ_REST COMPLETED"
   
-  IF(prog==11)THEN
-    fname = inst_in(1:LEN_TRIM(inst_in)) // ".mat" ! Move to subroutine
-  END IF
-  IF(prog==12)THEN
-    fname = job_name(1:INDEX(job_name, " ")-1) // ".mat" ! Move to subroutine
-  END IF
-  CALL read_materialValue(prop,fname,numpe,npes)       ! CALL read_prop? 
+  IF(prog==11) fname = inst_in(1:LEN_TRIM(inst_in)) // ".mat" ! Move to subroutine
+  IF(prog==12) fname = job_name(1:INDEX(job_name, " ")-1) // ".mat"
+  CALL read_materialValue(prop,fname,numpe,npes)
   
 !------------------------------------------------------------------------------
 ! Nodal temperatures
@@ -294,17 +294,31 @@ PROGRAM xx12_te
 ! 5. Loop the elements to find the steering array and the number of equations
 !    to solve.
 !------------------------------------------------------------------------------
-
+  
   CALL rearrange(rest)
+!  IF(prog==11) CALL rearrange(rest)
+!  IF(prog==12 .AND. nr>0) CALL rearrange_2(rest)
   IF(numpe==1) PRINT *, "REARRANGE COMPLETED"
   
   g_g_pp = 0
 
-  elements_1: DO iel = 1, nels_pp
-!   CALL find_g3(g_num_pp(:,iel),g_g_pp(:,iel),rest)
-    CALL find_g(g_num_pp(:,iel),g_g_pp(:,iel),rest)
-   
-  END DO elements_1
+!  IF(prog==11)THEN
+    elements_1: DO iel = 1, nels_pp
+!     CALL find_g3(g_num_pp(:,iel),g_g_pp(:,iel),rest)
+      CALL find_g(g_num_pp(:,iel),g_g_pp(:,iel),rest)
+    END DO elements_1
+!  END IF
+!  IF(prog==12)THEN
+!    ! When nr = 0, g_num_pp and g_g_pp are identical
+!    IF(nr>0) THEN
+!      elements_1b: DO iel = 1, nels_pp
+!        CALL find_g4(g_num_pp(:,iel),g_g_pp(:,iel),rest)
+!      END DO elements_1b
+!      DEALLOCATE(rest)
+!    ELSE
+!      g_g_pp = g_num_pp
+!    END IF
+!  END IF
   
   !PRINT*,'g_num_pp'
   !PRINT*,g_num_pp
@@ -453,9 +467,9 @@ PROGRAM xx12_te
   diag_precon_tmp = zero
  
   elements_4: DO iel = 1,nels_pp 
-   DO i = 1,ndof
+    DO i = 1,ndof
       diag_precon_tmp(i,iel) = diag_precon_tmp(i,iel) + storkm_pp(i,i,iel)
-   END DO
+    END DO
   END DO elements_4
   
   CALL scatter(diag_precon_pp,diag_precon_tmp)
@@ -488,13 +502,13 @@ PROGRAM xx12_te
     store_pp = zero
     no_pp    = no_pp_temp(1:fixed_freedoms_pp)
 
-    DEALLOCATE(node,no,sense,no_pp_temp)
+    DEALLOCATE(node,no,sense,no_pp_temp,rest)
 
   END IF
 
   IF(fixed_freedoms == 0) fixed_freedoms_pp = 0
 
-  DEALLOCATE(rest)
+!  DEALLOCATE(rest)
 
   IF(numpe==1) PRINT *, "READ FIXED NODAL DISPLACEMENTS"
 
@@ -697,13 +711,19 @@ PROGRAM xx12_te
 
   DO iel = 1,nels_pp
               
-    cte (1)   = prop(1,etype_pp(iel))
-    cte (2)   = prop(1,etype_pp(iel))
-    cte (3)   = prop(1,etype_pp(iel))
-    v   = prop(2,etype_pp(iel))
+!    cte (1)   = prop(1,etype_pp(iel))
+!    cte (2)   = prop(1,etype_pp(iel))
+!    cte (3)   = prop(1,etype_pp(iel))
+!    v   = prop(2,etype_pp(iel))
+!    !e = constant/prop(1,etype_pp(iel))
+!    e = 10000
     
-    !e = constant/prop(1,etype_pp(iel))
-    e = 10000
+    cte (1) = prop(8,etype_pp(iel))
+    cte (2) = prop(8,etype_pp(iel))
+    cte (3) = prop(8,etype_pp(iel))
+    e       = prop(6,etype_pp(iel))
+    v       = prop(7,etype_pp(iel))
+    
     dee = zero
     CALL deemat(dee,e,v)
 
