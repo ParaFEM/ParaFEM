@@ -11,7 +11,7 @@ PROGRAM xx12_te
 !                 
 !------------------------------------------------------------------------------ 
                     ! need to change this to test on multiple cores  
-  USE mpi_wrapper   ! uncomment line to compile without MPI
+!  USE mpi_wrapper   ! uncomment line to compile without MPI
 
   USE precision     ; USE global_variables ; USE mp_interface
   USE input         ; USE output           ; USE loading
@@ -72,7 +72,7 @@ PROGRAM xx12_te
   REAL(iwp),ALLOCATABLE :: stress_integral_pp(:,:),stressnodes_pp(:)
   REAL(iwp),ALLOCATABLE :: principal_integral_pp(:,:),princinodes_pp(:)
   REAL(iwp),ALLOCATABLE :: principal(:),reacnodes_pp(:)  
-  REAL(iwp),ALLOCATABLE :: ndscal_pp(:,:)
+  REAL(iwp),ALLOCATABLE :: ndscal_pp(:,:),tempres(:)
   INTEGER,  ALLOCATABLE :: rest(:,:),g_num_pp(:,:),g_g_pp(:,:),node(:)
   INTEGER,  ALLOCATABLE :: no(:),no_pp(:),no_pp_temp(:),sense(:),etype_pp(:)
     
@@ -644,15 +644,19 @@ PROGRAM xx12_te
   END IF
   IF(prog==12)THEN
     IF(numpe==1) THEN
-      fname = job_name(1:LEN_TRIM(job_name)) // ".dis"
+      fname=job_name(1:INDEX(job_name," ")-1)//".ensi.DIS-"//stepnum
       OPEN(24, file=fname, status='replace', action='write')
-      fname = job_name(1:LEN_TRIM(job_name)) // ".str"
+      fname=job_name(1:INDEX(job_name," ")-1)//".ensi.STR-"//stepnum
+!      fname = job_name(1:LEN_TRIM(job_name)) // ".str"
       OPEN(25, file=fname, status='replace', action='write')
-      fname = job_name(1:LEN_TRIM(job_name)) // ".pri"
+      fname=job_name(1:INDEX(job_name," ")-1)//".ensi.PRI-"//stepnum
+!      fname = job_name(1:LEN_TRIM(job_name)) // ".pri"
       OPEN(26, file=fname, status='replace', action='write')
-      fname = job_name(1:LEN_TRIM(job_name)) // ".vms"
+      fname=job_name(1:INDEX(job_name," ")-1)//".ensi.VMS-"//stepnum
+!      fname = job_name(1:LEN_TRIM(job_name)) // ".vms"
       OPEN(27, file=fname, status='replace', action='write')
-      fname = job_name(1:LEN_TRIM(job_name)) // ".rea"
+      fname=job_name(1:INDEX(job_name," ")-1)//".ensi.REA-"//stepnum
+!      fname = job_name(1:LEN_TRIM(job_name)) // ".rea"
       OPEN(28, file=fname, status='replace', action='write')
     END IF
   END IF
@@ -673,12 +677,35 @@ PROGRAM xx12_te
 
   CALL scatter_nodes(npes,nn,nels_pp,g_num_pp,nod,ndim,nodes_pp,              &
                      node_start,node_end,eld_pp,disp_pp,1)
-  CALL write_nodal_variable(label,24,1,nodes_pp,npes,numpe,ndim,disp_pp)
-
+  IF(prog==11)THEN
+    CALL write_nodal_variable(label,24,1,nodes_pp,npes,numpe,ndim,disp_pp)
+    IF(numpe==1) CLOSE(24)
+  END IF
+  IF(prog==12)THEN
+    !---Write file: outputs-ENSIGHT GOLD
+    IF(numpe==1)THEN
+      WRITE(24,'(A)') "Alya Ensight Gold --- Vector per-node variable file"
+      WRITE(24,'(A)') "part"
+      WRITE(24,'(I1)') 1
+      WRITE(24,'(A)') "coordinates"
+    END IF
+    
+    ALLOCATE(tempres(nodes_pp))
+!    tempres = zero
+    DO i=1,ndim
+      tempres = zero
+      DO j=1,nodes_pp
+        !tempres(nodes_pp*(i-1)+j)=disp_pp(ndim*(j-1)+i)
+        tempres(j)=disp_pp(ndim*(j-1)+i)
+      END DO
+      CALL dismsh_ensi_p(24,1,nodes_pp,npes,numpe,nodof,tempres)
+    END DO
+    DEALLOCATE(tempres)
+    IF(numpe==1) CLOSE (24)
+  END IF
+  
   DEALLOCATE(disp_pp)
-
-  IF(numpe==1) CLOSE(24)
-
+  
   IF(numpe==1) PRINT *, "OUTPUT DISPLACEMENTS"
 
 !------------------------------------------------------------------------------
@@ -768,13 +795,39 @@ PROGRAM xx12_te
   CALL nodal_projection(npes,nn,nels_pp,g_num_pp,nod,nst,nodes_pp,            &
                         node_start,node_end,shape_integral_pp,                &
                         stress_integral_pp,stressnodes_pp)
-  CALL write_nodal_variable(label,25,1,nodes_pp,npes,numpe,nst,               &
-                            stressnodes_pp)
+!  CALL write_nodal_variable(label,25,1,nodes_pp,npes,numpe,nst,               &
+!                            stressnodes_pp)
                             
+  IF(prog==11)THEN
+    CALL write_nodal_variable(label,25,1,nodes_pp,npes,numpe,nst,               &
+                              stressnodes_pp)
+    IF(numpe==1) CLOSE(25)
+  END IF
+  IF(prog==12)THEN
+    !---Write file: outputs-ENSIGHT GOLD
+    IF(numpe==1)THEN
+      WRITE(25,'(A)') "Alya Ensight Gold --- Tensor per-node variable file"
+      WRITE(25,'(A)') "part"
+      WRITE(25,'(I1)') 1
+      WRITE(25,'(A)') "coordinates"
+    END IF
+    
+    ALLOCATE(tempres(nodes_pp))
+    DO i=1,nst
+      tempres = zero
+      DO j=1,nodes_pp
+        tempres(j)=stressnodes_pp(nst*(j-1)+i)
+      END DO
+      CALL dismsh_ensi_p(25,1,nodes_pp,npes,numpe,nodof,tempres)
+    END DO
+    DEALLOCATE(tempres)
+    IF(numpe==1) CLOSE (25)
+  END IF
+  
   DEALLOCATE(stress_integral_pp,stressnodes_pp)
-
-  IF(numpe==1) CLOSE(25)
-
+  
+  IF(numpe==1) PRINT *, "OUTPUT STRESS TENSOR"
+  
 !------------------------------------------------------------------------------
 ! 16d. Principal stress
 !------------------------------------------------------------------------------
@@ -784,13 +837,39 @@ PROGRAM xx12_te
   CALL nodal_projection(npes,nn,nels_pp,g_num_pp,nod,nodof,nodes_pp,          &
                         node_start,node_end,shape_integral_pp,                &
                         principal_integral_pp,princinodes_pp)
-  CALL write_nodal_variable(label,26,1,nodes_pp,npes,numpe,nodof,             &
-                            princinodes_pp)
-                            
+!  CALL write_nodal_variable(label,26,1,nodes_pp,npes,numpe,nodof,             &
+!                            princinodes_pp)
+  
+  IF(prog==11)THEN
+    CALL write_nodal_variable(label,26,1,nodes_pp,npes,numpe,nodof,             &
+                              princinodes_pp)
+    IF(numpe==1) CLOSE(26)
+  END IF
+  IF(prog==12)THEN
+    !---Write file: outputs-ENSIGHT GOLD
+    IF(numpe==1)THEN
+      WRITE(26,'(A)') "Alya Ensight Gold --- Vector per-node variable file"
+      WRITE(26,'(A)') "part"
+      WRITE(26,'(I1)') 1
+      WRITE(26,'(A)') "coordinates"
+    END IF
+    
+    ALLOCATE(tempres(nodes_pp))
+    DO i=1,ndim
+      tempres = zero
+      DO j=1,nodes_pp
+        tempres(j)=princinodes_pp(ndim*(j-1)+i)
+      END DO
+      CALL dismsh_ensi_p(26,1,nodes_pp,npes,numpe,nodof,tempres)
+    END DO
+    DEALLOCATE(tempres)
+    IF(numpe==1) CLOSE (26)
+  END IF
+  
   DEALLOCATE(principal_integral_pp)
-
-  IF(numpe==1) CLOSE(26)
-
+  
+  IF(numpe==1) PRINT *, "OUTPUT PRINCIPAL STRESS VECTOR"
+  
 !------------------------------------------------------------------------------
 ! 16e. Von Mises stress (rho_v)
 !      rho_v = sqrt( ( (rho1-rho2)^2 + (rho2-rho3)^2 + (rho1-rho3)^2 ) / 2 )
@@ -809,9 +888,33 @@ PROGRAM xx12_te
     princinodes_pp(k:l) = zero
   END DO
 
-  CALL write_nodal_variable(label,27,1,nodes_pp,npes,numpe,nodof,             &
-                            princinodes_pp)
-
+  IF(prog==11)THEN
+    CALL write_nodal_variable(label,27,1,nodes_pp,npes,numpe,nodof,             &
+                              princinodes_pp)
+    IF(numpe==1) CLOSE(27)
+  END IF
+  IF(prog==12)THEN
+    !---Write file: outputs-ENSIGHT GOLD
+    IF(numpe==1)THEN
+      WRITE(27,'(A)') "Alya Ensight Gold --- Scalar per-node variable file"
+      WRITE(27,'(A)') "part"
+      WRITE(27,'(I1)') 1
+      WRITE(27,'(A)') "coordinates"
+    END IF
+    
+    ALLOCATE(tempres(nodes_pp))
+!    DO i=1,ndim
+      tempres = zero
+      DO j=1,nodes_pp
+        tempres(j)=princinodes_pp(ndim*(j-1)+1)
+!        tempres(j)=princinodes_pp(j)
+      END DO
+      CALL dismsh_ensi_p(27,1,nodes_pp,npes,numpe,nodof,tempres)
+!    END DO
+    DEALLOCATE(tempres)
+    IF(numpe==1) CLOSE (27)
+  END IF
+  
   ! count number of nodes with value above threshold
 
   nodecount_pp(1) = 0 ; nodecount = 0
@@ -824,7 +927,7 @@ PROGRAM xx12_te
                               
   DEALLOCATE(princinodes_pp)
 
-  IF(numpe==1) CLOSE(27)
+  IF(numpe==1) PRINT *, "OUTPUT VON MISES SCALAR"
 
 !------------------------------------------------------------------------------
 ! 16f. Reactions
@@ -833,14 +936,76 @@ PROGRAM xx12_te
   label = "*NODAL REACTIONS"
   CALL scatter_nodes(npes,nn,nels_pp,g_num_pp,nod,nodof,nodes_pp,             &
                      node_start,node_end,utemp_pp,reacnodes_pp,0)
-  CALL write_nodal_variable(label,28,1,nodes_pp,npes,numpe,nodof,             &
-                            reacnodes_pp)
+  
+  IF(prog==11)THEN
+    CALL write_nodal_variable(label,28,1,nodes_pp,npes,numpe,nodof,           &
+                              reacnodes_pp)
+    IF(numpe==1) CLOSE(28)
+  END IF
+  IF(prog==12)THEN
+    !---Write file: outputs-ENSIGHT GOLD
+    IF(numpe==1)THEN
+      WRITE(28,'(A)') "Alya Ensight Gold --- Vector per-node variable file"
+      WRITE(28,'(A)') "part"
+      WRITE(28,'(I1)') 1
+      WRITE(28,'(A)') "coordinates"
+    END IF
+    
+    ALLOCATE(tempres(nodes_pp))
+    DO i=1,ndim
+      tempres = zero
+      DO j=1,nodes_pp
+        tempres(j)=reacnodes_pp(ndim*(j-1)+i)
+      END DO
+      CALL dismsh_ensi_p(28,1,nodes_pp,npes,numpe,nodof,tempres)
+    END DO
+    DEALLOCATE(tempres)
+    IF(numpe==1) CLOSE (28)
+  END IF
+  
   DEALLOCATE(reacnodes_pp,shape_integral_pp)
-
-  IF(numpe==1) CLOSE(28)
-
+  
   timest(14) = elap_time()
-   
+  
+  IF(numpe==1) PRINT *, "OUTPUT NODAL REACTIONS VECTOR"
+  
+!------------------------------------------------------------------------------
+! 16g. ENSIGHT GOLD Case file
+!------------------------------------------------------------------------------
+  
+  IF(prog==12)THEN
+    IF(numpe==1) THEN
+      fname=job_name(1:INDEX(job_name," ")-1)// "-te-" //stepnum(1:INDEX(stepnum, " ")-1)//".ensi.case"
+      OPEN(29, file=fname, status='replace', action='write')
+      
+      WRITE(29,'(A)') "#"
+      WRITE(29,'(A)') "# ParaFEM generated post-process file"
+      WRITE(29,'(A)') "# Ensight Gold Format"
+      WRITE(29,'(A)') "#"
+      WRITE(29,'(2A/A)') "# Problem name: ",job_name(1:INDEX(job_name, " ")-1),"#"
+      WRITE(29,'(A/A/A)')  "FORMAT","type:  ensight gold","GEOMETRY"
+      WRITE(29,'(2A/A)')   "model:  ",job_name(1:INDEX(job_name, " ")-1)//'.ensi.geo',"VARIABLE"
+      WRITE(29,'(2A)')     "scalar per element:   MaterialID       ",            &
+                          job_name(1:INDEX(job_name, " ")-1)//'.ensi.MATID'
+      WRITE(29,'(3A)')     "scalar per node:      Temperature      ",            &
+                          job_name(1:INDEX(job_name, " ")-1)//'.ensi.NDTTR-',stepnum(1:INDEX(stepnum, " ")-1)
+      WRITE(29,'(3A)')     "vector per node:      Displacements    ",            &
+                          job_name(1:INDEX(job_name, " ")-1)//'.ensi.DIS-',stepnum(1:INDEX(stepnum, " ")-1)
+      WRITE(29,'(3A)')     "tensor symm per node: Stress           ",            &
+                          job_name(1:INDEX(job_name, " ")-1)//'.ensi.STR-',stepnum(1:INDEX(stepnum, " ")-1)
+      WRITE(29,'(3A)')     "vector per node:      PrincipalStress  ",            &
+                          job_name(1:INDEX(job_name, " ")-1)//'.ensi.PRI-',stepnum(1:INDEX(stepnum, " ")-1)
+      WRITE(29,'(3A)')     "scalar per node:      VonMises         ",            &
+                          job_name(1:INDEX(job_name, " ")-1)//'.ensi.VMS-',stepnum(1:INDEX(stepnum, " ")-1)
+      WRITE(29,'(3A)')     "vector per node:      NodalReactions   ",            &
+                          job_name(1:INDEX(job_name, " ")-1)//'.ensi.REA-',stepnum(1:INDEX(stepnum, " ")-1)
+      
+      CLOSE (29)
+      
+      PRINT *, "OUTPUT ENSIGHT GOLD CASE FILE"
+    END IF
+  END IF
+  
 !------------------------------------------------------------------------------
 ! 17. Output performance data
 !------------------------------------------------------------------------------
