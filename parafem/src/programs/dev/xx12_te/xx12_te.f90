@@ -46,13 +46,13 @@ PROGRAM xx12_te
   CHARACTER(LEN=15)     :: element
   CHARACTER(LEN=15)     :: keyword
   CHARACTER(LEN=50)     :: program_name='xx12_te'
-  CHARACTER(LEN=50)     :: fname,inst_in,job_name,label,instance_id,stepnum
+  CHARACTER(LEN=50)     :: fname,inst_in,job_name,label,instance_id,stepnum,val0_str
   CHARACTER(LEN=80)     :: cbuffer
   LOGICAL               :: converged = .false.
 
   !New variables
   !Temporal variable
-  REAL(iwp)             :: constant
+  REAL(iwp)             :: constant,val0
        
   !Temperature value
   REAL(iwp)             :: gtemp
@@ -137,7 +137,7 @@ PROGRAM xx12_te
       PRINT*, "          <model_name>-<instance-id>.tnc" 
       PRINT*, "          <model_name>-<instance-id>.res" 
       PRINT*
-!      CALL job_name_error(numpe,program_name)
+      CALL job_name_error(numpe,program_name)
     END IF
     CALL GETARG(1, job_name) 
     CALL GETARG(2, instance_id)
@@ -149,8 +149,18 @@ PROGRAM xx12_te
     CALL calc_nels_pp(inst_in,nels,npes,numpe,partitioner,nels_pp)
   END IF
   IF(prog==12)THEN
+    IF(argc /= 3) THEN
+      IF(numpe==1)PRINT*
+      IF(numpe==1)PRINT*, "Usage:  xx12_te <job_name> <stepnum> <val0>"
+      IF(numpe==1)PRINT*
+      CALL job_name_error(numpe,program_name)
+    END IF
     CALL GETARG(1, job_name)
     CALL GETARG(2, stepnum)
+    CALL GETARG(3, val0_str)
+    READ(val0_str,*)val0
+    IF(numpe==1)PRINT*,"Zero stress temperature = ",val0
+    
     CALL read_rfemsolve(job_name,numpe,element,fixed_freedoms,limit,loaded_nodes, &
                 meshgen,mises,nels,nip,nn,nod,np_types,nr,partitioner,tol)
     
@@ -274,8 +284,8 @@ PROGRAM xx12_te
     ndscal_pp = zero
     CALL read_ensi_scalar_pn(job_name,g_num_pp,nn,npes,numpe,stepnum,ndscal_pp)
   
-    PRINT *, "ndscal_pp = "
-    PRINT *, ndscal_pp
+!    PRINT *, "ndscal_pp = "
+!    PRINT *, ndscal_pp
   END IF
   
   PRINT *, "READ_MATERIALVALUE COMPLETED"
@@ -411,7 +421,7 @@ PROGRAM xx12_te
       dtel=dtemp(num)
     END IF
     IF(prog==12)THEN
-      dtel=ndscal_pp(:,iel)
+      dtel=ndscal_pp(:,iel)-val0
     END IF
     
     etl=zero
