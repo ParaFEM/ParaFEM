@@ -22,7 +22,7 @@ PROGRAM xx12
   
 ! neq,ntot are now global variables - not declared
   
-  INTEGER, PARAMETER  :: ndim=3,nodof=1,nprops=5
+  INTEGER, PARAMETER  :: ndim=3,nodof=1!,nprops=8
   INTEGER             :: nod,nn,nr,nip
   INTEGER             :: j_glob,j_loc,j_step,j_step2,j_temp,j_chk,j_chk2
   INTEGER             :: j_npri,j_npri_chk
@@ -35,11 +35,11 @@ PROGRAM xx12
   INTEGER             :: loaded_freedoms_pp,loaded_freedoms_start
   INTEGER             :: nels,ndof,ielpe,npes_pp
   INTEGER             :: argc,iargc,meshgen,partitioner
-  INTEGER             :: np_types,ntime,el_print,xx12_input,xx12_output
+  INTEGER             :: np_types,ntime,el_print,xx12_input,xx12_output,nprops
   INTEGER             :: prog,tz
   REAL(iwp)           :: aa,bb,cc,kx,ky,kz,det,theta,dtim,real_time
   REAL(iwp)           :: tol,alpha,beta,up,big,q
-  REAL(iwp)           :: rho,cp,val0
+  REAL(iwp)           :: rho,cp,val0,x_el
   REAL(iwp),PARAMETER :: zero = 0.0_iwp,penalty=1.e20_iwp
   REAL(iwp),PARAMETER :: t0 = 0.0_iwp
   CHARACTER(LEN=15)   :: element,chk
@@ -66,6 +66,7 @@ PROGRAM xx12
   REAL(iwp),ALLOCATABLE :: kcx(:,:),kcy(:,:),kcz(:,:)
   REAL(iwp),ALLOCATABLE :: eld(:),col(:,:),row(:,:),storkc_pp(:,:,:)
   REAL(iwp),ALLOCATABLE :: prop(:,:),amp(:),tempres(:),timesteps_real(:,:)
+  REAL(iwp),ALLOCATABLE :: x_el_tmp(:,:),x_el_pp(:)
   INTEGER,ALLOCATABLE   :: rest(:,:),g(:),num(:),g_num_pp(:,:),g_g_pp(:,:)
   INTEGER,ALLOCATABLE   :: no(:),no_pp(:),no_f_pp(:),no_pp_temp(:),sense(:)
   INTEGER,ALLOCATABLE   :: node(:),iters(:),iters_tot(:),timesteps_int(:,:)
@@ -108,6 +109,7 @@ PROGRAM xx12
   
       !-- To run in SteadyState mode set prog=11, in Transient prog=12   
       prog=12
+!      nprops = 8
   
   ALLOCATE(timest(25))
   timest    = zero
@@ -133,15 +135,15 @@ PROGRAM xx12
   ALLOCATE(g_num_pp(nod,nels_pp))
   ALLOCATE(g_coord_pp(nod,ndim,nels_pp))
   IF (nr>0) ALLOCATE(rest(nr,nodof+1))
+!  ALLOCATE(prop(nprops,np_types))
   ALLOCATE(etype_pp(nels_pp))
-  ALLOCATE(prop(nprops,np_types))
-  ALLOCATE(timesteps_real(ntime,1),timesteps_int(ntime,3))
+!  ALLOCATE(timesteps_real(ntime,1),timesteps_int(ntime,3))
   
   g_num_pp       = 0
   g_coord_pp     = zero
   IF (nr>0) rest = 0
   etype_pp       = 0
-  prop           = zero
+!  prop           = zero
   q              = zero
   
   timest(2) = elap_time()
@@ -183,12 +185,22 @@ PROGRAM xx12
   IF (nr>0) CALL read_rest(job_name,numpe,rest)
   timest(6) = elap_time()
   
-  IF(numpe==1) PRINT *, "np_types = ", np_types
+  fname = job_name(1:INDEX(job_name, " ")-1) // ".vmat"
+  CALL read_nmats_nvals(np_types,nprops,fname,numpe,npes)
+  ALLOCATE(prop(nprops,np_types))
+  prop           = zero
+!  Lines required for reading old material property file
+!  If used, nprops and np_types need to be defined before calling
+!  fname = job_name(1:INDEX(job_name, " ")-1) // ".mat"
+!  CALL read_materialValue(prop,fname,numpe,npes)
+  IF(numpe==1) PRINT *,"nprops = ",nprops
+  IF(numpe==1) PRINT *,"np_types = ",np_types
+  CALL read_varmaterialValue(prop,fname,numpe,npes)
   
-  fname = job_name(1:INDEX(job_name, " ")-1) // ".mat"  
-  CALL read_materialValue(prop,fname,numpe,npes)
-
-  fname = job_name(1:INDEX(job_name, " ")-1) // ".time"  
+  fname = job_name(1:INDEX(job_name, " ")-1) // ".time"
+  CALL read_ntime(ntime,fname,numpe,npes)
+  IF(numpe==1) PRINT *,"returned ntime = ",ntime
+  ALLOCATE(timesteps_real(ntime,1),timesteps_int(ntime,3))
   CALL read_timesteps(timesteps_real,timesteps_int,fname,numpe,npes)
   
   nstep_tot = 0
@@ -275,7 +287,7 @@ PROGRAM xx12
 !------------------------------------------------------------------------------
   
   ALLOCATE(loads_pp(neq_pp),diag_precon_pp(neq_pp),u_pp(neq_pp),d_pp(neq_pp), &
-           p_pp(neq_pp),x_pp(neq_pp),xnew_pp(neq_pp),r_pp(neq_pp))
+           p_pp(neq_pp),x_pp(neq_pp),xnew_pp(neq_pp),r_pp(neq_pp),x_el_pp(neq_pp))
   
   loads_pp  = zero ; diag_precon_pp = zero ; u_pp = zero ; r_pp    = zero
   d_pp      = zero ; p_pp           = zero ; x_pp = zero ; xnew_pp = zero
@@ -331,6 +343,58 @@ PROGRAM xx12
     storka_pp = zero 
     storkb_pp = zero
     storkc_pp = zero
+    
+!---ATTEMPTING TO CALCULATE AVERAGE ELEMENTAL VALUES, WORK IN PROGRESS
+    IF(j_glob>1) THEN
+	  DO iel = 1,nels_pp
+!	    IF(numpe==1) PRINT*, "iel = ",iel
+        DO k=1,ntot
+	      !IF(numpe==1) PRINT*, "k = ",k,"disp_pp(g_num_pp(k,iel)) = ",disp_pp(g_num_pp(k,iel))
+        END DO
+	  END DO
+!      ALLOCATE(x_el_tmp(ntot,nels_pp))
+!      x_el_tmp = zero
+!	  CALL scatter(x_el_pp,x_el_tmp)
+!      x_el_pp  = zero
+!      DO iel = 1,nels_pp 
+!        DO k=1,ntot
+!          x_el_tmp(k,iel)=x_el_tmp(k,iel)+disp_pp(g_num_pp(k,iel))
+!        END DO
+!      END DO
+!      !CALL scatter(x_el_pp,x_el_tmp)
+!	  CALL gather(x_el_pp,x_el_tmp)
+!      DEALLOCATE(x_el_tmp)
+!!	  IF(numpe==1) PRINT*, "j_glob = ",j_glob
+!	  DO iel = 1,nels_pp
+!!	    IF(numpe==1) PRINT*, "x_el_pp = ",x_el_pp(iel)
+!	  END DO
+!!	  IF(numpe==1) PRINT*, "j_glob = ",j_glob,"x_el_pp = ",x_el_pp
+    END IF
+    
+!      IF(j_glob==1) THEN
+!        x_el = val0
+!!        DO i=1,npes
+!!          IF(numpe==i) PRINT*, "j_glob = ",j_glob,"iel = ",iel,"x_el = ",x_el
+!!        END DO
+!      END IF
+!      IF(j_glob>1) THEN
+!!	      ALLOCATE(tempres(nodes_pp))
+!!          DO l=1,nodes_pp
+!!            tempres(l)=disp_pp(l)
+!!          END DO
+	  
+!        !x_el = averageT from nodes per element
+!        x_el=0
+!        DO i=1,nod
+!          x_el=x_el+disp_pp(g_num_pp(i,iel))
+!!		  x_el=x_el+tempres(g_num_pp(i,iel))
+!        END DO
+!!		DEALLOCATE(tempres)
+!        x_el=x_el/nod
+!        
+!        IF(numpe==1) PRINT*, "j_glob = ",j_glob,"iel = ",iel,"x_el = ",x_el
+        !Print result
+!      END IF
     
     elements_3: DO iel=1,nels_pp
       
@@ -875,10 +939,10 @@ PROGRAM xx12
             fname=job_name(1:INDEX(job_name," ")-1)//".ensi.NDTTR-"//stepnum
             OPEN(28,file=fname,status='replace',action='write')
           
-            WRITE(28,'(/A)') "Alya Ensight Gold --- Scalar per-node variable file"
-            WRITE(28,'(/A)') "part"
+            WRITE(28,'(A)') "Alya Ensight Gold --- Scalar per-node variable file"
+            WRITE(28,'(A)') "part"
             WRITE(28,'(I1)') 1
-            WRITE(28,'(/A)') "coordinates"
+            WRITE(28,'(A)') "coordinates"
           END IF
           
           ALLOCATE(tempres(nodes_pp))
