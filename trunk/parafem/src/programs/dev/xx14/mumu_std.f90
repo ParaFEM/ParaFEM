@@ -622,7 +622,7 @@ sync all
         write(11,'(A,E12.4)')"The central nodal displacement is :",xnew_pp(1)
      END IF
 
-     !--------------- recover stresses at centroidal gauss point ------------
+!---------------   Recover stresses at Gauss points   ----------------72
 
      CALL gather(xnew_pp(1:),eld_pp)
 
