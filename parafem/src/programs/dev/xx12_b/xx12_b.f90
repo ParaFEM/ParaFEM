@@ -421,63 +421,50 @@ PROGRAM xx12
         
         elements_3: DO iel=1,nels_pp
           
-          !------------------------
-          !Wrap this section into subroutine f(etype_pp(iel),MatProp#,x_el)
+          !------------------------------------------------------------------------
+          ! This section calculates temperature dependent material properties
+          ! Could be wrapped into subroutine f(etype_pp(iel),MatProp#,x_el)
+          !
           IF(vmat_check) THEN
-          
+            
+            ! Calculate average element T (first using T0, then calculated values)
             IF(j_glob==1) THEN
               x_el = val0
             END IF
             IF(j_glob>1) THEN
               x_el = sum(eld_pp(:,iel))/nod
             END IF
-          
+            
+            ! Start loop for each of the material properties to recalculate
             prop_temp = zero
-!            IF(numpe==1) PRINT*,"varprop(3,1,1) = "
-!            IF(numpe==1) PRINT*,varprop(3,1,1)
             DO i=1,5 !each property
-              IF(numpe==1) PRINT*,"Marker1"
-              IF(numpe==1) PRINT*,"iel = ",iel,"i = ",i
               IF(ntemp(etype_pp(iel),i)>1) THEN
-                IF(numpe==1) PRINT*,"Marker2"
-                !ntemp(np_types,nprops))
-    !            IF(numpe==1) PRINT*,"varpropT(i,etype_pp(iel),1) = ",varpropT(i,etype_pp(iel),1)
-    !            IF(numpe==1) PRINT*,"ntemp(etype_pp(iel),i) = ",ntemp(etype_pp(iel),i)
-    !            IF(numpe==1) PRINT*,"varpropT(i,etype_pp(iel),ntemp(etype_pp(iel),i)) = "
-    !            IF(numpe==1) PRINT*,varpropT(i,etype_pp(iel),ntemp(etype_pp(iel),i))
-                !varprop(nprops,np_types,ntemp)
+                ! Set property to lowest or highest value if element T is outside range
                 IF (x_el <= varpropT(i,etype_pp(iel),1)) THEN
-                  IF(numpe==1) PRINT*,"Marker3"
                   prop_temp(i) = varprop(i,etype_pp(iel),1)
                 ELSE IF (x_el > varpropT(i,etype_pp(iel),ntemp(etype_pp(iel),i))) THEN
-                  IF(numpe==1) PRINT*,"Marker4"
                   prop_temp(i) = varprop(i,etype_pp(iel),ntemp(etype_pp(iel),i))
                 ELSE
-    !              DO each Temp entry for this property (T1:TN)
-    !                IF (x_el <= T1) prop(i) = f(T1)
-    !              END DO
-                  IF(numpe==1) PRINT*,"Marker5"
+                  ! Loop through saved T values to find window where x_el lies
                   DO j=1,ntemp(etype_pp(iel),i)-1
-                    IF(numpe==1) PRINT*,"Marker6"
+                    ! Set temperatures at top and bottom of window
                     T1 = varpropT(i,etype_pp(iel),j)
                     T2 = varpropT(i,etype_pp(iel),j+1)
-                    IF(numpe==1) PRINT*,"T1 = ",T1
-                    IF(numpe==1) PRINT*,"T2 = ",T2
                     IF(x_el>T1 .AND. x_el<=T2)THEN
-                      IF(numpe==1) PRINT*,"Marker7"
-!                    IF(x_el<=T2)
+                      ! If x_el is in this window set properties at top and bottom of window
                       y1 = varprop(i,etype_pp(iel),j)
                       y2 = varprop(i,etype_pp(iel),j+1)
+                      ! Perform linear interpolation for new material property
                       prop_temp(i) = (y1*(T2-x_el) + y2*(x_el-T1)) / (T2-T1)
                     END IF
+                    ! Exit so that it doesn't keep looping through rest of T values
                     IF(x_el>T1 .AND. x_el<=T2)EXIT
                   END DO
                 END IF
               ELSE
-                IF(numpe==1) PRINT*,"Marker8"
+                ! In the case of only one temperature value for a property avoid looping
                 prop_temp(i) = varprop(i,etype_pp(iel),1)
               END IF
-              IF(numpe==1) PRINT*,"prop_temp(i) = ",prop_temp(i)
             END DO
             
             kay       = zero
@@ -487,6 +474,7 @@ PROGRAM xx12
             rho       = prop_temp(4)  ! rho
             cp        = prop_temp(5)  ! cp
           ELSE
+            ! Fallback to .mat if .vmat not found
             kay       = zero
             kay(1,1)  = prop(1,etype_pp(iel))  ! kx
             kay(2,2)  = prop(2,etype_pp(iel))  ! ky
@@ -494,6 +482,7 @@ PROGRAM xx12
             rho       = prop(4,etype_pp(iel))  ! rho
             cp        = prop(5,etype_pp(iel))  ! cp
           END IF
+          !------------------------------------------------------------------------
           
           kc = zero ; pm = zero
           kcx = zero; kcy = zero; kcz = zero
