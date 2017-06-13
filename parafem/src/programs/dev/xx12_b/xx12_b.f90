@@ -40,14 +40,17 @@ PROGRAM xx12
   REAL(iwp)           :: aa,bb,cc,kx,ky,kz,det,theta,dtim,real_time
   REAL(iwp)           :: tol,alpha,beta,up,big,q
   REAL(iwp)           :: rho,cp,val0,x_el
+  REAL(iwp)           :: T1,T2,y1,y2
   REAL(iwp),PARAMETER :: zero = 0.0_iwp,penalty=1.e20_iwp
   REAL(iwp),PARAMETER :: t0 = 0.0_iwp
   CHARACTER(LEN=15)   :: element,chk
   CHARACTER(LEN=50)   :: fname,job_name,label,stepnum
   CHARACTER(LEN=50)   :: program_name='xx12'
 !  character (len=512) command
-  LOGICAL             :: converged = .false.
-  LOGICAL             :: solid=.true.
+  LOGICAL             :: converged   = .false.
+  LOGICAL             :: solid       = .true.
+  LOGICAL             :: vmat_exists = .false.
+  LOGICAL             :: vmat_check  = .false.
   CHARACTER(LEN=80)   :: cbuffer
   
 !------------------------------------------------------------------------------
@@ -65,12 +68,13 @@ PROGRAM xx12
   REAL(iwp),ALLOCATABLE :: val(:,:),val_f(:),store_pp(:),r_pp(:)
   REAL(iwp),ALLOCATABLE :: kcx(:,:),kcy(:,:),kcz(:,:)
   REAL(iwp),ALLOCATABLE :: eld(:),col(:,:),row(:,:),storkc_pp(:,:,:)
-  REAL(iwp),ALLOCATABLE :: prop(:,:),amp(:),tempres(:),timesteps_real(:,:)
-  REAL(iwp),ALLOCATABLE :: x_el_tmp(:,:),x_el_pp(:)
+  REAL(iwp),ALLOCATABLE :: prop(:,:),varprop(:,:,:),varpropT(:,:,:),prop_temp(:)
+  REAL(iwp),ALLOCATABLE :: amp(:),tempres(:),timesteps_real(:,:)
   INTEGER,ALLOCATABLE   :: rest(:,:),g(:),num(:),g_num_pp(:,:),g_g_pp(:,:)
   INTEGER,ALLOCATABLE   :: no(:),no_pp(:),no_f_pp(:),no_pp_temp(:),sense(:)
   INTEGER,ALLOCATABLE   :: node(:),iters(:),iters_tot(:),timesteps_int(:,:)
   INTEGER,ALLOCATABLE   :: etype_pp(:),nf(:,:),oldlds(:),g_coord(:,:)
+  INTEGER,ALLOCATABLE   :: ntemp(:,:)
 
 !------------------------------------------------------------------------------
 ! *. Details of some xx12 specific variables
@@ -123,6 +127,22 @@ PROGRAM xx12
   IF(argc /= 1) CALL job_name_error(numpe,program_name)
   CALL GETARG(1,job_name)
   
+  fixed_freedoms = 0
+  limit          = 0
+  loaded_nodes   = 0
+  meshgen        = 0
+  nels           = 0
+  nip            = 0
+  nn             = 0
+  nod            = 0
+  nr             = 0
+  partitioner    = 0
+  theta          = 0
+  tol            = 0
+  val0           = 0
+  el_print       = 0
+  xx12_input     = 0
+  xx12_output    = 0
   CALL read_xx12(job_name,numpe,element,fixed_freedoms,limit,                 &
                  loaded_nodes,meshgen,nels,nip,nn,nod,ntime,nr,partitioner,   &
                  theta,tol,np_types,chk,val0,el_print,xx12_input,xx12_output)
@@ -186,16 +206,47 @@ PROGRAM xx12
   timest(6) = elap_time()
   
   fname = job_name(1:INDEX(job_name, " ")-1) // ".vmat"
-  CALL read_nmats_nvals(np_types,nprops,fname,numpe,npes)
-  ALLOCATE(prop(nprops,np_types))
-  prop           = zero
-!  Lines required for reading old material property file
-!  If used, nprops and np_types need to be defined before calling
-!  fname = job_name(1:INDEX(job_name, " ")-1) // ".mat"
-!  CALL read_materialValue(prop,fname,numpe,npes)
-  IF(numpe==1) PRINT *,"nprops = ",nprops
-  IF(numpe==1) PRINT *,"np_types = ",np_types
-  CALL read_varmaterialValue(prop,fname,numpe,npes)
+  INQUIRE(FILE=fname, EXIST=vmat_exists)
+  IF(vmat_exists)THEN
+    IF(numpe==1)PRINT *,".vmat file exists"
+    CALL read_nmats_nvals(np_types,nprops,fname,numpe,npes)
+    ALLOCATE(prop(nprops,np_types))
+    ALLOCATE(ntemp(np_types,nprops))
+    prop           = zero
+!    IF(numpe==1) PRINT *,"nprops = ",nprops
+!    IF(numpe==1) PRINT *,"np_types = ",np_types
+    CALL read_ntemp(fname,numpe,npes,ntemp)!vmat_check,ntemp)
+    ALLOCATE(varprop(nprops,np_types,MAXVAL(ntemp)))
+    ALLOCATE(varpropT(nprops,np_types,MAXVAL(ntemp)))
+    varprop=zero
+    varpropT=zero
+    CALL read_varmaterialValue(fname,numpe,npes,varprop,varpropT)
+    IF(MAXVAL(ntemp)>1)vmat_check=.true.
+    IF(MAXVAL(ntemp)>1)THEN
+      IF(numpe==1) PRINT *,".vmat includes temperature dependent material properties"
+      IF(numpe==1) PRINT *,"MAXVAL(ntemp) = ",MAXVAL(ntemp)
+      IF(numpe==1) PRINT *,"varprop(1,1,1) = ",varprop(1,1,1)," at T = ",varpropT(1,1,1)
+      !ALLOCATE(varprop(nprops,np_types,MAXVAL(ntemp)))
+      !varprop = zero
+    ELSE
+      IF(numpe==1) PRINT *,".vmat doesn't include temperature dependent material properties"
+      DO i = 1,np_types
+        DO j = 1, nprops
+          prop(j,i) = varprop(j,i,1)
+        END DO
+      END DO
+    END IF
+  ELSE
+    !  Lines required for reading old material property file if new isn't found
+    IF(numpe==1)PRINT *,".vmat not found, reverting to .mat"
+    fname = job_name(1:INDEX(job_name, " ")-1) // ".mat"
+    CALL read_nmats_nvals(np_types,nprops,fname,numpe,npes)
+    ALLOCATE(prop(nprops,np_types))
+    prop           = zero
+    IF(numpe==1) PRINT *,"nprops = ",nprops
+    IF(numpe==1) PRINT *,"np_types = ",np_types
+    CALL read_materialValue(prop,fname,numpe,npes)
+  END IF
   
   fname = job_name(1:INDEX(job_name, " ")-1) // ".time"
   CALL read_ntime(ntime,fname,numpe,npes)
@@ -227,6 +278,7 @@ PROGRAM xx12
   ALLOCATE (kcx(ntot,ntot),kcy(ntot,ntot),kcz(ntot,ntot),                     &
             eld(ntot),col(ntot,1),row(1,ntot),storkc_pp(ntot,ntot,nels_pp))
   ALLOCATE (amp(nstep_tot))
+  ALLOCATE(prop_temp(5)) !5 = #matprops used for transient thermal analysis
   
   IF(numpe==1) PRINT *, " *** Allocated dynamic arrays in: ",                 &
                           elap_time()-timest(6)," s"
@@ -272,6 +324,7 @@ PROGRAM xx12
   
   nres = el_print
   
+  it = 0
   DO i = 1,neq_pp
     IF(nres==ieq_start+i-1) THEN
       it = numpe; is = i
@@ -287,7 +340,7 @@ PROGRAM xx12
 !------------------------------------------------------------------------------
   
   ALLOCATE(loads_pp(neq_pp),diag_precon_pp(neq_pp),u_pp(neq_pp),d_pp(neq_pp), &
-           p_pp(neq_pp),x_pp(neq_pp),xnew_pp(neq_pp),r_pp(neq_pp),x_el_pp(neq_pp))
+           p_pp(neq_pp),x_pp(neq_pp),xnew_pp(neq_pp),r_pp(neq_pp))
   
   loads_pp  = zero ; diag_precon_pp = zero ; u_pp = zero ; r_pp    = zero
   d_pp      = zero ; p_pp           = zero ; x_pp = zero ; xnew_pp = zero
@@ -339,287 +392,7 @@ PROGRAM xx12
     nstep      = timesteps_int(j_step,1)
     npri       = timesteps_int(j_step,2)
     npri_chk   = timesteps_int(j_step,3)
-    
-    storka_pp = zero 
-    storkb_pp = zero
-    storkc_pp = zero
-    
-!---ATTEMPTING TO CALCULATE AVERAGE ELEMENTAL VALUES, WORK IN PROGRESS
-    IF(j_glob>1) THEN
-	  DO iel = 1,nels_pp
-!	    IF(numpe==1) PRINT*, "iel = ",iel
-        DO k=1,ntot
-	      !IF(numpe==1) PRINT*, "k = ",k,"disp_pp(g_num_pp(k,iel)) = ",disp_pp(g_num_pp(k,iel))
-        END DO
-	  END DO
-!      ALLOCATE(x_el_tmp(ntot,nels_pp))
-!      x_el_tmp = zero
-!	  CALL scatter(x_el_pp,x_el_tmp)
-!      x_el_pp  = zero
-!      DO iel = 1,nels_pp 
-!        DO k=1,ntot
-!          x_el_tmp(k,iel)=x_el_tmp(k,iel)+disp_pp(g_num_pp(k,iel))
-!        END DO
-!      END DO
-!      !CALL scatter(x_el_pp,x_el_tmp)
-!	  CALL gather(x_el_pp,x_el_tmp)
-!      DEALLOCATE(x_el_tmp)
-!!	  IF(numpe==1) PRINT*, "j_glob = ",j_glob
-!	  DO iel = 1,nels_pp
-!!	    IF(numpe==1) PRINT*, "x_el_pp = ",x_el_pp(iel)
-!	  END DO
-!!	  IF(numpe==1) PRINT*, "j_glob = ",j_glob,"x_el_pp = ",x_el_pp
-    END IF
-    
-!      IF(j_glob==1) THEN
-!        x_el = val0
-!!        DO i=1,npes
-!!          IF(numpe==i) PRINT*, "j_glob = ",j_glob,"iel = ",iel,"x_el = ",x_el
-!!        END DO
-!      END IF
-!      IF(j_glob>1) THEN
-!!	      ALLOCATE(tempres(nodes_pp))
-!!          DO l=1,nodes_pp
-!!            tempres(l)=disp_pp(l)
-!!          END DO
-	  
-!        !x_el = averageT from nodes per element
-!        x_el=0
-!        DO i=1,nod
-!          x_el=x_el+disp_pp(g_num_pp(i,iel))
-!!		  x_el=x_el+tempres(g_num_pp(i,iel))
-!        END DO
-!!		DEALLOCATE(tempres)
-!        x_el=x_el/nod
-!        
-!        IF(numpe==1) PRINT*, "j_glob = ",j_glob,"iel = ",iel,"x_el = ",x_el
-        !Print result
-!      END IF
-    
-    elements_3: DO iel=1,nels_pp
-      
-      kay       = zero
-      kay(1,1)  = prop(1,etype_pp(iel))  ! kx
-      kay(2,2)  = prop(2,etype_pp(iel))  ! ky
-      kay(3,3)  = prop(3,etype_pp(iel))  ! kz
-      rho       = prop(4,etype_pp(iel))  ! rho
-      cp        = prop(5,etype_pp(iel))  ! cp
-      
-      kc = zero ; pm = zero
-      kcx = zero; kcy = zero; kcz = zero
-      
-      gauss_pts: DO i=1,nip
-        CALL shape_der(der,points,i)
-        CALL shape_fun(fun,points,i)
-        funny(1,:) = fun(:)
-        jac        = MATMUL(der,g_coord_pp(:,:,iel))
-        det        = determinant(jac)
-        CALL invert(jac)
-        deriv      = MATMUL(jac,der)
-        IF(prog==12)THEN
-          kc = kc + MATMUL(MATMUL(TRANSPOSE(deriv),kay),deriv)*det*weights(i)
-          pm = pm + MATMUL(TRANSPOSE(funny),funny)*det*weights(i)*rho*cp
-        END IF
-        IF(prog==11)THEN
-          row(1,:) = deriv(1,:)
-          eld      = deriv(1,:)
-          col(:,1) = eld
-          kcx      = kcx + MATMUL(col,row)*det*weights(i)
-          row(1,:) = deriv(2,:)
-          eld      = deriv(2,:)
-          col(:,1) = eld
-          kcy      = kcy + MATMUL(col,row)*det*weights(i)
-          row(1,:) = deriv(3,:)
-          eld      = deriv(3,:)
-          col(:,1) = eld
-          kcz      = kcz + MATMUL(col,row)*det*weights(i)
-        END IF
-      END DO gauss_pts
-      
-        IF(prog==12)THEN
-          storka_pp(:,:,iel)=pm+kc*theta*dtim
-          storkb_pp(:,:,iel)=pm-kc*(1._iwp-theta)*dtim
-        END IF
-        IF(prog==11)THEN
-          storkc_pp(:,:,iel) = kcx*kx + kcy*ky + kcz*kz
-          storka_pp = storkc_pp
-        END IF
-      
-    END DO elements_3
-    
-    timest(10) = elap_time()
-    IF(numpe==1) PRINT *, "End of 8"
-    
-!------------------------------------------------------------------------------
-! 9. Build the diagonal preconditioner
-!------------------------------------------------------------------------------
-    
-    ALLOCATE(diag_precon_tmp(ntot,nels_pp))
-    diag_precon_tmp = zero
-    diag_precon_pp  = zero
-    
-    elements_4: DO iel = 1,nels_pp 
-      DO k=1,ntot
-        diag_precon_tmp(k,iel)=diag_precon_tmp(k,iel)+storka_pp(k,k,iel)
-      END DO
-    END DO elements_4
-    
-    CALL scatter(diag_precon_pp,diag_precon_tmp)
-    
-    DEALLOCATE(diag_precon_tmp)
-    
-    timest(11) = elap_time()
-    IF(numpe==1) PRINT *, "End of 9" 
-    
-!------------------------------------------------------------------------------
-! 10. Allocate disp_pp array and open file to write temperature output
-!------------------------------------------------------------------------------
-    
-    IF(j_step==1 .OR. j_chk2==1)THEN
-      IF(numpe==it)THEN !---Open file-temp outputs-specified node  
-        fname = job_name(1:INDEX(job_name, " ")-1) // ".ttr2"
-        OPEN(11,FILE=fname,STATUS='REPLACE',ACTION='WRITE')
-      END IF
-      
-      CALL calc_nodes_pp(nn,npes,numpe,node_end,node_start,nodes_pp)
-      ALLOCATE(disp_pp(nodes_pp))
-      ALLOCATE(eld_pp(ntot,nels_pp))
-      
-      IF(numpe==1) THEN
-        IF(xx12_output==2)THEN !---Open file-temp outputs-ascii ParaFEM
-          fname   = job_name(1:INDEX(job_name, " ")-1)//".ttr"
-          OPEN(24, file=fname, status='replace', action='write')
-        END IF
-        IF(xx12_output==1)THEN !---Open file-tempoutputs-binary ParaFEM
-          fname   = job_name(1:INDEX(job_name, " ")-1)//".ttrb"
-          OPEN(25, file=fname, status='replace', action='write',              &
-               access='sequential', form='unformatted')
-        END IF
-        fname   = job_name(1:INDEX(job_name, " ")-1)//".npp"
-        OPEN(26, file=fname, status='replace', action='write')
-        label   = "*TEMPERATURE"  
-        WRITE(26,*) nn
-!        WRITE(26,*) nstep/npri
-        !-Unchecked
-        WRITE(26,*) npp
-        WRITE(26,*) npes
-        IF(xx12_output==3.AND.j_glob==1)THEN!---Open file-temp out-binary ENSIGHT GOLD
-          fname = job_name(1:INDEX(job_name, " ")-1)//".bin.ensi.NDTTR-000001"
-          OPEN(27,file=fname,status='replace',action='write',                 &
-          form='unformatted',access='stream')
-           
-          cbuffer="Alya Ensight Gold --- Scalar per-node variable file"
-          WRITE(27) cbuffer
-          cbuffer="part"        ; WRITE(27) cbuffer
-          WRITE(27) int(1,kind=c_int)
-          cbuffer="coordinates" ; WRITE(27) cbuffer 
-        END IF
-        IF(xx12_output==4.AND.j_glob==1)THEN!---Open file-temp out-ENSIGHT GOLD
-          fname = job_name(1:INDEX(job_name, " ")-1)//".ensi.NDTTR-000001"
-          OPEN(28,file=fname,status='replace',action='write')
-           
-          WRITE(28,'(/A)') "Alya Ensight Gold --- Scalar per-node variable file"
-          WRITE(28,'(/A)') "part"
-          WRITE(28,'(I1)') 1
-          WRITE(28,'(/A)') "coordinates"
-        END IF
-      END IF
-    END IF
-    
-    IF(numpe==1) PRINT *, "End of 10"
-    
-!------------------------------------------------------------------------------
-! 11. Read in fixed nodal temperatures and assign to equations
-!------------------------------------------------------------------------------
-  
-    IF((fixed_freedoms > 0 .AND. j_glob == 1) .OR.                            &
-       (fixed_freedoms > 0 .AND. j_chk2 == 1)) THEN
-      
-      ALLOCATE(node(fixed_freedoms),no(fixed_freedoms),                       &
-               no_pp_temp(fixed_freedoms),sense(fixed_freedoms))
-      ALLOCATE(val_f(fixed_freedoms))
-      
-      node  = 0 ; no = 0 ; no_pp_temp = 0 ; sense = 0
-      val_f = zero
-      
-      CALL read_fixed(job_name,numpe,node,sense,val_f)
-      CALL find_no2(g_g_pp,g_num_pp,node,sense,no)
-      
-!      PRINT *, "After find_no2 no = ", no, " on PE ", numpe
-      
-      CALL reindex(ieq_start,no,no_pp_temp,                                   &
-                   fixed_freedoms_pp,fixed_freedoms_start,neq_pp)
-      
-!      PRINT *, "After reindex no = ", no, " on PE ", numpe
-      
-      ALLOCATE(no_f_pp(fixed_freedoms_pp),store_pp(fixed_freedoms_pp))
-      
-      no_f_pp  = 0 
-      store_pp = zero
-      no_f_pp  = no_pp_temp(1:fixed_freedoms_pp)
-      
-      DEALLOCATE(node,no,sense,no_pp_temp)
-      
-    END IF
-    
-    IF(fixed_freedoms == 0) fixed_freedoms_pp = 0
-    
-    timest(12) = elap_time()
-    IF(numpe==1) PRINT *, "End of 11"
-    
-!------------------------------------------------------------------------------
-! 12. Invert the preconditioner. 
-!     If there are fixed freedoms, first apply a penalty
-!------------------------------------------------------------------------------
-    
-    IF(fixed_freedoms_pp > 0) THEN
-      DO i = 1,fixed_freedoms_pp
-        l =  no_f_pp(i) - ieq_start + 1
-        diag_precon_pp(l) = diag_precon_pp(l) + penalty
-        store_pp(i)       = diag_precon_pp(l)
-      END DO
-    END IF
-    
-    diag_precon_pp = 1._iwp/diag_precon_pp
-    
-    IF(numpe==1) PRINT *, "End of 12"
-    
-!------------------------------------------------------------------------------
-! 13. Read in loaded nodes and get starting r_pp
-!------------------------------------------------------------------------------
-      
-      loaded_freedoms = loaded_nodes ! hack
-      IF(loaded_freedoms==0) loaded_freedoms_pp=0
-      IF((loaded_freedoms > 0 .AND. j_glob == 1) .OR.                         &
-         (loaded_freedoms > 0 .AND. j_chk2 == 1)) THEN
-        
-        ALLOCATE(node(loaded_freedoms),val(nodof,loaded_freedoms))
-        ALLOCATE(no_pp_temp(loaded_freedoms))
-        
-        val = zero ; node = 0
-        
-        IF(prog==12) CALL read_amplitude(job_name,numpe,nstep_tot,amp)
-        CALL read_loads(job_name,numpe,node,val)
-        CALL reindex(ieq_start,node,no_pp_temp,loaded_freedoms_pp,            &
-                     loaded_freedoms_start,neq_pp)
-        
-        ALLOCATE(no_pp(loaded_freedoms_pp))
-        
-        no_pp    = no_pp_temp(1:loaded_freedoms_pp)
-        
-        DEALLOCATE(no_pp_temp)
-        DEALLOCATE(node)
-      
-      END IF
-    
-    timest(12) = elap_time()
-    IF(numpe==1) PRINT *, "End of 13"
-    
-!------------------------------------------------------------------------------
-! 14. Start time stepping loop
-!------------------------------------------------------------------------------
-    
-!    iters_tot = 0
+
     IF(j_chk2==0)j_chk=0
     timesteps: DO j_loc=j_chk+1,nstep
       
@@ -634,6 +407,327 @@ PROGRAM xx12
       real_time = real_time + j_loc*dtim
       j_npri = j_npri + j_loc/npri + 1
       
+      !timest(15) = elap_time()
+      !IF(numpe==1) PRINT *, "End of new 14"
+      
+      ! Start of section to repeat each time loop if vmat_check = .true.
+      IF(j_glob==1 .OR. (j_glob>1 .AND. vmat_check))THEN
+        IF(j_glob==1 .AND. numpe==1) PRINT*, "Calculating stiffness array"
+        IF(j_glob>1 .AND. vmat_check .AND. numpe==1) PRINT*, "Recalculating stiffness array"
+        
+        storka_pp = zero
+        storkb_pp = zero
+        storkc_pp = zero
+        
+        elements_3: DO iel=1,nels_pp
+          
+          !------------------------
+          !Wrap this section into subroutine f(etype_pp(iel),MatProp#,x_el)
+          IF(vmat_check) THEN
+          
+            IF(j_glob==1) THEN
+              x_el = val0
+            END IF
+            IF(j_glob>1) THEN
+              x_el = sum(eld_pp(:,iel))/nod
+            END IF
+          
+            prop_temp = zero
+!            IF(numpe==1) PRINT*,"varprop(3,1,1) = "
+!            IF(numpe==1) PRINT*,varprop(3,1,1)
+            DO i=1,5 !each property
+              IF(numpe==1) PRINT*,"Marker1"
+              IF(numpe==1) PRINT*,"iel = ",iel,"i = ",i
+              IF(ntemp(etype_pp(iel),i)>1) THEN
+                IF(numpe==1) PRINT*,"Marker2"
+                !ntemp(np_types,nprops))
+    !            IF(numpe==1) PRINT*,"varpropT(i,etype_pp(iel),1) = ",varpropT(i,etype_pp(iel),1)
+    !            IF(numpe==1) PRINT*,"ntemp(etype_pp(iel),i) = ",ntemp(etype_pp(iel),i)
+    !            IF(numpe==1) PRINT*,"varpropT(i,etype_pp(iel),ntemp(etype_pp(iel),i)) = "
+    !            IF(numpe==1) PRINT*,varpropT(i,etype_pp(iel),ntemp(etype_pp(iel),i))
+                !varprop(nprops,np_types,ntemp)
+                IF (x_el <= varpropT(i,etype_pp(iel),1)) THEN
+                  IF(numpe==1) PRINT*,"Marker3"
+                  prop_temp(i) = varprop(i,etype_pp(iel),1)
+                ELSE IF (x_el > varpropT(i,etype_pp(iel),ntemp(etype_pp(iel),i))) THEN
+                  IF(numpe==1) PRINT*,"Marker4"
+                  prop_temp(i) = varprop(i,etype_pp(iel),ntemp(etype_pp(iel),i))
+                ELSE
+    !              DO each Temp entry for this property (T1:TN)
+    !                IF (x_el <= T1) prop(i) = f(T1)
+    !              END DO
+                  IF(numpe==1) PRINT*,"Marker5"
+                  DO j=1,ntemp(etype_pp(iel),i)-1
+                    IF(numpe==1) PRINT*,"Marker6"
+                    T1 = varpropT(i,etype_pp(iel),j)
+                    T2 = varpropT(i,etype_pp(iel),j+1)
+                    IF(numpe==1) PRINT*,"T1 = ",T1
+                    IF(numpe==1) PRINT*,"T2 = ",T2
+                    IF(x_el>T1 .AND. x_el<=T2)THEN
+                      IF(numpe==1) PRINT*,"Marker7"
+!                    IF(x_el<=T2)
+                      y1 = varprop(i,etype_pp(iel),j)
+                      y2 = varprop(i,etype_pp(iel),j+1)
+                      prop_temp(i) = (y1*(T2-x_el) + y2*(x_el-T1)) / (T2-T1)
+                    END IF
+                    IF(x_el>T1 .AND. x_el<=T2)EXIT
+                  END DO
+                END IF
+              ELSE
+                IF(numpe==1) PRINT*,"Marker8"
+                prop_temp(i) = varprop(i,etype_pp(iel),1)
+              END IF
+              IF(numpe==1) PRINT*,"prop_temp(i) = ",prop_temp(i)
+            END DO
+            
+            kay       = zero
+            kay(1,1)  = prop_temp(1)  ! kx
+            kay(2,2)  = prop_temp(2)  ! ky
+            kay(3,3)  = prop_temp(3)  ! kz
+            rho       = prop_temp(4)  ! rho
+            cp        = prop_temp(5)  ! cp
+          ELSE
+            kay       = zero
+            kay(1,1)  = prop(1,etype_pp(iel))  ! kx
+            kay(2,2)  = prop(2,etype_pp(iel))  ! ky
+            kay(3,3)  = prop(3,etype_pp(iel))  ! kz
+            rho       = prop(4,etype_pp(iel))  ! rho
+            cp        = prop(5,etype_pp(iel))  ! cp
+          END IF
+          
+          kc = zero ; pm = zero
+          kcx = zero; kcy = zero; kcz = zero
+          
+          gauss_pts: DO i=1,nip
+            CALL shape_der(der,points,i)
+            CALL shape_fun(fun,points,i)
+            funny(1,:) = fun(:)
+            jac        = MATMUL(der,g_coord_pp(:,:,iel))
+            det        = determinant(jac)
+            CALL invert(jac)
+            deriv      = MATMUL(jac,der)
+            IF(prog==12)THEN
+              kc = kc + MATMUL(MATMUL(TRANSPOSE(deriv),kay),deriv)*det*weights(i)
+              pm = pm + MATMUL(TRANSPOSE(funny),funny)*det*weights(i)*rho*cp
+            END IF
+            IF(prog==11)THEN
+              row(1,:) = deriv(1,:)
+              eld      = deriv(1,:)
+              col(:,1) = eld
+              kcx      = kcx + MATMUL(col,row)*det*weights(i)
+              row(1,:) = deriv(2,:)
+              eld      = deriv(2,:)
+              col(:,1) = eld
+              kcy      = kcy + MATMUL(col,row)*det*weights(i)
+              row(1,:) = deriv(3,:)
+              eld      = deriv(3,:)
+              col(:,1) = eld
+              kcz      = kcz + MATMUL(col,row)*det*weights(i)
+            END IF
+          END DO gauss_pts
+          
+            IF(prog==12)THEN
+              storka_pp(:,:,iel)=pm+kc*theta*dtim
+              storkb_pp(:,:,iel)=pm-kc*(1._iwp-theta)*dtim
+            END IF
+            IF(prog==11)THEN
+              storkc_pp(:,:,iel) = kcx*kx + kcy*ky + kcz*kz
+              storka_pp = storkc_pp
+            END IF
+          
+        END DO elements_3
+        
+        timest(10) = elap_time()
+        IF(numpe==1) PRINT *, "End of 8"
+        
+!------------------------------------------------------------------------------
+! 9. Build the diagonal preconditioner
+!------------------------------------------------------------------------------
+        
+        ALLOCATE(diag_precon_tmp(ntot,nels_pp))
+        diag_precon_tmp = zero
+        diag_precon_pp  = zero
+        
+        elements_4: DO iel = 1,nels_pp 
+          DO k=1,ntot
+            diag_precon_tmp(k,iel)=diag_precon_tmp(k,iel)+storka_pp(k,k,iel)
+          END DO
+        END DO elements_4
+        
+        CALL scatter(diag_precon_pp,diag_precon_tmp)
+        
+        DEALLOCATE(diag_precon_tmp)
+        
+        timest(11) = elap_time()
+        IF(numpe==1) PRINT *, "End of 9" 
+        
+!------------------------------------------------------------------------------
+! 10. Allocate disp_pp array and open file to write temperature output
+!------------------------------------------------------------------------------
+        
+        !IF(j_step==1 .OR. j_chk2==1)THEN
+        IF(j_glob==1 .OR. j_chk2==1)THEN
+          IF(numpe==it)THEN !---Open file-temp outputs-specified node  
+            fname = job_name(1:INDEX(job_name, " ")-1) // ".ttr2"
+            OPEN(11,FILE=fname,STATUS='REPLACE',ACTION='WRITE')
+          END IF
+          
+          CALL calc_nodes_pp(nn,npes,numpe,node_end,node_start,nodes_pp)
+          ALLOCATE(disp_pp(nodes_pp))
+          ALLOCATE(eld_pp(ntot,nels_pp))
+          
+          IF(numpe==1) THEN
+            IF(xx12_output==2)THEN !---Open file-temp outputs-ascii ParaFEM
+              fname   = job_name(1:INDEX(job_name, " ")-1)//".ttr"
+              OPEN(24, file=fname, status='replace', action='write')
+            END IF
+            IF(xx12_output==1)THEN !---Open file-tempoutputs-binary ParaFEM
+              fname   = job_name(1:INDEX(job_name, " ")-1)//".ttrb"
+              OPEN(25, file=fname, status='replace', action='write',              &
+                   access='sequential', form='unformatted')
+            END IF
+            fname   = job_name(1:INDEX(job_name, " ")-1)//".npp"
+            OPEN(26, file=fname, status='replace', action='write')
+            label   = "*TEMPERATURE"  
+            WRITE(26,*) nn
+    !        WRITE(26,*) nstep/npri
+            !-Unchecked
+            WRITE(26,*) npp
+            WRITE(26,*) npes
+            IF(xx12_output==3.AND.j_glob==1)THEN!---Open file-temp out-binary ENSIGHT GOLD
+              fname = job_name(1:INDEX(job_name, " ")-1)//".bin.ensi.NDTTR-000001"
+              OPEN(27,file=fname,status='replace',action='write',                 &
+              form='unformatted',access='stream')
+               
+              cbuffer="Alya Ensight Gold --- Scalar per-node variable file"
+              WRITE(27) cbuffer
+              cbuffer="part"        ; WRITE(27) cbuffer
+              WRITE(27) int(1,kind=c_int)
+              cbuffer="coordinates" ; WRITE(27) cbuffer 
+            END IF
+            IF(xx12_output==4.AND.j_glob==1)THEN!---Open file-temp out-ENSIGHT GOLD
+              fname = job_name(1:INDEX(job_name, " ")-1)//".ensi.NDTTR-000001"
+              OPEN(28,file=fname,status='replace',action='write')
+               
+              WRITE(28,'(/A)') "Alya Ensight Gold --- Scalar per-node variable file"
+              WRITE(28,'(/A)') "part"
+              WRITE(28,'(I1)') 1
+              WRITE(28,'(/A)') "coordinates"
+            END IF
+          END IF
+        END IF
+        
+        IF(numpe==1) PRINT *, "End of 10"
+        
+!------------------------------------------------------------------------------
+! 11. Read in fixed nodal temperatures and assign to equations
+!------------------------------------------------------------------------------
+      
+        IF((fixed_freedoms > 0 .AND. j_glob == 1) .OR.                            &
+           (fixed_freedoms > 0 .AND. j_chk2 == 1)) THEN
+          
+          ALLOCATE(node(fixed_freedoms),no(fixed_freedoms),                       &
+                   no_pp_temp(fixed_freedoms),sense(fixed_freedoms))
+          ALLOCATE(val_f(fixed_freedoms))
+          
+          node  = 0 ; no = 0 ; no_pp_temp = 0 ; sense = 0
+          val_f = zero
+          
+          CALL read_fixed(job_name,numpe,node,sense,val_f)
+          CALL find_no2(g_g_pp,g_num_pp,node,sense,no)
+          
+    !      PRINT *, "After find_no2 no = ", no, " on PE ", numpe
+          
+          CALL reindex(ieq_start,no,no_pp_temp,                                   &
+                       fixed_freedoms_pp,fixed_freedoms_start,neq_pp)
+          
+    !      PRINT *, "After reindex no = ", no, " on PE ", numpe
+          
+          ALLOCATE(no_f_pp(fixed_freedoms_pp),store_pp(fixed_freedoms_pp))
+          
+          no_f_pp  = 0 
+          store_pp = zero
+          no_f_pp  = no_pp_temp(1:fixed_freedoms_pp)
+          
+          DEALLOCATE(node,no,sense,no_pp_temp)
+          
+        END IF
+        
+        IF(fixed_freedoms == 0) fixed_freedoms_pp = 0
+        
+        timest(12) = elap_time()
+        IF(numpe==1) PRINT *, "End of 11"
+        
+!------------------------------------------------------------------------------
+! 12. Invert the preconditioner. 
+!     If there are fixed freedoms, first apply a penalty
+!------------------------------------------------------------------------------
+        
+        IF(fixed_freedoms_pp > 0) THEN
+          DO i = 1,fixed_freedoms_pp
+            l =  no_f_pp(i) - ieq_start + 1
+            diag_precon_pp(l) = diag_precon_pp(l) + penalty
+            store_pp(i)       = diag_precon_pp(l)
+          END DO
+        END IF
+        
+        diag_precon_pp = 1._iwp/diag_precon_pp
+        
+        IF(numpe==1) PRINT *, "End of 12"
+        
+!------------------------------------------------------------------------------
+! 13. Read in loaded nodes and get starting r_pp
+!------------------------------------------------------------------------------
+        
+        loaded_freedoms = loaded_nodes ! hack
+        IF(loaded_freedoms==0) loaded_freedoms_pp=0
+        IF((loaded_freedoms > 0 .AND. j_glob == 1) .OR.                         &
+           (loaded_freedoms > 0 .AND. j_chk2 == 1)) THEN
+          
+          ALLOCATE(node(loaded_freedoms),val(nodof,loaded_freedoms))
+          ALLOCATE(no_pp_temp(loaded_freedoms))
+          
+          val = zero ; node = 0
+          
+          IF(prog==12) CALL read_amplitude(job_name,numpe,nstep_tot,amp)
+          CALL read_loads(job_name,numpe,node,val)
+          CALL reindex(ieq_start,node,no_pp_temp,loaded_freedoms_pp,            &
+                       loaded_freedoms_start,neq_pp)
+          
+          ALLOCATE(no_pp(loaded_freedoms_pp))
+          
+          no_pp    = no_pp_temp(1:loaded_freedoms_pp)
+          
+          DEALLOCATE(no_pp_temp)
+          DEALLOCATE(node)
+          
+        END IF
+        
+        timest(12) = elap_time()
+        IF(numpe==1) PRINT *, "End of 13"
+        
+!------------------------------------------------------------------------------
+! 14. Start time stepping loop
+!------------------------------------------------------------------------------
+      
+      ! End of section to repeat each time loop if vmat_check = .true.
+      END IF
+      
+!!    iters_tot = 0
+!    IF(j_chk2==0)j_chk=0
+!    timesteps: DO j_loc=j_chk+1,nstep
+!      
+!      real_time = 0
+!      j_npri = 0
+!      IF(j_step>1)THEN
+!        DO i = 1,j_step-1
+!          real_time = real_time + timesteps_real(i,1)*timesteps_int(i,1)
+!          j_npri = j_npri + timesteps_int(i,1)/timesteps_int(i,2)
+!        END DO
+!      END IF
+!      real_time = real_time + j_loc*dtim
+!      j_npri = j_npri + j_loc/npri + 1
+!      
       timest(15) = elap_time()
       IF(numpe==1) PRINT *, "End of 14"
       
