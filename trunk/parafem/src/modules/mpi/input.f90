@@ -2757,10 +2757,9 @@ MODULE INPUT
 
     !Master process reads the global array from a single file and 
     !sends a copy to each slave. (I/O method 1: refer to notes)
-    !k is the material number in the file, it is read and discarded
 
     IMPLICIT NONE
-    INTEGER                       :: i,k,bufsize,ier,ielpe
+    INTEGER                       :: bufsize,ier,ielpe
     INTEGER,INTENT(IN)            :: numpe,npes
     INTEGER,INTENT(INOUT)         :: nmats,nvals
     CHARACTER(LEN=50), INTENT(in) :: fname
@@ -2780,9 +2779,6 @@ MODULE INPUT
     bufsize = 1
     CALL MPI_BCAST(nmats,bufsize,MPI_INTEGER,0,MPI_COMM_WORLD,ier)
     CALL MPI_BCAST(nvals,bufsize,MPI_INTEGER,0,MPI_COMM_WORLD,ier)
-
-!    bufsize       = ubound(materialValues,1)*ubound(materialValues,2)
-!    CALL MPI_BCAST(materialValues,bufsize,MPI_REAL8,0,MPI_COMM_WORLD,ier)
    
     RETURN
 
@@ -2792,48 +2788,91 @@ MODULE INPUT
 !------------------------------------------------------------------------------
 !------------------------------------------------------------------------------
 
-  SUBROUTINE READ_VARMATERIALVALUE(MATERIALVALUES,FNAME,NUMPE,NPES)
+  SUBROUTINE READ_NTEMP(FNAME,NUMPE,NPES,NTEMP)
 
     !Master process reads the global array from a single file and 
     !sends a copy to each slave. (I/O method 1: refer to notes)
-    !k is the material number in the file, it is read and discarded
+    !itemp is the material number in the file, it is read and discarded
 
     IMPLICIT NONE
-    INTEGER                       :: i,j,k,l,m,nmats,nvals,bufsize,ier,ielpe
-    INTEGER                       :: ntemp
+    INTEGER                       :: i,j,k,itemp,nmats,nvals,bufsize,ier,ielpe
+    INTEGER,INTENT(INOUT)         :: ntemp(:,:)
     INTEGER,INTENT(IN)            :: numpe,npes
-    REAL(iwp),INTENT(INOUT)       :: materialValues(:,:)
-    REAL(iwp)                     :: T
+    REAL(iwp)                     :: temp
     CHARACTER(LEN=50), INTENT(in) :: fname
     CHARACTER(LEN=10)             :: keyword, mat_type
     LOGICAL                       :: verbose = .true.
 !   LOGICAL                       :: verbose = .false.
-
+    
     IF(numpe==1)THEN
       OPEN(21,FILE=fname, STATUS='OLD', ACTION='READ')
       !Read the *MATERIAL keyword, num of materials in file and num values 
       !per material line (2)
       READ(21,*) keyword, nmats, nvals
-      IF(verbose) PRINT *, "nmats = ", nmats, "nvals = ", nvals
+      !IF(verbose) PRINT *, "nmats = ", nmats, "nvals = ", nvals
       DO i = 1,nmats
-        READ(21,*)k                  ! (matID)
+        READ(21,*)itemp                  ! (matID)
         DO j = 1,nvals
-          READ(21,*) ntemp, mat_type
-          m=1
-          DO l = 1,ntemp
-            READ(21,*)T, materialValues(j,i)
-            m=m+1
+          READ(21,*) ntemp(i,j), mat_type
+          DO k = 1,ntemp(i,j)
+            READ(21,*)temp, temp
           END DO
         END DO
-!		 READ(21,*)k, materialValues(:,i)
-        IF(verbose) PRINT *, "i =", i, "materialValues =",materialValues(:,i)
       END DO
       CLOSE(21)
     END IF
     
-    bufsize       = ubound(materialValues,1)*ubound(materialValues,2)
-    CALL MPI_BCAST(materialValues,bufsize,MPI_REAL8,0,MPI_COMM_WORLD,ier)
-   
+    bufsize       = ubound(ntemp,1)*ubound(ntemp,2)
+    CALL MPI_BCAST(ntemp,bufsize,MPI_INTEGER,0,MPI_COMM_WORLD,ier)
+    
+    RETURN
+
+  END SUBROUTINE READ_NTEMP
+  
+!------------------------------------------------------------------------------
+!------------------------------------------------------------------------------
+!------------------------------------------------------------------------------
+
+  SUBROUTINE READ_VARMATERIALVALUE(FNAME,NUMPE,NPES,VARPROP,VARPROPT)
+
+    !Master process reads the global array from a single file and 
+    !sends a copy to each slave. (I/O method 1: refer to notes)
+    !itemp is the material number in the file, it is read and discarded
+
+    IMPLICIT NONE
+    INTEGER                       :: i,j,k,itemp,nmats,nvals,bufsize,ier,ielpe
+    INTEGER                       :: ntemp
+    INTEGER,INTENT(IN)            :: numpe,npes
+    REAL(iwp),INTENT(INOUT)       :: varprop(:,:,:),varpropT(:,:,:)
+    REAL(iwp)                     :: T,temp
+    CHARACTER(LEN=50), INTENT(in) :: fname
+    CHARACTER(LEN=10)             :: keyword, mat_type
+    LOGICAL                       :: verbose = .true.
+!   LOGICAL                       :: verbose = .false.
+    REAL(iwp),PARAMETER           :: zero = 0.0_iwp
+    
+    IF(numpe==1)THEN
+      OPEN(21,FILE=fname, STATUS='OLD', ACTION='READ')
+      !Read the *MATERIAL keyword, num of materials in file and num values 
+      !per material line (2)
+      READ(21,*) keyword, nmats, nvals
+      DO i = 1,nmats
+        READ(21,*)itemp                  ! (matID)
+        DO j = 1,nvals
+          READ(21,*) ntemp, mat_type
+          DO k = 1,ntemp
+              READ(21,*)varpropT(j,i,k), varprop(j,i,k)
+          END DO
+        END DO
+      END DO
+      CLOSE(21)
+    END IF
+    
+    bufsize       = ubound(varprop,1)*ubound(varprop,2)*ubound(varprop,3)
+    CALL MPI_BCAST(varprop,bufsize,MPI_REAL8,0,MPI_COMM_WORLD,ier)
+    bufsize       = ubound(varpropT,1)*ubound(varpropT,2)*ubound(varpropT,3)
+    CALL MPI_BCAST(varpropT,bufsize,MPI_REAL8,0,MPI_COMM_WORLD,ier)
+    
     RETURN
 
   END SUBROUTINE READ_VARMATERIALVALUE
@@ -6119,9 +6158,9 @@ MODULE INPUT
      !Read the material labels line
      READ(21,*)                  ! skip line
 
-     PRINT *, "ntime =", ntime
-     PRINT *, "nreal =", nreal
-     PRINT *, "n_int =", n_int
+ !    PRINT *, "ntime =", ntime
+ !    PRINT *, "nreal =", nreal
+ !    PRINT *, "n_int =", n_int
      
 !     ALLOCATE(timesteps_real(ntime,nreal),timesteps_int(ntime,n_int))
      
