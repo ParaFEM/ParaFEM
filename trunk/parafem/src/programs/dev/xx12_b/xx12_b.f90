@@ -37,9 +37,10 @@ PROGRAM xx12
   INTEGER             :: argc,iargc,meshgen,partitioner
   INTEGER             :: np_types,ntime,el_print,xx12_input,xx12_output,nprops
   INTEGER             :: prog,tz
+  INTEGER             :: nlds_Tvar,nlds_ndTvar
   REAL(iwp)           :: aa,bb,cc,kx,ky,kz,det,theta,dtim,real_time
   REAL(iwp)           :: tol,alpha,beta,up,big,q
-  REAL(iwp)           :: rho,cp,val0,x_el
+  REAL(iwp)           :: rho,cp,val0,x_el,x_nd
   REAL(iwp)           :: T1,T2,y1,y2
   REAL(iwp),PARAMETER :: zero = 0.0_iwp,penalty=1.e20_iwp
   REAL(iwp),PARAMETER :: t0 = 0.0_iwp
@@ -51,6 +52,7 @@ PROGRAM xx12
   LOGICAL             :: solid       = .true.
   LOGICAL             :: vmat_exists = .false.
   LOGICAL             :: vmat_check  = .false.
+  LOGICAL             :: lds_Tvar_exists  = .false.
   CHARACTER(LEN=80)   :: cbuffer
   
 !------------------------------------------------------------------------------
@@ -69,12 +71,12 @@ PROGRAM xx12
   REAL(iwp),ALLOCATABLE :: kcx(:,:),kcy(:,:),kcz(:,:)
   REAL(iwp),ALLOCATABLE :: eld(:),col(:,:),row(:,:),storkc_pp(:,:,:)
   REAL(iwp),ALLOCATABLE :: prop(:,:),varprop(:,:,:),varpropT(:,:,:),prop_temp(:)
-  REAL(iwp),ALLOCATABLE :: amp(:),tempres(:),timesteps_real(:,:)
+  REAL(iwp),ALLOCATABLE :: amp(:),tempres(:),timesteps_real(:,:),loads_Tvar(:,:)
   INTEGER,ALLOCATABLE   :: rest(:,:),g(:),num(:),g_num_pp(:,:),g_g_pp(:,:)
   INTEGER,ALLOCATABLE   :: no(:),no_pp(:),no_f_pp(:),no_pp_temp(:),sense(:)
   INTEGER,ALLOCATABLE   :: node(:),iters(:),iters_tot(:),timesteps_int(:,:)
   INTEGER,ALLOCATABLE   :: etype_pp(:),nf(:,:),oldlds(:),g_coord(:,:)
-  INTEGER,ALLOCATABLE   :: ntemp(:,:)
+  INTEGER,ALLOCATABLE   :: ntemp(:,:),no_loads_Tvar(:,:)
 
 !------------------------------------------------------------------------------
 ! *. Details of some xx12 specific variables
@@ -411,7 +413,7 @@ PROGRAM xx12
       !IF(numpe==1) PRINT *, "End of new 14"
       
       ! Start of section to repeat each time loop if vmat_check = .true.
-      IF(j_glob==1 .OR. (j_glob>1 .AND. vmat_check))THEN
+!      IF(j_glob==1 .OR. (j_glob>1 .AND. vmat_check))THEN
         IF(j_glob==1 .AND. numpe==1) PRINT*, "Calculating stiffness array"
         IF(j_glob>1 .AND. vmat_check .AND. numpe==1) PRINT*, "Recalculating stiffness array"
         
@@ -433,6 +435,7 @@ PROGRAM xx12
             END IF
             IF(j_glob>1) THEN
               x_el = sum(eld_pp(:,iel))/nod
+!              IF(numpe==1 .AND. iel==4) PRINT *, "x_el = ",x_el
             END IF
             
             ! Start loop for each of the material properties to recalculate
@@ -533,6 +536,8 @@ PROGRAM xx12
 ! 9. Build the diagonal preconditioner
 !------------------------------------------------------------------------------
         
+!      IF(j_glob==1 .OR. (j_glob>1 .AND. vmat_check))THEN
+        
         ALLOCATE(diag_precon_tmp(ntot,nels_pp))
         diag_precon_tmp = zero
         diag_precon_pp  = zero
@@ -598,10 +603,10 @@ PROGRAM xx12
               fname = job_name(1:INDEX(job_name, " ")-1)//".ensi.NDTTR-000001"
               OPEN(28,file=fname,status='replace',action='write')
                
-              WRITE(28,'(/A)') "Alya Ensight Gold --- Scalar per-node variable file"
-              WRITE(28,'(/A)') "part"
+              WRITE(28,'(A)') "Alya Ensight Gold --- Scalar per-node variable file"
+              WRITE(28,'(A)') "part"
               WRITE(28,'(I1)') 1
-              WRITE(28,'(/A)') "coordinates"
+              WRITE(28,'(A)') "coordinates"
             END IF
           END IF
         END IF
@@ -690,6 +695,35 @@ PROGRAM xx12
           DEALLOCATE(no_pp_temp)
           DEALLOCATE(node)
           
+          ! Section to check and read in loads that vary with temperature
+          fname = job_name(1:INDEX(job_name, " ")-1) // ".lds_ndTvar"
+          INQUIRE(FILE=fname, EXIST=lds_Tvar_exists)
+          IF(lds_Tvar_exists)THEN
+            CALL read_header(nlds_ndTvar,fname,numpe,npes)
+            fname = job_name(1:INDEX(job_name, " ")-1) // ".lds_Tvar"
+            INQUIRE(FILE=fname, EXIST=lds_Tvar_exists)
+            IF(lds_Tvar_exists)THEN
+              IF(numpe==1) PRINT *, "lds_Tvar_exists"
+              CALL read_header(nlds_Tvar,fname,numpe,npes)
+              ALLOCATE(loads_Tvar(nlds_Tvar,2))
+              CALL read_real(loads_Tvar,2,nlds_Tvar,1,fname,numpe,npes)
+              ALLOCATE(no_loads_Tvar(nlds_ndTvar,1))
+              no_loads_Tvar = 0
+              fname = job_name(1:INDEX(job_name, " ")-1) // ".lds_ndTvar"
+              CALL read_int(no_loads_Tvar,1,nlds_ndTvar,1,fname,numpe,npes)
+              IF(numpe==1) PRINT *, "Read lds_Tvar & lds_ndTvar"
+            END IF
+          ELSE
+            ALLOCATE(no_loads_Tvar(1,1))
+            no_loads_Tvar = 0
+          END IF
+        
+          !---Open file-lds outputs-specified node 
+          IF(numpe==it .AND. ANY(no_loads_Tvar==el_print))THEN 
+            fname = job_name(1:INDEX(job_name, " ")-1) // ".lds2"
+            OPEN(29,FILE=fname,STATUS='REPLACE',ACTION='WRITE')
+          END IF
+        
         END IF
         
         timest(12) = elap_time()
@@ -700,7 +734,7 @@ PROGRAM xx12
 !------------------------------------------------------------------------------
       
       ! End of section to repeat each time loop if vmat_check = .true.
-      END IF
+!      END IF
       
 !!    iters_tot = 0
 !    IF(j_chk2==0)j_chk=0
@@ -726,22 +760,96 @@ PROGRAM xx12
       
       loads_pp  = zero
       
+!      PRINT *,"Marker0, numpe = ",numpe
       IF(loaded_freedoms_pp > 0) THEN
+!        PRINT *,"Marker1, numpe = ",numpe
         DO i = 1, loaded_freedoms_pp
           IF(prog==12)THEN
+!            PRINT *,"no_pp(i) = ",no_pp(i)
+!            PRINT *,"ieq_start = ",ieq_start
+!            PRINT *,"no_pp(i)-ieq_start+1 = ",no_pp(i)-ieq_start+1
             IF(amp(j_glob)<=0.000001)THEN
+!              PRINT *,"Marker2, numpe = ",numpe
+              !Set loads to near zero value if amplitude is zero
+              !This avoids division by zero
 !              loads_pp(no_pp(i)-ieq_start+1) = val(loaded_freedoms_start+i-1,1)&
 !                                               *dtim*(1.0E-34)
-              loads_pp(no_pp(i)-ieq_start+1) = (1.0E-15)
+              loads_pp(no_pp(i)-ieq_start+1) = (1.0E-34)!15)
+            !!! ELSE IF logical condition has been tested but may need further verification
+            !ELSE IF (ANY(no_loads_Tvar==no_pp(i)-ieq_start+1)) THEN
+            ELSE IF (ANY(no_loads_Tvar==no_pp(i))) THEN
+!              PRINT *,"Marker3, numpe = ",numpe
+              !Interpolate to apply temperature dependent loads 
+              !IF(numpe==1) PRINT *,"This node matches the list"
+              IF(j_glob==1) THEN
+                x_nd = val0
+              ELSE IF(j_glob>1) THEN
+                x_nd = disp_pp(no_pp(i)-ieq_start+1)
+              END IF
+              !IF(numpe==1) PRINT *,"Nodal temp = ",x_nd
+!              PRINT *,"Nodal temp = ",x_nd
+              IF(nlds_Tvar>1) THEN
+                ! Set load to lowest or highest value if nodal T is outside range
+                IF (x_nd <= loads_Tvar(1,1)) THEN
+                  loads_pp(no_pp(i)-ieq_start+1) = loads_Tvar(1,2)*dtim
+!                  IF(numpe==1) PRINT *,"no_pp(i)-ieq_start+1 = ", no_pp(i)-ieq_start+1
+!                  IF(numpe==1) PRINT *,"x_nd = ",x_nd," <= T, loads_pp = ",loads_pp(no_pp(i)-ieq_start+1)
+                ELSE IF (x_nd > loads_Tvar(nlds_Tvar,1)) THEN
+                  loads_pp(no_pp(i)-ieq_start+1) = loads_Tvar(nlds_Tvar,2)*dtim
+!                  IF(numpe==1) PRINT *,"no_pp(i)-ieq_start+1 = ", no_pp(i)-ieq_start+1
+!                  IF(numpe==1) PRINT *,"x_nd = ",x_nd," > T, loads_pp = ",loads_pp(no_pp(i)-ieq_start+1)
+                ELSE
+                  ! Loop through saved T values to find window where x_nd lies
+                  DO j=1,nlds_Tvar-1
+                    ! Set temperatures at top and bottom of window
+                    T1 = loads_Tvar(j,1)
+                    T2 = loads_Tvar(j+1,1)
+                    IF(x_nd>T1 .AND. x_nd<=T2)THEN
+                      ! If x_nd is in this window set loads at top and bottom of window
+                      y1 = loads_Tvar(j,2)
+                      y2 = loads_Tvar(j+1,2)
+                      ! Perform linear interpolation for new load
+                      loads_pp(no_pp(i)-ieq_start+1) = ((y1*(T2-x_nd) + y2*(x_nd-T1)) / (T2-T1))*dtim
+!                      IF(numpe==1) PRINT *,"no_pp(i)-ieq_start+1 = ", no_pp(i)-ieq_start+1
+!                      IF(numpe==1) PRINT *,"T1,T2,y1,y2 = ",T1,T2,y1,y2
+!                      IF(numpe==1) PRINT *,"x_nd,loads_pp(j) = ",x_nd,loads_pp(no_pp(i)-ieq_start+1)
+!                      PRINT *,"x_nd,loads_pp(j) = ",x_nd,loads_pp(no_pp(i)-ieq_start+1)
+                    END IF
+                    ! Exit so that it doesn't keep looping through rest of T values
+                    IF(x_nd>T1 .AND. x_nd<=T2)EXIT
+                  END DO
+                END IF
+              ELSE
+                ! In the case of only one temperature value avoid looping
+                loads_pp(no_pp(i)-ieq_start+1) = loads_Tvar(1,2)*dtim
+              END IF
+              IF(loads_pp(no_pp(i)-ieq_start+1)==0.0)THEN
+                loads_pp(no_pp(i)-ieq_start+1) = (1.0E-34)
+              END IF
+              !IF(numpe==it)THEN
+              !  !---Write file-lds outputs-specified node
+              !  WRITE(29,'(E12.4,8E19.8)')real_time,loads_pp(no_pp(i)-ieq_start+1)
+              !END IF
             ELSE
+!              PRINT *,"Marker4, numpe = ",numpe
+              ! Set transient loads by combining .lds and .amp file
               loads_pp(no_pp(i)-ieq_start+1) = val(loaded_freedoms_start+i-1,1)&
                                                *dtim*amp(j_glob)
+!              IF(numpe==1) PRINT *,"no_pp(i)-ieq_start+1 = ", no_pp(i)-ieq_start+1
+              !IF(numpe==1) PRINT *,"loaded_freedoms_start+i-1 = ",loaded_freedoms_start+i-1
+!              IF(numpe==1) PRINT *,"loads_pp(j) = ",loads_pp(no_pp(i)-ieq_start+1)
             END IF
           END IF
           IF(prog==11)THEN
               loads_pp(no_pp(i)-ieq_start+1) = val(loaded_freedoms_start+i-1,1)
           END IF
         END DO
+        IF(numpe==it .AND. ANY(no_loads_Tvar==el_print))THEN
+          !---Write file-lds outputs-specified node
+!          PRINT *,"j_glob = ",j_glob
+          IF(j_glob==1)WRITE(29,'(E12.4,8E19.8)')t0,loads_pp(is)
+          IF(j_glob>1)WRITE(29,'(E12.4,8E19.8)')real_time-dtim,loads_pp(is)
+        END IF  
       END IF
       
       q = q + SUM_P(loads_pp)
@@ -957,6 +1065,18 @@ PROGRAM xx12
         
       END DO iterations
       
+      !--------------------------------
+      !Lines moved outside write step because results are used for
+      !temperature dependent material properties and loads.
+      !Those sections should possibly use xnew_pp instead.
+      eld_pp   = zero
+      disp_pp  = zero
+      CALL gather(xnew_pp(1:),eld_pp)
+      
+      CALL scatter_nodes(npes,nn,nels_pp,g_num_pp,nod,nodof,nodes_pp,       &
+                         node_start,node_end,eld_pp,disp_pp,1)
+      !--------------------------------
+      
       timest(13) = timest(13) + (elap_time() - timest(15))
       timest(16) = elap_time()
       
@@ -969,12 +1089,12 @@ PROGRAM xx12
       IF(j_loc/npri*npri==j_loc)THEN
       j_npri_chk=j_npri_chk+1
         
-        eld_pp   = zero
-        disp_pp  = zero
-        CALL gather(xnew_pp(1:),eld_pp)
-        
-        CALL scatter_nodes(npes,nn,nels_pp,g_num_pp,nod,nodof,nodes_pp,       &
-                           node_start,node_end,eld_pp,disp_pp,1)
+!        eld_pp   = zero
+!        disp_pp  = zero
+!        CALL gather(xnew_pp(1:),eld_pp)
+!        
+!        CALL scatter_nodes(npes,nn,nels_pp,g_num_pp,nod,nodof,nodes_pp,       &
+!                           node_start,node_end,eld_pp,disp_pp,1)
         
         IF(numpe==it)THEN
           !---Write file-temp outputs-specified node
@@ -1085,6 +1205,7 @@ PROGRAM xx12
   IF(numpe==1)THEN
     CLOSE(11)
     CLOSE(24)
+    IF(loaded_freedoms_pp > 0 .AND. ANY(no_loads_Tvar==el_print)) CLOSE(29)
   END IF
   
   IF(numpe==1) PRINT *, "Timest ", timest
