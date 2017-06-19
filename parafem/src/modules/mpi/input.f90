@@ -2748,7 +2748,116 @@ MODULE INPUT
     RETURN
 
   END SUBROUTINE READ_MATERIALVALUE
+  
+!------------------------------------------------------------------------------
+!------------------------------------------------------------------------------
+!------------------------------------------------------------------------------
 
+  SUBROUTINE READ_HEADER(N_INT,FNAME,NUMPE,NPES)
+  
+    IMPLICIT NONE
+    INTEGER                       :: bufsize,ier,ielpe
+    INTEGER,INTENT(IN)            :: numpe,npes
+    INTEGER,INTENT(INOUT)         :: n_int
+    CHARACTER(LEN=50), INTENT(in) :: fname
+    LOGICAL                       :: verbose = .true.
+!   LOGICAL                       :: verbose = .false.
+   
+    IF(numpe==1)THEN
+     OPEN(21,FILE=fname, STATUS='OLD', ACTION='READ')
+     !Read the num of values in file to be read
+     READ(21,*) n_int
+     IF(verbose) PRINT *, "fname = ",fname,"n_int = ", n_int
+     CLOSE(21)
+    END IF
+   
+    bufsize = 1
+    CALL MPI_BCAST(n_int,bufsize,MPI_INTEGER,0,MPI_COMM_WORLD,ier)
+    
+    RETURN
+
+  END SUBROUTINE READ_HEADER
+  
+!------------------------------------------------------------------------------
+!------------------------------------------------------------------------------
+!------------------------------------------------------------------------------
+  
+  SUBROUTINE READ_INT(INT_ARR,COLS,ROWS,SKIP,FNAME,NUMPE,NPES)
+  
+    IMPLICIT NONE
+    INTEGER                       :: bufsize,ier,ielpe,i,j
+    INTEGER,INTENT(IN)            :: numpe,npes,cols,rows,skip
+    INTEGER,INTENT(INOUT)         :: int_arr(:,:)
+    CHARACTER(LEN=50), INTENT(in) :: fname
+   
+    IF(numpe==1)THEN
+     OPEN(21,FILE=fname, STATUS='OLD', ACTION='READ')
+     !Skip header lines
+     DO i=1,skip
+       READ(21,*) 
+     END DO
+     DO i=1,cols
+       DO j=1,rows
+         !Read the num of values in file to be read
+         !Because FORTRAN can't use list-directed format (*) with advance=no
+         !file numst be one long column which is reshaped here
+         READ(21,*) int_arr(j,i)
+       END DO
+     END DO
+     
+     CLOSE(21)
+    END IF
+   
+    bufsize = cols*rows
+    CALL MPI_BCAST(int_arr,bufsize,MPI_INTEGER,0,MPI_COMM_WORLD,ier)
+    
+    RETURN
+
+  END SUBROUTINE READ_INT
+  
+!------------------------------------------------------------------------------
+!------------------------------------------------------------------------------
+!------------------------------------------------------------------------------
+  
+  SUBROUTINE READ_REAL(REAL_ARR,COLS,ROWS,SKIP,FNAME,NUMPE,NPES)
+  
+    IMPLICIT NONE
+    INTEGER                       :: bufsize,ier,ielpe,i,j
+    INTEGER,INTENT(IN)            :: numpe,npes,cols,rows,skip
+    REAL(iwp),INTENT(INOUT)       :: real_arr(:,:)
+    CHARACTER(LEN=50), INTENT(in) :: fname
+!    LOGICAL                       :: verbose = .true.
+    LOGICAL                       :: verbose = .false.
+    
+    IF(numpe==1)THEN
+     OPEN(21,FILE=fname, STATUS='OLD', ACTION='READ')
+     !Skip header lines
+     DO i=1,skip
+       READ(21,*)
+       IF(verbose) PRINT *, "Skipped header"
+     END DO
+     DO i=1,cols
+       DO j=1,rows
+         !Read the num of values in file to be read
+         !IF(j<cols) READ(21,*,ADVANCE='no') real_arr(i,j)
+         !IF(j==cols) READ(21,*) real_arr(i,j)
+         !Because FORTRAN can't use list-directed format (*) with advance=no
+         !file numst be one long column which is reshaped here
+         READ(21,*) real_arr(j,i)
+         IF(verbose) PRINT *, "real_arr(j,i) = ",real_arr(j,i)
+       END DO
+     END DO
+     
+     CLOSE(21)
+    END IF
+   
+    bufsize = cols*rows
+    CALL MPI_BCAST(real_arr,bufsize,MPI_REAL8,0,MPI_COMM_WORLD,ier)
+    
+    RETURN
+
+  END SUBROUTINE READ_REAL
+  
 !------------------------------------------------------------------------------
 !------------------------------------------------------------------------------
 !------------------------------------------------------------------------------
