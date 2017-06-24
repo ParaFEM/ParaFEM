@@ -842,18 +842,54 @@ PROGRAM xx12_te
 
   DO iel = 1,nels_pp
               
-!    cte (1)   = prop(1,etype_pp(iel))
-!    cte (2)   = prop(1,etype_pp(iel))
-!    cte (3)   = prop(1,etype_pp(iel))
-!    v   = prop(2,etype_pp(iel))
-!    !e = constant/prop(1,etype_pp(iel))
-!    e = 10000
-    
-    cte (1) = prop(8,etype_pp(iel))
-    cte (2) = prop(8,etype_pp(iel))
-    cte (3) = prop(8,etype_pp(iel))
-    e       = prop(6,etype_pp(iel))
-    v       = prop(7,etype_pp(iel))
+    IF(vmat_check .AND. prog==12)THEN
+      ! Calculate average element T
+      x_el = sum(ndscal_pp(:,iel))/nod
+      prop_temp = zero
+      DO i=6,8 !each property
+        IF(ntemp(etype_pp(iel),i)>1) THEN
+          ! Set property to lowest or highest value if element T is outside range
+          IF (x_el <= varpropT(i,etype_pp(iel),1)) THEN
+            prop_temp(i) = varprop(i,etype_pp(iel),1)
+          ELSE IF (x_el > varpropT(i,etype_pp(iel),ntemp(etype_pp(iel),i))) THEN
+            prop_temp(i) = varprop(i,etype_pp(iel),ntemp(etype_pp(iel),i))
+          ELSE
+            ! Loop through saved T values to find window where x_el lies
+            DO j=1,ntemp(etype_pp(iel),i)-1
+              ! Set temperatures at top and bottom of window
+              T1 = varpropT(i,etype_pp(iel),j)
+              T2 = varpropT(i,etype_pp(iel),j+1)
+              IF(x_el>T1 .AND. x_el<=T2)THEN
+                ! If x_el is in this window set properties at top and bottom of window
+                y1 = varprop(i,etype_pp(iel),j)
+                y2 = varprop(i,etype_pp(iel),j+1)
+                ! Perform linear interpolation for new material property
+                prop_temp(i) = (y1*(T2-x_el) + y2*(x_el-T1)) / (T2-T1)
+              END IF
+              ! Exit so that it doesn't keep looping through rest of T values
+              IF(x_el>T1 .AND. x_el<=T2)EXIT
+            END DO
+          END IF
+        ELSE
+          ! In the case of only one temperature value for a property avoid looping
+          prop_temp(i) = varprop(i,etype_pp(iel),1)
+        END IF
+      END DO
+      e         = prop_temp(6)
+      v         = prop_temp(7)
+      cte       = zero
+      cte (1)   = prop_temp(8)
+      cte (2)   = prop_temp(8)
+      cte (3)   = prop_temp(8)
+    ELSE
+      ! Fallback to .mat if .vmat not found
+      e         = prop(6,etype_pp(iel))
+      v         = prop(7,etype_pp(iel))
+      cte       = zero
+      cte (1)   = prop(8,etype_pp(iel))
+      cte (2)   = prop(8,etype_pp(iel))
+      cte (3)   = prop(8,etype_pp(iel))
+    END IF
     
     dee = zero
     CALL deemat(dee,e,v)
