@@ -536,6 +536,7 @@ PROGRAM xx12
 ! 9. Build the diagonal preconditioner
 !------------------------------------------------------------------------------
         
+!NEED THIS UP AND RUNNING AGAIN TO REDUCE LOOPS
 !      IF(j_glob==1 .OR. (j_glob>1 .AND. vmat_check))THEN
         
         ALLOCATE(diag_precon_tmp(ntot,nels_pp))
@@ -760,44 +761,29 @@ PROGRAM xx12
       
       loads_pp  = zero
       
-!      PRINT *,"Marker0, numpe = ",numpe
       IF(loaded_freedoms_pp > 0) THEN
-!        PRINT *,"Marker1, numpe = ",numpe
         DO i = 1, loaded_freedoms_pp
           IF(prog==12)THEN
-!            PRINT *,"no_pp(i) = ",no_pp(i)
-!            PRINT *,"ieq_start = ",ieq_start
-!            PRINT *,"no_pp(i)-ieq_start+1 = ",no_pp(i)-ieq_start+1
             IF(amp(j_glob)<=0.000001)THEN
-!              PRINT *,"Marker2, numpe = ",numpe
               !Set loads to near zero value if amplitude is zero
               !This avoids division by zero
-!              loads_pp(no_pp(i)-ieq_start+1) = val(loaded_freedoms_start+i-1,1)&
-!                                               *dtim*(1.0E-34)
-              loads_pp(no_pp(i)-ieq_start+1) = (1.0E-34)!15)
+              loads_pp(no_pp(i)-ieq_start+1) = (1.0E-34)
             !!! ELSE IF logical condition has been tested but may need further verification
             !ELSE IF (ANY(no_loads_Tvar==no_pp(i)-ieq_start+1)) THEN
             ELSE IF (ANY(no_loads_Tvar==no_pp(i))) THEN
-!              PRINT *,"Marker3, numpe = ",numpe
-              !Interpolate to apply temperature dependent loads 
-              !IF(numpe==1) PRINT *,"This node matches the list"
+              !Interpolate to apply temperature dependent loads
+              !First find nodal temperature
               IF(j_glob==1) THEN
                 x_nd = val0
               ELSE IF(j_glob>1) THEN
                 x_nd = disp_pp(no_pp(i)-ieq_start+1)
               END IF
-              !IF(numpe==1) PRINT *,"Nodal temp = ",x_nd
-!              PRINT *,"Nodal temp = ",x_nd
               IF(nlds_Tvar>1) THEN
                 ! Set load to lowest or highest value if nodal T is outside range
                 IF (x_nd <= loads_Tvar(1,1)) THEN
                   loads_pp(no_pp(i)-ieq_start+1) = loads_Tvar(1,2)*dtim
-!                  IF(numpe==1) PRINT *,"no_pp(i)-ieq_start+1 = ", no_pp(i)-ieq_start+1
-!                  IF(numpe==1) PRINT *,"x_nd = ",x_nd," <= T, loads_pp = ",loads_pp(no_pp(i)-ieq_start+1)
                 ELSE IF (x_nd > loads_Tvar(nlds_Tvar,1)) THEN
                   loads_pp(no_pp(i)-ieq_start+1) = loads_Tvar(nlds_Tvar,2)*dtim
-!                  IF(numpe==1) PRINT *,"no_pp(i)-ieq_start+1 = ", no_pp(i)-ieq_start+1
-!                  IF(numpe==1) PRINT *,"x_nd = ",x_nd," > T, loads_pp = ",loads_pp(no_pp(i)-ieq_start+1)
                 ELSE
                   ! Loop through saved T values to find window where x_nd lies
                   DO j=1,nlds_Tvar-1
@@ -810,10 +796,6 @@ PROGRAM xx12
                       y2 = loads_Tvar(j+1,2)
                       ! Perform linear interpolation for new load
                       loads_pp(no_pp(i)-ieq_start+1) = ((y1*(T2-x_nd) + y2*(x_nd-T1)) / (T2-T1))*dtim
-!                      IF(numpe==1) PRINT *,"no_pp(i)-ieq_start+1 = ", no_pp(i)-ieq_start+1
-!                      IF(numpe==1) PRINT *,"T1,T2,y1,y2 = ",T1,T2,y1,y2
-!                      IF(numpe==1) PRINT *,"x_nd,loads_pp(j) = ",x_nd,loads_pp(no_pp(i)-ieq_start+1)
-!                      PRINT *,"x_nd,loads_pp(j) = ",x_nd,loads_pp(no_pp(i)-ieq_start+1)
                     END IF
                     ! Exit so that it doesn't keep looping through rest of T values
                     IF(x_nd>T1 .AND. x_nd<=T2)EXIT
@@ -826,18 +808,10 @@ PROGRAM xx12
               IF(loads_pp(no_pp(i)-ieq_start+1)==0.0)THEN
                 loads_pp(no_pp(i)-ieq_start+1) = (1.0E-34)
               END IF
-              !IF(numpe==it)THEN
-              !  !---Write file-lds outputs-specified node
-              !  WRITE(29,'(E12.4,8E19.8)')real_time,loads_pp(no_pp(i)-ieq_start+1)
-              !END IF
             ELSE
-!              PRINT *,"Marker4, numpe = ",numpe
               ! Set transient loads by combining .lds and .amp file
               loads_pp(no_pp(i)-ieq_start+1) = val(loaded_freedoms_start+i-1,1)&
                                                *dtim*amp(j_glob)
-!              IF(numpe==1) PRINT *,"no_pp(i)-ieq_start+1 = ", no_pp(i)-ieq_start+1
-              !IF(numpe==1) PRINT *,"loaded_freedoms_start+i-1 = ",loaded_freedoms_start+i-1
-!              IF(numpe==1) PRINT *,"loads_pp(j) = ",loads_pp(no_pp(i)-ieq_start+1)
             END IF
           END IF
           IF(prog==11)THEN
@@ -846,7 +820,6 @@ PROGRAM xx12
         END DO
         IF(numpe==it .AND. ANY(no_loads_Tvar==el_print))THEN
           !---Write file-lds outputs-specified node
-!          PRINT *,"j_glob = ",j_glob
           IF(j_glob==1)WRITE(29,'(E12.4,8E19.8)')t0,loads_pp(is)
           IF(j_glob>1)WRITE(29,'(E12.4,8E19.8)')real_time-dtim,loads_pp(is)
         END IF  
