@@ -29,16 +29,17 @@ PROGRAM xx12_te
 
  ! neq,ntot are now global variables - not declared
 
-  INTEGER,PARAMETER     :: nodof=3,ndim=3,nst=6,nprops=8
+  INTEGER,PARAMETER     :: nodof=3,ndim=3,nst=6!,nprops=8
   INTEGER               :: loaded_nodes,fixed_freedoms,iel,i,j,k,l,idx1,idx2
   INTEGER               :: iters,limit,nn,nr,nip,nod,nels,ndof,npes_pp
   INTEGER               :: node_end,node_start,nodes_pp,int_in
-  INTEGER               :: argc,iargc,meshgen,partitioner,np_types
+  INTEGER               :: argc,iargc,meshgen,partitioner,np_types,nprops
   INTEGER               :: fixed_freedoms_pp,fixed_freedoms_start
   INTEGER               :: nodecount_pp(1) ! count of local nodes
   INTEGER               :: nodecount    ! global count of nodes
   INTEGER               :: prog
-  REAL(iwp)             :: e,v,det,tol,up,alpha,beta,tload
+  REAL(iwp)             :: e,v,det,tol,up,alpha,beta,tload,x_el
+  REAL(iwp)             :: T1,T2,y1,y2
 !  REAL(iwp)             :: test
   REAL(iwp)             :: mises        ! threshold for mises stress
   REAL(iwp),PARAMETER   :: zero    = 0.0_iwp
@@ -49,6 +50,8 @@ PROGRAM xx12_te
   CHARACTER(LEN=50)     :: fname,inst_in,job_name,label,instance_id,stepnum,val0_str
   CHARACTER(LEN=80)     :: cbuffer
   LOGICAL               :: converged = .false.
+  LOGICAL               :: vmat_exists = .false.
+  LOGICAL               :: vmat_check  = .false.
 
   !New variables
   !Temporal variable
@@ -73,8 +76,10 @@ PROGRAM xx12_te
   REAL(iwp),ALLOCATABLE :: principal_integral_pp(:,:),princinodes_pp(:)
   REAL(iwp),ALLOCATABLE :: principal(:),reacnodes_pp(:)  
   REAL(iwp),ALLOCATABLE :: ndscal_pp(:,:),tempres(:)
+  REAL(iwp),ALLOCATABLE :: varprop(:,:,:),varpropT(:,:,:),prop_temp(:)
   INTEGER,  ALLOCATABLE :: rest(:,:),g_num_pp(:,:),g_g_pp(:,:),node(:)
   INTEGER,  ALLOCATABLE :: no(:),no_pp(:),no_pp_temp(:),sense(:),etype_pp(:)
+  INTEGER,ALLOCATABLE   :: ntemp(:,:)
     
   !Temperature variables
     
@@ -178,7 +183,10 @@ PROGRAM xx12_te
   ALLOCATE(g_coord_pp(nod,ndim,nels_pp)) 
   ALLOCATE(rest(nr,nodof+1)) 
   ALLOCATE(etype_pp(nels_pp))
-  ALLOCATE(prop(nprops,np_types))
+  IF(prog==11)THEN
+    nprops=8
+    ALLOCATE(prop(nprops,np_types))
+  END IF
   
   !Force Vector
   ALLOCATE(num(nod))
@@ -193,7 +201,7 @@ PROGRAM xx12_te
   rest       = 0
   etype_pp   = 0
   g_coord_pp = zero
-  prop       = zero
+  IF(prog==11)prop       = zero
   
   timest(2) = elap_time()
   
@@ -233,8 +241,51 @@ PROGRAM xx12_te
   IF(numpe==1) PRINT *, "READ_REST COMPLETED"
   
   IF(prog==11) fname = inst_in(1:LEN_TRIM(inst_in)) // ".mat" ! Move to subroutine
-  IF(prog==12) fname = job_name(1:INDEX(job_name, " ")-1) // ".mat"
-  CALL read_materialValue(prop,fname,numpe,npes)
+!  IF(prog==12) fname = job_name(1:INDEX(job_name, " ")-1) // ".mat"
+!  CALL read_materialValue(prop,fname,numpe,npes)
+  
+  IF(prog==12)THEN
+    fname = job_name(1:INDEX(job_name, " ")-1) // ".vmat"
+    INQUIRE(FILE=fname, EXIST=vmat_exists)
+    IF(vmat_exists)THEN
+      IF(numpe==1)PRINT *,".vmat file exists"
+      CALL read_nmats_nvals(np_types,nprops,fname,numpe,npes)
+      ALLOCATE(prop(nprops,np_types))
+      ALLOCATE(ntemp(np_types,nprops))
+      prop           = zero
+      CALL read_ntemp(fname,numpe,npes,ntemp)
+      ALLOCATE(varprop(nprops,np_types,MAXVAL(ntemp)))
+      ALLOCATE(varpropT(nprops,np_types,MAXVAL(ntemp)))
+      varprop=zero
+      varpropT=zero
+      CALL read_varmaterialValue(fname,numpe,npes,varprop,varpropT)
+      IF(MAXVAL(ntemp)>1)vmat_check=.true.
+      IF(MAXVAL(ntemp)>1)THEN
+        IF(numpe==1) PRINT *,".vmat includes temperature dependent material properties"
+        IF(numpe==1) PRINT *,"MAXVAL(ntemp) = ",MAXVAL(ntemp)
+        IF(numpe==1) PRINT *,"varprop(1,1,1) = ",varprop(1,1,1)," at T = ",varpropT(1,1,1)
+        !ALLOCATE(varprop(nprops,np_types,MAXVAL(ntemp)))
+        !varprop = zero
+      ELSE
+        IF(numpe==1) PRINT *,".vmat doesn't include temperature dependent material properties"
+        DO i = 1,np_types
+          DO j = 1, nprops
+            prop(j,i) = varprop(j,i,1)
+          END DO
+        END DO
+      END IF
+    ELSE
+      !  Lines required for reading old material property file if new isn't found
+      IF(numpe==1)PRINT *,".vmat not found, reverting to .mat"
+      fname = job_name(1:INDEX(job_name, " ")-1) // ".mat"
+      CALL read_nmats_nvals(np_types,nprops,fname,numpe,npes)
+      ALLOCATE(prop(nprops,np_types))
+      prop           = zero
+      IF(numpe==1) PRINT *,"nprops = ",nprops
+      IF(numpe==1) PRINT *,"np_types = ",np_types
+      CALL read_materialValue(prop,fname,numpe,npes)
+    END IF
+  END IF
   
 !------------------------------------------------------------------------------
 ! Nodal temperatures
@@ -282,6 +333,7 @@ PROGRAM xx12_te
   IF(prog==12)THEN
     ALLOCATE(ndscal_pp(nod,nels_pp))
     ndscal_pp = zero
+    ! Read NDTTR file
     CALL read_ensi_scalar_pn(job_name,g_num_pp,nn,npes,numpe,stepnum,ndscal_pp)
   
 !    PRINT *, "ndscal_pp = "
@@ -299,7 +351,10 @@ PROGRAM xx12_te
            storkm_pp(ntot,ntot,nels_pp),eld(ntot),eps(nst),sigma(nst),        &
            pmul_pp(ntot,nels_pp),utemp_pp(ntot,nels_pp),                      &
            weights(nip),g_g_pp(ntot,nels_pp),fun(nod))
-
+  !matprops#1-#5 used for transient thermal analysis
+  !matprops#6-#8 used here i.e. 1-5 are unused
+  ALLOCATE(prop_temp(8))
+  
 !------------------------------------------------------------------------------
 ! 5. Loop the elements to find the steering array and the number of equations
 !    to solve.
@@ -401,17 +456,56 @@ PROGRAM xx12_te
 !  IF(numpe==1) PRINT *, "Reached elements_3 loop"
   elements_3: DO iel=1,nels_pp
     
-    cte (1)   = prop(8,etype_pp(iel))
-    cte (2)   = prop(8,etype_pp(iel))
-    cte (3)   = prop(8,etype_pp(iel))
+    IF(vmat_check .AND. prog==12)THEN
+      ! Calculate average element T
+      x_el = sum(ndscal_pp(:,iel))/nod
+      prop_temp = zero
+      DO i=6,8 !each property
+        IF(ntemp(etype_pp(iel),i)>1) THEN
+          ! Set property to lowest or highest value if element T is outside range
+          IF (x_el <= varpropT(i,etype_pp(iel),1)) THEN
+            prop_temp(i) = varprop(i,etype_pp(iel),1)
+          ELSE IF (x_el > varpropT(i,etype_pp(iel),ntemp(etype_pp(iel),i))) THEN
+            prop_temp(i) = varprop(i,etype_pp(iel),ntemp(etype_pp(iel),i))
+          ELSE
+            ! Loop through saved T values to find window where x_el lies
+            DO j=1,ntemp(etype_pp(iel),i)-1
+              ! Set temperatures at top and bottom of window
+              T1 = varpropT(i,etype_pp(iel),j)
+              T2 = varpropT(i,etype_pp(iel),j+1)
+              IF(x_el>T1 .AND. x_el<=T2)THEN
+                ! If x_el is in this window set properties at top and bottom of window
+                y1 = varprop(i,etype_pp(iel),j)
+                y2 = varprop(i,etype_pp(iel),j+1)
+                ! Perform linear interpolation for new material property
+                prop_temp(i) = (y1*(T2-x_el) + y2*(x_el-T1)) / (T2-T1)
+              END IF
+              ! Exit so that it doesn't keep looping through rest of T values
+              IF(x_el>T1 .AND. x_el<=T2)EXIT
+            END DO
+          END IF
+        ELSE
+          ! In the case of only one temperature value for a property avoid looping
+          prop_temp(i) = varprop(i,etype_pp(iel),1)
+        END IF
+      END DO
+      e         = prop_temp(6)
+      v         = prop_temp(7)
+      cte       = zero
+      cte (1)   = prop_temp(8)
+      cte (2)   = prop_temp(8)
+      cte (3)   = prop_temp(8)
+    ELSE
+      ! Fallback to .mat if .vmat not found
+      e         = prop(6,etype_pp(iel))
+      v         = prop(7,etype_pp(iel))
+      cte       = zero
+      cte (1)   = prop(8,etype_pp(iel))
+      cte (2)   = prop(8,etype_pp(iel))
+      cte (3)   = prop(8,etype_pp(iel))
+    END IF
+    
     dee = zero
-    
-!Relationship between CTE and Young's modulus
-    !e = constant/prop(1,etype_pp(iel))
-    e = prop(6,etype_pp(iel))
-    v = prop(7,etype_pp(iel))
-    !e = 10000
-    
     CALL deemat(dee,e,v)
     
     !Extraction of nodal temperature changes for each element
