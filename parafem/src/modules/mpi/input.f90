@@ -2955,7 +2955,7 @@ MODULE INPUT
     REAL(iwp),INTENT(INOUT)       :: varprop(:,:,:),varpropT(:,:,:)
     REAL(iwp)                     :: T,temp
     CHARACTER(LEN=50), INTENT(in) :: fname
-    CHARACTER(LEN=10)             :: keyword, mat_type
+    CHARACTER(LEN=10)             :: keyword, mat_type, prop_type
     LOGICAL                       :: verbose = .true.
 !   LOGICAL                       :: verbose = .false.
     REAL(iwp),PARAMETER           :: zero = 0.0_iwp
@@ -2966,9 +2966,9 @@ MODULE INPUT
       !per material line (2)
       READ(21,*) keyword, nmats, nvals
       DO i = 1,nmats
-        READ(21,*)itemp                  ! (matID)
+        READ(21,*)itemp, mat_type                  ! (matID)
         DO j = 1,nvals
-          READ(21,*) ntemp, mat_type
+          READ(21,*) ntemp, prop_type
           DO k = 1,ntemp
               READ(21,*)varpropT(j,i,k), varprop(j,i,k)
           END DO
