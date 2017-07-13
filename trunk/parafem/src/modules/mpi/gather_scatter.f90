@@ -1703,7 +1703,9 @@ MODULE GATHER_SCATTER
       pesput(ii) = pe_number
       putpes(pe_number) = ii
       CALL MPI_RECV (toput_temp(1,ii),lenput(pe_number),MPI_INTEGER,        &
-           MPI_ANY_SOURCE,MPI_ANY_TAG,MPI_COMM_WORLD,vstatus(1,numpesput),ier)
+!          MPI_ANY_SOURCE,MPI_ANY_TAG,MPI_COMM_WORLD,vstatus(1,numpesput),ier)
+           vstatus(MPI_SOURCE,numpesput),pe_number,MPI_COMM_WORLD,          &
+           vstatus(1,numpesput),ier)
       IF (ier .NE. MPI_SUCCESS) THEN
          CALL MPERROR('Error in (A5) receive',ier)
       END IF
