@@ -1178,7 +1178,9 @@ PROGRAM xx12
   IF(numpe==1)THEN
     CLOSE(11)
     CLOSE(24)
-    IF(loaded_freedoms_pp > 0 .AND. ANY(no_loads_Tvar==el_print)) CLOSE(29)
+    IF(loaded_freedoms_pp > 0)THEN
+      IF(ANY(no_loads_Tvar==el_print)) CLOSE(29)
+    END IF
   END IF
   
   IF(numpe==1) PRINT *, "Timest ", timest
