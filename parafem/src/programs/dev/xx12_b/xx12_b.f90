@@ -810,12 +810,12 @@ PROGRAM xx12
               END IF
             ELSE
               ! Set transient loads by combining .lds and .amp file
-              loads_pp(no_pp(i)-ieq_start+1) = val(loaded_freedoms_start+i-1,1)&
+              loads_pp(no_pp(i)-ieq_start+1) = val(1,loaded_freedoms_start+i-1)&
                                                *dtim*amp(j_glob)
             END IF
           END IF
           IF(prog==11)THEN
-              loads_pp(no_pp(i)-ieq_start+1) = val(loaded_freedoms_start+i-1,1)
+              loads_pp(no_pp(i)-ieq_start+1) = val(1,loaded_freedoms_start+i-1)
           END IF
         END DO
         IF(numpe==it .AND. ANY(no_loads_Tvar==el_print))THEN
