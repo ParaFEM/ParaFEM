@@ -477,10 +477,10 @@ call cgca_pfem_ctdalloc
 
 ! Img 1 dumps space arrays to files.
 ! Remote comms, no sync inside, so most likely want to sync afterwards
-if ( cgca_img .eq. 1 ) write (*,*) "dumping model to files"
-call cgca_pswci3( cgca_space, cgca_state_type_grain, "zg0.ncdf" )
-call cgca_pswci3( cgca_space, cgca_state_type_frac,  "zf0.ncdf" )
-if ( cgca_img .eq. 1 ) write (*,*) "finished dumping model to files"
+!if ( cgca_img .eq. 1 ) write (*,*) "dumping model to files"
+!call cgca_pswci3( cgca_space, cgca_state_type_grain, "zg0.ncdf" )
+!call cgca_pswci3( cgca_space, cgca_state_type_frac,  "zf0.ncdf" )
+!if ( cgca_img .eq. 1 ) write (*,*) "finished dumping model to files"
 
 ! Allocate the stress array component of cgca_pfem_stress coarray
 ! subroutine cgca_pfem_salloc( nels_pp, intp, comp )
@@ -709,11 +709,11 @@ call cgca_clvgp( cgca_space, cgca_grt, cgca_stress,                    &
      cgca_clvg_iter, 10, cgca_yesdebug )
 
 ! dump the model out, no sync inside
-if ( cgca_img .eq. 1 ) write (*,*) "dumping model to file"
-write ( cgca_citer, "(i0)" ) cgca_liter
-call cgca_pswci3( cgca_space, cgca_state_type_frac,                   &
-                 "zf"//trim( cgca_citer )//".ncdf" )
-if ( cgca_img .eq. 1 ) write (*,*) "finished dumping model to file"
+!if ( cgca_img .eq. 1 ) write (*,*) "dumping model to file"
+!write ( cgca_citer, "(i0)" ) cgca_liter
+!call cgca_pswci3( cgca_space, cgca_state_type_frac,                   &
+!                 "zf"//trim( cgca_citer )//".raw" )
+!if ( cgca_img .eq. 1 ) write (*,*) "finished dumping model to file"
 
 sync all
      
