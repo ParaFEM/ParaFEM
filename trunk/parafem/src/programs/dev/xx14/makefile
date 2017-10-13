@@ -35,7 +35,7 @@ CGPACK=	$(HOME)/lib/libcgpack.a
 
 SRC:=	xx14std.f90 xx14rot_std.f90 mumu_std.f90
 ifeq ($(FC),ftn)
-  SRC:=	$(SRC) xx14.f90 xx14noio.f90 xx14rot.f90 xx14rot_noio.f90
+  SRC:=	$(SRC) xx14.f90 xx14noio.f90 xx14rot.f90 xx14rot_noio.f90 mumu_netcdf.f90
 endif
 
 OBJ=	$(SRC:.f90=.o)
