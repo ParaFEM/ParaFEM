@@ -16,6 +16,10 @@ PROGRAM xx21
  REAL(iwp),PARAMETER::zero=0.0_iwp
  REAL(iwp)::e,v,det,tol,up,alpha,beta,q; LOGICAL::converged=.false.
  CHARACTER(LEN=50)::argv; CHARACTER(LEN=15)::element; CHARACTER(LEN=6)::ch 
+
+!LOGICAL::tet10=.false.
+ LOGICAL::tet10=.true.
+
 !---------------------------- dynamic arrays -----------------------------
  REAL(iwp),ALLOCATABLE::points(:,:),dee(:,:),weights(:),val(:,:),        &
    disp_pp(:),g_coord_pp(:,:,:),jac(:,:),der(:,:),deriv(:,:),bee(:,:),   &
@@ -23,7 +27,11 @@ PROGRAM xx21
    x_pp(:),xnew_pp(:),u_pp(:),pmul_pp(:,:),utemp_pp(:,:),d_pp(:),        &
    timest(:),diag_precon_tmp(:,:),eld_pp(:,:),temp(:)
  INTEGER,ALLOCATABLE::rest(:,:),g_num_pp(:,:),g_g_pp(:,:),node(:)
+
 !------------------------ input and initialisation -----------------------
+
+! This needs to read a set of files for a mesh of 10 node tetrahedra
+
  ALLOCATE(timest(20)); timest=zero; timest(1)=elap_time()
  CALL find_pe_procs(numpe,npes); CALL getname(argv,nlen) 
  CALL read_p121(argv,numpe,e,element,limit,loaded_nodes,meshgen,nels,    &
@@ -40,6 +48,12 @@ PROGRAM xx21
    deriv(ndim,nod),bee(nst,ntot),weights(nip),eps(nst),sigma(nst),       &
    storkm_pp(ntot,ntot,nels_pp),pmul_pp(ntot,nels_pp),                   &
    utemp_pp(ntot,nels_pp),g_g_pp(ntot,nels_pp))
+
+ IF(numpe==1) THEN
+   PRINT *, "Number of nodes = ", nod, " on core", numpe
+   PRINT *, "Element type    = ", element, "on core", numpe
+ END IF
+
 !----------  find the steering array and equations per process -----------
  CALL rearrange(rest); g_g_pp=0; neq=0
  elements_0: DO iel=1,nels_pp
@@ -50,18 +64,38 @@ PROGRAM xx21
  ALLOCATE(p_pp(neq_pp),r_pp(neq_pp),x_pp(neq_pp),xnew_pp(neq_pp),        &
    u_pp(neq_pp),d_pp(neq_pp),diag_precon_pp(neq_pp)); diag_precon_pp=zero
  p_pp=zero;  r_pp=zero;  x_pp=zero; xnew_pp=zero; u_pp=zero; d_pp=zero
+
 !------ element stiffness integration and build the preconditioner -------
+
+! This block of code is dependent on the element type
+
  dee=zero; CALL deemat(dee,e,v); CALL sample(element,points,weights)
  storkm_pp=zero
+
  elements_1: DO iel=1,nels_pp
    gauss_pts_1: DO i=1,nip
-     CALL shape_der(der,points,i); jac=MATMUL(der,g_coord_pp(:,:,iel))
-     det=determinant(jac); CALL invert(jac); deriv=MATMUL(jac,der)
+     CALL shape_der(der,points,i)
+     jac=MATMUL(der,g_coord_pp(:,:,iel))
+     det=determinant(jac)
+     CALL invert(jac)
+     deriv=MATMUL(jac,der)
      CALL beemat(bee,deriv)
      storkm_pp(:,:,iel)=storkm_pp(:,:,iel) +                             &
                     MATMUL(MATMUL(TRANSPOSE(bee),dee),bee)*det*weights(i)   
    END DO gauss_pts_1
  END DO elements_1
+
+! During testing for 10 node tetrahedra, the code will stop here
+
+ IF(tet10) THEN
+   PRINT *, "Testing 10 node tetrahedron implementation"
+   PRINT *, "Shutdown called after element stiffness integrataion"
+   CALL SHUTDOWN()
+   STOP
+ END IF
+
+! End of block of code dependent on the element type
+
  ALLOCATE(diag_precon_tmp(ntot,nels_pp)); diag_precon_tmp=zero
  elements_2: DO iel=1,nels_pp ; DO i=1,ndof
    diag_precon_tmp(i,iel) = diag_precon_tmp(i,iel)+storkm_pp(i,i,iel)
