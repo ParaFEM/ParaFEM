@@ -15,6 +15,9 @@ PROGRAM xx16
 ! 1. Modules not USE'd in the 5th edition of the book
 !-------------------------------------------------------------------------
 
+! Instructions for running mixed MPI + OpenMP jobs on ARCHER can be found
+! at www.archer.ac.uk/documentation/knl-guide/#environment
+
  USE omp_lib
  USE, INTRINSIC :: ISO_C_BINDING ! to output to C binary file
 
@@ -26,7 +29,7 @@ PROGRAM xx16
 
 ! neq,ntot are now global variables - must not be declared
 
- INTEGER,PARAMETER::testcase=4
+ INTEGER,PARAMETER::testcase=7
  INTEGER,PARAMETER::nodof=3,ndim=3,nst=6
  INTEGER::loaded_nodes,iel,i,j,k,iters,limit,nn,nr,nip,nod,nels,ndof,    &
    npes_pp,node_end,node_start,nodes_pp,meshgen,partitioner,nlen,        &
@@ -59,6 +62,17 @@ PROGRAM xx16
    eld_pp(:,:),temp(:),utemp(:),pad1(:),pad2(:),km(:,:)
  REAL(iwp),ALLOCATABLE :: vstorkm_pp(:,:)
  INTEGER,ALLOCATABLE   :: rest(:,:),g_num_pp(:,:),g_g_pp(:,:),node(:)
+
+!-------------------------------------------------------------------------
+! Switch for test cases
+!-------------------------------------------------------------------------
+
+ IF(testcase==1) sym_storkm=.false.  ! MATMUL
+ IF(testcase==2) sym_storkm=.false.  ! DGEMV
+ IF(testcase==3) sym_storkm=.false.  ! DGEMV + OMP
+ IF(testcase==4) sym_storkm=.true.   ! DSPMV + OMP
+ IF(testcase==6) sym_storkm=.false.  ! DGEMM 
+ IF(testcase==7) sym_storkm=.false.  ! DSYMMV 
 
 !-------------------------------------------------------------------------
 ! 4. Read job name from the command line.
@@ -308,7 +322,7 @@ PROGRAM xx16
      !$OMP PARALLEL
      !$OMP DO PRIVATE(iel)     
      DO iel=1,nels_pp
-       CALL dspmv('L',ntot,1.0,vstorkm_pp(:,iel),pmul_pp(:,iel),1,0.0, &
+       CALL dspmv('U',ntot,1.0,vstorkm_pp(:,iel),pmul_pp(:,iel),1,0.0, &
                    utemp_pp(:,iel),1)    
      END DO
      !$OMP END DO
@@ -567,11 +581,11 @@ CONTAINS
 
    IMPLICIT none
 
-   INTEGER,INTENT(IN) :: fnum,neq,nn,npes,nr,numpe,section,testcase
-   REAL,INTENT(IN)    :: timest(:)
-   CHARACTER(LEN=8)   :: nthreads
-   CHARACTER(LEN=60)  :: date
-   CHARACTER(LEN=60)  :: hostname
+   INTEGER,INTENT(IN)   :: fnum,neq,nn,npes,nr,numpe,section,testcase
+   REAL(iwp),INTENT(IN) :: timest(:)
+   CHARACTER(LEN=8)     :: nthreads
+   CHARACTER(LEN=60)    :: date
+   CHARACTER(LEN=60)    :: hostname
 
 !--------------------------------------------------------------------------
 ! 1. Retrieve information about the environment
