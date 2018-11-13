@@ -1,0 +1,11 @@
+#!/bin/bash
+#$-cwd
+#$-V
+##$-pe orte-24-ib.pe 48
+
+## Run on single node and use 8 cores only
+
+#$-pe smp.pe 8
+
+mpirun -n $NSLOTS /mnt/iusers01/support/zzalslm3/parafem/parafem/bin/p121 p121_demo
+
