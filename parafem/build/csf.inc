@@ -36,10 +36,10 @@ EXT_LIB_GAF77_LDFLAGS=
 # Form is LIB_(MPI|SERIAL|OPENMP|GPU)_(REL|DBG)_(FFLAGS|LDFLAGS)
 # These flags are directly used by the module makefiles
 # ------------------------------------------------------------------------------
-LIB_MPI_REL_FFLAGS=-O2
+LIB_MPI_REL_FFLAGS=-O2 -I${MKLROOT}/include/intel64/lp64 -I${MKLROOT}/include
 LIB_MPI_DBG_FFLAGS=-V -g
   
-LIB_SERIAL_REL_FFLAGS=-O2
+LIB_SERIAL_REL_FFLAGS=-O2 -I${MKLROOT}/include/intel64/lp64 -I${MKLROOT}/include
 LIB_SERIAL_DBG_FFLAGS=-V -g
   
 LIB_BEM_REL_FFLAGS=-O2
@@ -58,15 +58,15 @@ LIB_BEM_P_DBG_FFLAGS=-V -g
 # ------------------------------------------------------------------------------
 
 # generic P12 group FFLAGS and LDFLAGS
-DEFAULT_P12_MPI_REL_FFLAGS=-O2
+DEFAULT_P12_MPI_REL_FFLAGS=-O2 -I${MKLROOT}/include/intel64/lp64 -I${MKLROOT}/include
 DEFAULT_P12_MPI_DBG_FFLAGS=-V -g
-DEFAULT_P12_MPI_REL_LDFLAGS=
+DEFAULT_P12_MPI_REL_LDFLAGS=${MKLROOT}/lib/intel64/libmkl_blas95_lp64.a -Wl,--start-group ${MKLROOT}/lib/intel64/libmkl_intel_lp64.a ${MKLROOT}/lib/intel64/libmkl_sequential.a ${MKLROOT}/lib/intel64/libmkl_core.a -Wl,--end-group -lpthread -lm -ldl
 DEFAULT_P12_MPI_DBG_LDFLAGS=
 
 # generic XX group FFLAGS and LDFLAGS
-DEFAULT_XX_MPI_REL_FFLAGS=-O2
+DEFAULT_XX_MPI_REL_FFLAGS=-O2 -I${MKLROOT}/include/intel64/lp64 -I${MKLROOT}/include
 DEFAULT_XX_MPI_DBG_FFLAGS=-V -g
-DEFAULT_XX_MPI_REL_LDFLAGS=
+DEFAULT_XX_MPI_REL_LDFLAGS=${MKLROOT}/lib/intel64/libmkl_blas95_lp64.a -Wl,--start-group ${MKLROOT}/lib/intel64/libmkl_intel_lp64.a ${MKLROOT}/lib/intel64/libmkl_sequential.a ${MKLROOT}/lib/intel64/libmkl_core.a -Wl,--end-group -lpthread -lm -ldl 
 DEFAULT_XX_MPI_DBG_LDFLAGS=
 
 # generic PROG8 group FFLAGS and LDFLAGS
@@ -252,6 +252,21 @@ XX15_MPI_REL_FFLAGS=$(DEFAULT_XX_MPI_REL_FFLAGS)
 XX15_MPI_REL_LDFLAGS=$(DEFAULT_XX_MPI_REL_LDFLAGS)
 XX15_MPI_DBG_FFLAGS=-g
 XX15_MPI_DBG_LDFLAGS=$(DEFAULT_XX_MPI_DBG_LDFLAGS)
+
+XX16_MPI_REL_FFLAGS=$(DEFAULT_XX_MPI_REL_FFLAGS)
+XX16_MPI_REL_LDFLAGS=$(DEFAULT_XX_MPI_REL_LDFLAGS)
+XX16_MPI_DBG_FFLAGS=-g
+XX16_MPI_DBG_LDFLAGS=$(DEFAULT_XX_MPI_DBG_LDFLAGS)
+
+XX19_MPI_REL_FFLAGS=$(DEFAULT_XX_MPI_REL_FFLAGS)
+XX19_MPI_REL_LDFLAGS=$(DEFAULT_XX_MPI_REL_LDFLAGS)
+XX19_MPI_DBG_FFLAGS=-g
+XX19_MPI_DBG_LDFLAGS=$(DEFAULT_XX_MPI_DBG_LDFLAGS)
+
+XX21_MPI_REL_FFLAGS=$(DEFAULT_XX_MPI_REL_FFLAGS)
+XX21_MPI_REL_LDFLAGS=$(DEFAULT_XX_MPI_REL_LDFLAGS)
+XX21_MPI_DBG_FFLAGS=-g
+XX21_MPI_DBG_LDFLAGS=$(DEFAULT_XX_MPI_DBG_LDFLAGS)
 
 # ------------------------------------------------------------------------------
 # TOOL FLAGS for selected tools.
