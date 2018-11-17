@@ -1,11 +1,25 @@
 #!/bin/bash
-#$-cwd
-#$-V
-##$-pe orte-24-ib.pe 48
+#$ -S /bin/bash
+#$ -cwd
+#$ -V
+#$ -j y
+#$ -N ParaFEM                        # set job name
+#$ -M lee.margetts@manchester.ac.uk  # set email address
+#$ -m bea                            # email when job begins, ends & aborts
 
-## Run on single node and use 8 cores only
+## CSF queues - uncomment to switch between single and multiple nodes
 
-#$-pe smp.pe 8
+## 1. Run on infiniband nodes (up to 120 cores)
 
-mpirun -n $NSLOTS /mnt/iusers01/support/zzalslm3/parafem/parafem/bin/p121 p121_demo
+##$ -pe orte-24-ib.pe 48
+## module load compilers/intel/fortran/15.0.3-full-ib
+## module load mpi/intel-15.0/openmpi/1.8.3
+
+## 2. Run on single node (up to 24 cores)
+
+#$ -pe smp.pe 8
+module load compilers/intel/fortran/15.0.3-full
+module load mpi/intel-15.0/openmpi/1.8.3
+
+mpirun -n $NSLOTS /mnt/iusers01/support/zzalslm3/parafem/parafem/bin/xx16 p121_demo
 
