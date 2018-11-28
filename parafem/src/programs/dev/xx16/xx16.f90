@@ -29,7 +29,7 @@ PROGRAM xx16
 
 ! neq,ntot are now global variables - must not be declared
 
- INTEGER,PARAMETER::testcase=7
+ INTEGER,PARAMETER::testcase=6
  INTEGER,PARAMETER::nodof=3,ndim=3,nst=6
  INTEGER::loaded_nodes,iel,i,j,k,iters,limit,nn,nr,nip,nod,nels,ndof,    &
    npes_pp,node_end,node_start,nodes_pp,meshgen,partitioner,nlen,        &
@@ -45,10 +45,15 @@ PROGRAM xx16
  CHARACTER(LEN=15) :: element
  CHARACTER(LEN=6)  :: ch 
  CHARACTER(LEN=80) :: cbuffer
-!LOGICAL           :: io_binary=.false.
- LOGICAL           :: io_binary=.true. 
- LOGICAL           :: sym_storkm=.true.
-!LOGICAL           :: sym_storkm=.false.
+ CHARACTER(LEN=80) :: message
+
+!-------------------------------------------------------------------------
+! Switches for various PCG options
+!-------------------------------------------------------------------------
+
+ LOGICAL           :: io_binary  = .false.
+ LOGICAL           :: sym_storkm = .false.
+ LOGICAL           :: vox_storkm = .false.
 
 !-------------------------------------------------------------------------
 ! 3. Declare dynamic arrays
@@ -60,19 +65,32 @@ PROGRAM xx16
    x_pp(:),xnew_pp(:),u_pp(:),pmul_pp(:,:),utemp_pp(:,:),d_pp(:),        &
    timest(:),timest_min(:),timest_max(:),diag_precon_tmp(:,:),           &
    eld_pp(:,:),temp(:),utemp(:),pad1(:),pad2(:),km(:,:)
- REAL(iwp),ALLOCATABLE :: vstorkm_pp(:,:)
+ REAL(iwp),ALLOCATABLE :: vstorkm_pp(:,:)    ! store km as vector
+ REAL(iwp),ALLOCATABLE :: vox_storkm_pp(:,:) ! minimal storage of km
+ REAL(iwp),ALLOCATABLE :: vtemp(:)           ! temporary array
+ REAL(iwp),ALLOCATABLE :: ptemp(:)           ! temporary array
  INTEGER,ALLOCATABLE   :: rest(:,:),g_num_pp(:,:),g_g_pp(:,:),node(:)
-
+ INTEGER,ALLOCATABLE   :: iv(:,:)            ! index for vox value
 !-------------------------------------------------------------------------
 ! Switch for test cases
 !-------------------------------------------------------------------------
+
+ io_binary = .true.
 
  IF(testcase==1) sym_storkm=.false.  ! MATMUL
  IF(testcase==2) sym_storkm=.false.  ! DGEMV
  IF(testcase==3) sym_storkm=.false.  ! DGEMV + OMP
  IF(testcase==4) sym_storkm=.true.   ! DSPMV + OMP
- IF(testcase==6) sym_storkm=.false.  ! DGEMM 
- IF(testcase==7) sym_storkm=.false.  ! DSYMMV 
+ IF(testcase==5) THEN                ! Minimal storage of KM
+   sym_storkm = .false.   
+   vox_storkm = .true.
+ END IF
+ IF(testcase==6) THEN                ! Minimal storage of KM
+   sym_storkm = .false.   
+   vox_storkm = .true.
+ END IF
+ IF(testcase==7) sym_storkm=.false.  ! DGEMM 
+ IF(testcase==8) sym_storkm=.false.  ! DSYMMV 
 
 !-------------------------------------------------------------------------
 ! 4. Read job name from the command line.
@@ -86,15 +104,61 @@ PROGRAM xx16
  CALL getname(argv,nlen) 
  CALL read_p121(argv,numpe,e,element,limit,loaded_nodes,meshgen,nels,    &
    nip,nn,nod,nr,partitioner,tol,v)
+
+ IF(nod.NE.8) THEN
+   message="Analysis aborted: Only 8 node bricks supported for case 5"
+   CALL SHUTDOWN2(message) 
+ END IF
+
+! IF(nip.NE.1) THEN
+!   message="Analysis aborted: Only 1 integration point supported for case 5"
+!   CALL SHUTDOWN2(message) 
+! END IF
+
  CALL calc_nels_pp(argv,nels,npes,numpe,partitioner,nels_pp)
  ndof=nod*nodof; ntot=ndof
 
- IF(sym_storkm) THEN
+ IF(sym_storkm) THEN                       ! km stored as vector
    j=ntot
    DO i=1,ntot-1
      j=j+ntot-i
    END DO
    ALLOCATE(vstorkm_pp(j,nels_pp),km(ntot,ntot))
+ ELSE IF(vox_storkm) THEN
+   ALLOCATE(km(ntot,ntot))
+   ALLOCATE(iv(ntot,ntot))
+!  IF(nip==1) ALLOCATE(vox_storkm_pp(10,nels_pp)) 
+   ALLOCATE(vox_storkm_pp(10,nels_pp)) 
+   ALLOCATE(vtemp(ntot)) 
+   ALLOCATE(ptemp(ntot)) 
+   km = 0.0_iwp
+   vox_storkm_pp = 0.0_iwp
+   vtemp = zero
+   iv    = 0
+   iv(1,:)  = (/1,2,2,3,2,4,8,9,7,10,9,9,3,4,2,5,4,4,6,7,7,8,7,9/)
+   iv(2,:)  = (/2,1,2,2,3,4,4,5,4,4,3,2,9,10,9,9,8,7,7,6,7,7,8,9/)
+   iv(3,:)  = (/2,2,1,9,9,10,7,9,8,4,2,3,2,4,3,9,7,8,7,7,6,4,4,5/)
+   iv(4,:)  = (/3,2,9,1,2,7,10,9,4,8,9,2,5,4,9,3,4,7,8,7,4,6,7,2/)
+   iv(5,:)  = (/2,3,9,2,1,7,4,3,7,4,5,9,9,8,2,9,10,4,7,8,4,7,6,2/)
+   iv(6,:)  = (/4,4,10,7,7,1,9,7,3,2,4,8,4,2,8,7,9,3,9,9,5,2,2,6/)
+   iv(7,:)  = (/8,4,7,10,4,9,1,7,2,3,7,4,6,2,7,8,2,9,3,9,2,5,9,4/)
+   iv(8,:)  = (/9,5,9,9,3,7,7,1,7,7,3,9,2,6,2,2,8,4,4,10,4,4,8,2/)
+   iv(9,:)  = (/7,4,8,4,7,3,2,7,1,9,4,10,7,2,6,4,9,5,2,9,3,9,2,8/)
+   iv(10,:) = (/10,4,4,8,4,2,3,7,9,1,7,7,8,2,4,6,2,2,5,9,9,3,9,7/)
+   iv(11,:) = (/9,3,2,9,5,4,7,3,4,7,1,2,2,8,9,2,6,7,4,8,7,4,10,9/)
+   iv(12,:) = (/9,2,3,2,9,8,4,9,10,7,2,1,9,4,5,2,7,6,4,7,8,7,4,3/)
+   iv(13,:) = (/3,9,2,5,9,4,6,2,7,8,2,9,1,7,2,3,7,4,8,4,7,10,4,9/)
+   iv(14,:) = (/4,10,4,4,8,2,2,6,2,2,8,4,7,1,7,7,3,9,9,5,9,9,3,7/)
+   iv(15,:) = (/2,9,3,9,2,8,7,2,6,4,9,5,2,7,1,9,4,10,7,4,8,4,7,3/)
+   iv(16,:) = (/5,9,9,3,9,7,8,2,4,6,2,2,3,7,9,1,7,7,10,4,4,8,4,2/)
+   iv(17,:) = (/4,8,7,4,10,9,2,8,9,2,6,7,7,3,4,7,1,2,9,3,2,9,5,4/)
+   iv(18,:) = (/4,7,8,7,4,3,9,4,5,2,7,6,4,9,10,7,2,1,9,2,3,2,9,8/)
+   iv(19,:) = (/6,7,7,8,7,9,3,4,2,5,4,4,8,9,7,10,9,9,1,2,2,3,2,4/)
+   iv(20,:) = (/7,6,7,7,8,9,9,10,9,9,8,7,4,5,4,4,3,2,2,1,2,2,3,4/)
+   iv(21,:) = (/7,7,6,4,4,5,2,4,3,9,7,8,7,9,8,4,2,3,2,2,1,9,9,10/)
+   iv(22,:) = (/8,7,4,6,7,2,5,4,9,3,4,7,10,9,4,8,9,2,3,2,9,1,2,7/)
+   iv(23,:) = (/7,8,4,7,6,2,9,8,2,9,10,4,4,3,7,4,5,9,2,3,9,2,1,7/)
+   iv(24,:) = (/9,9,5,2,2,6,4,2,8,7,9,3,9,7,3,2,4,8,4,4,10,7,7,1/)
  ELSE
    ALLOCATE(storkm_pp(ntot,ntot,nels_pp),km(ntot,ntot))
  END IF
@@ -172,6 +236,30 @@ PROGRAM xx16
        j = k+1
      END DO
    END DO
+ ELSE IF(vox_storkm) THEN
+   vox_storkm_pp       = zero 
+   DO iel=1,nels_pp
+     km = zero
+     DO i=1,nip
+       CALL shape_der(der,points,i); jac=MATMUL(der,g_coord_pp(:,:,iel))
+       det=determinant(jac); CALL invert(jac); deriv=MATMUL(jac,der)
+       CALL beemat(bee,deriv)
+       km(1:ntot,1:ntot)=km(1:ntot,1:ntot) +                             &
+                   MATMUL(MATMUL(TRANSPOSE(bee),dee),bee)*det*weights(i)   
+     END DO
+
+     vox_storkm_pp(1,iel)  = km(1,1)  
+     vox_storkm_pp(2,iel)  = km(1,2)  
+     vox_storkm_pp(3,iel)  = km(1,4)  
+     vox_storkm_pp(4,iel)  = km(1,6)  
+     vox_storkm_pp(5,iel)  = km(1,16)  
+     vox_storkm_pp(6,iel)  = km(1,19)  
+     vox_storkm_pp(7,iel)  = km(1,9)  
+     vox_storkm_pp(8,iel)  = km(1,7)  
+     vox_storkm_pp(9,iel)  = km(1,8)  
+     vox_storkm_pp(10,iel) = km(1,10)  
+
+   END DO
  ELSE
    storkm_pp=zero
    elements_1: DO iel=1,nels_pp
@@ -179,8 +267,8 @@ PROGRAM xx16
        CALL shape_der(der,points,i); jac=MATMUL(der,g_coord_pp(:,:,iel))
        det=determinant(jac); CALL invert(jac); deriv=MATMUL(jac,der)
        CALL beemat(bee,deriv)
-       storkm_pp(1:ntot,1:ntot,iel)=storkm_pp(1:ntot,1:ntot,iel) +             &
-                      MATMUL(MATMUL(TRANSPOSE(bee),dee),bee)*det*weights(i)   
+       storkm_pp(1:ntot,1:ntot,iel)=storkm_pp(1:ntot,1:ntot,iel) +       &
+       MATMUL(MATMUL(TRANSPOSE(bee),dee),bee)*det*weights(i)   
      END DO gauss_pts_1
    END DO elements_1
  END IF
@@ -204,6 +292,10 @@ PROGRAM xx16
        j = j + ndof - i + 1
      END DO
    END DO
+ ELSE IF(vox_storkm) THEN
+   DO iel = 1,nels_pp
+     diag_precon_tmp(:,iel) = diag_precon_tmp(:,iel) + vox_storkm_pp(1,iel)
+   END DO
  ELSE   
    elements_2: DO iel=1,nels_pp ; DO i=1,ndof
      diag_precon_tmp(i,iel) = diag_precon_tmp(i,iel)+storkm_pp(i,i,iel)
@@ -220,6 +312,7 @@ PROGRAM xx16
  END IF 
 
  IF(numpe==1) PRINT *, "Write summary"
+
 !-------------------------------------------------------------------------
 ! 11. Read in loaded nodes and get starting r_pp
 !-------------------------------------------------------------------------
@@ -245,6 +338,7 @@ PROGRAM xx16
  diag_precon_pp=1._iwp/diag_precon_pp
 
  IF(numpe==1) PRINT *, "Inverted preconditioner"
+
 !-------------------------------------------------------------------------
 ! 13. Initialise preconditioned conjugate gradient solver
 !-------------------------------------------------------------------------
@@ -273,7 +367,6 @@ PROGRAM xx16
 
  iterations: DO 
    iters=iters+1; u_pp=zero; pmul_pp=zero; utemp_pp=zero
-   IF(numpe==1) PRINT *,"Iters = ",iters
 
    timest(4)=MPI_Wtime()
    CALL gather(p_pp,pmul_pp(1:ntot,:))
@@ -289,7 +382,7 @@ PROGRAM xx16
 
    timest(6)=MPI_Wtime()
 
-  SELECT CASE(testcase)
+   SELECT CASE(testcase)
 
      CASE(1) ! Matmul
 
@@ -297,11 +390,10 @@ PROGRAM xx16
        utemp_pp(:,iel) = MATMUL(storkm_pp(:,:,iel),pmul_pp(:,iel))
      END DO
 
-
      CASE(2) ! DGEMV
 
      DO iel=1,nels_pp
-       CALL dgemv('n',ntot,ntot,1.0_iwp,storkm_pp(1:ntot,1:ntot,iel),ntot,    &
+       CALL dgemv('n',ntot,ntot,1.0_iwp,storkm_pp(1:ntot,1:ntot,iel),ntot, &
                   pmul_pp(1:ntot,iel),1,0.0_iwp,utemp_pp(1:ntot,iel),1)
      END DO
 
@@ -311,7 +403,7 @@ PROGRAM xx16
      !$OMP PARALLEL
      !$OMP DO PRIVATE(iel)     
      DO iel=1,nels_pp
-       CALL dgemv('n',ntot,ntot,1.0_iwp,storkm_pp(1:ntot,1:ntot,iel),ntot,    &
+       CALL dgemv('n',ntot,ntot,1.0_iwp,storkm_pp(1:ntot,1:ntot,iel),ntot, &
                   pmul_pp(1:ntot,iel),1,0.0_iwp,utemp_pp(1:ntot,iel),1)
      END DO
      !$OMP END DO
@@ -332,26 +424,50 @@ PROGRAM xx16
      ! CALL SHUTDOWN()        
 
      CASE(5) ! Minimal storage of KM in elements loop
+             ! Copy stiffness matrix values into temporary vector
+             ! and carry out dot product
 
-        PRINT *, "Test case ",testcase, " not implemented. Program aborted"
-        CALL SHUTDOWN()        
+     DO iel=1,nels_pp
+       DO j=1,ntot
+         vtemp(i) = zero
+         DO i=1,ntot
+           k = iv(j,i)
+           vtemp(i) = vox_storkm_pp(k,iel)
+         END DO
+         utemp_pp(j,iel) = DOT_PRODUCT(vtemp,pmul_pp(:,iel))
+       END DO
+     END DO
 
-     CASE(6) ! Matrix-matrix multiply
+     CASE(6) ! Minimal storage of KM in elements loop
+             ! No memory copy
+  
+     DO iel=1,nels_pp
+       DO j=1,ntot
+         DO i=1,ntot
+           utemp_pp(j,iel) = utemp_pp(j,iel) +                           &
+                             (vox_storkm_pp(iv(j,i),iel)*pmul_pp(i,iel))
+         END DO
+       END DO
+     END DO
+
+     CASE(7) ! Matrix-matrix multiply (was Case(6) in LJ Chan report)
+
 
      km = storkm_pp(1:ntot,1:ntot,1)
-     CALL dgemm('N','N',ntot,nels_pp,ntot,one,km,ntot,pmul_pp,ntot,zero,      &
+     CALL dgemm('N','N',ntot,nels_pp,ntot,one,km,ntot,pmul_pp,ntot,zero,  &
                  utemp_pp,ntot)
 
-     CASE(7) ! Symmetric matrix-matrix multiply
+     CASE(8) ! Symmetric matrix-matrix multiply (was Case(7) in LJC report)
    
      km = storkm_pp(1:ntot,1:ntot,1) 
-     CALL dsymm('L','l',ntot,nels_pp,one,km,ntot,pmul_pp,ntot,one,utemp_pp,ntot)
+     CALL dsymm('L','l',ntot,nels_pp,one,km,ntot,pmul_pp,ntot,one,        &
+                utemp_pp,ntot)
 
 
      CASE DEFAULT
 
-        PRINT *, "Test case ",testcase, " not recognised. Program aborted"
-        CALL SHUTDOWN()        
+        message = "Analysis aborted: Test case not recognised."
+        CALL SHUTDOWN2(message)        
 
    END SELECT
 
@@ -422,18 +538,20 @@ PROGRAM xx16
   timest(12)=MPI_Wtime()-timest(3)  
 
  IF(sym_storkm) THEN
-   DEALLOCATE(p_pp,r_pp,x_pp,u_pp,d_pp,diag_precon_pp,vstorkm_pp,pmul_pp,     &
+   DEALLOCATE(p_pp,r_pp,x_pp,u_pp,d_pp,diag_precon_pp,vstorkm_pp,pmul_pp, &
               utemp_pp) 
-
+ ELSE IF(vox_storkm) THEN
+   DEALLOCATE(p_pp,r_pp,x_pp,u_pp,d_pp,diag_precon_pp,vox_storkm_pp,      &
+              pmul_pp,utemp_pp) 
  ELSE
-   DEALLOCATE(p_pp,r_pp,x_pp,u_pp,d_pp,diag_precon_pp,storkm_pp,pmul_pp,      &
+   DEALLOCATE(p_pp,r_pp,x_pp,u_pp,d_pp,diag_precon_pp,storkm_pp,pmul_pp,  &
               utemp_pp) 
  END IF
 
 !--------------- recover stresses at centroidal gauss point --------------
  IF(numpe==1) THEN
    WRITE(11,'(A,I6)')    " Iterations to convergence was:         ",iters
-   WRITE(11,'(A,E12.4)') " The central nodal displacement:  ",                &
+   WRITE(11,'(A,E12.4)') " The central nodal displacement:  ",           &
                           xnew_pp(1)
    WRITE(11,'(/A)')" The Centroid point stresses for element 1 are"
  END IF 
@@ -454,8 +572,8 @@ PROGRAM xx16
  IF(numpe==1) THEN
 
    IF(io_binary) THEN
-     OPEN(12,file=argv(1:nlen)//".bin.ensi.DISPL-000001",status='replace',&
-          form='unformatted',access='stream')
+     OPEN(12,file=argv(1:nlen)//".bin.ensi.DISPL-000001",                &
+          status='replace',form='unformatted',access='stream')
      cbuffer="Alya Ensight Gold --- Vector per-node variable file"
      WRITE(12) cbuffer
      cbuffer="part"
@@ -610,14 +728,16 @@ CONTAINS
      IF(testcase==2) WRITE(fnum,'(/A/)') " Test case 2: DGEMV"
      IF(testcase==3) WRITE(fnum,'(/A/)') " Test case 3: DGEMV + OPENMP"
      IF(testcase==4) WRITE(fnum,'(/A/)') " Test case 4: DSYMV + OPENMP"
-     IF(testcase==5) WRITE(fnum,'(/A/)') " Test case 5: MINIMAL KM + OPENMP"
-     IF(testcase==6) WRITE(fnum,'(/A/)') " Test case 6: DGEMM"
-     IF(testcase==7) WRITE(fnum,'(/A/)') " Test case 7: DSYMM"
+     IF(testcase==5) WRITE(fnum,'(/A/)') " Test case 5: MINIMAL KM + &
+                                           DOT PRODUCT"
+     IF(testcase==6) WRITE(fnum,'(/A/)') " Test case 6: MINIMAL KM"
+     IF(testcase==7) WRITE(fnum,'(/A/)') " Test case 7: DGEMM"
+     IF(testcase==8) WRITE(fnum,'(/A/)') " Test case 8: DSYMM"
 
      WRITE(fnum,'(2A)')   " This job run on host ", TRIM(hostname)
 
      WRITE(fnum,'(/A,I7)')" Number of MPI processes:              ",npes
-     WRITE(fnum,'(2A)')   " Number of OMP threads:                      ",    &
+     WRITE(fnum,'(2A)')   " Number of OMP threads:                      ",  &
                             TRIM(nthreads)
      WRITE(fnum,'(A,I7)') " Number of elements:                   ",nels
      WRITE(fnum,'(A,I7)') " Number of nodes:                      ",nn
@@ -629,6 +749,28 @@ CONTAINS
 
    END IF
 
+ RETURN
+ END SUBROUTINE
+
+ SUBROUTINE SHUTDOWN2(message)
+
+ IMPLICIT NONE
+ 
+ CHARACTER(LEN=*), OPTIONAL :: message
+
+ WRITE(*,'(a)')   ""
+ WRITE(*,'(a)')   "ParaFEM: SHUTDOWN: Program exited with message:"
+
+ IF(PRESENT(message)) THEN
+   WRITE(*,*) trim(message)  
+   CALL MPI_FINALIZE(ier)
+   STOP 
+ ELSE
+   WRITE(*,'(a)')  ""
+   CALL MPI_FINALIZE(ier)
+   STOP "ParaFEM: SHUTDOWN: Program exited successfully"
+ END IF
+ 
  RETURN
  END SUBROUTINE
 
