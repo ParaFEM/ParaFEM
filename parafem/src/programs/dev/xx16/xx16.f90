@@ -729,7 +729,7 @@ CONTAINS
      IF(testcase==3) WRITE(fnum,'(/A/)') " Test case 3: DGEMV + OPENMP"
      IF(testcase==4) WRITE(fnum,'(/A/)') " Test case 4: DSYMV + OPENMP"
      IF(testcase==5) WRITE(fnum,'(/A/)') " Test case 5: MINIMAL KM + &
-                                           DOT PRODUCT"
+                                           &DOT PRODUCT"
      IF(testcase==6) WRITE(fnum,'(/A/)') " Test case 6: MINIMAL KM"
      IF(testcase==7) WRITE(fnum,'(/A/)') " Test case 7: DGEMM"
      IF(testcase==8) WRITE(fnum,'(/A/)') " Test case 8: DSYMM"
