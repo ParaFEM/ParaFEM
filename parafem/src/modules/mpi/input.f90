@@ -87,9 +87,9 @@ MODULE INPUT
 
   CONTAINS
 
-!------------------------------------------------------------------------------
-!------------------------------------------------------------------------------
-!------------------------------------------------------------------------------
+!--------------------------------------------------------------------------
+!--------------------------------------------------------------------------
+!--------------------------------------------------------------------------
 
  SUBROUTINE getname(argv,nlen)
  
@@ -147,6 +147,79 @@ MODULE INPUT
 
   RETURN
   END SUBROUTINE getname
+
+!--------------------------------------------------------------------------
+!--------------------------------------------------------------------------
+!--------------------------------------------------------------------------
+
+  SUBROUTINE getname2(argv,nlen,option2)
+ 
+   !/****f* input/getname2
+   !*  NAME
+   !*    SUBROUTINE: getname2
+   !*  SYNOPSIS
+   !*    Usage:      CALL getname2(argv,nlen)
+   !*  FUNCTION
+   !*    Returns the base name of the data file and other program options
+   !*    coded as an integer at the command line.
+   !*  OUTPUTS
+   !*    Scalar integer
+   !*    nlen               : number of characters in data file base name 
+   !*
+   !*    Scalar character
+   !*    argv               : holds data file base name
+   !*  AUTHOR
+   !*    I.M. Smith
+   !*    D.V. Griffiths
+   !*    L. Margetts
+   !*  COPYRIGHT
+   !*    (c) University of Manchester 2004-2018
+   !******
+   !*  Place remarks that should not be included in the documentation here.
+   !*
+   !*  Needs merging with getname(argv,nlen)
+   !* 
+   !*/
+  
+    IMPLICIT NONE
+    INTEGER                      :: narg
+    INTEGER,INTENT(OUT)          :: nlen
+    INTEGER,OPTIONAL,INTENT(OUT) :: option2
+    INTEGER                      :: lnblnk,iargc
+    CHARACTER(*),INTENT(OUT)     :: argv
+    CHARACTER(80)                :: argv2
+    LOGICAL                      :: found=.false.
+ 
+    narg=iargc()
+
+    IF(narg.lt.1)THEN
+      WRITE(*,*)'Please enter the base name of data file: '
+      READ(*,*) argv
+    ELSE IF(narg==1) THEN
+      CALL getarg(1,argv)
+      nlen=len_trim(argv)
+      INQUIRE(file=argv(1:nlen)//'.dat',exist=found)
+      IF(.not.found)THEN
+        WRITE(*,*)'Data file not found'
+        WRITE(*,*)'Please create or check spelling.'
+        STOP
+      END IF
+    ELSE IF(narg==2) THEN
+      CALL getarg(1,argv)
+      nlen=len_trim(argv)
+      INQUIRE(file=argv(1:nlen)//'.dat',exist=found)
+      IF(.not.found)THEN
+        WRITE(*,*)'Data file not found'
+        WRITE(*,*)'Please create or check spelling.'
+        STOP
+      END IF
+      CALL getarg(2,argv2)
+      READ(argv2,*) option2
+    ENDIF
+
+  RETURN
+  END SUBROUTINE getname2
+
 
 !------------------------------------------------------------------------------
 !------------------------------------------------------------------------------
