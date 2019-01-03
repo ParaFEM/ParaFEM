@@ -29,7 +29,8 @@ PROGRAM xx16
 
 ! neq,ntot are now global variables - must not be declared
 
- INTEGER,PARAMETER::testcase=6
+!INTEGER,PARAMETER::testcase=6
+ INTEGER::testcase
  INTEGER,PARAMETER::nodof=3,ndim=3,nst=6
  INTEGER::loaded_nodes,iel,i,j,k,iters,limit,nn,nr,nip,nod,nels,ndof,    &
    npes_pp,node_end,node_start,nodes_pp,meshgen,partitioner,nlen,        &
@@ -71,9 +72,18 @@ PROGRAM xx16
  REAL(iwp),ALLOCATABLE :: ptemp(:)           ! temporary array
  INTEGER,ALLOCATABLE   :: rest(:,:),g_num_pp(:,:),g_g_pp(:,:),node(:)
  INTEGER,ALLOCATABLE   :: iv(:,:)            ! index for vox value
+
 !-------------------------------------------------------------------------
-! Switch for test cases
+! 4. Read job name from the command line.
+!    Read control data, mesh data, boundary and loading conditions
 !-------------------------------------------------------------------------
+ 
+ ALLOCATE(timest(24),timest_min(24),timest_max(24))
+ timest=zero; timest_min=zero; timest_max=zero
+ CALL find_pe_procs(numpe,npes)
+ timest(1)=MPI_Wtime()
+!CALL getname(argv,nlen) 
+ CALL getname2(argv,nlen,testcase)
 
  io_binary = .true.
 
@@ -91,17 +101,7 @@ PROGRAM xx16
  END IF
  IF(testcase==7) sym_storkm=.false.  ! DGEMM 
  IF(testcase==8) sym_storkm=.false.  ! DSYMMV 
-
-!-------------------------------------------------------------------------
-! 4. Read job name from the command line.
-!    Read control data, mesh data, boundary and loading conditions
-!-------------------------------------------------------------------------
  
- ALLOCATE(timest(24),timest_min(24),timest_max(24))
- timest=zero; timest_min=zero; timest_max=zero
- CALL find_pe_procs(numpe,npes)
- timest(1)=MPI_Wtime()
- CALL getname(argv,nlen) 
  CALL read_p121(argv,numpe,e,element,limit,loaded_nodes,meshgen,nels,    &
    nip,nn,nod,nr,partitioner,tol,v)
 
@@ -441,14 +441,10 @@ PROGRAM xx16
      CASE(6) ! Minimal storage of KM in elements loop
              ! No memory copy
   
-     DO iel=1,nels_pp
-       DO j=1,ntot
-         DO i=1,ntot
-           utemp_pp(j,iel) = utemp_pp(j,iel) +                           &
-                             (vox_storkm_pp(iv(j,i),iel)*pmul_pp(i,iel))
-         END DO
-       END DO
-     END DO
+     DO iel=1,nels_pp; DO j=1,ntot
+       utemp_pp(j,iel)=DOT_PRODUCT(vox_storkm_pp(iv(:,j),iel),pmul_pp(:,iel))
+!      utemp_pp(j,iel)=DDOT(ntot,vox_storkm_pp(iv(:,j),iel),1,pmul_pp(:,iel),1)
+     END DO; END DO
 
      CASE(7) ! Matrix-matrix multiply (was Case(6) in LJ Chan report)
 
