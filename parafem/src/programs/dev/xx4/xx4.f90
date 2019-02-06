@@ -770,9 +770,12 @@ PROGRAM xx4
 ! 17. Output performance data
 !------------------------------------------------------------------------------
 
-  CALL WRITE_P121(fixed_freedoms,iters,job_name,loaded_nodes,neq,nn,npes,nr,  &
-                  numpe,timest,tload)
+! CALL WRITE_P121(fixed_freedoms,iters,job_name,loaded_nodes,neq,nn,npes,nr,  &
+!                 numpe,timest,tload)
  
+  CALL WRITE_XX4(fixed_freedoms,iters,job_name,loaded_nodes,neq,nn,npes,nr,  &
+                 numpe,timest,tload)
+
   CALL shutdown() 
  
 END PROGRAM XX4
