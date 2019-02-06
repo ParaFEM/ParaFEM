@@ -10,11 +10,11 @@ PROGRAM XX10
   USE precision     ; USE global_variables ; USE mp_interface
   USE input         ; USE output           ; USE loading
   USE timing        ; USE maths            ; USE gather_scatter
-  USE partition     ; USE elements         ; USE steering        ; USE pcg
+  USE steering      ; USE new_library
   
   ! C types for GPU code
   ! --------------------
-  USE iso_c_binding
+  USE, INTRINSIC :: ISO_C_BINDING
   
   IMPLICIT NONE
 
@@ -34,7 +34,7 @@ PROGRAM XX10
 
   ! GPU Code config
   ! ---------------
-  INTEGER       :: mult_method = 2       ! Method to use to do the matrix-matrix mult
+  INTEGER       :: mult_method = 0       ! Method to use to do the matrix-matrix mult
                                          ! 0 - CPU: original code
                                          ! 1 - GPU: our own matmul 1D kernel (naive)
                                          ! 2 - GPU: our own matmul 2D kernel (naive)
@@ -127,8 +127,13 @@ PROGRAM XX10
   IF (argc /= 1) CALL job_name_error(numpe,program_name)
   CALL GETARG(1, job_name) 
 
-  CALL read_p121(job_name,numpe,e,element,fixed_freedoms,limit,loaded_nodes, &
+! CALL read_p121(job_name,numpe,e,element,fixed_freedoms,limit,loaded_nodes, &
+!                meshgen,nels,nip,nn,nod,nr,partitioner,tol,v)
+
+  CALL read_p121(job_name,numpe,e,element,limit,loaded_nodes, &
                  meshgen,nels,nip,nn,nod,nr,partitioner,tol,v)
+
+  fixed_freedoms = 0 ! fixed_freedoms not read in via READ_P121
 
   CALL calc_nels_pp(job_name,nels,npes,numpe,partitioner,nels_pp)
 
@@ -145,10 +150,8 @@ PROGRAM XX10
 
   timest(2) = elap_time()
   
-  CALL read_g_num_pp2(job_name,iel_start,nn,npes,numpe,g_num_pp)
+  CALL read_g_num_pp(job_name,iel_start,nn,npes,numpe,g_num_pp)
   timest(3) = elap_time()
-
-! CALL read_g_num_pp(job_name,iel_start,nels,nn,numpe,g_num_pp)
 
   IF(meshgen == 2) CALL abaqus2sg(element,g_num_pp)
   timest(4) = elap_time()
@@ -235,7 +238,7 @@ PROGRAM XX10
   km  = zero
   iel = 1
 
-  CALL deemat(e,v,dee)
+  CALL deemat(dee,e,v)
   CALL sample(element,points,weights)
 
   gauss_pts_1: DO i=1,nip
@@ -244,7 +247,7 @@ PROGRAM XX10
     det   = determinant(jac)
     CALL invert(jac)
     deriv = MATMUL(jac,der)
-    CALL beemat(deriv,bee)
+    CALL beemat(bee,deriv)
     km    = km + MATMUL(MATMUL(TRANSPOSE(bee),dee),bee) * det * weights(i)
   END DO gauss_pts_1
   
@@ -282,8 +285,9 @@ PROGRAM XX10
 
     CALL read_fixed(job_name,numpe,node,sense,valf)
     CALL find_no(node,rest,sense,no)
-    CALL reindex_fixed_nodes(ieq_start,no,no_pp_temp,fixed_freedoms_pp,       &
-                             fixed_freedoms_start,neq_pp)
+!   CALL reindex_fixed_nodes(ieq_start,no,no_pp_temp,fixed_freedoms_pp,       &
+    CALL reindex(ieq_start,no,no_pp_temp,fixed_freedoms_pp,                   &
+                 fixed_freedoms_start,neq_pp)
 
     ALLOCATE(no_pp(fixed_freedoms_pp),store_pp(fixed_freedoms_pp))
 
