@@ -46,8 +46,13 @@ PROGRAM endian_convert
   PRINT *, "Starting endian conversion of file"
   
   fname = job_name(1:INDEX(job_name, " ") -1) // ".bin.ensi."//ext
+! GWL: SWAP is not a valid CONVERT type in ifort. So we use 'NATIVE' instead
+! GWL: and rely on the user setting the env var FORT_CONVERT10=LITTLE_ENDIAN or
+! GWL: BIG_ENDIAN at runtime to override the 'NATIVE' setting.
+!  OPEN(10,FILE=fname,STATUS='OLD',FORM='UNFORMATTED',ACTION='READ',           &
+!                     ACCESS='STREAM',CONVERT='SWAP')
   OPEN(10,FILE=fname,STATUS='OLD',FORM='UNFORMATTED',ACTION='READ',           &
-                     ACCESS='STREAM',CONVERT='SWAP')
+                     ACCESS='STREAM',CONVERT='NATIVE')
   
   SELECT CASE (var_geo)
     CASE('var')
