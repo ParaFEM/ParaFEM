@@ -34,7 +34,7 @@ PROGRAM XX10
 
   ! GPU Code config
   ! ---------------
-  INTEGER       :: mult_method = 0       ! Method to use to do the matrix-matrix mult
+  INTEGER       :: mult_method = 2       ! Method to use to do the matrix-matrix mult
                                          ! 0 - CPU: original code
                                          ! 1 - GPU: our own matmul 1D kernel (naive)
                                          ! 2 - GPU: our own matmul 2D kernel (naive)
@@ -718,7 +718,7 @@ PROGRAM XX10
 ! 17. Output performance data
 !------------------------------------------------------------------------------
 
-  CALL WRITE_P121(fixed_freedoms,iters,job_name,loaded_nodes,neq,nn,npes,nr,  &
+  CALL WRITE_XX10(fixed_freedoms,iters,job_name,loaded_nodes,neq,nn,npes,nr,  &
                   numpe,timest,tload)
  
   CALL shutdown() 
