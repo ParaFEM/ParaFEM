@@ -1,0 +1,20 @@
+## To run this script, type $ qsub job.xx10.csf
+
+#!/bin/bash
+#$ -S /bin/bash
+#$ -cwd
+#$ -V
+#$ -j y
+#$ -N ParaFEM                        # set job name
+#$ -M leonibenabu@gmail.com          # set email address
+#$ -m bea                            # email when job begins, ends & aborts
+#$ -l nvidia_k20
+
+export MYDATE=$(date)
+
+module load mpi/intel-17.0/openmpi/1.8.3m
+module load libs/cuda/9.0.176
+
+mpirun -n 1 /mnt/iusers01/mace01/mbgmalb2/ParaFEM/parafem/bin/xx10 xx10-tiny
+
+
