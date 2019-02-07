@@ -3,6 +3,47 @@
 # --------------------------------------------------------------------------------
 # Include file for the CSF GPU Nodes (Nvidia) architecture.
 # --------------------------------------------------------------------------------
+# Source changes:
+# src/tools/postprocessing/endian_convert/endian_convert.f90 Line 50.
+# The FORTRAN OPEN() function uses CONVERT='SWAP' but SWAP is not valid with ifort.
+# Instead we use NATIVE and the user can set the env var FORT_CONVERT10=BIG_ENDIAN
+# or LITTLE_ENDIAN so select the correct format.
+#
+# This MACHINE file:
+# The CSF2 has Nvidia K20 GPUs hence use nvcc -arch=sm_35 
+# The CSF3 has Nvidia v100 GPUs hence use nvcc -arch=sm_70
+#
+# I have remove -fast from the ifort command. It switches on static linking and we
+# do not have static OpenMPI libraries. -fast also trades floating point accuracy
+# for speed so the other settings enabled by -fast:
+# -ipo, -O3, -no-prec-div, -static, -fp-model fast=2
+# will not be used. That's OK - I prefer more accurate results.
+#
+# The compiler will compile routines for automatic CPU dispatch - several versions
+# of routines will be compiled, optimized for different Intel CPUs. At runtime the
+# executable will automatically run the version suitable for the CPU on which the
+# job is running. You still only have one executable.
+#
+# GPU demo programs:
+# The following src/programs/dev/ programs are GPU enabled:
+# CUDA:    xx3 xx9
+# OpenCL:  xx4 xx10
+#
+# To build on CSF2 (build CPU version then add in the GPU demos, for example):
+# 
+# module load mpi/intel-17.0/openmpi/1.8.3m
+# module load libs/cuda/9.0.176
+# ./make-parafem MACHINE=csf-gpu 2>&1 | tee make.csf-gpu.log
+# ./make-parafem MACHINE=csf-gpu -gpu >&1 | tee make.csf-gpu.gpu.log
+#
+# To build on CSF3:
+# module load mpi/intel-17.0/openmpi/3.1.1
+# module load libs/cuda/9.2.148
+# ./make-parafem MACHINE=csf-gpu 2>&1 | tee make.csf-gpu.log
+# ./make-parafem MACHINE=csf-gpu -gpu 2>&1 | tee make.csf-gpu.gpu.log
+#
+# george.leaver@manchester.ac.uk - Research Infrastructure
+# --------------------------------------------------------------------------------
 
 # --------------------------------------------------------------------------------
 # Generic settings for compilation
@@ -10,6 +51,11 @@
 FC=mpif90
 CC=mpicc
 INSTALL_CMD=mv
+# ********* CHANGE TO CORRECT SETTING FOR GPU BUILD *********
+# CSF2
+NVSM=sm_35
+# CSF3
+# NVSM=sm_70
 
 # --------------------------------------------------------------------------------
 # FLAGS for EXTERNAL LIBRARY compliation
@@ -17,7 +63,8 @@ INSTALL_CMD=mv
 # CSF only has MPI libs for Intel and GNU compiler. Ignore PGI here.
 PGI_EXT_FLAGS=-V -fastsse -r8
 GNU_EXT_FLAGS=-fdefault-real-8
-INTEL_EXT_FLAGS=-fast -r8
+# GWL: Remove -fast for CSF compilation (we have no static OpenMPI libs)
+INTEL_EXT_FLAGS=-r8 -msse4.2 -axCORE-AVX512,CORE-AVX2,AVX
 
 EXT_FLAGS=$(INTEL_EXT_FLAGS)
 
@@ -29,8 +76,8 @@ EXT_LIB_GAF77_FC=ifort
 EXT_LIB_GAF77_FFLAGS=$(EXT_FLAGS)
 EXT_LIB_GAF77_LDFLAGS=
 
-EXT_LIB_METIS_CC=cc
-EXT_LIB_METIS_OPTFLAGS=-O2
+EXT_LIB_METIS_CC=icc
+EXT_LIB_METIS_OPTFLAGS=-O2 -msse4.2 -axCORE-AVX512,CORE-AVX2,AVX
 EXT_LIB_METIS_COPTIONS=
 EXT_LIB_METIS_LDOPTIONS=
 EXT_LIB_METIS_AR=ar rv
@@ -63,10 +110,9 @@ GPU_OCL_LIB   = $(GPU_OCL_NV_LIB)
 # Nvidia CUDA
 GPU_CU_ROOT  = $(CUDA_HOME)
 GPU_CU       = nvcc
-GPU_CU_FLAGS = -arch=sm_20 --ptxas-options=-v
+GPU_CU_FLAGS = -arch=$(NVSM) --ptxas-options=-v
 GPU_CU_INC   = -I$(GPU_CU_ROOT)/include
 GPU_CU_LIB   = -L$(GPU_CU_ROOT)/lib64 -lcudart
-
 
 # --------------------------------------------------------------------------------
 # FLAGS for MODULE/LIBRARY compliation
@@ -80,8 +126,9 @@ PGI_REL=-fastsse -Mlarge_arrays
 PGI_DBG=-g -Mbounds -traceback
 GNU_REL=
 GNU_DBG=-g
-INTEL_REL=-fast
-INTEL_DBG=-g -traceback
+# GWL: Remove -fast for CSF compilation (we have no static OpenMPI libs)
+INTEL_REL=-msse4.2 -axCORE-AVX512,CORE-AVX2,AVX
+INTEL_DBG=-g -traceback -msse4.2 -axCORE-AVX512,CORE-AVX2,AVX
 
 REL_FLAGS=$(INTEL_REL)
 DBG_FLAGS=$(INTEL_DBG)
