@@ -3,6 +3,7 @@
 # ------------------------------------------------------------------------------
 # Script to build and install ParaFEM
 # Author: Louise M. Lever
+# Modified George Leaver (Add -gpu flag for GPU xx prog builds)
 # ------------------------------------------------------------------------------
 
 # To log build output, run using something like:
@@ -78,15 +79,17 @@ BUILD_LIBRARIES_OPT=
 # options are: 5ed, xx, prog8, gaitfem, rfem
 BUILD_PROGRAMS_OPT=
 BUILD_GROUP_5ED="p121 p122 p123 p124 p125 p126 p127 p128 p129 p1210" # p1211
-BUILD_GROUP_XX="xx1 xx11 xx12_b xx12_te xx7 xx8 xx14 xx15 xx18 xx19 xx21" 
+BUILD_GROUP_XX= # "xx1 xx11 xx12 xx12_b xx7 xx8 xx14"
 BUILD_GROUP_PROG8="prog81 prog82 prog83"
 BUILD_GROUP_GAITFEM="gaitfem"
-BUILD_GROUP_RFEM="rfemsolve rfemsolve_te"
+BUILD_GROUP_RFEM= # "rfemsolve rfemsolve_te"
+# GWL: Add GPU progs (two CUDA, two OpenCL)
+BUILD_GROUP_GPU="xx3 xx9 xx4 xx10"
 
 # TOOLS build options
 BUILD_TOOLS_OPT=
-BUILD_GROUP_PREPROC="inp2pf mg2d partitioner dinomesher fearfy KUBCgen rfemfield rfembc rfemcube p12meshgen p12meshgenbin cylinder"
-BUILD_GROUP_POSTPROC="d2off bnd2dis mat2numpe upvw2dis pf2ensi pf2ensibin pf2ensi_case ensibin2ascii TTR_ensibin2ascii ttrb2ttr ndttrget LFA" # endian_convert
+BUILD_GROUP_PREPROC="inp2pf mg2d partitioner dinomesher fearfy KUBCgen rfemfield rfembc rfemcube p12meshgen"
+BUILD_GROUP_POSTPROC="d2off bnd2dis mat2numpe upvw2dis pf2ensi pf2ensibin pf2ensi_case ensibin2ascii TTR_ensibin2ascii ttrb2ttr ndttrget endian_convert"
 
 # DEFAULT build options for LIBRARIES, MODULES, PROGRAMS and TOOLS
 BUILD_LIBRARIES_DEFAULTS="arpack gaf77" # + metis
@@ -125,6 +128,7 @@ showusage() {
     echo "  -prog8 will build the programs in the prog8 group: $BUILD_GROUP_PROG8"
     echo "  -gaitfem will build the programs in the gaitfem group: $BUILD_GROUP_GAITFEM"
     echo "  -rfem will build the programs in the rfem group: $BUILD_GROUP_RFEM"
+    echo "  -gpu will build the programs in the gpu group: $BUILD_GROUP_GPU"
     echo "  * If no program option is specified then the default builds are: $BUILD_PROGRAMS_DEFAULTS"
     echo
     echo "Building the TOOLS:"
@@ -199,7 +203,7 @@ while [ $# -gt 0 ]; do
 	-mpi) BUILD_MODULES_OPT="$BUILD_MODULES_OPT mpi"; BUILD_MODULES_GIVEN=1;;
 	-serial) BUILD_MODULES_OPT="$BUILD_MODULES_OPT serial"; BUILD_MODULES_GIVEN=1;;
 	#-openmp) BUILD_MODULES_OPT="$BUILD_MODULES_OPT openmp"; BUILD_MODULES_GIVEN=1;;
-	#-gpu) BUILD_MODULES_OPT="$BUILD_MODULES_OPT gpu"; BUILD_MODULES_GIVEN=1;;
+	# -gpu) BUILD_MODULES_OPT="$BUILD_MODULES_OPT gpu"; BUILD_MODULES_GIVEN=1;;
 
 	# ----------------------------------------------------------------------
 	# prog8 group module options
@@ -213,6 +217,8 @@ while [ $# -gt 0 ]; do
 	-prog8) BUILD_PROGRAMS_OPT="$BUILD_PROGRAMS_OPT prog8"; BUILD_PROGRAMS_GIVEN=1;;
 	-gaitfem) BUILD_PROGRAMS_OPT="$BUILD_PROGRAMS_OPT gaitfem"; BUILD_PROGRAMS_GIVEN=1;;
 	-rfem) BUILD_PROGRAMS_OPT="$BUILD_PROGRAMS_OPT rfem"; BUILD_PROGRAMS_GIVEN=1;;
+        # GWL: Add support for -gpu to do some more PROGRAMS (not MODULES)
+        -gpu) BUILD_PROGRAMS_OPT="$BUILD_PROGRAMS_OPT gpu"; BUILD_PROGRAMS_GIVEN=1;;
 
 	# ----------------------------------------------------------------------
 	# tool group module options
@@ -414,6 +420,13 @@ if [ $BUILD_PROGRAMS = 1 ]; then
 		    cd src/programs/rfem/$PROG && make $TARGET && cd ../../../..
 		    if [ $? = 2 ]; then	error "BUILD_GROUP_RFEM/$PROG/$TARGET"; fi
 		done;;
+            gpu)
+                for PROG in $BUILD_GROUP_GPU; do
+                    separator
+                    cd $PARAFEM_HOME
+                    cd src/programs/dev/$PROG && make $TARGET && cd ../../../..
+                    if [ $? = 2 ]; then error "BUILD_GROUP_GPU/$PROG/$TARGET"; fi
+                done;;
 	esac
     done
 fi
