@@ -1220,6 +1220,172 @@ MODULE OUTPUT
 !------------------------------------------------------------------------------
 !------------------------------------------------------------------------------
 
+  SUBROUTINE WRITE_XX10(fixed_freedoms,iters,job_name,loaded_nodes,neq,nn,    &
+                        npes,nr,numpe,timest,tload)
+
+  !/****f* output/write_xx10
+  !*  NAME
+  !*    SUBROUTINE: write_xx10
+  !*  SYNOPSIS
+  !*    Usage:      CALL write_xx10(fixed_freedoms,iters,job_name,loaded_nodes,&
+  !*                                neq,nn,npes,nr,numpe,timest,tload)
+  !*  FUNCTION
+  !*    Master processor writes out brief details about the problem and 
+  !*    some performance data
+  !*  INPUTS
+  !*    The following scalar integers have the INTENT(IN) attribute:
+  !*
+  !*    fixed_freedoms         : Number of fixed displacements
+  !*    iters                  : Number of PCG iterations taken to solve problem
+  !*    loaded_nodes           : Number of loaded_nodes
+  !*    neq                    : Total number of equations in the mesh
+  !*    nn                     : Number of nodes in the mesh
+  !*    npes                   : Number of processors used in the simulations
+  !*    nr                     : Number of restrained nodes in the mesh
+  !*    numpe                  : Processor number
+  !*
+  !*    The following scalar real has the INTENT(IN) attribute:
+  !*
+  !*    tload                  : Total applied load
+  !*
+  !*    The following scalar character has the INTENT(IN) attribute:
+  !*
+  !*    job_name               : Job name used to name output file
+  !*
+  !*    The following dynamic real array has the INTENT(IN) attribute:
+  !*
+  !*    timest(:)              : Holds timing information
+  !*
+  !*  AUTHOR
+  !*    Lee Margetts
+  !*    Based on Smith I.M. and Griffiths D.V. "Programming the Finite Element
+  !*    Method", Edition 4, Wiley, 2004.
+  !*  CREATION DATE
+  !*    07.02.2019
+  !*  COPYRIGHT
+  !*    (c) University of Manchester 2019
+  !******
+  !*  Place remarks that should not be included in the documentation here.
+  !*
+  !*/  
+  
+  IMPLICIT NONE
+
+  CHARACTER(LEN=50), INTENT(IN)  :: job_name
+  INTEGER, INTENT(IN)            :: numpe,npes,nn,nr,neq,iters
+  INTEGER, INTENT(IN)            :: fixed_freedoms,loaded_nodes
+  REAL(iwp), INTENT(IN)          :: timest(:),tload
+
+!------------------------------------------------------------------------------
+! 1. Local variables
+!------------------------------------------------------------------------------
+  
+  CHARACTER(LEN=50)              :: fname
+  CHARACTER(LEN=60)              :: date
+  CHARACTER(LEN=60)              :: hostname
+  INTEGER                        :: i          ! loop counter
+ 
+  IF(numpe==1) THEN
+
+    fname       = job_name(1:INDEX(job_name, " ")-1) // ".res"
+    OPEN(11,FILE=fname,STATUS='REPLACE',ACTION='WRITE')     
+
+!------------------------------------------------------------------------------
+! 2. Retrieve information about the environment
+!
+!    Run the following command before running the job to get the date and
+!    time the job was executed or submitted.
+!
+!    $export MYDATE=$(date)
+!------------------------------------------------------------------------------
+
+    CALL get_environment_variable("MYDATE",date)
+    CALL get_environment_variable("HOSTNAME",hostname)
+    
+    WRITE(11,'(/A)')  TRIM(date)
+    WRITE(11,'(/2A)') "This job run on host ",  TRIM(hostname)
+
+!------------------------------------------------------------------------------
+! 3. Write basic details about the problem
+!------------------------------------------------------------------------------
+
+    WRITE(11,'(/A)')   "BASIC JOB DATA                                  "     
+ 
+    WRITE(11,'(A,I12)')    "Number of processors used                   ",npes 
+    WRITE(11,'(A,I12)')    "Number of nodes in the mesh                 ",nn
+    WRITE(11,'(A,I12)')    "Number of nodes that were restrained        ",nr
+    WRITE(11,'(A,I12)')    "Number of equations solved                  ",neq
+    WRITE(11,'(A,I12)')    "Number of PCG iterations                    ",iters
+    IF(loaded_nodes > 0) THEN
+      WRITE(11,'(A,I12)')    "Number of loaded nodes                      ",   &
+                              loaded_nodes 
+      WRITE(11,'(A,E12.4)')  "Total load applied                          ",   &
+                              tload
+    END IF
+    IF(fixed_freedoms > 0) THEN
+      WRITE(11,'(A,I12)')    "Number of fixed displacements               ",   &
+                              fixed_freedoms 
+    END IF
+
+!------------------------------------------------------------------------------
+! 3. Output timing data
+!------------------------------------------------------------------------------
+
+    WRITE(11,'(/3A)')   "PROGRAM SECTION EXECUTION TIMES                  ",  &
+                        "SECONDS  ", "%TOTAL    "
+    WRITE(11,'(A,F12.6,F8.2)') "Setup                                       ",&
+                           timest(2)-timest(1),                               &
+                           ((timest(2)-timest(1))/(timest(14)-timest(1)))*100  
+    WRITE(11,'(A,F12.6,F8.2)') "Read element steering array                 ",&
+                           timest(3)-timest(2),                               &
+                           ((timest(3)-timest(2))/(timest(14)-timest(1)))*100  
+    WRITE(11,'(A,F12.6,F8.2)') "Convert Abaqus to S&G node ordering         ",&
+                           timest(4)-timest(3),                               &
+                           ((timest(4)-timest(3))/(timest(14)-timest(1)))*100  
+    WRITE(11,'(A,F12.6,F8.2)') "Read nodal coordinates                      ",&
+                           timest(5)-timest(4),                               &
+                           ((timest(5)-timest(4))/(timest(14)-timest(1)))*100  
+    WRITE(11,'(A,F12.6,F8.2)') "Read restrained nodes                       ",&
+                           timest(6)-timest(5),                               &
+                           ((timest(6)-timest(5))/(timest(14)-timest(1)))*100                             
+    WRITE(11,'(A,F12.6,F8.2)') "Compute steering array and neq              ",&
+                           timest(7)-timest(6),                               &
+                          ((timest(7)-timest(6))/(timest(14)-timest(1)))*100  
+    WRITE(11,'(A,F12.6,F8.2)') "Compute interprocessor communication tables ",&
+                           timest(8)-timest(7),                               &
+                          ((timest(8)-timest(7))/(timest(14)-timest(1)))*100  
+    WRITE(11,'(A,F12.6,F8.2)') "Allocate neq_pp arrays                      ",&
+                           timest(9)-timest(8),                               &
+                          ((timest(9)-timest(8))/(timest(14)-timest(1)))*100  
+    WRITE(11,'(A,F12.6,F8.2)') "Compute element stiffness matrices          ",&
+                            timest(10)-timest(9),                              &
+                          ((timest(10)-timest(9))/(timest(14)-timest(1)))*100  
+    WRITE(11,'(A,F12.6,F8.2)') "Build the preconditioner                    ",&
+                           timest(11)-timest(10),                               &
+                          ((timest(11)-timest(10))/(timest(14)-timest(1)))*100  
+    WRITE(11,'(A,F12.6,F8.2)') "Get starting r                              ",&
+                           timest(12)-timest(11),                               &
+                          ((timest(12)-timest(11))/(timest(14)-timest(1)))*100  
+    WRITE(11,'(A,F12.6,F8.2)') "Solve equations                             ",&
+                           timest(13)-timest(12),                               &
+                           ((timest(13)-timest(12))/(timest(14)-timest(1)))*100  
+    WRITE(11,'(A,F12.6,F8.2)') "Output results                              ",&
+                           timest(14)-timest(13),                              &
+                          ((timest(14)-timest(13))/(timest(14)-timest(1)))*100  
+    WRITE(11,'(A,F12.6,A/)')  "Total execution time                        ",  &
+                          timest(14)-timest(1),"  100.00"
+    CLOSE(11)
+    
+  END IF
+  
+  RETURN
+
+  END SUBROUTINE WRITE_XX10
+
+!------------------------------------------------------------------------------
+!------------------------------------------------------------------------------
+!------------------------------------------------------------------------------
+
   SUBROUTINE WRITE_XX12(fixed_freedoms,job_name,loaded_freedoms,neq,nn,npes,  &
                         nr,numpe,timest,tload,iters,iters_tot,tol,val0,ntime, &
                         timesteps_int,timesteps_real)
