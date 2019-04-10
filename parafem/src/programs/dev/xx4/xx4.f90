@@ -10,6 +10,10 @@ PROGRAM xx4
   USE timing        ; USE maths            ; USE gather_scatter
   USE steering      ; USE new_library
 
+
+  ! From xx16 on 27march
+  USE omp_lib
+  
   ! C types for GPU code
   ! --------------------
   USE, INTRINSIC :: ISO_C_BINDING
@@ -32,13 +36,14 @@ PROGRAM xx4
 
   ! GPU Code config
   ! ---------------
-  INTEGER       :: mult_method = 2       ! Method to use to do the matrix-vector mult
-                                         ! 0 - CPU: original code
+  INTEGER       :: mult_method = 0       ! Method to use to do the matrix-vector mult
+                                         ! 0 - CPU: original code 
                                          ! 1 - GPU: our own matmul kernel 1 (naive)
                                          ! 2 - GPU: our own matmul kernel 2 (local mem)
                                          ! The next two are unsuitable for this code.
                                          ! 3 - GPU: AMD clBlas (synchronously)
                                          ! 4 - GPU: AMD clBlas (asynchronously, experimental)
+                                         
 
   LOGICAL       :: check_gpu = .false.   ! Compare GPU results to intrinsic matmul results (slow)
   INTEGER       :: gpu_device = 1        ! Set to 0 to use OpenCL on CPU (AMD only)
@@ -54,6 +59,13 @@ PROGRAM xx4
 
   ! End of GPU Code config
   ! ----------------------
+
+  ! Voxel case toggle
+  ! ----------------------
+  INTEGER       :: element_geom = 1     ! 0 - General case
+                                        ! 1 - Voxel case, toggles vox_storkm to true
+
+  
 
   ! GPU related variables
   ! ---------------------
@@ -98,6 +110,24 @@ PROGRAM xx4
   CHARACTER(LEN=50)     :: fname,job_name,label
   LOGICAL               :: converged = .false.
 
+ ! VARIABLES FROM XX16 on 27march not sure about argv
+  INTEGER               :: testcase
+  INTEGER               :: nlen,section,fnum
+  REAL(iwp),PARAMETER   :: one = 1.0_iwp
+  REAL(iwp)             :: gigaflops,gigaflops_1,gigaflops_2
+  REAL(iwp)             :: flop,flop_1,flop_2
+  REAL(iwp)             :: DDOT ! BLAS MKL
+  CHARACTER(LEN=50)     :: argv
+  CHARACTER(LEN=6)      :: ch
+  CHARACTER(LEN=80)     :: cbuffer
+  CHARACTER(LEN=80)     :: message
+
+ ! Switches for various PCG options XX16 27march
+  LOGICAL               :: io_binary = .false.
+  LOGICAL               :: sys_storkm = .false.
+  LOGICAL               :: vox_storkm = .false.
+
+ 
 !------------------------------------------------------------------------------
 ! 2. Declare dynamic arrays
 !------------------------------------------------------------------------------
@@ -115,15 +145,22 @@ PROGRAM xx4
   REAL(iwp),ALLOCATABLE :: principal(:),reacnodes_pp(:)  
   INTEGER,  ALLOCATABLE :: rest(:,:),g_num_pp(:,:),g_g_pp(:,:),node(:)
   INTEGER,  ALLOCATABLE :: no(:),no_pp(:),no_pp_temp(:),sense(:)
+  REAL(iwp),ALLOCATABLE :: timest_min(:),timest_max(:),temp(:),pad1(:),pad2(:),km(:,:)
+  REAL(iwp),ALLOCATABLE :: vstorkm_pp(:,:)    ! store km as vector
+  REAL(iwp),ALLOCATABLE :: vox_storkm_pp(:,:) ! minimal storage of km
+  REAL(iwp),ALLOCATABLE :: vtemp(:)           ! temporary array
+  REAL(iwp),ALLOCATABLE :: ptemp(:)           ! temporary array
+  INTEGER,ALLOCATABLE   :: iv(:,:)            ! index for vox value
 
   ! For OpenCL-testing
   REAL(iwp),ALLOCATABLE :: check_utemp_pp(:,:)
-
+  
+  
 !------------------------------------------------------------------------------
 ! 3. Read job_name from the command line. 
 !    Read control data, mesh data, boundary and loading conditions. 
 !------------------------------------------------------------------------------
- 
+  
   ALLOCATE(timest(20))
   timest    = zero 
   timest(1) = elap_time()
@@ -145,7 +182,7 @@ PROGRAM xx4
 
   ndof = nod*nodof
   ntot = ndof
- 
+
   ALLOCATE(g_num_pp(nod, nels_pp)) 
   ALLOCATE(g_coord_pp(nod,ndim,nels_pp)) 
   ALLOCATE(rest(nr,nodof+1)) 
@@ -220,6 +257,7 @@ PROGRAM xx4
   timest(8) = elap_time()
 
   CALL MPI_BARRIER(MPI_COMM_WORLD,ier)
+
 !------------------------------------------------------------------------------
 ! 7. Allocate arrays dimensioned by neq_pp 
 !------------------------------------------------------------------------------
@@ -233,6 +271,56 @@ PROGRAM xx4
   timest(9) = elap_time()
 
 !------------------------------------------------------------------------------
+! 8. Set vox_storkm = .true. if element_geom = 1 
+!------------------------------------------------------------------------------
+
+  IF (element_geom == 1) THEN
+    IF (nod==8) THEN
+      vox_storkm = .true.
+      ALLOCATE(km(ntot,ntot))
+      ALLOCATE(iv(ntot,ntot))
+      ALLOCATE(vox_storkm_pp(10,nels_pp)) 
+      ALLOCATE(vtemp(ntot)) 
+      ALLOCATE(ptemp(ntot)) 
+      km            = zero
+      vox_storkm_pp = zero
+      vtemp         = zero
+      iv            = 0
+      iv(1,:)  = (/1,2,2,3,2,4,8,9,7,10,9,9,3,4,2,5,4,4,6,7,7,8,7,9/)
+      iv(2,:)  = (/2,1,2,2,3,4,4,5,4,4,3,2,9,10,9,9,8,7,7,6,7,7,8,9/)
+      iv(3,:)  = (/2,2,1,9,9,10,7,9,8,4,2,3,2,4,3,9,7,8,7,7,6,4,4,5/)
+      iv(4,:)  = (/3,2,9,1,2,7,10,9,4,8,9,2,5,4,9,3,4,7,8,7,4,6,7,2/)
+      iv(5,:)  = (/2,3,9,2,1,7,4,3,7,4,5,9,9,8,2,9,10,4,7,8,4,7,6,2/)
+      iv(6,:)  = (/4,4,10,7,7,1,9,7,3,2,4,8,4,2,8,7,9,3,9,9,5,2,2,6/)
+      iv(7,:)  = (/8,4,7,10,4,9,1,7,2,3,7,4,6,2,7,8,2,9,3,9,2,5,9,4/)
+      iv(8,:)  = (/9,5,9,9,3,7,7,1,7,7,3,9,2,6,2,2,8,4,4,10,4,4,8,2/)
+      iv(9,:)  = (/7,4,8,4,7,3,2,7,1,9,4,10,7,2,6,4,9,5,2,9,3,9,2,8/)
+      iv(10,:) = (/10,4,4,8,4,2,3,7,9,1,7,7,8,2,4,6,2,2,5,9,9,3,9,7/)
+      iv(11,:) = (/9,3,2,9,5,4,7,3,4,7,1,2,2,8,9,2,6,7,4,8,7,4,10,9/)
+      iv(12,:) = (/9,2,3,2,9,8,4,9,10,7,2,1,9,4,5,2,7,6,4,7,8,7,4,3/)
+      iv(13,:) = (/3,9,2,5,9,4,6,2,7,8,2,9,1,7,2,3,7,4,8,4,7,10,4,9/)
+      iv(14,:) = (/4,10,4,4,8,2,2,6,2,2,8,4,7,1,7,7,3,9,9,5,9,9,3,7/)
+      iv(15,:) = (/2,9,3,9,2,8,7,2,6,4,9,5,2,7,1,9,4,10,7,4,8,4,7,3/)
+      iv(16,:) = (/5,9,9,3,9,7,8,2,4,6,2,2,3,7,9,1,7,7,10,4,4,8,4,2/)
+      iv(17,:) = (/4,8,7,4,10,9,2,8,9,2,6,7,7,3,4,7,1,2,9,3,2,9,5,4/)
+      iv(18,:) = (/4,7,8,7,4,3,9,4,5,2,7,6,4,9,10,7,2,1,9,2,3,2,9,8/)
+      iv(19,:) = (/6,7,7,8,7,9,3,4,2,5,4,4,8,9,7,10,9,9,1,2,2,3,2,4/)
+      iv(20,:) = (/7,6,7,7,8,9,9,10,9,9,8,7,4,5,4,4,3,2,2,1,2,2,3,4/)
+      iv(21,:) = (/7,7,6,4,4,5,2,4,3,9,7,8,7,9,8,4,2,3,2,2,1,9,9,10/)
+      iv(22,:) = (/8,7,4,6,7,2,5,4,9,3,4,7,10,9,4,8,9,2,3,2,9,1,2,7/)
+      iv(23,:) = (/7,8,4,7,6,2,9,8,2,9,10,4,4,3,7,4,5,9,2,3,9,2,1,7/)
+      iv(24,:) = (/9,9,5,2,2,6,4,2,8,7,9,3,9,7,3,2,4,8,4,4,10,7,7,1/)
+    ELSE
+      PRINT *, ""
+      PRINT *, "The elements in the model have ",nod," nodes"
+      PRINT *, "The voxel special case only works with 8 node bricks"
+      PRINT *, "Analysis aborted"
+      PRINT *, ""
+      CALL shutdown()
+    END IF
+  END IF
+  
+!------------------------------------------------------------------------------
 ! 8. Element stiffness integration and storage
 !------------------------------------------------------------------------------
 
@@ -240,43 +328,72 @@ PROGRAM xx4
   CALL deemat(dee,e,v)
   CALL sample(element,points,weights)
  
-  storkm_pp       = zero
- 
-  elements_3: DO iel=1,nels_pp
-    gauss_pts_1: DO i=1,nip
-      CALL shape_der(der,points,i)
-      jac   = MATMUL(der,g_coord_pp(:,:,iel))
-      det   = determinant(jac)
-      CALL invert(jac)
-      deriv = MATMUL(jac,der)
-      CALL beemat(bee,deriv)
-      storkm_pp(:,:,iel)   = storkm_pp(:,:,iel) +                             &
-                             MATMUL(MATMUL(TRANSPOSE(bee),dee),bee) *         &
-                             det*weights(i)   
-    END DO gauss_pts_1
-  END DO elements_3
-  
-  timest(10) = elap_time()
+  IF(vox_storkm) THEN
+   vox_storkm_pp       = zero 
+   DO iel=1,nels_pp
+     km = zero
+     DO i=1,nip
+       CALL shape_der(der,points,i); jac=MATMUL(der,g_coord_pp(:,:,iel))
+       det=determinant(jac); CALL invert(jac); deriv=MATMUL(jac,der)
+       CALL beemat(bee,deriv)
+       km(1:ntot,1:ntot)=km(1:ntot,1:ntot) +                             &
+                   MATMUL(MATMUL(TRANSPOSE(bee),dee),bee)*det*weights(i)   
+     END DO
 
+     vox_storkm_pp(1,iel)  = km(1,1)  
+     vox_storkm_pp(2,iel)  = km(1,2)  
+     vox_storkm_pp(3,iel)  = km(1,4)  
+     vox_storkm_pp(4,iel)  = km(1,6)  
+     vox_storkm_pp(5,iel)  = km(1,16)  
+     vox_storkm_pp(6,iel)  = km(1,19)  
+     vox_storkm_pp(7,iel)  = km(1,9)  
+     vox_storkm_pp(8,iel)  = km(1,7)  
+     vox_storkm_pp(9,iel)  = km(1,8)  
+     vox_storkm_pp(10,iel) = km(1,10)  
+
+   END DO
+  ELSE
+   storkm_pp=zero
+   elements_3: DO iel=1,nels_pp
+     gauss_pts_1: DO i=1,nip
+       CALL shape_der(der,points,i); jac=MATMUL(der,g_coord_pp(:,:,iel))
+       det=determinant(jac); CALL invert(jac); deriv=MATMUL(jac,der)
+       CALL beemat(bee,deriv)
+       storkm_pp(1:ntot,1:ntot,iel)=storkm_pp(1:ntot,1:ntot,iel) +       &
+       MATMUL(MATMUL(TRANSPOSE(bee),dee),bee)*det*weights(i)   
+     END DO gauss_pts_1
+   END DO elements_3
+  END IF
+
+  timest(10) = elap_time()
+  
 !------------------------------------------------------------------------------
 ! 9. Build the diagonal preconditioner
 !------------------------------------------------------------------------------
   
-  ALLOCATE(diag_precon_tmp(ntot,nels_pp))
-  diag_precon_tmp = zero
- 
-  elements_4: DO iel = 1,nels_pp 
-    DO i = 1,ndof
+ ALLOCATE(diag_precon_tmp(ntot,nels_pp))
+ diag_precon_tmp = zero
+
+ IF(vox_storkm) THEN
+   DO iel = 1,nels_pp
+     diag_precon_tmp(:,iel) = diag_precon_tmp(:,iel) + vox_storkm_pp(1,iel)
+   END DO
+   PRINT *, "If statement in step 9 working"
+ ELSE   
+    elements_4: DO iel = 1,nels_pp 
+     DO i = 1,ndof
       diag_precon_tmp(i,iel) = diag_precon_tmp(i,iel) + storkm_pp(i,i,iel)
-    END DO
-  END DO elements_4
+     END DO
+    END DO elements_4   
+ END IF
+ 
+ CALL scatter(diag_precon_pp,diag_precon_tmp)
 
-  CALL scatter(diag_precon_pp,diag_precon_tmp)
+ DEALLOCATE(diag_precon_tmp)
+ 
+ timest(11) = elap_time()
 
-  DEALLOCATE(diag_precon_tmp)
-
-  timest(11) = elap_time()
-
+ 
 !------------------------------------------------------------------------------
 ! 10. Read in fixed nodal displacements and assign to equations
 !------------------------------------------------------------------------------
@@ -455,6 +572,10 @@ PROGRAM xx4
      write(*,*) 'Time for GPU init + host-to-device copy: ', misc_timers(2)
 
   END IF
+  
+  PRINT *, "At least it works until the end of step 13 :)"
+ 
+  
 !------------------------------------------------------------------------------
 ! 14. Preconditioned conjugate gradient iterations
 !------------------------------------------------------------------------------
@@ -466,16 +587,27 @@ PROGRAM xx4
     u_pp     = zero
     pmul_pp  = zero
     utemp_pp = zero
-
     CALL gather(p_pp,pmul_pp)
-
     IF ( mult_method == 0 ) THEN
        misc_timers(3) = elap_time()
+        IF(vox_storkm) THEN
+         DO iel=1,nels_pp
+          DO j=1,ntot
+           vtemp(i) = zero
+           DO i=1,ntot
+            k = iv(j,i)
+            vtemp(i) = vox_storkm_pp(k,iel)
+           END DO
+           utemp_pp(j,iel) = DOT_PRODUCT(vtemp,pmul_pp(:,iel))
+          END DO
+         END DO
+        ELSE
+         ! Original cpu version    
+         elements_5: DO iel=1,nels_pp
+            utemp_pp(:,iel) = MATMUL(storkm_pp(:,:,iel),pmul_pp(:,iel))
+         END DO elements_5
 
-       ! Original cpu version    
-       elements_5: DO iel=1,nels_pp
-          utemp_pp(:,iel) = MATMUL(storkm_pp(:,:,iel),pmul_pp(:,iel))
-       END DO elements_5
+        END IF
 
        ! Accumulate time for only the matmul code
        misc_timers(4) = misc_timers(4) + (elap_time() - misc_timers(3))
@@ -566,6 +698,7 @@ PROGRAM xx4
       END DO
     END IF
 
+    
     up      = DOT_PRODUCT_P(r_pp,d_pp)
     alpha   = up/DOT_PRODUCT_P(p_pp,u_pp)
     xnew_pp = x_pp + p_pp*alpha
@@ -581,8 +714,12 @@ PROGRAM xx4
 
   write(*,*) 'Total iters time CPU matmul() or GPU kernel: ', (misc_timers(4))
   write(*,*) 'Total iters time GPU kernel+transfer:        ', (misc_timers(2))
-
-  DEALLOCATE(p_pp,r_pp,x_pp,u_pp,d_pp,diag_precon_pp,storkm_pp,pmul_pp) 
+  
+  IF(vox_storkm) THEN
+   DEALLOCATE(p_pp,r_pp,x_pp,u_pp,d_pp,diag_precon_pp,vox_storkm_pp,pmul_pp)
+  ELSE
+   DEALLOCATE(p_pp,r_pp,x_pp,u_pp,d_pp,diag_precon_pp,storkm_pp,pmul_pp) 
+  END IF
 
   ! Cleanup GPU
   IF ( mult_method > 0 ) THEN
@@ -600,7 +737,10 @@ PROGRAM xx4
   END IF
   
   timest(13) = elap_time()
-
+  
+  PRINT *, "Working until the end of vox step 14"
+  
+  
 !------------------------------------------------------------------------------
 ! 15. Print out displacements, stress, principal stress and reactions
 !------------------------------------------------------------------------------
