@@ -491,6 +491,8 @@ PROGRAM xx4
   ! Set up GPU
   IF ( mult_method > 0 ) THEN
 
+     timest(13) = elap_time()
+
      ! Flags for type of matmul based on method
      use_kernels = (mult_method==1 .OR. mult_method==2)
      use_amdblas = (mult_method==3 .OR. mult_method==4)
@@ -563,6 +565,8 @@ PROGRAM xx4
            stop
         END IF
 
+        timest(14) = elap_time()
+
         ! Our kernels want all data on the device so transfer it now
         status = copy_data_to_gpu(msize, dsize, storkm_pp, device_matrix )
         IF ( status /= 1 ) THEN
@@ -570,15 +574,14 @@ PROGRAM xx4
            stop
         END IF
 
+        timest(15) = elap_time()
+
      END IF
 
      misc_timers(2) = elap_time() - misc_timers(1)
      write(*,*) 'Time for GPU init + host-to-device copy: ', misc_timers(2)
 
   END IF
-  
-  PRINT *, "At least it works until the end of step 13 :)"
- 
   
 !------------------------------------------------------------------------------
 ! 14. Preconditioned conjugate gradient iterations
@@ -592,6 +595,7 @@ PROGRAM xx4
     pmul_pp  = zero
     utemp_pp = zero
     CALL gather(p_pp,pmul_pp)
+    timest(16) = elap_time()
     IF ( mult_method == 0 ) THEN
        misc_timers(3) = elap_time()
         IF(vox_storkm) THEN
@@ -610,11 +614,11 @@ PROGRAM xx4
          elements_5: DO iel=1,nels_pp
             utemp_pp(:,iel) = MATMUL(storkm_pp(:,:,iel),pmul_pp(:,iel))
          END DO elements_5
-
         END IF
 
        ! Accumulate time for only the matmul code
        misc_timers(4) = misc_timers(4) + (elap_time() - misc_timers(3))
+       timest(17) = timest(17) + (elap_time() - timest(16))
 
     ELSE
        ! gpu versions
@@ -622,16 +626,25 @@ PROGRAM xx4
 
        ! Time GPU kernel and data upload/download
        misc_timers(1) = elap_time()
+       timest(18) = elap_time()
 
        IF ( use_kernels ) THEN          
 
           ! Transfer the current RHS vectors to device, do matmul, transfer result vectors back
+          timest(18) = elap_time()
           status =          copy_data_to_gpu(vsize_rhs, dsize, pmul_pp, device_rhs_vectors )
           misc_timers(3) = elap_time()
+          timest(19) = timest(19) + (elap_time() - timest(18))
+          timest(20) = elap_time()
+
           status = status + matrix_vector_multiplies( nels_pp, vecsize_lhs, vecsize_rhs, &
                                                       device_matrix, device_rhs_vectors, device_lhs_vectors )
           misc_timers(4) = misc_timers(4) + (elap_time() - misc_timers(3))
+          timest(21) = timest(21) + (elap_time() - timest(20))
+
+          timest(22) = elap_time()
           status = status + copy_data_from_gpu(vsize_lhs, dsize, device_lhs_vectors, utemp_pp )
+          timest(19) = timest(19) + (elap_time() - timest(22))
 
           IF ( status /= 3 ) THEN
              write(*,*) 'Error in OpenCL calls: ', status, ' of 3 succeeded'
@@ -701,7 +714,6 @@ PROGRAM xx4
         u_pp(j) = p_pp(j) * store_pp(i)
       END DO
     END IF
-
     
     up      = DOT_PRODUCT_P(r_pp,d_pp)
     alpha   = up/DOT_PRODUCT_P(p_pp,u_pp)
@@ -740,10 +752,7 @@ PROGRAM xx4
      END IF
   END IF
   
-  timest(13) = elap_time()
-  
-  PRINT *, "Working until the end of vox step 14"
-  
+  timest(23) = elap_time()
   
 !------------------------------------------------------------------------------
 ! 15. Print out displacements, stress, principal stress and reactions
@@ -908,7 +917,7 @@ PROGRAM xx4
 
   IF(numpe==1) CLOSE(28)
 
-  timest(14) = elap_time()
+  timest(24) = elap_time()
    
 !------------------------------------------------------------------------------
 ! 17. Output performance data
