@@ -1054,15 +1054,17 @@ MODULE OUTPUT
 !------------------------------------------------------------------------------
 !------------------------------------------------------------------------------
 
-  SUBROUTINE WRITE_XX4(fixed_freedoms,iters,job_name,loaded_nodes,neq,nn,    &
-                       npes,nr,numpe,timest,tload)
+  SUBROUTINE WRITE_XX4(fixed_freedoms,iters,job_name,loaded_nodes,            &
+                       mult_method,neq,nn,npes,nr,numpe,timest,tload,         &
+                       vox_storkm)
 
   !/****f* output/write_xx4
   !*  NAME
   !*    SUBROUTINE: write_xx4
   !*  SYNOPSIS
   !*    Usage:      CALL write_xx4(fixed_freedoms,iters,job_name,loaded_nodes,&
-  !*                               neq,nn,npes,nr,numpe,timest,tload)
+  !*                               mult_method,neq,nn,npes,nr,numpe,timest,   &
+  !*                               tload,vox_storkm)
   !*  FUNCTION
   !*    Master processor writes out brief details about the problem and 
   !*    some performance data
@@ -1072,6 +1074,7 @@ MODULE OUTPUT
   !*    fixed_freedoms         : Number of fixed displacements
   !*    iters                  : Number of PCG iterations taken to solve problem
   !*    loaded_nodes           : Number of loaded_nodes
+  !*    mult_method            : Method of matrix-vector multiplication
   !*    neq                    : Total number of equations in the mesh
   !*    nn                     : Number of nodes in the mesh
   !*    npes                   : Number of processors used in the simulations
@@ -1085,6 +1088,10 @@ MODULE OUTPUT
   !*    The following scalar character has the INTENT(IN) attribute:
   !*
   !*    job_name               : Job name used to name output file
+  !*
+  !*    The following scalar logical has the INTENT(IN) attribute:
+  !*
+  !*    vox_storkm             : True if using a voxel mesh
   !*
   !*    The following dynamic real array has the INTENT(IN) attribute:
   !*
@@ -1107,8 +1114,9 @@ MODULE OUTPUT
 
   CHARACTER(LEN=50), INTENT(IN)  :: job_name
   INTEGER, INTENT(IN)            :: numpe,npes,nn,nr,neq,iters
-  INTEGER, INTENT(IN)            :: fixed_freedoms,loaded_nodes
+  INTEGER, INTENT(IN)            :: fixed_freedoms,loaded_nodes,mult_method
   REAL(iwp), INTENT(IN)          :: timest(:),tload
+  LOGICAL, INTENT(IN)            :: vox_storkm
 
 !------------------------------------------------------------------------------
 ! 1. Local variables
@@ -1143,7 +1151,21 @@ MODULE OUTPUT
 ! 3. Write basic details about the problem
 !------------------------------------------------------------------------------
 
-    WRITE(11,'(/A)')   "BASIC JOB DATA                                  "     
+    WRITE(11,'(/A)')   "BASIC JOB DATA                                  "  
+
+    IF(mult_method==0) THEN
+      IF (vox_storkm) THEN
+        WRITE(11,'(A)') "Test case 0: Matmul on CPU for voxel meshes"
+      ELSE
+        WRITE(11,'(A)') "Test case 0: Matmul on CPU for standard meshes"
+      END IF
+    END IF
+    IF(mult_method==1) WRITE(11,'(A)') "Test case 1: Matmul on GPU naive"
+    IF(mult_method==2) WRITE(11,'(A)') "Test case 2: Matmul on GPU local memory"
+    IF(mult_method==3) WRITE(11,'(A)') "Test case 3: Matmul on GPU AMD clBlas"
+    IF(mult_method==4) THEN
+      WRITE(11,'(A)') "Test case 4: Matmul on GPU AMD clBLAS Asynchronous"
+    END IF
  
     WRITE(11,'(A,I12)')    "Number of processors used                   ",npes 
     WRITE(11,'(A,I12)')    "Number of nodes in the mesh                 ",nn
