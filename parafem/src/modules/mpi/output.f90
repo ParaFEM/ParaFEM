@@ -1199,37 +1199,37 @@ MODULE OUTPUT
                         "SECONDS  ", "%TOTAL    "
     WRITE(11,'(A,F12.6,F8.2)') "Setup                                       ",&
                            timest(2)-timest(1),                               &
-                           ((timest(2)-timest(1))/(timest(14)-timest(1)))*100  
+                           ((timest(2)-timest(1))/(timest(24)-timest(1)))*100  
     WRITE(11,'(A,F12.6,F8.2)') "Read element steering array                 ",&
                            timest(3)-timest(2),                               &
-                           ((timest(3)-timest(2))/(timest(14)-timest(1)))*100  
+                           ((timest(3)-timest(2))/(timest(24)-timest(1)))*100  
     WRITE(11,'(A,F12.6,F8.2)') "Convert Abaqus to S&G node ordering         ",&
                            timest(4)-timest(3),                               &
-                           ((timest(4)-timest(3))/(timest(14)-timest(1)))*100  
+                           ((timest(4)-timest(3))/(timest(24)-timest(1)))*100  
     WRITE(11,'(A,F12.6,F8.2)') "Read nodal coordinates                      ",&
                            timest(5)-timest(4),                               &
-                           ((timest(5)-timest(4))/(timest(14)-timest(1)))*100  
+                           ((timest(5)-timest(4))/(timest(24)-timest(1)))*100  
     WRITE(11,'(A,F12.6,F8.2)') "Read restrained nodes                       ",&
                            timest(6)-timest(5),                               &
-                           ((timest(6)-timest(5))/(timest(14)-timest(1)))*100                             
+                           ((timest(6)-timest(5))/(timest(24)-timest(1)))*100                             
     WRITE(11,'(A,F12.6,F8.2)') "Compute steering array and neq              ",&
                            timest(7)-timest(6),                               &
-                          ((timest(7)-timest(6))/(timest(14)-timest(1)))*100  
+                          ((timest(7)-timest(6))/(timest(24)-timest(1)))*100  
     WRITE(11,'(A,F12.6,F8.2)') "Compute interprocessor communication tables ",&
                            timest(8)-timest(7),                               &
-                          ((timest(8)-timest(7))/(timest(14)-timest(1)))*100  
+                          ((timest(8)-timest(7))/(timest(24)-timest(1)))*100  
     WRITE(11,'(A,F12.6,F8.2)') "Allocate neq_pp arrays                      ",&
                            timest(9)-timest(8),                               &
-                          ((timest(9)-timest(8))/(timest(14)-timest(1)))*100  
+                          ((timest(9)-timest(8))/(timest(24)-timest(1)))*100  
     WRITE(11,'(A,F12.6,F8.2)') "Compute element stiffness matrices          ",&
                             timest(10)-timest(9),                             &
-                          ((timest(10)-timest(9))/(timest(14)-timest(1)))*100  
+                          ((timest(10)-timest(9))/(timest(24)-timest(1)))*100  
     WRITE(11,'(A,F12.6,F8.2)') "Build the preconditioner                    ",&
                            timest(11)-timest(10),                             &
-                          ((timest(11)-timest(10))/(timest(14)-timest(1)))*100  
+                          ((timest(11)-timest(10))/(timest(24)-timest(1)))*100  
     WRITE(11,'(A,F12.6,F8.2)') "Get starting r                              ",&
                            timest(12)-timest(11),                             &
-                          ((timest(12)-timest(11))/(timest(14)-timest(1)))*100  
+                          ((timest(12)-timest(11))/(timest(24)-timest(1)))*100  
 
     IF(mult_method==1 .OR. mult_method==2) THEN
       WRITE(11,'(A,F12.6,F8.2)')                                              &
