@@ -36,7 +36,8 @@ PROGRAM xx4
 
   ! GPU Code config
   ! ---------------
-  INTEGER       :: mult_method = 0       ! Method to use to do the matrix-vector mult
+  INTEGER       :: mult_method           ! Read in at command line
+                                         ! Method to use to do the matrix-vector mult
                                          ! 0 - CPU: original code 
                                          ! 1 - GPU: our own matmul kernel 1 (naive)
                                          ! 2 - GPU: our own matmul kernel 2 (local mem)
@@ -62,7 +63,7 @@ PROGRAM xx4
 
   ! Voxel case toggle
   ! ----------------------
-  INTEGER       :: element_geom = 1     ! 0 - General case
+  INTEGER       :: element_geom = 0     ! 0 - General case
                                         ! 1 - Voxel case, toggles vox_storkm to true
 
   
@@ -107,7 +108,7 @@ PROGRAM xx4
   REAL(iwp),PARAMETER   :: penalty = 1.0e20_iwp
   CHARACTER(LEN=15)     :: element
   CHARACTER(LEN=50)     :: program_name='xx4'
-  CHARACTER(LEN=50)     :: fname,job_name,label
+  CHARACTER(LEN=50)     :: fname,job_name,label,argv
   LOGICAL               :: converged = .false.
 
  ! VARIABLES FROM XX16 on 27march not sure about argv
@@ -117,7 +118,6 @@ PROGRAM xx4
   REAL(iwp)             :: gigaflops,gigaflops_1,gigaflops_2
   REAL(iwp)             :: flop,flop_1,flop_2
   REAL(iwp)             :: DDOT ! BLAS MKL
-  CHARACTER(LEN=50)     :: argv
   CHARACTER(LEN=6)      :: ch
   CHARACTER(LEN=80)     :: cbuffer
   CHARACTER(LEN=80)     :: message
@@ -166,19 +166,22 @@ PROGRAM xx4
   timest(1) = elap_time()
   
   CALL find_pe_procs(numpe,npes)
-  argc = iargc()
-  IF (argc /= 1) CALL job_name_error(numpe,program_name)
-  CALL GETARG(1, job_name) 
+
+! argc = iargc()
+! IF (argc /= 1) CALL job_name_error(numpe,program_name)
+! CALL GETARG(1, job_name) 
+
+  CALL getname2(argv,nlen,mult_method)
 
 ! CALL read_p121(job_name,numpe,e,element,fixed_freedoms,limit,loaded_nodes, &
 !                meshgen,nels,nip,nn,nod,nr,partitioner,tol,v)
 
-  CALL read_p121(job_name,numpe,e,element,limit,loaded_nodes, &
+  CALL read_p121(argv,numpe,e,element,limit,loaded_nodes, &
                  meshgen,nels,nip,nn,nod,nr,partitioner,tol,v)
 
   fixed_freedoms = 0 ! fixed_freedoms not read in via READ_P121
 
-  CALL calc_nels_pp(job_name,nels,npes,numpe,partitioner,nels_pp)
+  CALL calc_nels_pp(argv,nels,npes,numpe,partitioner,nels_pp)
 
   ndof = nod*nodof
   ntot = ndof
@@ -193,16 +196,16 @@ PROGRAM xx4
 
   timest(2) = elap_time()
   
-  CALL read_g_num_pp(job_name,iel_start,nn,npes,numpe,g_num_pp)
+  CALL read_g_num_pp(argv,iel_start,nn,npes,numpe,g_num_pp)
   timest(3) = elap_time()
 
   IF(meshgen == 2) CALL abaqus2sg(element,g_num_pp)
   timest(4) = elap_time()
 
-  CALL read_g_coord_pp(job_name,g_num_pp,nn,npes,numpe,g_coord_pp)
+  CALL read_g_coord_pp(argv,g_num_pp,nn,npes,numpe,g_coord_pp)
   timest(5) = elap_time()
 
-  CALL read_rest(job_name,numpe,rest)
+  CALL read_rest(argv,numpe,rest)
   timest(6) = elap_time()
     
 !------------------------------------------------------------------------------
@@ -275,6 +278,7 @@ PROGRAM xx4
 !------------------------------------------------------------------------------
 
   IF (element_geom == 1) THEN
+    mult_method=0
     IF (nod==8) THEN
       vox_storkm = .true.
       ALLOCATE(km(ntot,ntot))
@@ -405,7 +409,7 @@ PROGRAM xx4
 
     node = 0 ; no = 0 ; no_pp_temp = 0 ; sense = 0 ; valf = zero
 
-    CALL read_fixed(job_name,numpe,node,sense,valf)
+    CALL read_fixed(argv,numpe,node,sense,valf)
     CALL find_no(node,rest,sense,no)
 !   CALL reindex_fixed_nodes(ieq_start,no,no_pp_temp,fixed_freedoms_pp,       &
     CALL reindex(ieq_start,no,no_pp_temp,fixed_freedoms_pp,                   &
@@ -435,7 +439,7 @@ PROGRAM xx4
     
     val  = zero ; node = 0
 
-    CALL read_loads(job_name,numpe,node,val)
+    CALL read_loads(argv,numpe,node,val)
     CALL load(g_g_pp,g_num_pp,node,val,r_pp(1:))
 
     tload = SUM_P(r_pp(1:))
@@ -748,15 +752,15 @@ PROGRAM xx4
   CALL calc_nodes_pp(nn,npes,numpe,node_end,node_start,nodes_pp)
   
   IF(numpe==1) THEN
-    fname = job_name(1:INDEX(job_name, " ")-1)//".dis"
+    fname = argv(1:INDEX(argv, " ")-1)//".dis"
     OPEN(24, file=fname, status='replace', action='write')
-    fname = job_name(1:INDEX(job_name, " ")-1) // ".str"
+    fname = argv(1:INDEX(argv, " ")-1) // ".str"
     OPEN(25, file=fname, status='replace', action='write')
-    fname = job_name(1:INDEX(job_name, " ")-1) // ".pri"
+    fname = argv(1:INDEX(argv, " ")-1) // ".pri"
     OPEN(26, file=fname, status='replace', action='write')
-    fname = job_name(1:INDEX(job_name, " ")-1) // ".vms"
+    fname = argv(1:INDEX(argv, " ")-1) // ".vms"
     OPEN(27, file=fname, status='replace', action='write')
-    fname = job_name(1:INDEX(job_name, " ")-1) // ".rea"
+    fname = argv(1:INDEX(argv, " ")-1) // ".rea"
     OPEN(28, file=fname, status='replace', action='write')
   END IF
 
@@ -910,11 +914,11 @@ PROGRAM xx4
 ! 17. Output performance data
 !------------------------------------------------------------------------------
 
-! CALL WRITE_P121(fixed_freedoms,iters,job_name,loaded_nodes,neq,nn,npes,nr,  &
-!                 numpe,timest,tload)
- 
-  CALL WRITE_XX4(fixed_freedoms,iters,job_name,loaded_nodes,neq,nn,npes,nr,  &
-                 numpe,timest,tload)
+  CALL WRITE_XX4(fixed_freedoms,iters,argv,loaded_nodes,mult_method,      &
+                 neq,nn,npes,nr,numpe,timest,tload,vox_storkm) 
+
+! CALL WRITE_XX4(fixed_freedoms,iters,argv,loaded_nodes,neq,nn,npes,nr,   &
+!                numpe,timest,tload)
 
   CALL shutdown() 
  
