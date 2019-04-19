@@ -1062,9 +1062,9 @@ MODULE OUTPUT
   !*  NAME
   !*    SUBROUTINE: write_xx4
   !*  SYNOPSIS
-  !*    Usage:      CALL write_xx4(fixed_freedoms,iters,job_name,loaded_nodes,&
-  !*                               mult_method,neq,nn,npes,nr,numpe,timest,   &
-  !*                               tload,vox_storkm)
+  !*    Usage:      CALL write_xx4(fixed_freedoms,iters,job_name,             &
+  !*                               loaded_nodes,mult_method,neq,nn,npes,nr,   &
+  !*                               numpe,timest,tload,vox_storkm)
   !*  FUNCTION
   !*    Master processor writes out brief details about the problem and 
   !*    some performance data
@@ -1124,8 +1124,11 @@ MODULE OUTPUT
   
   CHARACTER(LEN=50)              :: fname
   CHARACTER(LEN=60)              :: date
-  CHARACTER(LEN=60)              :: hostname
+  CHARACTER(LEN=24)              :: fdate      ! instrinsic procedure
+  CHARACTER(LEN=80)              :: hostname
   INTEGER                        :: i          ! loop counter
+  INTEGER*4                      :: status
+  INTEGER*4                      :: hostnm     ! intrinsic procedure
  
   IF(numpe==1) THEN
 
@@ -1134,24 +1137,24 @@ MODULE OUTPUT
 
 !------------------------------------------------------------------------------
 ! 2. Retrieve information about the environment
-!
-!    Run the following command before running the job to get the date and
-!    time the job was executed or submitted.
-!
-!    $export MYDATE=$(date)
 !------------------------------------------------------------------------------
 
-    CALL get_environment_variable("MYDATE",date)
-    CALL get_environment_variable("HOSTNAME",hostname)
+!   CALL get_environment_variable("VARIABLE",variable)
     
-    WRITE(11,'(/A)')  TRIM(date)
-    WRITE(11,'(/2A)') "This job run on host ",  TRIM(hostname)
+    WRITE(11,'(A)') fdate() 
+
+    status = hostnm(hostname)
+ 
+    IF(status==0) THEN
+      WRITE(11,'(/2A)')  "This job run on host ", hostname 
+    ELSE
+      WRITE(11,'(/A,A)') "This job run on host ", hostname 
+      WRITE(11,'(A,I2)') "Routine HOSTNM returned error code", status 
+    END IF
 
 !------------------------------------------------------------------------------
-! 3. Write basic details about the problem
+! 3. Report which case was used
 !------------------------------------------------------------------------------
-
-    WRITE(11,'(/A)')   "BASIC JOB DATA                                  "  
 
     IF(mult_method==0) THEN
       IF (vox_storkm) THEN
@@ -1167,6 +1170,11 @@ MODULE OUTPUT
       WRITE(11,'(A)') "Test case 4: Matmul on GPU AMD clBLAS Asynchronous"
     END IF
  
+!------------------------------------------------------------------------------
+! 4. Write basic details about the problem
+!------------------------------------------------------------------------------
+
+    WRITE(11,'(/A)')       "BASIC JOB DATA                                  "  
     WRITE(11,'(A,I12)')    "Number of processors used                   ",npes 
     WRITE(11,'(A,I12)')    "Number of nodes in the mesh                 ",nn
     WRITE(11,'(A,I12)')    "Number of nodes that were restrained        ",nr
@@ -1184,7 +1192,7 @@ MODULE OUTPUT
     END IF
 
 !------------------------------------------------------------------------------
-! 3. Output timing data
+! 5. Output timing data
 !------------------------------------------------------------------------------
 
     WRITE(11,'(/3A)')   "PROGRAM SECTION EXECUTION TIMES                  ",  &
@@ -1214,22 +1222,47 @@ MODULE OUTPUT
                            timest(9)-timest(8),                               &
                           ((timest(9)-timest(8))/(timest(14)-timest(1)))*100  
     WRITE(11,'(A,F12.6,F8.2)') "Compute element stiffness matrices          ",&
-                            timest(10)-timest(9),                              &
+                            timest(10)-timest(9),                             &
                           ((timest(10)-timest(9))/(timest(14)-timest(1)))*100  
     WRITE(11,'(A,F12.6,F8.2)') "Build the preconditioner                    ",&
-                           timest(11)-timest(10),                               &
+                           timest(11)-timest(10),                             &
                           ((timest(11)-timest(10))/(timest(14)-timest(1)))*100  
     WRITE(11,'(A,F12.6,F8.2)') "Get starting r                              ",&
-                           timest(12)-timest(11),                               &
+                           timest(12)-timest(11),                             &
                           ((timest(12)-timest(11))/(timest(14)-timest(1)))*100  
-    WRITE(11,'(A,F12.6,F8.2)') "Solve equations                             ",&
-                           timest(13)-timest(12),                               &
-                           ((timest(13)-timest(12))/(timest(14)-timest(1)))*100  
+
+    IF(mult_method==1 .OR. mult_method==2) THEN
+      WRITE(11,'(A,F12.6,F8.2)')                                              &
+        "Initiallise GPU                             ",                       &
+         timest(14)-timest(13),                                               &
+       ((timest(14)-timest(13))/(timest(24)-timest(1)))*100  
+      WRITE(11,'(A,F12.6,F8.2)')                                              &
+        "Copy KM data to GPU                         ",                       &
+         timest(15)-timest(14),                                               &
+       ((timest(15)-timest(14))/(timest(24)-timest(1)))*100  
+      WRITE(11,'(A,F12.6,F8.2)')                                              &
+        "Transfer vectors to/from GPU                ",                       &
+         timest(19),                                                          &
+        (timest(19))/(timest(24)-timest(1))*100  
+      WRITE(11,'(A,F12.6,F8.2)')                                              &
+        "Matrix-vector multiplication on GPU         ",                       &
+         timest(21),                                                          &
+        (timest(21))/(timest(24)-timest(1))*100  
+    ELSE
+      WRITE(11,'(A,F12.6,F8.2)')                                              &
+        "Matrix-vector multiplication on CPU         ",                       &
+         timest(17),                                                          &
+        (timest(17))/(timest(24)-timest(1))*100  
+    END IF
     WRITE(11,'(A,F12.6,F8.2)') "Output results                              ",&
-                           timest(14)-timest(13),                              &
-                          ((timest(14)-timest(13))/(timest(14)-timest(1)))*100  
-    WRITE(11,'(A,F12.6,A/)')  "Total execution time                        ",  &
-                          timest(14)-timest(1),"  100.00"
+                           timest(24)-timest(23),                             &
+                          ((timest(24)-timest(23))/(timest(24)-timest(1)))*100  
+    WRITE(11,'(A,F12.6,F8.2)')                                                &
+        "TOTAL: Solve equations                      ",                       &
+         timest(23)-timest(12),                                               &
+       ((timest(23)-timest(12))/(timest(24)-timest(1)))*100  
+    WRITE(11,'(A,F12.6,A/)')  "TOTAL: Program execution time               ", &
+                          timest(24)-timest(1),"  100.00"
     CLOSE(11)
     
   END IF
