@@ -1156,19 +1156,10 @@ MODULE OUTPUT
 ! 3. Report which case was used
 !------------------------------------------------------------------------------
 
-    IF(mult_method==0) THEN
-      IF (vox_storkm) THEN
-        WRITE(11,'(A)') "Test case 0: Matmul on CPU for voxel meshes"
-      ELSE
-        WRITE(11,'(A)') "Test case 0: Matmul on CPU for standard meshes"
-      END IF
-    END IF
-    IF(mult_method==1) WRITE(11,'(A)') "Test case 1: Matmul on GPU naive"
-    IF(mult_method==2) WRITE(11,'(A)') "Test case 2: Matmul on GPU local memory"
-    IF(mult_method==3) WRITE(11,'(A)') "Test case 3: Matmul on GPU AMD clBlas"
-    IF(mult_method==4) THEN
-      WRITE(11,'(A)') "Test case 4: Matmul on GPU AMD clBLAS Asynchronous"
-    END IF
+    IF(mult_method==0) WRITE(11,'(/A)') "Case 0: Matmul on CPU (general)"
+    IF(mult_method==1) WRITE(11,'(/A)') "Case 1: Matmul on CPU (voxels)"
+    IF(mult_method==2) WRITE(11,'(/A)') "Case 2: Matmul on GPU (naive)"
+    IF(mult_method==3) WRITE(11,'(/A)') "Case 3: Matmul on GPU (local memory)"
  
 !------------------------------------------------------------------------------
 ! 4. Write basic details about the problem
@@ -1181,13 +1172,13 @@ MODULE OUTPUT
     WRITE(11,'(A,I12)')    "Number of equations solved                  ",neq
     WRITE(11,'(A,I12)')    "Number of PCG iterations                    ",iters
     IF(loaded_nodes > 0) THEN
-      WRITE(11,'(A,I12)')    "Number of loaded nodes                      ",   &
+      WRITE(11,'(A,I12)')    "Number of loaded nodes                      ",  &
                               loaded_nodes 
-      WRITE(11,'(A,E12.4)')  "Total load applied                          ",   &
+      WRITE(11,'(A,E12.4)')  "Total load applied                          ",  &
                               tload
     END IF
     IF(fixed_freedoms > 0) THEN
-      WRITE(11,'(A,I12)')    "Number of fixed displacements               ",   &
+      WRITE(11,'(A,I12)')    "Number of fixed displacements               ",  &
                               fixed_freedoms 
     END IF
 
@@ -1231,7 +1222,7 @@ MODULE OUTPUT
                            timest(12)-timest(11),                             &
                           ((timest(12)-timest(11))/(timest(24)-timest(1)))*100  
 
-    IF(mult_method==1 .OR. mult_method==2) THEN
+    IF(mult_method==2 .OR. mult_method==3) THEN
       WRITE(11,'(A,F12.6,F8.2)')                                              &
         "Initiallise GPU                             ",                       &
          timest(14)-timest(13),                                               &
@@ -1257,12 +1248,24 @@ MODULE OUTPUT
     WRITE(11,'(A,F12.6,F8.2)') "Output results                              ",&
                            timest(24)-timest(23),                             &
                           ((timest(24)-timest(23))/(timest(24)-timest(1)))*100  
-    WRITE(11,'(A,F12.6,F8.2)')                                                &
-        "TOTAL: Solve equations                      ",                       &
-         timest(23)-timest(12),                                               &
-       ((timest(23)-timest(12))/(timest(24)-timest(1)))*100  
+
+    IF(mult_method==2 .OR. mult_method==3) THEN
+      WRITE(11,'(A,F12.6,F8.2)')                                              &
+          "TOTAL: Solve equations                      ",                     &
+          (timest(23)-timest(12))-(timest(14)-timest(13))                     &
+                                 -(timest(15)-timest(14)),                    &
+         (((timest(23)-timest(12))-(timest(14)-timest(13))                    &
+                                  -(timest(15)-timest(14)))                   &
+                                  /(timest(24)-timest(1)))*100  
+    ELSE
+      WRITE(11,'(A,F12.6,F8.2)')                                              &
+          "TOTAL: Solve equations                      ",                     &
+           timest(23)-timest(12),                                             &
+         ((timest(23)-timest(12))/(timest(24)-timest(1)))*100  
+    END IF
     WRITE(11,'(A,F12.6,A/)')  "TOTAL: Program execution time               ", &
-                          timest(24)-timest(1),"  100.00"
+         timest(24)-timest(1),"  100.00"
+
     CLOSE(11)
     
   END IF
