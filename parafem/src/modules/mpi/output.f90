@@ -1123,7 +1123,6 @@ MODULE OUTPUT
 !------------------------------------------------------------------------------
   
   CHARACTER(LEN=50)              :: fname
-  CHARACTER(LEN=60)              :: date
   CHARACTER(LEN=24)              :: fdate      ! instrinsic procedure
   CHARACTER(LEN=80)              :: hostname
   INTEGER                        :: i          ! loop counter
@@ -1139,8 +1138,6 @@ MODULE OUTPUT
 ! 2. Retrieve information about the environment
 !------------------------------------------------------------------------------
 
-!   CALL get_environment_variable("VARIABLE",variable)
-    
     WRITE(11,'(A)') fdate() 
 
     status = hostnm(hostname)
@@ -1160,6 +1157,8 @@ MODULE OUTPUT
     IF(mult_method==1) WRITE(11,'(/A)') "Case 1: Matmul on CPU (voxels)"
     IF(mult_method==2) WRITE(11,'(/A)') "Case 2: Matmul on GPU (naive)"
     IF(mult_method==3) WRITE(11,'(/A)') "Case 3: Matmul on GPU (local memory)"
+    IF(mult_method==4) WRITE(11,'(/A)') "Case 4: Matmul on GPU (voxels)"
+    IF(mult_method==4) WRITE(11,'(A)')  "        Note - under development"
  
 !------------------------------------------------------------------------------
 ! 4. Write basic details about the problem
@@ -1222,7 +1221,7 @@ MODULE OUTPUT
                            timest(12)-timest(11),                             &
                           ((timest(12)-timest(11))/(timest(24)-timest(1)))*100  
 
-    IF(mult_method==2 .OR. mult_method==3) THEN
+    IF(mult_method==2 .OR. mult_method==3 .OR. mult_method==4) THEN
       WRITE(11,'(A,F12.6,F8.2)')                                              &
         "Initiallise GPU                             ",                       &
          timest(14)-timest(13),                                               &
@@ -1248,10 +1247,11 @@ MODULE OUTPUT
     WRITE(11,'(A,F12.6,F8.2)') "Output results                              ",&
                            timest(24)-timest(23),                             &
                           ((timest(24)-timest(23))/(timest(24)-timest(1)))*100  
-
-    IF(mult_method==2 .OR. mult_method==3) THEN
+    WRITE(11,'(/A)')           "----------------------------------------------&
+                                &------------------"
+    IF(mult_method==2 .OR. mult_method==3 .OR. mult_method==4) THEN
       WRITE(11,'(A,F12.6,F8.2)')                                              &
-          "TOTAL: Solve equations                      ",                     &
+          "SUBTOTAL: Solve equations                   ",                     &
           (timest(23)-timest(12))-(timest(14)-timest(13))                     &
                                  -(timest(15)-timest(14)),                    &
          (((timest(23)-timest(12))-(timest(14)-timest(13))                    &
@@ -1259,12 +1259,15 @@ MODULE OUTPUT
                                   /(timest(24)-timest(1)))*100  
     ELSE
       WRITE(11,'(A,F12.6,F8.2)')                                              &
-          "TOTAL: Solve equations                      ",                     &
+          "SUBTOTAL: Solve equations                   ",                     &
            timest(23)-timest(12),                                             &
          ((timest(23)-timest(12))/(timest(24)-timest(1)))*100  
     END IF
-    WRITE(11,'(A,F12.6,A/)')  "TOTAL: Program execution time               ", &
+    WRITE(11,'(A,F12.6,A)')                                                   &
+         "   TOTAL: Program execution time            ",                      &
          timest(24)-timest(1),"  100.00"
+    WRITE(11,'(A/)')           "----------------------------------------------&
+                                &------------------"
 
     CLOSE(11)
     
@@ -1278,15 +1281,16 @@ MODULE OUTPUT
 !------------------------------------------------------------------------------
 !------------------------------------------------------------------------------
 
-  SUBROUTINE WRITE_XX10(fixed_freedoms,iters,job_name,loaded_nodes,neq,nn,    &
-                        npes,nr,numpe,timest,tload)
+  SUBROUTINE WRITE_XX10(fixed_freedoms,iters,job_name,loaded_nodes,           &
+                        mult_method,neq,nn,npes,nr,numpe,timest,tload)
 
   !/****f* output/write_xx10
   !*  NAME
   !*    SUBROUTINE: write_xx10
   !*  SYNOPSIS
-  !*    Usage:      CALL write_xx10(fixed_freedoms,iters,job_name,loaded_nodes,&
-  !*                                neq,nn,npes,nr,numpe,timest,tload)
+  !*    Usage:      CALL write_xx10(fixed_freedoms,iters,job_name,            &
+  !*                                loaded_nodes,mult_method,neq,nn,npes,     &
+  !*                                nr,numpe,timest,tload)
   !*  FUNCTION
   !*    Master processor writes out brief details about the problem and 
   !*    some performance data
@@ -1295,6 +1299,7 @@ MODULE OUTPUT
   !*
   !*    fixed_freedoms         : Number of fixed displacements
   !*    iters                  : Number of PCG iterations taken to solve problem
+  !*    mult_method            : Matrix-vector multiplication
   !*    loaded_nodes           : Number of loaded_nodes
   !*    neq                    : Total number of equations in the mesh
   !*    nn                     : Number of nodes in the mesh
@@ -1332,6 +1337,7 @@ MODULE OUTPUT
   CHARACTER(LEN=50), INTENT(IN)  :: job_name
   INTEGER, INTENT(IN)            :: numpe,npes,nn,nr,neq,iters
   INTEGER, INTENT(IN)            :: fixed_freedoms,loaded_nodes
+  INTEGER, INTENT(IN)            :: mult_method
   REAL(iwp), INTENT(IN)          :: timest(:),tload
 
 !------------------------------------------------------------------------------
@@ -1339,9 +1345,11 @@ MODULE OUTPUT
 !------------------------------------------------------------------------------
   
   CHARACTER(LEN=50)              :: fname
-  CHARACTER(LEN=60)              :: date
+  CHARACTER(LEN=24)              :: fdate      ! instrinsic procedure
   CHARACTER(LEN=60)              :: hostname
   INTEGER                        :: i          ! loop counter
+  INTEGER*4                      :: status
+  INTEGER*4                      :: hostnm     ! intrinsic procedure
  
   IF(numpe==1) THEN
 
@@ -1350,21 +1358,29 @@ MODULE OUTPUT
 
 !------------------------------------------------------------------------------
 ! 2. Retrieve information about the environment
-!
-!    Run the following command before running the job to get the date and
-!    time the job was executed or submitted.
-!
-!    $export MYDATE=$(date)
 !------------------------------------------------------------------------------
 
-    CALL get_environment_variable("MYDATE",date)
-    CALL get_environment_variable("HOSTNAME",hostname)
-    
-    WRITE(11,'(/A)')  TRIM(date)
-    WRITE(11,'(/2A)') "This job run on host ",  TRIM(hostname)
+    WRITE(11,'(/A)') fdate() 
+
+    status = hostnm(hostname)
+ 
+    IF(status==0) THEN
+      WRITE(11,'(/2A)')  "This job run on host ", hostname 
+    ELSE
+      WRITE(11,'(/A,A)') "This job run on host ", hostname 
+      WRITE(11,'(A,I2)') "Routine HOSTNM returned error code", status 
+    END IF
 
 !------------------------------------------------------------------------------
-! 3. Write basic details about the problem
+! 4. Report which case was used
+!------------------------------------------------------------------------------
+
+    IF(mult_method==0) WRITE(11,'(/A)') "Case 0: Matmul on CPU (general)"
+    IF(mult_method==1) WRITE(11,'(/A)') "Case 1: Matmul on GPU"
+    IF(mult_method==2) WRITE(11,'(/A)') "Case 2: Matmul on GPU"
+ 
+!------------------------------------------------------------------------------
+! 5. Write basic details about the problem
 !------------------------------------------------------------------------------
 
     WRITE(11,'(/A)')   "BASIC JOB DATA                                  "     
@@ -1386,7 +1402,7 @@ MODULE OUTPUT
     END IF
 
 !------------------------------------------------------------------------------
-! 3. Output timing data
+! 6. Output timing data
 !------------------------------------------------------------------------------
 
     WRITE(11,'(/3A)')   "PROGRAM SECTION EXECUTION TIMES                  ",  &
