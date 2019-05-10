@@ -34,7 +34,8 @@ PROGRAM XX10
 
   ! GPU Code config
   ! ---------------
-  INTEGER       :: mult_method = 2       ! Method to use to do the matrix-matrix mult
+  INTEGER       :: mult_method           ! Read in at the command line
+                                         ! Method to use to do the matrix-matrix mult
                                          ! 0 - CPU: original code
                                          ! 1 - GPU: our own matmul 1D kernel (naive)
                                          ! 2 - GPU: our own matmul 2D kernel (naive)
@@ -82,7 +83,7 @@ PROGRAM XX10
   INTEGER               :: loaded_nodes,fixed_freedoms,iel,i,j,k,l,idx1,idx2
   INTEGER               :: iters,limit,nn,nr,nip,nod,nels,ndof,npes_pp
   INTEGER               :: node_end,node_start,nodes_pp
-  INTEGER               :: argc,iargc,meshgen,partitioner
+  INTEGER               :: argc,iargc,nlen,meshgen,partitioner
   INTEGER               :: fixed_freedoms_pp,fixed_freedoms_start
   REAL(iwp)             :: e,v,det,tol,up,alpha,beta,tload
   REAL(iwp),PARAMETER   :: zero = 0.0_iwp
@@ -123,9 +124,12 @@ PROGRAM XX10
   timest(1) = elap_time()
   
   CALL find_pe_procs(numpe,npes)
-  argc = iargc()
-  IF (argc /= 1) CALL job_name_error(numpe,program_name)
-  CALL GETARG(1, job_name) 
+
+! argc = iargc()
+! IF (argc /= 1) CALL job_name_error(numpe,program_name)
+! CALL GETARG(1, job_name) 
+
+  CALL getname2(job_name,nlen,mult_method)
 
 ! CALL read_p121(job_name,numpe,e,element,fixed_freedoms,limit,loaded_nodes, &
 !                meshgen,nels,nip,nn,nod,nr,partitioner,tol,v)
