@@ -125,14 +125,7 @@ PROGRAM XX10
   
   CALL find_pe_procs(numpe,npes)
 
-! argc = iargc()
-! IF (argc /= 1) CALL job_name_error(numpe,program_name)
-! CALL GETARG(1, job_name) 
-
   CALL getname2(job_name,nlen,mult_method)
-
-! CALL read_p121(job_name,numpe,e,element,fixed_freedoms,limit,loaded_nodes, &
-!                meshgen,nels,nip,nn,nod,nr,partitioner,tol,v)
 
   CALL read_p121(job_name,numpe,e,element,limit,loaded_nodes, &
                  meshgen,nels,nip,nn,nod,nr,partitioner,tol,v)
@@ -289,7 +282,6 @@ PROGRAM XX10
 
     CALL read_fixed(job_name,numpe,node,sense,valf)
     CALL find_no(node,rest,sense,no)
-!   CALL reindex_fixed_nodes(ieq_start,no,no_pp_temp,fixed_freedoms_pp,       &
     CALL reindex(ieq_start,no,no_pp_temp,fixed_freedoms_pp,                   &
                  fixed_freedoms_start,neq_pp)
 
@@ -722,8 +714,8 @@ PROGRAM XX10
 ! 17. Output performance data
 !------------------------------------------------------------------------------
 
-  CALL WRITE_XX10(fixed_freedoms,iters,job_name,loaded_nodes,neq,nn,npes,nr,  &
-                  numpe,timest,tload)
+  CALL WRITE_XX10(fixed_freedoms,iters,job_name,loaded_nodes,mult_method,     &
+                  neq,nn,npes,nr,numpe,timest,tload)
  
   CALL shutdown() 
  
