@@ -3,7 +3,7 @@
 # ------------------------------------------------------------------------------
 # Include file for the Sunbird system Cumulus at Supercomputing Wales (SCW)
 # Steps required to prepare for make command
-# ~ module load mpi/intel/2019.3
+# ~ module load mpi/intel/2019/3
 # ------------------------------------------------------------------------------
 
 # ------------------------------------------------------------------------------
