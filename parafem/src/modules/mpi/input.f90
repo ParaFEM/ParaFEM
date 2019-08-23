@@ -2797,8 +2797,8 @@ MODULE INPUT
     REAL(iwp),INTENT(INOUT)       :: materialValues(:,:)
     CHARACTER(LEN=50), INTENT(in) :: fname
     CHARACTER(LEN=10)             :: keyword
-    LOGICAL                       :: verbose = .true.
-!   LOGICAL                       :: verbose = .false.
+!   LOGICAL                       :: verbose = .true.
+    LOGICAL                       :: verbose = .false.
 
     IF(numpe==1)THEN
      OPEN(21,FILE=fname, STATUS='OLD', ACTION='READ')
