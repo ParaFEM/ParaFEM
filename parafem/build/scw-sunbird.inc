@@ -31,7 +31,7 @@ EXT_LIB_METIS_AR=ar rv
 EXT_LIB_METIS_RANLIB=ranlib
 
 EXT_LIB_GAF77_FC=mpiifort
-EXT_LIB_GAF77_FFLAGS=-freal-4-real-8
+EXT_LIB_GAF77_FFLAGS=-r8 -i4 -g
 EXT_LIB_GAF77_LDFLAGS=
  
 # ------------------------------------------------------------------------------
