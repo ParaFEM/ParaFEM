@@ -1,0 +1,9 @@
+To build: 
+
+$./make-parafem MACHINE=<my_machine>
+
+The ~/build directory contains examples of <my_machine>.inc files for different platforms. Use one as a template to create a file for your own machine.
+
+An example is "linuxdesktop.inc".
+
+$./make-parafem MACHINE=linuxdesktop
