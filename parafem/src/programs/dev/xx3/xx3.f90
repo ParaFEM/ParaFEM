@@ -9,8 +9,9 @@ PROGRAM xx3
   USE input         ; USE output           ; USE loading
   USE timing        ; USE maths            ; USE gather_scatter
   USE partition     ; USE elements         ; USE steering        ; USE pcg
+  USE new_library
 
-  use iso_c_binding
+  USE iso_c_binding
   
   IMPLICIT NONE
 
@@ -178,7 +179,11 @@ PROGRAM xx3
   IF (argc /= 1) CALL job_name_error(numpe,program_name)
   CALL GETARG(1, job_name) 
 
-  CALL read_p121(job_name,numpe,e,element,fixed_freedoms,limit,loaded_nodes, &
+! CALL read_p121(job_name,numpe,e,element,fixed_freedoms,limit,loaded_nodes, &
+!                meshgen,nels,nip,nn,nod,nr,partitioner,tol,v)
+ 
+  fixed_freedoms = 0 
+  CALL read_p121(job_name,numpe,e,element,limit,loaded_nodes,                &
                  meshgen,nels,nip,nn,nod,nr,partitioner,tol,v)
 
   CALL calc_nels_pp(job_name,nels,npes,numpe,partitioner,nels_pp)
@@ -273,7 +278,7 @@ PROGRAM xx3
 !------------------------------------------------------------------------------
 
   dee = zero
-  CALL deemat(e,v,dee)
+  CALL deemat(dee,e,v)
   CALL sample(element,points,weights)
  
   storkm_pp       = zero
