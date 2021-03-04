@@ -34,11 +34,12 @@ EXT_LIB_GAF77_LDFLAGS=
 # FLAGS for GPU compilation
 # ------------------------------------------------------------------------------
 
-GPU_CU_ROOT  = $(CUDA_HOME)
+#GPU_CU_ROOT = $(CUDA_HOME)
+#GPU_CU_ROOT  = /usr/lib/cuda
 GPU_CU       = nvcc
 GPU_CU_FLAGS = 
-GPU_CU_INC   = -I$(GPU_CU_ROOT)/include
-GPU_CU_LIB   = -L$(GPU_CU_ROOT)/lib64 -lcudart
+GPU_CU_INC   = -I/usr/lib/nvidia-cuda-toolkit/Sanitizer/include
+GPU_CU_LIB   = -L/usr/lib/nvidia-cuda-toolkit/libdevice -lcudart -lstdc++
 
 # ------------------------------------------------------------------------------
 # FLAGS for MODULE/LIBRARY compilation
