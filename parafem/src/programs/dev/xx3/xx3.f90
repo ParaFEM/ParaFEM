@@ -331,8 +331,10 @@ PROGRAM xx3
 
     CALL read_fixed(job_name,numpe,node,sense,valf)
     CALL find_no(node,rest,sense,no)
-    CALL reindex_fixed_nodes(ieq_start,no,no_pp_temp,fixed_freedoms_pp,       &
-                             fixed_freedoms_start,neq_pp)
+!   CALL reindex_fixed_nodes(ieq_start,no,no_pp_temp,fixed_freedoms_pp,       &
+!                            fixed_freedoms_start,neq_pp)
+    CALL reindex(ieq_start,no,no_pp_temp,fixed_freedoms_pp,                   &
+                 fixed_freedoms_start,neq_pp)
 
     ALLOCATE(no_pp(fixed_freedoms_pp),store_pp(fixed_freedoms_pp))
 
