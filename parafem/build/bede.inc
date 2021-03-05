@@ -1,8 +1,11 @@
-# BUILD INCLUDE build/linuxdesktop.inc
-# Authors: Louise Lever, Stephen M. Longshaw
+# BUILD INCLUDE build/bede.inc
+# Author: Lee Margetts
 # ------------------------------------------------------------------------------
-# Include file for standard linux workstation compilation using gfortran 
-# and OpenMPI. Tested using Ubuntu 14.04 and gfortran 4.8
+# Include file for compilation on N8CIR system BEDE.
+# Before compilation type the following to set up the environment:
+#   
+#    $ module load gcc cuda openmpi 
+# 
 # ------------------------------------------------------------------------------
 
 # ------------------------------------------------------------------------------
