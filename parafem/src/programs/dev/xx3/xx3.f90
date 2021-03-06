@@ -30,6 +30,7 @@ PROGRAM xx3
   REAL(iwp)             :: e,v,det,tol,up,alpha,beta,tload
   REAL(iwp),PARAMETER   :: zero = 0.0_iwp
   REAL(iwp),PARAMETER   :: penalty = 1.0e20_iwp
+  CHARACTER(LEN=3)      :: xpu
   CHARACTER(LEN=15)     :: element
   CHARACTER(LEN=50)     :: program_name='xx3'
   CHARACTER(LEN=50)     :: fname,job_name,label
@@ -43,7 +44,6 @@ PROGRAM xx3
   type (c_ptr) :: device_lhs_vector
   type (c_ptr) :: device_rhs_vector
 
- !logical :: use_gpu = .true.
   logical :: use_gpu = .false.
   integer :: status
   integer :: ndof_per_element
@@ -180,13 +180,11 @@ PROGRAM xx3
   IF (argc /= 1) CALL job_name_error(numpe,program_name)
   CALL GETARG(1, job_name) 
 
-! CALL read_p121(job_name,numpe,e,element,fixed_freedoms,limit,loaded_nodes, &
-!                meshgen,nels,nip,nn,nod,nr,partitioner,tol,v)
- 
   fixed_freedoms = 0 
-  CALL read_p121(job_name,numpe,e,element,limit,loaded_nodes,                &
-                 meshgen,nels,nip,nn,nod,nr,partitioner,tol,v)
-
+  CALL read_xx3(job_name,numpe,e,element,limit,loaded_nodes,                  &
+                 meshgen,nels,nip,nn,nod,nr,partitioner,tol,v,xpu)
+  IF(xpu=='gpu') use_gpu = .true.
+ 
   CALL calc_nels_pp(job_name,nels,npes,numpe,partitioner,nels_pp)
 
   ndof = nod*nodof
