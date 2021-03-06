@@ -43,7 +43,8 @@ PROGRAM xx3
   type (c_ptr) :: device_lhs_vector
   type (c_ptr) :: device_rhs_vector
 
-  logical :: use_gpu = .true.
+ !logical :: use_gpu = .true.
+  logical :: use_gpu = .false.
   integer :: status
   integer :: ndof_per_element
   
@@ -201,10 +202,8 @@ PROGRAM xx3
 
   timest(2) = elap_time()
   
-  CALL read_g_num_pp2(job_name,iel_start,nn,npes,numpe,g_num_pp)
+  CALL read_g_num_pp(job_name,iel_start,nn,npes,numpe,g_num_pp)
   timest(3) = elap_time()
-
-! CALL read_g_num_pp(job_name,iel_start,nels,nn,numpe,g_num_pp)
 
   IF(meshgen == 2) CALL abaqus2sg(element,g_num_pp)
   timest(4) = elap_time()
@@ -290,7 +289,7 @@ PROGRAM xx3
       det   = determinant(jac)
       CALL invert(jac)
       deriv = MATMUL(jac,der)
-      CALL beemat(deriv,bee)
+      CALL beemat(bee,deriv)
       storkm_pp(:,:,iel)   = storkm_pp(:,:,iel) +                             &
                              MATMUL(MATMUL(TRANSPOSE(bee),dee),bee) *         &
                              det*weights(i)   
@@ -661,7 +660,7 @@ PROGRAM xx3
       det   = DETERMINANT(jac) 
       CALL invert(jac)
       deriv = MATMUL(jac,der)
-      CALL beemat(deriv,bee)
+      CALL beemat(bee,deriv)
       eps   = MATMUL(bee,eld_pp(:,iel))
       sigma = MATMUL(dee,eps)
       CALL PRINCIPALSTRESS3D(sigma,principal)
