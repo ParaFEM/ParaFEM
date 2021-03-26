@@ -1,0 +1,15 @@
+#!/bin/bash
+
+# Submit this script as: "sbatch job.cori"
+# This script is for running jobs on the Haswell nodes
+
+# Input files for p121_demo are in
+# ~/parafem/parafem/examples/5th_ed/p121/demo
+
+#SBATCH --qos=debug
+#SBATCH --time=5
+#SBATCH --nodes=2
+#SBATCH --tasks-per-node=32
+#SBATCH --constraint=haswell
+
+srun ~/parafem/parafem/bin/p121 p121_demo
