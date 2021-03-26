@@ -1,4 +1,5 @@
 # ParaFEM
 
-ParaFEM is an open source parallel finite element analysis library. Whilst the sourceforge repository is still online, recent development has moved to Github.
+ParaFEM is an open source parallel finite element analysis library that is documented by the text book "Programming the Finite Element Method". 
 
+https://www.amazon.com/Programming-Finite-Element-Method-Smith/dp/1119973341
