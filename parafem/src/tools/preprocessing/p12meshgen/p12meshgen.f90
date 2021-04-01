@@ -1980,8 +1980,9 @@ PROGRAM p12meshgen
           
           CLOSE(14)
              
-          PRINT *
-          PRINT *, "Edit dat file to switch between 'gpu' and 'cpu'"
+          PRINT *, "Program xx3 can run in cpu only mode or offload to gpu"
+          PRINT *, "To select cpu only or gpu offload, edit the dat file"
+          PRINT *, "Two options are permitted: 'cpu' or 'gpu'"
           PRINT *
 
 !------------------------------------------------------------------------------
