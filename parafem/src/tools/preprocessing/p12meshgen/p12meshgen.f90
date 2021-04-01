@@ -1768,6 +1768,265 @@ PROGRAM p12meshgen
 
 !------------------------------------------------------------------------------
 !------------------------------------------------------------------------------
+! Program xx3
+!------------------------------------------------------------------------------
+!------------------------------------------------------------------------------
+
+  CASE('xx3')
+  
+    READ(10,*) iotype,nels,nxe,nze,nod,nip,aa,bb,cc,e,v,tol,limit
+
+    nye = nels/nxe/nze
+
+!------------------------------------------------------------------------------
+! xx3.1 Select 8 node or 20 node hexahedra
+!------------------------------------------------------------------------------
+
+    SELECT CASE(nod)
+  
+    CASE(20)
+   
+      nr    = ((2*nxe+1)*(nze+1)+(nxe+1)*nze)*2 +                             &
+              ((2*nye-1)*nze+(nye-1)*nze)*2     +                             &
+               (2*nye-1)*(nxe+1)+(nye-1)*nxe
+
+      nn    = (((2*nxe+1)*(nze+1))+((nxe+1)*nze))*(nye+1) +                   &
+               (nxe+1)*(nze+1)*nye
+
+      ndim  = 3
+      nodof = 3
+      nle   = nxe/5
+      
+      fixed_freedoms  = 0
+      loaded_freedoms = 3*nle*nle + 4*nle + 1
+      element         = 'hexahedron'
+
+      ALLOCATE(coord(nod,ndim),g_coord(ndim,nn),g_num(nod,nels),num(nod),     &
+               rest(nr,nodof+1),val(loaded_freedoms),no(loaded_freedoms))
+            
+      coord = 0.0_iwp ; g_coord = 0.0_iwp ; val = 0.0_iwp
+      g_num = 0       ; rest    = 0       ; no  = 0       ; num = 0
+          
+!------------------------------------------------------------------------------
+! xx3.2  Find nodal coordinates and element steering array
+!         Write to file using Abaqus node numbering convention 
+!------------------------------------------------------------------------------
+
+      DO iel = 1, nels
+        CALL geometry_20bxz(iel,nxe,nze,aa,bb,cc,coord,g_num(:,iel))
+        g_coord(:,g_num(:,iel)) = TRANSPOSE(coord)
+      END DO
+          
+!------------------------------------------------------------------------------
+! xx3.3  Boundary conditions
+!------------------------------------------------------------------------------
+            
+      CALL cube_bc20(rest,nxe,nye,nze)
+          
+!------------------------------------------------------------------------------
+! xx3.4  Loading conditions
+!------------------------------------------------------------------------------
+            
+      CALL load_p121(nle,nod,nxe,nze, no,val)
+      val = -val * aa * bb * (25._iwp / 12._iwp)
+              
+!------------------------------------------------------------------------------
+! xx3.5  Create input deck for 8 node hexahedra
+!------------------------------------------------------------------------------
+            
+      CASE(8)
+          
+        nr    = ((nxe+1)*(nze+1))*2 + ((nye-1)*(nze+1))*2 + ((nxe-1)*(nze-1)) 
+        ndim  = 3
+        nodof = 3
+        nn    = (nxe+1)*(nye+1)*(nze+1)
+           
+        nle             = nxe/5
+        loaded_freedoms = (nle+1)*(nle+1)
+        fixed_freedoms  = 0
+        element         = 'hexahedron'
+
+        ALLOCATE(coord(nod,ndim),g_coord(ndim,nn),g_num(nod,nels),            &
+                 rest(nr,nodof+1),val(loaded_freedoms),no(loaded_freedoms),   &
+                 num(nod))
+            
+        coord    = 0.0_iwp ; g_coord = 0.0_iwp ;   val = 0.0_iwp
+        g_num    = 0       ; rest    = 0       ;   no  = 0       ; num = 0
+
+!------------------------------------------------------------------------------
+! xx3.6  Find nodal coordinates and element steering array
+!         write to file using Abaqus node numbering convention 
+!------------------------------------------------------------------------------
+
+        DO iel = 1, nels
+          CALL geometry_8bxz(iel,nxe,nze,aa,bb,cc,coord,g_num(:,iel))
+          g_coord(:,g_num(:,iel)) = TRANSPOSE(coord)
+        END DO
+
+!------------------------------------------------------------------------------
+! xx3.7  Boundary conditions
+!------------------------------------------------------------------------------
+         
+        CALL cube_bc8(rest,nxe,nye,nze)
+          
+!------------------------------------------------------------------------------
+! xx3.8  Loading conditions
+!------------------------------------------------------------------------------
+         
+        CALL load_p121(nle,nod,nxe,nze, no,val)
+        val = val * aa * bb 
+
+!------------------------------------------------------------------------------
+! xx3.9  Default case and error message
+!------------------------------------------------------------------------------
+              
+        CASE DEFAULT
+        
+          PRINT *
+          PRINT *, "Wrong value given in variable NOD"
+          PRINT *, "  Accepted values are 8 and 20"
+          PRINT *, "  Here NOD = ", nod
+          PRINT *
+             
+          iotype = 'aborted'
+             
+        END SELECT
+
+!------------------------------------------------------------------------------
+! xx3.10  Output model
+!------------------------------------------------------------------------------
+         
+        SELECT CASE(iotype)
+
+        CASE('parafem')
+
+!------------------------------------------------------------------------------
+! xx3.11  Output geometry file ".d" 
+!------------------------------------------------------------------------------
+         
+          OPEN(11,FILE=argv(1:nlen)//'.d',STATUS='REPLACE',ACTION='WRITE')
+            
+          WRITE(11,'(A)') "*THREE_DIMENSIONAL"
+          WRITE(11,'(A)') "*NODES"
+          
+          DO i = 1, nn
+            WRITE(11,'(I12,3E14.6)') i, g_coord(:,i)
+          END DO
+          
+          WRITE(11,'(A)') "*ELEMENTS"
+            
+          IF(nod==20) THEN
+            DO iel = 1, nels
+               WRITE(11,'(I12,A,20I12,A)')iel," 3 20 1 ",g_num(3,iel),        &
+                  g_num(5,iel),g_num(7,iel),g_num(1,iel),g_num(15,iel),       &
+                  g_num(17,iel),g_num(19,iel),g_num(13,iel),g_num(4,iel),     &
+                  g_num(6,iel),g_num(8,iel),g_num(2,iel),g_num(16,iel),       &
+                  g_num(18,iel),g_num(20,iel),g_num(14,iel),g_num(10,iel),    &
+                  g_num(11,iel),g_num(12,iel),g_num(9,iel)," 1"
+            END DO
+          ELSE IF(nod==8) THEN
+            DO iel = 1, nels
+              WRITE(11,'(I12,A,8I12,A)') iel, " 3 8 1 ", g_num(1,iel),        &
+                  g_num(2,iel),g_num(3,iel),g_num(4,iel),g_num(5,iel),        &
+                  g_num(6,iel),g_num(7,iel),g_num(8,iel)," 1"
+            END DO
+          ELSE
+              PRINT *, "Wrong number of nodes in element"
+          END IF
+          
+          CLOSE(11)
+
+!------------------------------------------------------------------------------
+! xx3.12  Output ".bnd" file
+!-----------------------------------------------------------------------------
+
+          OPEN(12,FILE=argv(1:nlen)//'.bnd',STATUS='REPLACE',ACTION='WRITE')
+          
+          DO i = 1, nr
+            WRITE(12,'(I15,3I6)') rest(i,:) 
+          END DO
+          
+          CLOSE(12)
+
+!------------------------------------------------------------------------------
+! xx3.13  Output ".lds" file
+!------------------------------------------------------------------------------
+
+          OPEN(13,FILE=argv(1:nlen)//'.lds',STATUS='REPLACE',ACTION='WRITE')
+          
+          DO i = 1, loaded_freedoms
+            WRITE(13,'(I12,2A,3E16.8)') no(i),"  0.00000000E+00  ",           &
+                                        "0.00000000E+00",val(i) 
+          END DO
+            
+          CLOSE(13)
+
+!------------------------------------------------------------------------------
+! xx3.14  Output new ".dat" file
+!------------------------------------------------------------------------------
+
+          OPEN(14,FILE=argv(1:nlen)//'.dat',STATUS='REPLACE',ACTION='WRITE')
+          
+          WRITE(14,'(A)') "'gpu'"
+          WRITE(14,'(A)') "'hexahedron'"
+          IF(nod==8) THEN
+            WRITE(14,'(A)') "1"            ! SGM node numbering scheme
+          ELSE
+            WRITE(14,'(A)') "2"            ! Abaqus node numbering scheme
+          END IF
+          WRITE(14,'(A)') "1"              ! Internal mesh partitioning
+          WRITE(14,'(3I12,2I5,2I9)')nels,nn,nr,nip,nod,loaded_freedoms
+          WRITE(14,'(3E12.4,I8)') e,v,tol,limit 
+          
+          CLOSE(14)
+             
+          PRINT *
+          PRINT *, "Edit dat file to switch between 'gpu' and 'cpu'"
+          PRINT *
+
+!------------------------------------------------------------------------------
+! xx3.15  Output for visualization in ParaView (Ensight Gold)
+!------------------------------------------------------------------------------
+
+          CASE('paraview')
+
+            ! modify mesh_ensi for optional arguments
+
+            ALLOCATE(etype(nels),nf(nodof,nn),oldlds(nn*ndim)) 
+
+            etype  = 1   ! Only one material type in this mesh
+            nf     = 0
+            oldlds = zero
+
+            nstep=1; npri=1; dtim=1.0; solid=.true. 
+
+            k=0 
+            DO j=1,loaded_freedoms
+              k=k+1
+              found=.false.
+              DO i=1,nn
+                IF(i==no(k)) THEN
+                  l=i*3
+                  oldlds(l)=val(k)
+                  found=.true.
+                END IF
+                IF(found)CYCLE
+              END DO
+            END DO
+
+            CALL rest_to_nf(rest,nf)
+
+            CALL mesh_ensi(argv,nlen,g_coord,g_num,element,etype,nf,          &
+                           oldlds(1:),nstep,npri,dtim,solid)
+
+          CASE DEFAULT
+
+            PRINT *, "  Option ", iotype, " not recognised."; PRINT *, ""
+
+          END SELECT 
+
+!------------------------------------------------------------------------------ 
+!------------------------------------------------------------------------------
 !------------------------------------------------------------------------------
   
   CASE DEFAULT
