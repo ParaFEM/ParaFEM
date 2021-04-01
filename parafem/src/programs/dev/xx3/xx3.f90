@@ -232,8 +232,8 @@ PROGRAM xx3
   g_g_pp = 0
 
   elements_1: DO iel = 1, nels_pp
-!   CALL find_g3(g_num_pp(:,iel),g_g_pp(:,iel),rest)
-    CALL find_g(g_num_pp(:,iel),g_g_pp(:,iel),rest)
+    CALL find_g3(g_num_pp(:,iel),g_g_pp(:,iel),rest)
+!   CALL find_g(g_num_pp(:,iel),g_g_pp(:,iel),rest)
   END DO elements_1
 
   neq = 0
@@ -760,8 +760,11 @@ PROGRAM xx3
 ! 17. Output performance data
 !------------------------------------------------------------------------------
 
-  CALL WRITE_P121(fixed_freedoms,iters,job_name,loaded_nodes,neq,nn,npes,nr,  &
-                  numpe,timest,tload)
+! CALL WRITE_P121(fixed_freedoms,iters,job_name,loaded_nodes,neq,nn,npes,nr,  &
+!                 numpe,timest,tload)
+
+  CALL WRITE_XX3(fixed_freedoms,iters,job_name,loaded_nodes,neq,nn,npes,nr,  &
+                  numpe,timest,tload,use_gpu)
 
   if (use_gpu) then
      print*, "gpu acceleration used in solver"
