@@ -25,9 +25,9 @@ include ../../../../build/$(MACHINE).inc
 XX9_GPU_CU_LIB = $(GPU_CU_LIB) -lcublas
 
 # CUDA CUBLAS wrappers for Fortran/C interop.
-XX9_GPU_CU_FTN_C = $(GPU_CU_ROOT)/src/fortran.c
-XX9_GPU_CU_FTN_H = $(GPU_CU_ROOT)/src/fortran.h
-XX9_GPU_CU_INC   = $(GPU_CU_INC) -I$(GPU_CU_ROOT)/src
+XX9_GPU_CU_FTN_C = $(GPU_CU_HEADER)/fortran.c
+XX9_GPU_CU_FTN_H = $(GPU_CU_HEADER)/fortran.h
+XX9_GPU_CU_INC   = $(GPU_CU_INC) -I$(GPU_CU_ROOT)
 
 MODULE	= ../../../../include/mpi
 LIB	= ../../../../lib
@@ -53,13 +53,13 @@ debug:
 	@echo "Done xx9 DEBUG"
 
 cuda_helpers.o: cuda_helpers.cu
-	$(GPU_CU) -c cuda_helpers.cu $(GPU_CU_FLAGS) $(GPU_CU_INC) 
+	$(GPU_CU) -c cuda_helpers.cu $(GPU_CU_FLAGS) $(XX9_GPU_CU_INC) 
 
 fortran.o: $(XX9_GPU_CU_FTN_C) $(XX9_GPU_CU_FTN_H)
-	$(CC) -c $(XX9_GPU_CU_FTN_C) $(CFLAGS) $(XX9_GPU_CU_INC)
+	$(CC) -DCUBLAS_GFORTRAN -c $(XX9_GPU_CU_FTN_C) $(CFLAGS) $(XX9_GPU_CU_INC)
 
 xx9: xx9.o cuda_helpers.o fortran.o
-	$(FC) xx9.o cuda_helpers.o fortran.o -o xx9 $(LDFLAGS)
+	$(FC) xx9.o cuda_helpers.o fortran.o -o xx9 $(LDFLAGS) $(XX9_GPU_CU_INC)
 
 xx9.o: xx9.f90
 	$(FC) xx9.f90 $(FFLAGS)
