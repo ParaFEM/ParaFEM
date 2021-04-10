@@ -11,8 +11,7 @@ PROGRAM XX9
   USE input         ; USE output           ; USE loading
   USE timing        ; USE maths            ; USE gather_scatter
   USE partition     ; USE elements         ; USE steering        ; USE pcg
-
-  use iso_c_binding
+  USE new_library   ; USE iso_c_binding
 
   IMPLICIT NONE
 
@@ -31,6 +30,7 @@ PROGRAM XX9
   REAL(iwp)             :: e,v,det,tol,up,alpha,beta,tload
   REAL(iwp),PARAMETER   :: zero = 0.0_iwp
   REAL(iwp),PARAMETER   :: penalty = 1.0e20_iwp
+  CHARACTER(LEN=3)      :: xpu
   CHARACTER(LEN=15)     :: element
   CHARACTER(LEN=50)     :: program_name='xx9'
   CHARACTER(LEN=50)     :: fname,job_name,label
@@ -47,7 +47,7 @@ PROGRAM XX9
   integer(kind=c_size_t) :: device_matrix
   integer(kind=c_size_t) :: device_lhs_vectors
   integer(kind=c_size_t) :: device_rhs_vectors
-  logical :: use_gpu = .true.
+  logical :: use_gpu = .false.
   character(len=20, kind=c_char) :: op
 
   real(iwp) :: t_rawcomp
@@ -102,8 +102,10 @@ PROGRAM XX9
   IF (argc /= 1) CALL job_name_error(numpe,program_name)
   CALL GETARG(1, job_name) 
 
-  CALL read_p121(job_name,numpe,e,element,fixed_freedoms,limit,loaded_nodes, &
-                 meshgen,nels,nip,nn,nod,nr,partitioner,tol,v)
+  CALL read_xx3(job_name,numpe,e,element,limit,loaded_nodes,                  &
+                 meshgen,nels,nip,nn,nod,nr,partitioner,tol,v,xpu)
+
+  IF(xpu=='gpu') use_gpu = .true.
 
   CALL calc_nels_pp(job_name,nels,npes,numpe,partitioner,nels_pp)
 
@@ -120,10 +122,8 @@ PROGRAM XX9
 
   timest(2) = elap_time()
   
-  CALL read_g_num_pp2(job_name,iel_start,nn,npes,numpe,g_num_pp)
+  CALL read_g_num_pp(job_name,iel_start,nn,npes,numpe,g_num_pp)
   timest(3) = elap_time()
-
-! CALL read_g_num_pp(job_name,iel_start,nels,nn,numpe,g_num_pp)
 
   IF(meshgen == 2) CALL abaqus2sg(element,g_num_pp)
   timest(4) = elap_time()
@@ -154,8 +154,8 @@ PROGRAM XX9
   g_g_pp = 0
 
   elements_1: DO iel = 1, nels_pp
-!   CALL find_g3(g_num_pp(:,iel),g_g_pp(:,iel),rest)
-    CALL find_g(g_num_pp(:,iel),g_g_pp(:,iel),rest)
+    CALL find_g3(g_num_pp(:,iel),g_g_pp(:,iel),rest)
+!   CALL find_g(g_num_pp(:,iel),g_g_pp(:,iel),rest)
   END DO elements_1
 
   neq = 0
@@ -204,7 +204,7 @@ PROGRAM XX9
   km  = zero
   iel = 1
 
-  CALL deemat(e,v,dee)
+  CALL deemat(dee,e,v)
   CALL sample(element,points,weights)
 
   gauss_pts_1: DO i=1,nip
@@ -213,7 +213,7 @@ PROGRAM XX9
     det   = determinant(jac)
     CALL invert(jac)
     deriv = MATMUL(jac,der)
-    CALL beemat(deriv,bee)
+    CALL beemat(bee,deriv)
     km    = km + MATMUL(MATMUL(TRANSPOSE(bee),dee),bee) * det * weights(i)
   END DO gauss_pts_1
   
@@ -228,7 +228,7 @@ PROGRAM XX9
  
   elements_4: DO iel = 1,nels_pp 
     DO i = 1,ndof
-      diag_precon_tmp(i,iel) = diag_precon_tmp(i,iel) + km(i,i)
+      diag_precon_tmp (i,iel) = diag_precon_tmp(i,iel) + km(i,i)
     END DO
   END DO elements_4
 
@@ -251,8 +251,8 @@ PROGRAM XX9
 
     CALL read_fixed(job_name,numpe,node,sense,valf)
     CALL find_no(node,rest,sense,no)
-    CALL reindex_fixed_nodes(ieq_start,no,no_pp_temp,fixed_freedoms_pp,       &
-                             fixed_freedoms_start,neq_pp)
+    CALL reindex(ieq_start,no,no_pp_temp,fixed_freedoms_pp,                   &
+                 fixed_freedoms_start,neq_pp)
 
     ALLOCATE(no_pp(fixed_freedoms_pp),store_pp(fixed_freedoms_pp))
 
@@ -602,7 +602,7 @@ PROGRAM XX9
       det   = DETERMINANT(jac) 
       CALL invert(jac)
       deriv = MATMUL(jac,der)
-      CALL beemat(deriv,bee)
+      CALL beemat(bee,deriv)
       eps   = MATMUL(bee,eld_pp(:,iel))
       sigma = MATMUL(dee,eps)
       CALL PRINCIPALSTRESS3D(sigma,principal)
@@ -699,13 +699,15 @@ PROGRAM XX9
   IF(numpe==1) CLOSE(28)
 
   timest(14) = elap_time()
+  timest(15) = t_rawcomp
+  timest(16) = t_comp
    
 !------------------------------------------------------------------------------
 ! 17. Output performance data
 !------------------------------------------------------------------------------
 
-  CALL WRITE_P121(fixed_freedoms,iters,job_name,loaded_nodes,neq,nn,npes,nr,  &
-                  numpe,timest,tload)
+  CALL WRITE_XX9(fixed_freedoms,iters,job_name,loaded_nodes,neq,nn,npes,nr,  &
+                  numpe,timest,tload,use_gpu)
  
   CALL shutdown() 
  
