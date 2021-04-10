@@ -4,14 +4,14 @@
 # Include file for compilation on N8CIR system BEDE.
 # Before compilation type the following to set up the environment:
 #   
-#    $ module load gcc nvhpc openmpi 
+#    $ module load gcc cuda mvapich2 
 # 
 # ------------------------------------------------------------------------------
 
 # ------------------------------------------------------------------------------
 # Generic settings for compilation
 # ------------------------------------------------------------------------------
-FC=mpif90 -DCUBLAS_GFORTRAN
+FC=mpif90
 LD=
 INSTALL_CMD=mv
 
@@ -37,11 +37,12 @@ EXT_LIB_GAF77_LDFLAGS=
 # FLAGS for GPU compliation
 # ------------------------------------------------------------------------------
 
+##GPU_CU=nvcc
 GPU_CU=nvcc
 GPU_CU_INC=-I/usr/local/cuda/include
 GPU_CU_LIB=-L/usr/local/cuda/lib64 -lcudart -lstdc++
 GPU_CU_ROOT=/opt/software/builder/developers/compilers/cuda/10.2.89/1/default/lib64
-GPU_CU_HEADER=.
+GPU_CU_HEADER=/opt/software/builder/developers/compilers/cuda/10.2.89/1/default/src
 
 # ------------------------------------------------------------------------------
 # FLAGS for MODULE/LIBRARY compilation
