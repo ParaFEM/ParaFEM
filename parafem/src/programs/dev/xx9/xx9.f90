@@ -27,14 +27,16 @@ PROGRAM XX9
   INTEGER               :: node_end,node_start,nodes_pp
   INTEGER               :: argc,iargc,meshgen,partitioner
   INTEGER               :: fixed_freedoms_pp,fixed_freedoms_start
-  REAL(iwp)             :: e,v,det,tol,up,alpha,beta,tload
+  REAL(iwp)             :: e,v,det,tol,up,up0,up1,alpha,beta,tload
   REAL(iwp),PARAMETER   :: zero = 0.0_iwp
   REAL(iwp),PARAMETER   :: penalty = 1.0e20_iwp
   CHARACTER(LEN=3)      :: xpu
   CHARACTER(LEN=15)     :: element
   CHARACTER(LEN=50)     :: program_name='xx9'
   CHARACTER(LEN=50)     :: fname,job_name,label
+  CHARACTER(LEN=80)     :: cbuffer
   LOGICAL               :: converged = .false.
+  LOGICAL               :: output_stress = .false.
 
   ! GPU related variables etc
   ! -------------------------
@@ -84,7 +86,7 @@ PROGRAM XX9
   REAL(iwp),ALLOCATABLE :: fun(:),shape_integral_pp(:,:)
   REAL(iwp),ALLOCATABLE :: stress_integral_pp(:,:),stressnodes_pp(:)
   REAL(iwp),ALLOCATABLE :: principal_integral_pp(:,:),princinodes_pp(:)
-  REAL(iwp),ALLOCATABLE :: principal(:),reacnodes_pp(:)  
+  REAL(iwp),ALLOCATABLE :: principal(:),reacnodes_pp(:),tempres(:)  
   INTEGER,  ALLOCATABLE :: rest(:,:),g_num_pp(:,:),g_g_pp(:,:),node(:)
   INTEGER,  ALLOCATABLE :: no(:),no_pp(:),no_pp_temp(:),sense(:)
 
@@ -104,6 +106,8 @@ PROGRAM XX9
 
   CALL read_xx3(job_name,numpe,e,element,limit,loaded_nodes,                  &
                  meshgen,nels,nip,nn,nod,nr,partitioner,tol,v,xpu)
+
+  fixed_freedoms = 0
 
   IF(xpu=='gpu') use_gpu = .true.
 
@@ -325,6 +329,7 @@ PROGRAM XX9
   d_pp  = diag_precon_pp*r_pp
   p_pp  = d_pp
   x_pp  = zero
+  up0   = DOT_PRODUCT_P(r_pp,d_pp)
 
   ! Code to set up the gpu 
   if (use_gpu) then
@@ -503,12 +508,15 @@ PROGRAM XX9
       END DO
     END IF
 
-    up      = DOT_PRODUCT_P(r_pp,d_pp)
-    alpha   = up/DOT_PRODUCT_P(p_pp,u_pp)
+!   up      = DOT_PRODUCT_P(r_pp,d_pp)
+    alpha   = up0/DOT_PRODUCT_P(p_pp,u_pp)
     xnew_pp = x_pp + p_pp*alpha
     r_pp    = r_pp - u_pp*alpha
     d_pp    = diag_precon_pp*r_pp
-    beta    = DOT_PRODUCT_P(r_pp,d_pp)/up
+    up1     = DOT_PRODUCT_P(r_pp,d_pp)
+!   beta    = DOT_PRODUCT_P(r_pp,d_pp)/up0
+    beta    = up1/up0
+    up0     = up1
     p_pp    = d_pp + p_pp*beta  
 
     CALL checon_par(xnew_pp,tol,converged,x_pp)    
@@ -536,22 +544,20 @@ PROGRAM XX9
   timest(13) = elap_time()
 
 !------------------------------------------------------------------------------
-! 15. Print out displacements, stress, principal stress and reactions
+! 15. Print out displacements
 !------------------------------------------------------------------------------
 
   CALL calc_nodes_pp(nn,npes,numpe,node_end,node_start,nodes_pp)
   
   IF(numpe==1) THEN
-    fname = job_name(1:INDEX(job_name, " ")-1)//".dis"
-    OPEN(24, file=fname, status='replace', action='write')
-    fname = job_name(1:INDEX(job_name, " ")-1) // ".str"
-    OPEN(25, file=fname, status='replace', action='write')
-    fname = job_name(1:INDEX(job_name, " ")-1) // ".pri"
-    OPEN(26, file=fname, status='replace', action='write')
-    fname = job_name(1:INDEX(job_name, " ")-1) // ".vms"
-    OPEN(27, file=fname, status='replace', action='write')
-    fname = job_name(1:INDEX(job_name, " ")-1) // ".rea"
-    OPEN(28, file=fname, status='replace', action='write')
+    fname = job_name(1:INDEX(job_name, " ")-1)//".bin.ensi.DISPL-000001"
+    OPEN(24, file=fname, status='replace', action='write',                    & 
+         form='unformatted',access='stream')
+    cbuffer = "Alya Ensight Gold --- Vector per-node variable file"
+    WRITE(24) cbuffer
+    cbuffer = "part"        ;  WRITE(24) cbuffer
+    WRITE(24) int(1,kind=c_int)
+    cbuffer = "coordinates" ; WRITE(24) cbuffer
   END IF
 
 !------------------------------------------------------------------------------
@@ -570,15 +576,42 @@ PROGRAM XX9
 
   CALL scatter_nodes(npes,nn,nels_pp,g_num_pp,nod,ndim,nodes_pp,              &
                      node_start,node_end,eld_pp,disp_pp,1)
-  CALL write_nodal_variable(label,24,1,nodes_pp,npes,numpe,ndim,disp_pp)
+
+  ALLOCATE(tempres(nodes_pp))
+  tempres = zero
+
+  DO i=1,ndim
+    tempres = zero
+    DO j=1,nodes_pp
+      k=i+(ndim*(j-1))
+      tempres(j)=disp_pp(k)
+    END DO
+    CALL dismsh_ensi_pb2(24,1,nodes_pp,npes,numpe,1,tempres)
+  END DO
+
+! CALL write_nodal_variable(label,24,1,nodes_pp,npes,numpe,ndim,disp_pp)
 
   DEALLOCATE(disp_pp)
+  DEALLOCATE(tempres)
 
   IF(numpe==1) CLOSE(24)
 
 !------------------------------------------------------------------------------
-! 16b. Stresses
+! 16b. Print out stress, principal stress and reactions
 !------------------------------------------------------------------------------
+
+  IF(output_stress) THEN
+
+  IF(numpe==1) THEN
+    fname = job_name(1:INDEX(job_name, " ")-1) // ".str"
+    OPEN(25, file=fname, status='replace', action='write')
+    fname = job_name(1:INDEX(job_name, " ")-1) // ".pri"
+    OPEN(26, file=fname, status='replace', action='write')
+    fname = job_name(1:INDEX(job_name, " ")-1) // ".vms"
+    OPEN(27, file=fname, status='replace', action='write')
+    fname = job_name(1:INDEX(job_name, " ")-1) // ".rea"
+    OPEN(28, file=fname, status='replace', action='write')
+  END IF
 
   ALLOCATE(shape_integral_pp(nod,nels_pp))
   ALLOCATE(stress_integral_pp(nod*nst,nels_pp))
@@ -697,6 +730,14 @@ PROGRAM XX9
   DEALLOCATE(reacnodes_pp,shape_integral_pp)
 
   IF(numpe==1) CLOSE(28)
+
+!------------------------------------------------------------------------------
+
+  END IF
+
+!------------------------------------------------------------------------------
+! 16g. End timer
+!------------------------------------------------------------------------------
 
   timest(14) = elap_time()
   timest(15) = t_rawcomp
