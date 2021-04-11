@@ -1585,12 +1585,21 @@ MODULE OUTPUT
     WRITE(11,'(A,F12.6,F8.2)') "Solve equations                             ",&
                            timest(13)-timest(12),                             &
                            ((timest(13)-timest(12))/(timest(14)-timest(1)))*100 
-    WRITE(11,'(A,F12.6,F8.2)') "Data transfer to GPU                        ",&
+    IF(use_gpu) THEN
+      WRITE(11,'(A,F12.6,F8.2)')                                              &
+                           " - Data transfer to GPU                     ",    &
                            timest(16)-timest(15),                             &
                            ((timest(16)-timest(15))/(timest(14)-timest(1)))*100 
-    WRITE(11,'(A,F12.6,F8.2)') "cuBLAS DGEMM                                ",&
+      WRITE(11,'(A,F12.6,F8.2)')                                              &
+                           " - cuBLAS DGEMM                             ",    &
                            timest(15),                                        &
                            ((timest(15))/(timest(14)-timest(1)))*100
+    ELSE 
+      WRITE(11,'(A,F12.6,F8.2)')                                              &
+                           " - Matrix-matrix multiply on CPU            ",    &
+                           timest(16),                                        &
+                           (timest(16)/(timest(14)-timest(1)))*100 
+    END IF
     WRITE(11,'(A,F12.6,F8.2)') "Output results                              ",&
                            timest(14)-timest(13),                             &
                           ((timest(14)-timest(13))/(timest(14)-timest(1)))*100  
