@@ -305,7 +305,7 @@ PROGRAM xx11
     DEALLOCATE(no_pp_temp)
 
     DO i = 1, loaded_freedoms_pp
-      r_pp(no_pp(i) - ieq_start + 1) = val(loaded_freedoms_start + i - 1)
+      r_pp(no_pp(i) - ieq_start + 1) = val(1,loaded_freedoms_start + i - 1)
     END DO
 
 !   CALL load(g_g_pp,g_num_pp,node,val,r_pp(1:))
