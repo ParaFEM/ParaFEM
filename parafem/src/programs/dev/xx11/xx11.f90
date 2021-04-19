@@ -93,7 +93,7 @@ PROGRAM xx11
 
   timest(2) = elap_time()
 
-  CALL read_g_num_pp2(job_name,iel_start,nn,npes,numpe,g_num_pp)
+  CALL read_g_num_pp(job_name,iel_start,nn,npes,numpe,g_num_pp)
   timest(3) = elap_time()
 
   IF(meshgen == 2) CALL abaqus2sg(element,g_num_pp)
