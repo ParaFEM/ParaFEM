@@ -2244,7 +2244,7 @@ PROGRAM p12meshgen
           PRINT *, "Completed writing '.dat' control data file"
           CLOSE(14)
              
-          PRINT *,
+          PRINT *
           PRINT *, "Program xx9 can run in cpu only mode or offload to gpu"
           PRINT *, "To select cpu only or gpu offload, edit the dat file"
           PRINT *, "Two options are permitted: 'cpu' or 'gpu'"
