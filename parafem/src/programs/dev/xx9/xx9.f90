@@ -11,7 +11,7 @@ PROGRAM XX9
   USE input         ; USE output           ; USE loading
   USE timing        ; USE maths            ; USE gather_scatter
   USE partition     ; USE elements         ; USE steering        ; USE pcg
-  USE new_library   ; USE iso_c_binding
+  USE new_library   ; USE iso_c_binding    ;
 
   IMPLICIT NONE
 
@@ -49,6 +49,11 @@ PROGRAM XX9
   integer(kind=c_size_t) :: device_matrix
   integer(kind=c_size_t) :: device_lhs_vectors
   integer(kind=c_size_t) :: device_rhs_vectors
+
+  !RZ Pointers for  p_pp and u_pp to move them onto the GPU
+  integer(kind=c_size_t) :: device_p_pp
+  integer(kind=c_size_t) :: device_u_pp
+ 
   logical :: use_gpu = .false.
   character(len=20, kind=c_char) :: op
 
@@ -56,6 +61,15 @@ PROGRAM XX9
   real(iwp) :: t_comp
   real(iwp) :: t_start1
   real(iwp) :: t_start2
+
+  !RZ Getting cublas dot product and set vector functions
+  real(iwp) :: cublas_Ddot
+  integer :: cublas_set_vector
+  
+  !Timer function
+  integer :: m, n, ans
+  real :: startT, endT, execTime
+  
 
   ! Interface to function to set device
   interface
@@ -386,6 +400,29 @@ PROGRAM XX9
         stop
      end if
      
+     !RZ Allocate memory for p_pp and u_pp on GPU
+     
+     status = cublas_alloc( &
+          nels_pp*ndof_per_element, &
+          sizeof(0.0d0), &
+          device_p_pp)
+     if (status .ne. 0) then 
+        print *,"GPU memory failed to allocate p_pp!"
+        status = cublas_shutdown
+        stop
+     end if   
+
+
+     status = cublas_alloc( &
+          nels_pp*ndof_per_element, &
+          sizeof(0.0d0), &
+          device_u_pp)
+     if (status .ne. 0) then
+        print *, "GPU memory failed to allocate u_pp!"
+        status = cublas_shutdown
+        stop
+     end if
+
      ! Copy coefficient matrix to the gpu
      status = cublas_set_matrix( &
           ndof_per_element, &
@@ -418,7 +455,7 @@ PROGRAM XX9
     utemp_pp = zero
     u_pp     = zero
 
-    CALL gather(p_pp,pmul_pp)
+   CALL gather(p_pp,pmul_pp)
 
     t_start1 = elap_time()
 
@@ -443,6 +480,24 @@ PROGRAM XX9
           status = cublas_shutdown
           stop
        end if
+
+    !RZ Copying p_pp and u_pp data over to GPU initially 
+       
+       status = cublas_set_vector( &
+                neq_pp, &
+                sizeof(0.d0), &
+                p_pp, &
+                1, &
+                device_p_pp, &
+                1)
+
+       status = cublas_set_vector( &
+                neq_pp, &
+                sizeof(0.d0), &
+                u_pp, &
+                1, &
+                device_u_pp, &
+                1)
 
        t_start2 = elap_time() 
 
@@ -507,9 +562,40 @@ PROGRAM XX9
         u_pp(j) = p_pp(j) * store_pp(i)
       END DO
     END IF
+                                       
+    !RZ Copying p_pp and u_pp over for use in iteration                                                                                                 
+
+       status = cublas_set_vector( &
+                neq_pp, &
+                sizeof(0.d0), &
+                p_pp, &
+                1, &
+                device_p_pp, &
+                1)
+
+       status = cublas_set_vector( &
+                neq_pp, &
+                sizeof(0.d0), &
+                u_pp, &
+                1, &
+                device_u_pp, &
+                1)                                  
 
 !   up      = DOT_PRODUCT_P(r_pp,d_pp)
-    alpha   = up0/DOT_PRODUCT_P(p_pp,u_pp)
+          
+    !RZ Alpha and dot product on CPU and output
+    if (.not. use_gpu) then
+
+      ! alpha   = up0/DOT_PRODUCT_P(p_pp,u_pp)
+    !WRITE (*,*) numpe,alpha
+       else
+    !RZ Alpha and dot product on GPU and output
+
+    alpha    = up0/cublas_Ddot(neq_pp,device_p_pp,1,device_u_pp,1)
+    
+   ! WRITE (*,*) numpe,alpha    
+    endif
+
     xnew_pp = x_pp + p_pp*alpha
     r_pp    = r_pp - u_pp*alpha
     d_pp    = diag_precon_pp*r_pp
