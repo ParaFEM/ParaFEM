@@ -1587,18 +1587,30 @@ MODULE OUTPUT
                            ((timest(13)-timest(12))/(timest(14)-timest(1)))*100 
     IF(use_gpu) THEN
       WRITE(11,'(A,F12.6,F8.2)')                                              &
-                           " - Data transfer to GPU                     ",    &
+                           " - DGEMM Data transfer to GPU               ",    &
                            timest(16)-timest(15),                             &
                            ((timest(16)-timest(15))/(timest(14)-timest(1)))*100 
       WRITE(11,'(A,F12.6,F8.2)')                                              &
                            " - cuBLAS DGEMM                             ",    &
                            timest(15),                                        &
                            ((timest(15))/(timest(14)-timest(1)))*100
+      WRITE(11,'(A,F12.6,F8.2)')                                              &
+                           " - DDOT Data transfer to GPU                ",    &
+                           timest(18),                                        &
+                           timest(18)/(timest(14)-timest(1))*100 
+      WRITE(11,'(A,F12.6,F8.2)')                                              &
+                           " - cuBLAS DDOT                              ",    &
+                           timest(20),                                        &
+                           timest(20)/(timest(14)-timest(1))*100
     ELSE 
       WRITE(11,'(A,F12.6,F8.2)')                                              &
                            " - Matrix-matrix multiply on CPU            ",    &
                            timest(16),                                        &
                            (timest(16)/(timest(14)-timest(1)))*100 
+      WRITE(11,'(A,F12.6,F8.2)')                                              &
+                           " - DOT PRODUCT on CPU                       ",    &
+                           timest(20),                                        &
+                           timest(20)/(timest(14)-timest(1))*100 
     END IF
     WRITE(11,'(A,F12.6,F8.2)') "Output results                              ",&
                            timest(14)-timest(13),                             &
