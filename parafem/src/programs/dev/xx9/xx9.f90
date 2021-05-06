@@ -482,22 +482,22 @@ PROGRAM XX9
        end if
 
     !RZ Copying p_pp and u_pp data over to GPU initially 
-       
-       status = cublas_set_vector( &
-                neq_pp, &
-                sizeof(0.d0), &
-                p_pp, &
-                1, &
-                device_p_pp, &
-                1)
-
-       status = cublas_set_vector( &
-                neq_pp, &
-                sizeof(0.d0), &
-                u_pp, &
-                1, &
-                device_u_pp, &
-                1)
+    !   
+    !   status = cublas_set_vector( &
+    !            neq_pp, &
+    !            sizeof(0.d0), &
+    !            p_pp, &
+    !            1, &
+    !            device_p_pp, &
+    !            1)
+    !
+    !   status = cublas_set_vector( &
+    !            neq_pp, &
+    !            sizeof(0.d0), &
+    !            u_pp, &
+    !            1, &
+    !            device_u_pp, &
+    !            1)
 
        t_start2 = elap_time() 
 
@@ -565,6 +565,39 @@ PROGRAM XX9
                                        
     !RZ Copying p_pp and u_pp over for use in iteration                                                                                                 
 
+    !   status = cublas_set_vector( &
+    !            neq_pp, &
+    !            sizeof(0.d0), &
+    !            p_pp, &
+    !            1, &
+    !            device_p_pp, &
+    !            1)
+    !
+    !   status = cublas_set_vector( &
+    !            neq_pp, &
+    !            sizeof(0.d0), &
+    !            u_pp, &
+    !            1, &
+    !            device_u_pp, &
+    !            1)                                  
+
+!   up      = DOT_PRODUCT_P(r_pp,d_pp)
+          
+    !RZ Alpha and dot product on CPU and output
+    if (.not. use_gpu) then
+
+      timest(19) = elap_time()
+
+      alpha   = up0/DOT_PRODUCT_P(p_pp,u_pp)
+    
+      timest(20) = timest(20) + (elap_time()-timest(19))
+
+    else
+    !RZ Alpha and dot product on GPU and output
+    !RZ Copying p_pp and u_pp over for use in iteration                                                                                                 
+
+       timest(17) = elap_time()
+
        status = cublas_set_vector( &
                 neq_pp, &
                 sizeof(0.d0), &
@@ -579,19 +612,15 @@ PROGRAM XX9
                 u_pp, &
                 1, &
                 device_u_pp, &
-                1)                                  
+                1)                                 
+ 
+      timest(18) = timest(18) + (elap_time()-timest(17))
 
-!   up      = DOT_PRODUCT_P(r_pp,d_pp)
-          
-    !RZ Alpha and dot product on CPU and output
-    if (.not. use_gpu) then
+      timest(19) = elap_time()
 
-      ! alpha   = up0/DOT_PRODUCT_P(p_pp,u_pp)
-    !WRITE (*,*) numpe,alpha
-       else
-    !RZ Alpha and dot product on GPU and output
+      alpha    = up0/cublas_Ddot(neq_pp,device_p_pp,1,device_u_pp,1)
 
-    alpha    = up0/cublas_Ddot(neq_pp,device_p_pp,1,device_u_pp,1)
+      timest(20) = timest(20) + (elap_time()-timest(19))
     
    ! WRITE (*,*) numpe,alpha    
     endif
