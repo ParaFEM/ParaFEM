@@ -24,8 +24,8 @@ MPI=	mpi_wrapper.o \
 	mp_interface.o \
 	input.o \
 	output.o \
-	maths.o \
 	gather_scatter.o \
+	maths.o \
 	pcg.o \
 	loading.o \
 	large_strain.o \
@@ -77,8 +77,8 @@ lib-debug:	$(SHARED) $(MPI)
 	$(FC) -c $(FFLAGS) mp_interface.f90
 	$(FC) -c $(FFLAGS) input.f90
 	$(FC) -c $(FFLAGS) output.f90
-	$(FC) -c $(FFLAGS) maths.f90
 	$(FC) -c $(FFLAGS) gather_scatter.f90
+	$(FC) -c $(FFLAGS) maths.f90
 	$(FC) -c $(FFLAGS) pcg.f90
 	$(FC) -c $(FFLAGS) loading.f90
 	$(FC) -c $(FFLAGS) bicg.f90
