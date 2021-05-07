@@ -37,7 +37,7 @@ MODULE BICG
 !------------------------------------------------------------------------------
 !------------------------------------------------------------------------------
 
-SUBROUTINE BICGSTABL_P(b_pp,cjiters,cjits,cjtol,ell,ieq_start,no_pp,pmul_pp,  &
+SUBROUTINE BICGSTABL_P(b_pp,cjiters,cjits,cjtol,ell,ieqstart,no_pp,pmul_pp,  &
                        store_pp,storke_pp,x_pp)
 
 USE precision
@@ -46,7 +46,8 @@ USE maths
 
 IMPLICIT NONE
 
-INTEGER, INTENT(IN)      :: cjits,ell,ieq_start,no_pp(:)
+INTEGER, INTENT(IN)      :: cjits,ell,ieqstart
+INTEGER, INTENT(IN)      :: no_pp(:)
 INTEGER, INTENT(OUT)     :: cjiters
 REAL(iwp), INTENT(IN)    :: b_pp(:),cjtol,store_pp(:),storke_pp(:,:,:)
 REAL(iwp), INTENT(INOUT) :: pmul_pp(:,:),x_pp(:)
@@ -103,7 +104,7 @@ REAL(iwp), INTENT(INOUT) :: pmul_pp(:,:),x_pp(:)
    END DO elements_3
    CALL scatter(y1_pp,utemp_pp)
   
-   DO i=1,fixed_freedoms_pp; k=no_pp(i)-ieq_start+1
+   DO i=1,fixed_freedoms_pp; k=no_pp(i)-ieqstart+1
      y1_pp(k)=y_pp(k)*store_pp(k)
    END DO; y_pp=y1_pp; rt_pp=b_pp-y_pp; r_pp=zero; r_pp(:,1)=rt_pp
    
@@ -124,7 +125,7 @@ REAL(iwp), INTENT(INOUT) :: pmul_pp(:,:),x_pp(:)
        elements_4: DO iel=1,nels_pp
          utemp_pp(:,iel)=MATMUL(storke_pp(:,:,iel),pmul_pp(:,iel))
        END DO elements_4; CALL scatter(y1_pp,utemp_pp)
-       DO i=1,fixed_freedoms_pp; l=no_pp(i)-ieq_start+1
+       DO i=1,fixed_freedoms_pp; l=no_pp(i)-ieqstart+1
          y1_pp(l)=y_pp(l)*store_pp(l)
        END DO; y_pp=y1_pp; u_pp(:,j+1)=y_pp
        gama=DOT_PRODUCT_P(rt_pp,y_pp); alpha=rho1/gama
@@ -134,7 +135,7 @@ REAL(iwp), INTENT(INOUT) :: pmul_pp(:,:),x_pp(:)
        elements_5: DO iel=1,nels_pp
          utemp_pp(:,iel)=MATMUL(storke_pp(:,:,iel),pmul_pp(:,iel))
        END DO elements_5; CALL scatter(y1_pp,utemp_pp)
-       DO i=1,fixed_freedoms_pp; l=no_pp(i)-ieq_start+1
+       DO i=1,fixed_freedoms_pp; l=no_pp(i)-ieqstart+1
          y1_pp(l)=y_pp(l)*store_pp(l)
        END DO; y_pp=y1_pp; r_pp(:,j+1)=y_pp
      END DO
