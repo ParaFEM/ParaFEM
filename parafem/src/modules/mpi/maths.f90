@@ -25,6 +25,7 @@ MODULE MATHS
   USE mpi_wrapper
   USE precision
   USE mp_interface
+  USE gather_scatter
 
   CONTAINS
 
@@ -1143,5 +1144,160 @@ MODULE MATHS
       RETURN
       
   END SUBROUTINE FORM_S
+
+!------------------------------------------------------------------------------
+!------------------------------------------------------------------------------
+!------------------------------------------------------------------------------
+
+  SUBROUTINE PCG_KM(limit,tol,km,nels_pp,diag_precon_pp,timest,xnew_pp,iters)
+
+    !/****f* maths/pcg_km
+    !*  NAME
+    !*    SUBROUTINE: pcg_km
+    !*  SYNOPSIS
+    !*    Usage:      CALL pcg_km(limit,tol,km,diag_precon_pp,timest,         &
+    !*                            xnew_pp,iters)
+    !*  FUNCTION
+    !*    Iterative solver (PCG) to solve a linear system of equations
+    !*    Assumes all elements have the identical stiffness matrix KM
+    !*  INPUTS
+    !*    The following arguments have the INTENT(IN) attribute:
+    !*
+    !*    limit                    : Integer
+    !*                             : Maximum number of PCG iterations allowed
+    !*
+    !*    nels_pp                  : Integer
+    !*                             : Elements per cpu (or MPI process)
+    !*
+    !*    tol                      : Real
+    !*                             : Tolerance for PCG
+    !*
+    !*    km(ntot,ntot)            : Real
+    !*                             : Element stiffness matrix
+    !*
+    !*    diag_precon_pp(neq_pp)   : Real
+    !*                             : Inverse of diagonal preconditioner
+    !*
+    !*    The following arguments have the INTENT(INOUT) attribute:
+    !*
+    !*    xnew_pp(neq_pp)          : Real
+    !*                             : Solution of the system of equations
+    !*
+    !*    timest(:)                : Real
+    !*                             : Timing information
+    !*
+    !*    The following arguments have the INTENT(OUT) attribute:
+    !*
+    !*    iters                    : Integer
+    !*                             : Number of PCG iterations
+    !*
+    !*  AUTHOR
+    !*    Lee Margetts
+    !*  CREATION DATE
+    !*    07.05.2021
+    !*  COPYRIGHT
+    !*    (c) University of Manchester 2021
+    !******
+    !*  Place remarks that should not be included in the documentation here.
+    !*
+    !*  The solution scheme is based on x = 0.0 as starting guess and 
+    !*  is as follows:
+    !*
+    !*  r = b - A*x  (r = b  if x = 0.0 as starting guess)
+    !*  d = Minv*r
+    !*  delta_new = r*d
+    !*  iters = 0
+    !*  WHILE (iters<limit and sqrt(rn/rn0) < tol) DO
+    !*    iters = iters + 1
+    !*    q = A*d
+    !*    alpha = delta_new/(d*q)
+    !*    x = x + alpha*d
+    !*    r = r - alpha*q
+    !*    s = Minv*r
+    !*    delta_old = delta_new
+    !*    delta_new = r*s
+    !*    beta = delta_new/delta_old
+    !*    d = s + beta*d
+    !*  END DO  
+    !* 
+    !*/
+
+    IMPLICIT NONE
+
+    INTEGER,   INTENT(IN)    :: limit
+    INTEGER,   INTENT(IN)    :: nels_pp
+    REAL(iwp), INTENT(IN)    :: tol, km(:,:), diag_precon_pp(:)
+    REAL(iwp), INTENT(INOUT) :: xnew_pp(:)
+    REAL(iwp), INTENT(INOUT) :: timest(:)
+    INTEGER,   INTENT(OUT)   :: iters
+    LOGICAL                  :: converged=.FALSE.
+    INTEGER                  :: neq_pp, ntot, iel
+    REAL(iwp)                :: alpha, beta, up0, up1 
+    REAL(iwp), PARAMETER     :: zero=0.0_iwp
+    REAL(iwp), ALLOCATABLE   :: p_pp(:), pmul_pp(:,:), utemp_pp(:,:),      &
+                                u_pp(:), x_pp(:), d_pp(:), r_pp(:)
+
+    !-----------------------------------------------------------------------
+    ! 1. Allocate internal arrays
+    !-----------------------------------------------------------------------
+
+    neq_pp  = UBOUND(r_pp,1)
+    ntot    = UBOUND(km,1)
+
+    ALLOCATE (p_pp(neq_pp), pmul_pp(ntot,nels_pp), utemp_pp(ntot,nels_pp), &
+              u_pp(neq_pp), x_pp(neq_pp), d_pp(neq_pp), r_pp(neq_pp))
+
+    !-----------------------------------------------------------------------
+    ! 3. Initialise scalars and arrays
+    !-----------------------------------------------------------------------
+
+    d_pp      = diag_precon_pp * r_pp 
+    up0       = DOT_PRODUCT_P(r_pp,d_pp)
+
+    iters     = 0
+    converged = .FALSE.
+
+    !-----------------------------------------------------------------------
+    ! 4. PCG algorithm
+    !-----------------------------------------------------------------------
+
+    iterations  :  DO
+
+      iters    = iters + 1
+      u_pp     = zero
+      pmul_pp  = zero
+      utemp_pp = zero
+
+      CALL GATHER(p_pp,pmul_pp)
+      utemp_pp = MATMUL(km,pmul_pp)
+      CALL SCATTER(u_pp,utemp_pp)
+
+      alpha   = up0/DOT_PRODUCT_P(p_pp,u_pp)
+      xnew_pp = x_pp + p_pp*alpha
+      r_pp    = r_pp - u_pp*alpha
+      d_pp    = diag_precon_pp*r_pp
+      up1     = up0
+      up0     = DOT_PRODUCT_P(r_pp,d_pp)
+      beta    = up0/up1
+      p_pp    = d_pp + p_pp*beta
+
+      !---------------------------------------------------------------------
+      ! 4.1 Check convergence. Master process reports results
+      !---------------------------------------------------------------------
+
+      CALL checon_par(xnew_pp,tol,converged,x_pp)
+      IF (converged .OR. iters==limit) EXIT
+
+    END DO iterations
+
+    !-----------------------------------------------------------------------
+    ! 5. Deallocate local arrays
+    !-----------------------------------------------------------------------
+
+    DEALLOCATE (p_pp, pmul_pp, utemp_pp, u_pp, x_pp, d_pp)
+
+    RETURN
+
+  END SUBROUTINE PCG_KM
   
 END MODULE MATHS
