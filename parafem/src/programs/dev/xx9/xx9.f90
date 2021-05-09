@@ -27,9 +27,11 @@ PROGRAM XX9
   INTEGER               :: node_end,node_start,nodes_pp
   INTEGER               :: argc,iargc,meshgen,partitioner
   INTEGER               :: fixed_freedoms_pp,fixed_freedoms_start
+! INTEGER               :: bufsize=1
   REAL(iwp)             :: e,v,det,tol,up,up0,up1,alpha,beta,tload
   REAL(iwp),PARAMETER   :: zero = 0.0_iwp
   REAL(iwp),PARAMETER   :: penalty = 1.0e20_iwp
+  REAL(iwp)             :: local_dot,global_dot
   CHARACTER(LEN=3)      :: xpu
   CHARACTER(LEN=15)     :: element
   CHARACTER(LEN=50)     :: program_name='xx9'
@@ -403,7 +405,8 @@ PROGRAM XX9
      !RZ Allocate memory for p_pp and u_pp on GPU
      
      status = cublas_alloc( &
-          nels_pp*ndof_per_element, &
+!         nels_pp*ndof_per_element, &
+          neq_pp, &
           sizeof(0.0d0), &
           device_p_pp)
      if (status .ne. 0) then 
@@ -414,7 +417,8 @@ PROGRAM XX9
 
 
      status = cublas_alloc( &
-          nels_pp*ndof_per_element, &
+!         nels_pp*ndof_per_element, &
+          neq_pp, &
           sizeof(0.0d0), &
           device_u_pp)
      if (status .ne. 0) then
@@ -618,7 +622,14 @@ PROGRAM XX9
 
       timest(19) = elap_time()
 
-      alpha    = up0/cublas_Ddot(neq_pp,device_p_pp,1,device_u_pp,1)
+      
+      local_dot = cublas_Ddot(neq_pp,device_p_pp,1,device_u_pp,1)
+
+      bufsize=1
+      CALL MPI_ALLREDUCE(local_dot,global_dot,bufsize,MPI_REAL8,MPI_SUM,      &
+                         MPI_COMM_WORLD,ier)
+
+      alpha     = up0/global_dot
 
       timest(20) = timest(20) + (elap_time()-timest(19))
     
