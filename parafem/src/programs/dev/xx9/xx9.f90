@@ -622,16 +622,15 @@ PROGRAM XX9
 
       timest(19) = elap_time()
 
-      
       local_dot = cublas_Ddot(neq_pp,device_p_pp,1,device_u_pp,1)
+
+      timest(20) = timest(20) + (elap_time()-timest(19))
 
       bufsize=1
       CALL MPI_ALLREDUCE(local_dot,global_dot,bufsize,MPI_REAL8,MPI_SUM,      &
                          MPI_COMM_WORLD,ier)
 
       alpha     = up0/global_dot
-
-      timest(20) = timest(20) + (elap_time()-timest(19))
     
    ! WRITE (*,*) numpe,alpha    
     endif
