@@ -2029,8 +2029,9 @@ MODULE LARGE_STRAIN
       alpha=-one
     ELSEIF (alpha>one) THEN
       alpha=one
-    ELSEIF (ISNAN(alpha)) THEN
-      alpha=one
+!   ELSEIF (ISNAN(alpha)) THEN
+!     alpha=one
+!   needs replacing as ISNAN is not in all releases of Fortran
     END IF
     
     alpha=DACOS(alpha)
