@@ -11,7 +11,7 @@ PROGRAM XX9
   USE input         ; USE output           ; USE loading
   USE timing        ; USE maths            ; USE gather_scatter
   USE partition     ; USE elements         ; USE steering        ; USE pcg
-  USE new_library   ; USE iso_c_binding    ;
+  USE new_library   ; USE iso_c_binding    ; USE mathsgpu
 
   IMPLICIT NONE
 
@@ -39,55 +39,8 @@ PROGRAM XX9
   CHARACTER(LEN=80)     :: cbuffer
   LOGICAL               :: converged = .false.
   LOGICAL               :: output_stress = .false.
+  LOGICAL               :: use_gpu = .false.
 
-  ! GPU related variables etc
-  ! -------------------------
-  integer :: cublas_alloc, cublas_free
-  integer :: cublas_set_matrix, cublas_get_matrix
-  integer :: cublas_init, cublas_shutdown
-
-  integer :: status
-  integer :: ndof_per_element
-  integer(kind=c_size_t) :: device_matrix
-  integer(kind=c_size_t) :: device_lhs_vectors
-  integer(kind=c_size_t) :: device_rhs_vectors
-
-  !RZ Pointers for  p_pp and u_pp to move them onto the GPU
-  integer(kind=c_size_t) :: device_p_pp
-  integer(kind=c_size_t) :: device_u_pp
- 
-  logical :: use_gpu = .false.
-  character(len=20, kind=c_char) :: op
-
-  real(iwp) :: t_rawcomp
-  real(iwp) :: t_comp
-  real(iwp) :: t_start1
-  real(iwp) :: t_start2
-
-  !RZ Getting cublas dot product and set vector functions
-  real(iwp) :: cublas_Ddot
-  integer :: cublas_set_vector
-  
-  !Timer function
-  integer :: m, n, ans
-  real :: startT, endT, execTime
-  
-
-  ! Interface to function to set device
-  interface
-     integer(c_int) function set_gpu(device_id) bind(C)
-       
-       use iso_c_binding
-       
-       integer(c_int) :: device_id
-     end function set_gpu
-     
-     integer(c_int) function sync_gpu() bind(C)
-       use iso_c_binding
-     end function sync_gpu
-
-  end interface
- 
 !------------------------------------------------------------------------------
 ! 2. Declare dynamic arrays
 !------------------------------------------------------------------------------
@@ -342,329 +295,30 @@ PROGRAM XX9
     END DO
   END IF
 
-  d_pp  = diag_precon_pp*r_pp
-  p_pp  = d_pp
-  x_pp  = zero
-  up0   = DOT_PRODUCT_P(r_pp,d_pp)
-
-  ! Code to set up the gpu 
-  if (use_gpu) then
-     
-     ! Execute this loop iff gpu not in exclusive mode
-     if (.false.) then
-        status = set_gpu(numpe-1)
-        if (status > 0) then
-           print *, "gpu memory failed to allocate!"
-           stop
-        end if
-     end if
-
-     ! Initialize CUBLAS
-     status = cublas_init
-     if (status .ne. 0) then
-        print *, "GPU failed to initialise!"
-        status = cublas_shutdown
-        stop
-     end if
-
-     ndof_per_element = 3 * nod
-
-     ! Allocate memory on the gpu for coefficient matrix
-     status = cublas_alloc( &
-          ndof_per_element**2, &
-          sizeof(0.0d0), &
-          device_matrix)
-     if (status .ne. 0) then
-        print *, "GPU memory failed to allocate!"
-        status = cublas_shutdown
-        stop
-     end if
-
-     ! Allocate memory for matrix of lhs vectors
-     status = cublas_alloc( &
-          nels_pp*ndof_per_element, &
-          sizeof(0.0d0), &
-          device_lhs_vectors)
-     if (status .ne. 0) then
-        print *, "GPU memory failed to allocate!"
-        status = cublas_shutdown
-        stop
-     end if
-
-     ! Allocate memory for matrix of rhs vectors
-     status =  cublas_alloc( &
-          nels_pp*ndof_per_element, &
-          sizeof(0.0d0), &
-          device_rhs_vectors)
-     if (status .ne. 0) then
-        print *, "GPU memory failed to allocate!"
-        status = cublas_shutdown
-        stop
-     end if
-     
-     !RZ Allocate memory for p_pp and u_pp on GPU
-     
-     status = cublas_alloc( &
-!         nels_pp*ndof_per_element, &
-          neq_pp, &
-          sizeof(0.0d0), &
-          device_p_pp)
-     if (status .ne. 0) then 
-        print *,"GPU memory failed to allocate p_pp!"
-        status = cublas_shutdown
-        stop
-     end if   
-
-
-     status = cublas_alloc( &
-!         nels_pp*ndof_per_element, &
-          neq_pp, &
-          sizeof(0.0d0), &
-          device_u_pp)
-     if (status .ne. 0) then
-        print *, "GPU memory failed to allocate u_pp!"
-        status = cublas_shutdown
-        stop
-     end if
-
-     ! Copy coefficient matrix to the gpu
-     status = cublas_set_matrix( &
-          ndof_per_element, &
-          ndof_per_element, &
-          sizeof(0.0d0), &
-          km, &
-          ndof_per_element, &
-          device_matrix, &
-          ndof_per_element)
-     if (status .ne. 0) then
-        print *, "Failed to copy data to gpu!"
-        status = cublas_shutdown
-        stop
-     end if
-
-  end if
-
 !------------------------------------------------------------------------------
 ! 14. Preconditioned conjugate gradient iterations
 !------------------------------------------------------------------------------
 
   iters = 0
-  t_rawcomp = 0
-  t_comp = 0
 
-  iterations: DO 
-    iters    = iters + 1
-    u_pp     = zero
-    pmul_pp  = zero
-    utemp_pp = zero
-    u_pp     = zero
-
-   CALL gather(p_pp,pmul_pp)
-
-    t_start1 = elap_time()
-
-    ! matmul version
-    if (.not. use_gpu) then
-   
-       utemp_pp = MATMUL(km,pmul_pp)
-
-       ! gpu version
-    else
-       ! Copy lhs vectors to gpu
-       status = cublas_set_matrix( &
-            ndof_per_element, &
-            nels_pp, &
-            sizeof(0.0d0), &
-            pmul_pp, &
-            ndof_per_element, &
-            device_lhs_vectors, &
-            ndof_per_element)
-       if (status .ne. 0) then
-          print *, "Failed to copy data to gpu!"
-          status = cublas_shutdown
-          stop
-       end if
-
-    !RZ Copying p_pp and u_pp data over to GPU initially 
-    !   
-    !   status = cublas_set_vector( &
-    !            neq_pp, &
-    !            sizeof(0.d0), &
-    !            p_pp, &
-    !            1, &
-    !            device_p_pp, &
-    !            1)
-    !
-    !   status = cublas_set_vector( &
-    !            neq_pp, &
-    !            sizeof(0.d0), &
-    !            u_pp, &
-    !            1, &
-    !            device_u_pp, &
-    !            1)
-
-       t_start2 = elap_time() 
-
-       ! Call CUBLAS 
-       alpha = 1.d0
-       beta = 0.d0
-       op = "N"
-       call cublas_dgemm( &
-            trim(op)//c_null_char, &
-            trim(op)//c_null_char, &
-            ndof_per_element, &
-            nels_pp, &
-            ndof_per_element, &
-            alpha, &
-            device_matrix, &
-            ndof_per_element, &
-            device_lhs_vectors, &
-            ndof_per_element, &
-            beta, &
-            device_rhs_vectors, &
-            ndof_per_element)
-
-       ! Set to true to measure raw kernel execution time
-       if (.true.) then
-
-          status = sync_gpu()
-          if (status .ne. 0) then
-             print *, "Failed to sync gpu!"
-             status = cublas_shutdown
-             stop
-          end if
-       end if
-
-       ! Accumulate time for computation
-       t_rawcomp = t_rawcomp + (elap_time() - t_start2)
-
-       ! Copy result vectors back from gpu
-       status = cublas_get_matrix( &
-            ndof_per_element, & 
-            nels_pp, &
-            sizeof(0.0d0), &
-            device_rhs_vectors, &
-            ndof_per_element, & 
-            utemp_pp, &
-            ndof_per_element)
-       if (status .ne. 0) then
-          print *, "Failed to copy data from gpu!"
-          status = cublas_shutdown
-          stop
-       end if
-
-    end if
-
-    ! Accumulate total time for matrix multiply
-    t_comp = t_comp + (elap_time() - t_start1)
-
-    CALL scatter(u_pp,utemp_pp)
-
-    IF(fixed_freedoms_pp > 0) THEN
-      DO i = 1, fixed_freedoms_pp
-        j       = no_pp(i) - ieq_start + 1
-        u_pp(j) = p_pp(j) * store_pp(i)
-      END DO
-    END IF
-                                       
-    !RZ Copying p_pp and u_pp over for use in iteration                                                                                                 
-
-    !   status = cublas_set_vector( &
-    !            neq_pp, &
-    !            sizeof(0.d0), &
-    !            p_pp, &
-    !            1, &
-    !            device_p_pp, &
-    !            1)
-    !
-    !   status = cublas_set_vector( &
-    !            neq_pp, &
-    !            sizeof(0.d0), &
-    !            u_pp, &
-    !            1, &
-    !            device_u_pp, &
-    !            1)                                  
-
-!   up      = DOT_PRODUCT_P(r_pp,d_pp)
-          
-    !RZ Alpha and dot product on CPU and output
-    if (.not. use_gpu) then
-
-      timest(19) = elap_time()
-
-      alpha   = up0/DOT_PRODUCT_P(p_pp,u_pp)
-    
-      timest(20) = timest(20) + (elap_time()-timest(19))
-
-    else
-    !RZ Alpha and dot product on GPU and output
-    !RZ Copying p_pp and u_pp over for use in iteration                                                                                                 
-
-       timest(17) = elap_time()
-
-       status = cublas_set_vector( &
-                neq_pp, &
-                sizeof(0.d0), &
-                p_pp, &
-                1, &
-                device_p_pp, &
-                1)
-
-       status = cublas_set_vector( &
-                neq_pp, &
-                sizeof(0.d0), &
-                u_pp, &
-                1, &
-                device_u_pp, &
-                1)                                 
+  IF(.not. use_gpu) THEN
+    PRINT*, "Calling subroutine PCG_KM - fixed_freedoms not supported"
+    CALL pcg_km(diag_precon_pp,km,limit,nels_pp,r_pp,                          &
+                timest,tol,xnew_pp,iters)
+  ELSE 
+    PRINT*, "Calling subroutine PCG_KM_GPU - fixed_freedoms not supported"
+    CALL pcg_km_gpu(diag_precon_pp,km,limit,nels_pp,r_pp,                      &
+                    timest,tol,xnew_pp,iters)
+  END IF ! IF for the PCG process
  
-      timest(18) = timest(18) + (elap_time()-timest(17))
-
-      timest(19) = elap_time()
-
-      local_dot = cublas_Ddot(neq_pp,device_p_pp,1,device_u_pp,1)
-
-      timest(20) = timest(20) + (elap_time()-timest(19))
-
-      bufsize=1
-      CALL MPI_ALLREDUCE(local_dot,global_dot,bufsize,MPI_REAL8,MPI_SUM,      &
-                         MPI_COMM_WORLD,ier)
-
-      alpha     = up0/global_dot
-    
-   ! WRITE (*,*) numpe,alpha    
-    endif
-
-    xnew_pp = x_pp + p_pp*alpha
-    r_pp    = r_pp - u_pp*alpha
-    d_pp    = diag_precon_pp*r_pp
-    up1     = DOT_PRODUCT_P(r_pp,d_pp)
-!   beta    = DOT_PRODUCT_P(r_pp,d_pp)/up0
-    beta    = up1/up0
-    up0     = up1
-    p_pp    = d_pp + p_pp*beta  
-
-    CALL checon_par(xnew_pp,tol,converged,x_pp)    
-    IF(converged.OR.iters==limit)EXIT
-
-  END DO iterations
-
-  
-  write (*,*) "Total time in matrix-vector multiply:" , t_comp
-  if (use_gpu) then
-     write(*,*) &
-     "Time in matrix-vector multiply excluding vector transfer", &
-     t_rawcomp
-  end if
-
-  DEALLOCATE(p_pp,r_pp,x_pp,u_pp,d_pp,diag_precon_pp,km,pmul_pp) 
+! DEALLOCATE(p_pp,r_pp,x_pp,u_pp,d_pp,diag_precon_pp,km,pmul_pp) 
 
   ! Tidy up GPU
-  status = cublas_free(device_matrix)
-  status = cublas_free(device_lhs_vectors)
-  status = cublas_free(device_rhs_vectors)
-  status = cublas_free(device_matrix)
-  status = cublas_shutdown
+!  status = cublas_free(device_matrix)
+!  status = cublas_free(device_lhs_vectors)
+!  status = cublas_free(device_rhs_vectors)
+!  status = cublas_free(device_matrix)
+!  status = cublas_shutdown
 
   timest(13) = elap_time()
 
@@ -865,8 +519,6 @@ PROGRAM XX9
 !------------------------------------------------------------------------------
 
   timest(14) = elap_time()
-  timest(15) = t_rawcomp
-  timest(16) = t_comp
    
 !------------------------------------------------------------------------------
 ! 17. Output performance data
