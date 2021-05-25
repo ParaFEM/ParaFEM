@@ -366,6 +366,11 @@ MODULE MATHSGPU
                1, &
                p_pp, &
                1)
+      if (status .ne. 0) then
+        print *, "Failed to copy device_p_pp to host!"
+        status = cublas_shutdown
+        stop
+      end if
     END IF
 
     CALL GATHER(p_pp,pmul_pp)
@@ -448,6 +453,11 @@ MODULE MATHSGPU
              1, &
              device_p_pp, &
              1)
+    if (status .ne. 0) then
+        print *, "Failed to copy p_pp to gpu!"
+        status = cublas_shutdown
+        stop
+    end if
 
     status = cublas_set_vector( &
              neq_pp, &
@@ -456,6 +466,11 @@ MODULE MATHSGPU
              1, &
              device_u_pp, &
              1)                                 
+    if (status .ne. 0) then
+        print *, "Failed to copy u_pp to gpu!"
+        status = cublas_shutdown
+        stop
+    end if
  
     timest(18) = timest(18) + (elap_time()-timest(17))
 
@@ -474,31 +489,10 @@ MODULE MATHSGPU
 
 !------------------------------------------------------------------------------
  
-!  IF(iters==1) THEN
-!    status = cublas_set_vector( &
-!             neq_pp, &
-!             sizeof(0.d0), &
-!             r_pp, &
-!             1, &
-!             device_r_pp, &
-!             1)
-!  END IF
-
-!   device_r_pp = cublas_daxpy(neq_pp,alpha,device_u_pp,1,device_r_pp,1)
+!   r_pp    = r_pp - u_pp*alpha
 
     alpha = alpha * (-1.0_iwp)
-
     call cublas_daxpy(neq_pp,alpha,device_u_pp,1,device_r_pp,1)
-
-!   status = cublas_get_vector( &
-!            neq_pp, &
-!            sizeof(0.d0), &
-!            device_r_pp, &
-!            1, &
-!            r_pp, &
-!            1)
-
-!   r_pp    = r_pp - u_pp*alpha
 
 !------------------------------------------------------------------------------
 
@@ -521,22 +515,6 @@ MODULE MATHSGPU
             device_d_pp, &
             1)
 
-!   status = cublas_get_vector( &
-!            neq_pp, &
-!            sizeof(0.d0), &
-!            device_d_pp, &
-!            1, &
-!            d_pp, &
-!            1)
-
-!    status = cublas_get_vector( &
-!             neq_pp, &
-!             sizeof(0.d0), &
-!             device_r_pp, &
-!             1, &
-!             r_pp, &
-!             1)
-
 !   up1     = DOT_PRODUCT_P(r_pp,d_pp)
     local_dot = cublas_Ddot(neq_pp,device_r_pp,1,device_d_pp,1)
     bufsize=1
@@ -546,8 +524,8 @@ MODULE MATHSGPU
     beta    = up1/up0
     up0     = up1 
 
-!   Need to split original line of code into two CuBLAS calls
 !   p_pp    = d_pp + p_pp*beta
+!   Need to split original line of code into two CuBLAS calls
 
 !   p_pp    = p_pp*beta
     call cublas_Dscal(neq_pp,beta,device_p_pp,1)
@@ -555,26 +533,6 @@ MODULE MATHSGPU
 !   p_pp   = p_pp + d_pp*alpha
     alpha = 1.0_iwp
     call cublas_daxpy(neq_pp,alpha,device_d_pp,1,device_p_pp,1)
-
-!   status = cublas_get_vector( &
-!            neq_pp, &
-!            sizeof(0.d0), &
-!            device_p_pp, &
-!            1, &
-!            p_pp, &
-!            1)
-
-!   cuBLAS scalar
-!   device_r_pp = device_r_pp - device_u_pp*alpha
-!   device_r_pp = cublasDaxpy(neq_pp,alpha,device_u_pp,1,device_r_pp,1)
-!   device_d_pp = devide_diag_precon_pp*device_r_pp
-!   local_dot   = cublas_Ddot(neq_pp,device_r_pp,1,device_d_pp,1)
-!   bufsize=1
-!   CALL MPI_ALLREDUCE(local_dot,global_dot,bufsize,MPI_REAL8,MPI_SUM,      &
-!                      MPI_COMM_WORLD,ier)
-!   beta        = up1/up0
-!   up0         = up1
-!   device_p_pp = device_d_pp + device_p_pp*beta
 
 !-------------------------------------------------------------------------------
 ! 6.1 Check convergence. Master process reports results
@@ -599,6 +557,11 @@ MODULE MATHSGPU
   status = cublas_free(device_lhs_vectors)
   status = cublas_free(device_rhs_vectors)
   status = cublas_free(device_matrix)
+  status = cublas_free(device_r_pp)
+  status = cublas_free(device_u_pp)
+  status = cublas_free(device_p_pp)
+  status = cublas_free(device_p_pp)
+  status = cublas_free(device_diag_precon_pp)
   status = cublas_shutdown
 
   timest(15) = t_rawcomp
