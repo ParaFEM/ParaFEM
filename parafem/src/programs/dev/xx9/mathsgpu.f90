@@ -107,6 +107,7 @@ MODULE MATHSGPU
   !* 
   !*/
 
+  USE timing
   USE iso_c_binding
 
   IMPLICIT NONE
@@ -121,8 +122,9 @@ MODULE MATHSGPU
   INTEGER                  :: neq_pp, ntot, iel
   REAL(iwp)                :: alpha, beta, up0, up1 
   REAL(iwp)                :: local_dot, global_dot
+  REAL(iwp)                :: t_start1, t_start2, t_rawcomp, t_comp
   REAL(iwp), PARAMETER     :: zero=0.0_iwp
-  REAL(iwp), ALLOCATABLE   :: p_pp(:), pmul_pp(:,:), utemp_pp(:,:),      &
+  REAL(iwp), ALLOCATABLE   :: p_pp(:), pmul_pp(:,:), utemp_pp(:,:),           &
                               u_pp(:), x_pp(:), d_pp(:), r_pp(:)
 
 !------------------------------------------------------------------------------
@@ -132,6 +134,7 @@ MODULE MATHSGPU
   INTEGER :: cublas_alloc, cublas_free
   INTEGER :: cublas_set_matrix, cublas_get_matrix
   INTEGER :: cublas_set_vector
+  INTEGER :: cublas_get_vector
   INTEGER :: cublas_init, cublas_shutdown
 
   INTEGER :: status
@@ -141,9 +144,13 @@ MODULE MATHSGPU
   INTEGER(KIND=c_size_t) :: device_rhs_vectors
   INTEGER(KIND=c_size_t) :: device_p_pp
   INTEGER(KIND=c_size_t) :: device_u_pp
+  INTEGER(KIND=c_size_t) :: device_r_pp
+  INTEGER(KIND=c_size_t) :: device_diag_precon_pp
+  INTEGER(KIND=c_size_t) :: device_d_pp
  
 ! LOGICAL :: use_gpu = .false.
   CHARACTER(LEN=20, KIND=c_char) :: op
+  CHARACTER(LEN=20, KIND=c_char) :: op2
 
   REAL(iwp) :: cublas_Ddot
   
@@ -198,7 +205,7 @@ MODULE MATHSGPU
     if (.false.) then
         status = set_gpu(numpe-1)
         if (status > 0) then
-           print *, "gpu memory failed to allocate!"
+           print *, "GPU memory failed to allocate!"
            stop
         end if
     end if
@@ -267,6 +274,36 @@ MODULE MATHSGPU
         stop
     end if
 
+    status = cublas_alloc( &
+          neq_pp,          &
+          sizeof(0.0d0),   &
+          device_r_pp)
+    if (status .ne. 0) then
+        print *, "GPU memory failed to allocate r_pp!"
+        status = cublas_shutdown
+        stop
+    end if
+
+    status = cublas_alloc( &
+          neq_pp,          &
+          sizeof(0.0d0),   &
+          device_diag_precon_pp)
+    if (status .ne. 0) then
+        print *, "GPU memory failed to allocate diag_precon_pp!"
+        status = cublas_shutdown
+        stop
+    end if
+
+    status = cublas_alloc( &
+          neq_pp,          &
+          sizeof(0.0d0),   &
+          device_d_pp)
+    if (status .ne. 0) then
+        print *, "GPU memory failed to allocate diag_precon_pp!"
+        status = cublas_shutdown
+        stop
+    end if
+
   ! Copy km to the gpu
     status = cublas_set_matrix( &
           ntot,                 &
@@ -277,10 +314,19 @@ MODULE MATHSGPU
           device_matrix,        &
           ntot)
      if (status .ne. 0) then
-        print *, "Failed to copy data to gpu!"
+        print *, "Failed to copy km to gpu!"
         status = cublas_shutdown
         stop
      end if
+
+  ! Copy diag_precon_pp to the gpu
+  status = cublas_set_vector(     &
+           neq_pp,                &
+           sizeof(0.d0),          &
+           diag_precon_pp,        &
+           1,                     &
+           device_diag_precon_pp, &
+           1)
 
 !-------------------------------------------------------------------------------
 ! 5. Initialise scalars and arrays
@@ -289,6 +335,14 @@ MODULE MATHSGPU
   d_pp      = diag_precon_pp * r_pp 
   p_pp      = d_pp
   up0       = DOT_PRODUCT_P(r_pp,d_pp)
+
+  status = cublas_set_vector( &
+             neq_pp, &
+             sizeof(0.d0), &
+             r_pp, &
+             1, &
+             device_r_pp, &
+             1)
 
   iters     = 0
   converged = .FALSE.
@@ -304,7 +358,19 @@ MODULE MATHSGPU
     pmul_pp  = zero
     utemp_pp = zero
 
+    IF(iters>1) THEN 
+      status = cublas_get_vector( &
+               neq_pp, &
+               sizeof(0.d0), &
+               device_p_pp, &
+               1, &
+               p_pp, &
+               1)
+    END IF
+
     CALL GATHER(p_pp,pmul_pp)
+
+    t_start1 = elap_time()
 
     ! Copy lhs vectors to gpu
     status = cublas_set_matrix( &
@@ -316,10 +382,12 @@ MODULE MATHSGPU
              device_lhs_vectors, &
              ntot)
     if (status .ne. 0) then
-        print *, "Failed to copy data to gpu!"
+        print *, "Failed to copy device_lhs_vectors to gpu!"
         status = cublas_shutdown
         stop
     end if
+
+    t_start2 = elap_time()
 
     alpha = 1.d0
     beta = 0.d0
@@ -350,6 +418,8 @@ MODULE MATHSGPU
         end if
     end if
 
+    t_rawcomp = t_rawcomp + (elap_time() - t_start2)    
+
     ! Copy result vectors back from gpu
     status = cublas_get_matrix( &
              ntot, & 
@@ -365,8 +435,12 @@ MODULE MATHSGPU
         stop
     end if
 
+    t_comp = t_comp + (elap_time() - t_start1)     
+
     CALL SCATTER(u_pp,utemp_pp)
 
+    timest(17) = elap_time()
+
     status = cublas_set_vector( &
              neq_pp, &
              sizeof(0.d0), &
@@ -383,29 +457,13 @@ MODULE MATHSGPU
              device_u_pp, &
              1)                                 
  
-    status = cublas_set_vector( &
-             neq_pp, &
-             sizeof(0.d0), &
-             p_pp, &
-             1, &
-             device_p_pp, &
-             1)
+    timest(18) = timest(18) + (elap_time()-timest(17))
 
-    status = cublas_set_vector( &
-             neq_pp, &
-             sizeof(0.d0), &
-             u_pp, &
-             1, &
-             device_u_pp, &
-             1)                                 
- 
-!   timest(18) = timest(18) + (elap_time()-timest(17))
-
-!   timest(19) = elap_time()
+    timest(19) = elap_time()
 
     local_dot = cublas_Ddot(neq_pp,device_p_pp,1,device_u_pp,1)
 
-!   timest(20) = timest(20) + (elap_time()-timest(19))
+    timest(20) = timest(20) + (elap_time()-timest(19))
 
     bufsize=1
     CALL MPI_ALLREDUCE(local_dot,global_dot,bufsize,MPI_REAL8,MPI_SUM,      &
@@ -413,12 +471,110 @@ MODULE MATHSGPU
 
     alpha   = up0/global_dot
     xnew_pp = x_pp + p_pp*alpha
-    r_pp    = r_pp - u_pp*alpha
-    d_pp    = diag_precon_pp*r_pp
-    up1     = DOT_PRODUCT_P(r_pp,d_pp)
+
+!------------------------------------------------------------------------------
+ 
+!  IF(iters==1) THEN
+!    status = cublas_set_vector( &
+!             neq_pp, &
+!             sizeof(0.d0), &
+!             r_pp, &
+!             1, &
+!             device_r_pp, &
+!             1)
+!  END IF
+
+!   device_r_pp = cublas_daxpy(neq_pp,alpha,device_u_pp,1,device_r_pp,1)
+
+    alpha = alpha * (-1.0_iwp)
+
+    call cublas_daxpy(neq_pp,alpha,device_u_pp,1,device_r_pp,1)
+
+!   status = cublas_get_vector( &
+!            neq_pp, &
+!            sizeof(0.d0), &
+!            device_r_pp, &
+!            1, &
+!            r_pp, &
+!            1)
+
+!   r_pp    = r_pp - u_pp*alpha
+
+!------------------------------------------------------------------------------
+
+!   d_pp    = diag_precon_pp*r_pp
+
+    alpha = 1.d0
+    beta  = 0.d0
+    op2   = "U"
+
+    call cublas_dsbmv( &
+            trim(op2)//c_null_char, &
+            neq_pp, &
+            0,    &
+            alpha, &
+            device_diag_precon_pp, &
+            1, &
+            device_r_pp, &
+            1, &
+            beta, &
+            device_d_pp, &
+            1)
+
+!   status = cublas_get_vector( &
+!            neq_pp, &
+!            sizeof(0.d0), &
+!            device_d_pp, &
+!            1, &
+!            d_pp, &
+!            1)
+
+!    status = cublas_get_vector( &
+!             neq_pp, &
+!             sizeof(0.d0), &
+!             device_r_pp, &
+!             1, &
+!             r_pp, &
+!             1)
+
+!   up1     = DOT_PRODUCT_P(r_pp,d_pp)
+    local_dot = cublas_Ddot(neq_pp,device_r_pp,1,device_d_pp,1)
+    bufsize=1
+    CALL MPI_ALLREDUCE(local_dot,up1,bufsize,MPI_REAL8,MPI_SUM,                &
+                       MPI_COMM_WORLD,ier)
+
     beta    = up1/up0
     up0     = up1 
-    p_pp    = d_pp + p_pp*beta
+
+!   Need to split original line of code into two CuBLAS calls
+!   p_pp    = d_pp + p_pp*beta
+
+!   p_pp    = p_pp*beta
+    call cublas_Dscal(neq_pp,beta,device_p_pp,1)
+
+!   p_pp   = p_pp + d_pp*alpha
+    alpha = 1.0_iwp
+    call cublas_daxpy(neq_pp,alpha,device_d_pp,1,device_p_pp,1)
+
+!   status = cublas_get_vector( &
+!            neq_pp, &
+!            sizeof(0.d0), &
+!            device_p_pp, &
+!            1, &
+!            p_pp, &
+!            1)
+
+!   cuBLAS scalar
+!   device_r_pp = device_r_pp - device_u_pp*alpha
+!   device_r_pp = cublasDaxpy(neq_pp,alpha,device_u_pp,1,device_r_pp,1)
+!   device_d_pp = devide_diag_precon_pp*device_r_pp
+!   local_dot   = cublas_Ddot(neq_pp,device_r_pp,1,device_d_pp,1)
+!   bufsize=1
+!   CALL MPI_ALLREDUCE(local_dot,global_dot,bufsize,MPI_REAL8,MPI_SUM,      &
+!                      MPI_COMM_WORLD,ier)
+!   beta        = up1/up0
+!   up0         = up1
+!   device_p_pp = device_d_pp + device_p_pp*beta
 
 !-------------------------------------------------------------------------------
 ! 6.1 Check convergence. Master process reports results
@@ -444,6 +600,9 @@ MODULE MATHSGPU
   status = cublas_free(device_rhs_vectors)
   status = cublas_free(device_matrix)
   status = cublas_shutdown
+
+  timest(15) = t_rawcomp
+  timest(16) = t_comp
 
   RETURN
 
