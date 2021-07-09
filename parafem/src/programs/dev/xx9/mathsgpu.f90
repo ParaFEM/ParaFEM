@@ -119,13 +119,18 @@ MODULE MATHSGPU
   REAL(iwp), INTENT(INOUT) :: timest(:)
   INTEGER,   INTENT(OUT)   :: iters
   LOGICAL                  :: converged=.FALSE.
-  INTEGER                  :: neq_pp, ntot, iel
+! LOGICAL                  :: host=.TRUE.
+  LOGICAL                  :: host=.FALSE.
+  INTEGER                  :: neq_pp, ntot, iel, imax
   REAL(iwp)                :: alpha, beta, up0, up1 
   REAL(iwp)                :: local_dot, global_dot
   REAL(iwp)                :: t_start1, t_start2, t_rawcomp, t_comp
+  REAL(iwp)                :: maxloads_pp, maxdiff_pp, maxloads, maxdiff
+  REAL(iwp)                :: maxoldloads_pp,vmax
   REAL(iwp), PARAMETER     :: zero=0.0_iwp
   REAL(iwp), ALLOCATABLE   :: p_pp(:), pmul_pp(:,:), utemp_pp(:,:),           &
-                              u_pp(:), x_pp(:), d_pp(:), r_pp(:)
+                              u_pp(:), x_pp(:), d_pp(:), r_pp(:), xold_pp(:), &
+                              vmaxloads_pp(:)
 
 !------------------------------------------------------------------------------
 ! 1. GPU related variables
@@ -136,7 +141,9 @@ MODULE MATHSGPU
   INTEGER :: cublas_set_vector
   INTEGER :: cublas_get_vector
   INTEGER :: cublas_init, cublas_shutdown
-
+  INTEGER :: cublas_idamax
+  INTEGER :: cublas_pointer_mode_device
+  INTEGER :: dsize = sizeof(0.d0)
   INTEGER :: status
 ! INTEGER :: ndof_per_element
   INTEGER(KIND=c_size_t) :: device_matrix
@@ -147,6 +154,11 @@ MODULE MATHSGPU
   INTEGER(KIND=c_size_t) :: device_r_pp
   INTEGER(KIND=c_size_t) :: device_diag_precon_pp
   INTEGER(KIND=c_size_t) :: device_d_pp
+  INTEGER(KIND=c_size_t) :: device_x_pp
+! INTEGER(KIND=c_size_t) :: device_xnew_pp
+  REAL(KIND=c_double) :: device_xnew_pp
+! TYPE(c_ptr) :: device_xnew_pp
+  INTEGER(KIND=c_size_t) :: device_xold_pp
  
 ! LOGICAL :: use_gpu = .false.
   CHARACTER(LEN=20, KIND=c_char) :: op
@@ -179,6 +191,24 @@ MODULE MATHSGPU
        USE iso_c_binding
      END FUNCTION sync_gpu
 
+     integer(c_int) function copy_data_from_gpu( &
+          n_elements, &
+          element_size, &
+          max_loc, &
+          host_data, &
+          device_pointer) bind(C)
+
+       use iso_c_binding
+
+       integer(c_int) :: n_elements
+       integer(c_int) :: element_size
+       integer(c_int) :: max_loc
+       real(c_double) :: host_data
+       real(c_double) :: device_pointer
+!      type (c_ptr) :: device_pointer
+     end function copy_data_from_gpu
+
+
   END INTERFACE
 
 !-----------------------------------------------------------------------
@@ -189,7 +219,8 @@ MODULE MATHSGPU
     ntot     = UBOUND(km,1)
 
     ALLOCATE (p_pp(neq_pp), pmul_pp(ntot,nels_pp), utemp_pp(ntot,nels_pp), &
-              u_pp(neq_pp), x_pp(neq_pp), d_pp(neq_pp))
+              u_pp(neq_pp), x_pp(neq_pp), d_pp(neq_pp), xold_pp(neq_pp),   &
+              vmaxloads_pp(1))
 
     p_pp     = zero
     pmul_pp  = zero
@@ -197,6 +228,8 @@ MODULE MATHSGPU
     u_pp     = zero
     x_pp     = zero
     d_pp     = zero
+    xold_pp  = zero
+    vmaxloads_pp = zero
 
 !-----------------------------------------------------------------------
 ! 4. Set up the GPU
@@ -304,6 +337,36 @@ MODULE MATHSGPU
         stop
     end if
 
+    status = cublas_alloc( &
+          neq_pp,          &
+          sizeof(0.0d0),   &
+          device_x_pp)
+    if (status .ne. 0) then
+        print *, "GPU memory failed to allocate diag_precon_pp!"
+        status = cublas_shutdown
+        stop
+    end if
+
+    status = cublas_alloc( &
+          neq_pp,          &
+          sizeof(0.0d0),   &
+          device_xnew_pp)
+    if (status .ne. 0) then
+        print *, "GPU memory failed to allocate diag_precon_pp!"
+        status = cublas_shutdown
+        stop
+    end if
+
+    status = cublas_alloc( &
+          neq_pp,          &
+          sizeof(0.0d0),   &
+          device_xold_pp)
+    if (status .ne. 0) then
+        print *, "GPU memory failed to allocate diag_precon_pp!"
+        status = cublas_shutdown
+        stop
+    end if
+
   ! Copy km to the gpu
     status = cublas_set_matrix( &
           ntot,                 &
@@ -353,12 +416,28 @@ MODULE MATHSGPU
 
   iterations  :  DO
 
-    iters    = iters + 1
+    iters    = iters + 1 ; PRINT*, "iters=", iters
+
     u_pp     = zero
     pmul_pp  = zero
     utemp_pp = zero
 
-    IF(iters>1) THEN 
+    IF(iters==1) THEN 
+      status = cublas_set_vector( &
+               neq_pp, &
+               sizeof(0.d0), &
+               x_pp, &
+               1, &
+               device_x_pp, &
+               1)
+      if (status .ne. 0) then
+        print *, "Failed to copy x_pp to gpu!"
+        status = cublas_shutdown
+        stop
+      end if
+    END IF
+
+    IF(iters>1) THEN
       status = cublas_get_vector( &
                neq_pp, &
                sizeof(0.d0), &
@@ -485,8 +564,12 @@ MODULE MATHSGPU
                        MPI_COMM_WORLD,ier)
 
     alpha   = up0/global_dot
-    xnew_pp = x_pp + p_pp*alpha
+!   xnew_pp = x_pp + p_pp*alpha
 
+    CALL cublas_dcopy(neq_pp,device_x_pp,1,device_xold_pp,1)
+    CALL cublas_daxpy(neq_pp,alpha,device_p_pp,1,device_x_pp,1)
+    CALL cublas_dcopy(neq_pp,device_x_pp,1,device_xnew_pp,1)
+    
 !------------------------------------------------------------------------------
  
 !   r_pp    = r_pp - u_pp*alpha
@@ -538,8 +621,77 @@ MODULE MATHSGPU
 ! 6.1 Check convergence. Master process reports results
 !-------------------------------------------------------------------------------
 
+      status = cublas_get_vector( &
+             neq_pp, &
+             sizeof(0.d0), &
+             device_xnew_pp, &
+             1, &
+             xnew_pp, &
+             1)
+      if (status .ne. 0) then
+        print *, "Failed to copy device_p_pp to host!"
+        status = cublas_shutdown
+        stop
+      end if
+
+      status = cublas_get_vector( &
+              neq_pp, &
+              sizeof(0.d0), &
+              device_xold_pp, &
+              1, &
+              x_pp, &
+              1)
+     if (status .ne. 0) then
+       print *, "Failed to copy device_p_pp to host!"
+       status = cublas_shutdown
+       stop
+     end if
+
+   PRINT*, "MAXLOC on host =", maxloc(abs(xnew_pp)) 
+   PRINT*, "MAXVAL on host =", maxval(abs(xnew_pp)) 
+
+   IF(host) THEN
+
+     CALL checon_par(xnew_pp,tol,converged,x_pp)
+
+     IF (converged .OR. iters==limit) EXIT
+
+   ELSE 
+
+! convergence check on the GPU
+
+    imax =  cublas_idamax(neq_pp,device_xnew_pp,1)
+    PRINT*, "MAXLOC on device =", imax
+
+!   only transfer xnew_pp back to device when solution converged
+!   uncomment the below when host based convergence check implemented
+ 
     CALL checon_par(xnew_pp,tol,converged,x_pp)
+
     IF (converged .OR. iters==limit) EXIT
+ 
+!   IF (converged .OR. iters==limit) THEN
+!
+!     status = cublas_get_vector( &
+!              neq_pp, &
+!              sizeof(0.d0), &
+!              device_xnew_pp, &
+!              1, &
+!              xnew_pp, &
+!              1)
+!     if (status .ne. 0) then
+!       print *, "Failed to copy device_p_pp to host!"
+!       status = cublas_shutdown
+!       stop
+!     end if
+! 
+!
+!     EXIT
+!
+!   END IF
+
+
+    END IF ! HOST OR GPU CONVERGENCE CHECK
 
   END DO iterations
 
@@ -556,11 +708,10 @@ MODULE MATHSGPU
   status = cublas_free(device_matrix)
   status = cublas_free(device_lhs_vectors)
   status = cublas_free(device_rhs_vectors)
-  status = cublas_free(device_matrix)
   status = cublas_free(device_r_pp)
   status = cublas_free(device_u_pp)
   status = cublas_free(device_p_pp)
-  status = cublas_free(device_p_pp)
+  status = cublas_free(device_d_pp)
   status = cublas_free(device_diag_precon_pp)
   status = cublas_shutdown
 
