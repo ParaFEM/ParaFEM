@@ -1,0 +1,27 @@
+#!/bin/bash
+
+## Example SLURM batch script for ARCHER2
+## ARCHER2 jobs should be submitted from the /work directory
+## Note that the /home directory is not visible to the compute nodes
+## Executables and shared libraries need to be copied to /work
+
+## To run, type:                $ sbatch job.archer2
+## To check queue status, type: $ squeue -u <username>
+## To cancel job, type:         $ scancel <JOBID>
+
+#SBATCH --job-name=test
+#SBATCH --time=00:19:59
+#SBATCH --nodes=1
+#SBATCH --ntasks-per-node=1
+#SBATCH --cpus-per-task=1
+#SBATCH --partition=standard
+#SBATCH --qos=short
+#SBATCH --account=<ACCOUNTID>
+
+export SRUN_CPUS_PER_TASK=$SLURM_CPUS_PER_TASK
+
+## If the library is copied to the directory where the job is launched
+
+export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:.
+
+srun --distribution=block:block --hint=nomultithread p123 p123
