@@ -7416,7 +7416,7 @@ END SUBROUTINE bcast_inputdata_p127
     IF(ndim==3) WRITE(13,'(A)') "Volume Mesh"
     WRITE(13,'(A)')     "coordinates"
     
-    WRITE(13,'(I10)') nn
+    WRITE(13,'(I12)') nn
     DO j=1,ndim
       DO i=1,nn  
         WRITE(13,'(E12.5)') g_coord(j,i)
@@ -7433,9 +7433,9 @@ END SUBROUTINE bcast_inputdata_p127
       CASE('triangle')
         SELECT CASE(nod)
           CASE(3)
-            WRITE(13,'(A/I10)') "tria3", nels
+            WRITE(13,'(A/I12)') "tria3", nels
             DO i = 1,nels
-              WRITE(13,'(3I10)')g_num(3,i),g_num(2,i),g_num(1,i)
+              WRITE(13,'(3I12)')g_num(3,i),g_num(2,i),g_num(1,i)
             END DO
           CASE DEFAULT
             WRITE(13,'(A)')   "# Element type not recognised"
@@ -7443,14 +7443,14 @@ END SUBROUTINE bcast_inputdata_p127
       CASE('quadrilateral')
         SELECT CASE(nod)
           CASE(4)
-            WRITE(13,'(A/I10)') "quad4", nels
+            WRITE(13,'(A/I12)') "quad4", nels
             DO i = 1,nels
-              WRITE(13,'(4I10)')g_num(1,i),g_num(4,i),g_num(3,i),g_num(2,i)
+              WRITE(13,'(4I12)')g_num(1,i),g_num(4,i),g_num(3,i),g_num(2,i)
             END DO
           CASE(8)
-            WRITE(13,'(A/I10)') "quad8", nels
+            WRITE(13,'(A/I12)') "quad8", nels
             DO i = 1,nels
-              WRITE(13,'(8I10)')g_num(1,i),g_num(7,i),g_num(5,i),g_num(3,i),    &
+              WRITE(13,'(8I12)')g_num(1,i),g_num(7,i),g_num(5,i),g_num(3,i),    &
                                 g_num(8,i),g_num(6,i),g_num(4,i),g_num(2,i)
             END DO
           CASE DEFAULT
@@ -7459,15 +7459,15 @@ END SUBROUTINE bcast_inputdata_p127
       CASE('hexahedron')
         SELECT CASE(nod)
           CASE(8)
-            WRITE(13,'(A/I10)') "hexa8", nels
+            WRITE(13,'(A/I12)') "hexa8", nels
             DO i = 1,nels
-              WRITE(13,'(8I10)') g_num(1,i),g_num(4,i),g_num(8,i),g_num(5,i),   &
+              WRITE(13,'(8I12)') g_num(1,i),g_num(4,i),g_num(8,i),g_num(5,i),   &
                                  g_num(2,i),g_num(3,i),g_num(7,i),g_num(6,i)
             END DO
           CASE(20)
-            WRITE(13,'(A/I10)') "hexa20", nels
+            WRITE(13,'(A/I12)') "hexa20", nels
             DO i = 1,nels
-              WRITE(13,'(20I10)')                                               &
+              WRITE(13,'(20I12)')                                               &
                 g_num(1,i), g_num(7,i), g_num(19,i),g_num(13,i),g_num(3,i),     &
                 g_num(5,i), g_num(17,i),g_num(15,i),g_num(8,i), g_num(12,i),    &
                 g_num(20,i),g_num(9,i), g_num(4,i), g_num(11,i),g_num(16,i),    &
@@ -7479,9 +7479,9 @@ END SUBROUTINE bcast_inputdata_p127
       CASE('tetrahedron')
         SELECT CASE(nod)
           CASE(4)
-            WRITE(13,'(A/I10)') "tetra4", nels
+            WRITE(13,'(A/I12)') "tetra4", nels
             DO i = 1,nels
-              WRITE(13,'(4I10)') g_num(1,i),g_num(3,i),g_num(2,i),g_num(4,i)
+              WRITE(13,'(4I12)') g_num(1,i),g_num(3,i),g_num(2,i),g_num(4,i)
             END DO
           CASE DEFAULT
             WRITE(13,'(A)')   "# Element type not recognised"
