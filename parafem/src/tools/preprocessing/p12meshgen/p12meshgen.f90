@@ -791,7 +791,7 @@ PROGRAM p12meshgen
       WRITE(15,'(A)') "'hexahedron'"
       WRITE(15,'(A)') "2"              ! Abaqus node numbering scheme
       WRITE(15,'(A)') "1"              ! Internal mesh partitioning
-      WRITE(15,'(7I9)') nels, nn, nr, nip, nod, loaded_freedoms, fixed_freedoms
+      WRITE(15,'(3I12,4I6)') nels, nn, nr, nip, nod, loaded_freedoms, fixed_freedoms
       WRITE(15,'(4E12.4,2I8)') kx, ky, kz, tol, limit, nres
 
       CLOSE(15)
