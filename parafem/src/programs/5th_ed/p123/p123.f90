@@ -59,7 +59,7 @@ PROGRAM p123
  IF(numpe==it)THEN
    OPEN(11,FILE=argv(1:nlen)//'.res',STATUS='REPLACE',ACTION='WRITE') 
    WRITE(11,'(A,I5,A)')"This job ran on ", npes,"  processes"
-   WRITE(11,'(A,3(I7,A))')"There are ",nn," nodes",nr,                   &
+   WRITE(11,'(A,3(I12,A))')"There are ",nn," nodes",nr,                   &
      " restrained and   ",neq," equations"
    WRITE(11,'(A,F10.4)')"Time after setup is ",elap_time()-timest(1)
  END IF
