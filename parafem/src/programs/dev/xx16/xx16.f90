@@ -106,14 +106,14 @@ PROGRAM xx16
    nip,nn,nod,nr,partitioner,tol,v)
 
  IF(nod.NE.8) THEN
-   message="Analysis aborted: Only 8 node bricks supported for case 5"
+   message="Analysis aborted: Only 8 node bricks supported for cases 5 and 6"
    CALL SHUTDOWN2(message) 
  END IF
 
-! IF(nip.NE.1) THEN
-!   message="Analysis aborted: Only 1 integration point supported for case 5"
-!   CALL SHUTDOWN2(message) 
-! END IF
+ IF(nip.NE.1) THEN
+   message="Analysis aborted: Only 1 integration point supported for cases 5 and 6"
+   CALL SHUTDOWN2(message) 
+ END IF
 
  CALL calc_nels_pp(argv,nels,npes,numpe,partitioner,nels_pp)
  ndof=nod*nodof; ntot=ndof
